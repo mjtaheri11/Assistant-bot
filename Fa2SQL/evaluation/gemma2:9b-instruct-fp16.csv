@@ -1,0 +1,885 @@
+query,schema,sql,model_response
+وضعیت مرکز نگهداری سیرجان چیه؟,INV,"SELECT STATE
+FROM plant
+WHERE title = ‘سیرجان’","```sql
+SELECT STATE 
+FROM PLANT 
+WHERE CODE = 'SIRJAN';
+```"
+شعبه مرتبط با مرکز نگهداری قزوین کدومه؟,INV,"SELECT TOP (1) branch_title
+FROM plant
+WHERE title LIKE '%قزوین%'","```sql
+SELECT BRANCH_TITLE 
+FROM PLANT 
+WHERE CODE = 'قزوین';
+```"
+"کد مرکز نگهداری ""سیرجان"" تو سیستم چی تعریف شده؟",INV,"SELECT Code
+FROM branch_title
+WHERE title LIKE '%سیرجان%'
+","SELECT CODE FROM PLANT WHERE TITLE = 'سیرجان'; 
+"
+مرکز نگهداری های غیرفعال تو سیستم چی ها هستن؟,INV,"SELECT Code
+FROM branch_title
+WHERE STATE = ‘غیرفعال’
+","```sql
+SELECT * FROM PLANT WHERE STATE = 'غیر فعال';
+```"
+نوع انبار 001 چی هست؟,INV,"SELECT storage_Type_Title
+FROM Store
+WHERE Code = ‘001’","SELECT TITLE FROM STORE WHERE CODE = '001'  
+"
+انبار محصول سیرجان، تو سیتسم با چه نوعی تعریف شده؟,INV,"SELECT storage_Type_Title
+FROM store
+WHERE title LIKE ‘%محصول سیرجان%’","```sql
+SELECT STORAGE_TYPE_TITLE
+FROM STORE
+WHERE TITLE = 'انبار محصول سیرجان';
+```"
+وضعیت انبار محصول سیرجان چیه؟,INV,"SELECT state
+FROM store
+WHERE title LIKE ‘%محصول سیرجان%’
+","```sql
+SELECT 
+    S.TITLE
+FROM 
+    STORE S
+WHERE 
+    S.CODE = 'SIRJAN'
+```"
+انبار مواد اولیه تولید الان فعاله؟,INV,"SELECT state
+FROM store
+WHERE title LIKE ‘%مواد اولیه تولید%’
+","```sql
+SELECT 
+    STATE
+FROM 
+    STORE
+WHERE 
+    TITLE = 'مواد اولیه تولید' AND STATE = 'فعال';
+```"
+آخرین کدی که برای انبار با نوع محصول تو سیستم تعریف شده چی هست؟,INV,"SELECT TOP (1) Code
+FROM store
+WHERE storage_Type_Title LIKE ‘%محصول%’
+ORDER BY id DESC
+","```sql
+SELECT MAX(CODE) FROM STORE WHERE STORAGE_TYPE_TITLE = 'محصول'
+```"
+عنوان انبار RAW_01 چیه؟,INV,"SELECT Title
+FROM Store
+WHERE code = ‘RAW_01’
+","SELECT TITLE FROM STORE WHERE CODE = 'RAW_01'  
+"
+انبار ضایعات تولید با کد 002 تو کدوم مرکز نگهداری تعریف شده؟,INV,"SELECT Plant.Title
+FROM Store
+JOIN Plant ON Plant_Id = Plant.Id
+WHERE code = ‘002’
+","```sql
+SELECT P.TITLE
+FROM STORE S
+JOIN PLANT P ON S.PLANT_REF = P.ID
+WHERE S.CODE = '002' AND S.STORAGE_TYPE_TITLE = 'ضایعات تولید';
+```"
+انبارهای مرکز نگهداری سیرجان ,INV,"SELECT Title
+FROM Store
+JOIN Plant ON Store.Plant_id = plant.Id
+WHERE plant.title LIKE '%سیرجان%'
+","```sql
+SELECT 
+    S.TITLE AS STORE_TITLE,
+    P.TITLE AS PLANT_TITLE
+FROM 
+    STORE S
+JOIN 
+    PLANT P ON S.PLANT_REF = P.ID
+WHERE 
+    P.CODE = 'SIRJAN'; 
+```"
+بعد واحد سنجش Kg چیه؟,INV,"SELECT dimension
+FROM Unit
+WHERE title = ‘kg’
+","SELECT TITLE FROM UNIT WHERE DIMENSION = 'وزن' AND TITLE = 'Kg'; 
+"
+چه واحدهایی برای بعد وزن تو سیستم تعریف شدن؟,INV,"SELECT title
+FROM Unit
+WHERE Dimension = ‘وزن’
+","SELECT TITLE FROM UNIT WHERE DIMENSION = 'وزن'; 
+"
+انواع بعدهای واحد اندازه گیری چی ها هست؟,INV,"SELECT DISTINCT Dimension
+FROM unit
+","SELECT DISTINCT DIMENSION FROM UNIT; 
+"
+بعد واحد کیلوگرم چیه؟,INV,"SELECT dimension
+FROM Unit
+WHERE title = ‘کیلوگرم’
+","SELECT TITLE FROM UNIT WHERE DIMENSION = 'وزن' AND TITLE = 'کیلوگرم'; 
+"
+کد کالای پنی سیلین 1200 چیه؟,INV,"SELECT Code
+FROM part
+WHERE title LIKE ‘%پنی سیلین 1200%’
+","SELECT CODE FROM PART WHERE TITLE = 'پنی سیلین 1200'  
+"
+عنوان کالای 8143000120 چی هست؟,INV,"SELECT Title
+FROM part
+WHERE code = ‘8143000120’
+","SELECT TITLE FROM PART WHERE CODE = '8143000120'; 
+"
+واحد سنجش اصلی کالای پنی سیلین 1200,INV,"SELECT major_unit_title
+FROM part
+WHERE title LIKE '%پنی سیلین 1200%'
+","SELECT MAJOR_UNIT_TITLE FROM PART WHERE ID = 1200; 
+"
+واحد سنجش دوم پنی سیلین 1200,INV,"SELECT secondary_unit_title
+FROM part
+WHERE title LIKE '%پنی سیلین 1200%'
+","SELECT UNIT.TITLE 
+FROM UNIT 
+WHERE UNIT.ID = (SELECT UNIT_REF FROM INV_VOUCHER_ITEM WHERE PART_REF = (SELECT ID FROM PART WHERE CODE = 'پنی سیلین 1200')); 
+"
+طبقه حساب آهن اسفنجی تو سیستم چیه؟,INV,"SELECT part_account_category_title
+FROM part
+WHERE title LIKE '%آهن اسفنجی%'
+","```sql
+SELECT PART_ACCOUNT_CATEGORY_TITLE 
+FROM PART 
+WHERE TITLE = 'آهن اسفنجی';
+```"
+کالای 8143000120 با چه طبقه حسابی تو سیتسم تعریف شده؟,INV,"SELECT part_account_category_title
+FROM part
+WHERE Code = ‘8143000120’
+","```sql
+SELECT PART_ACCOUNT_CATEGORY_TITLE 
+FROM PART 
+WHERE CODE = '8143000120';
+```"
+نوع کالای 8143000120 چیه؟,INV,"SELECT part_type
+FROM part
+WHERE Code = ‘8143000120’
+","SELECT PART_TYPE FROM PART WHERE CODE = '8143000120'; 
+"
+پنی سیلین 1200 نوعش چیه؟,INV,"SELECT part_type
+FROM part
+WHERE title LIKE '%پنی سیلین 1200%'
+","```sql
+SELECT PART_TYPE
+FROM PART
+WHERE TITLE = 'پنی سیلین 1200';
+```"
+نوع کارکرد آهن اسفنجی چیه؟,INV,"SELECT part_usage
+FROM part
+WHERE title LIKE '%آهن اسفنجی%'
+","SELECT PART_TYPE 
+FROM PART 
+WHERE CODE = 'ASFE'; 
+"
+10 تا کالای اول ساختنی که با کد 81405 شروع میشن چی ها هستن؟,INV,"SELECT TOP (1) title
+FROM part
+WHERE part_usage = ‘ساختنی’
+","```sql
+SELECT TITLE 
+FROM PART 
+WHERE PART_TYPE = 'ساختنی' AND CODE LIKE '81405%'
+LIMIT 10;
+```"
+آخرین کالای غیرموجودی تعریف شده تو سیستم چیه؟,INV,"SELECT TOP (1) title
+FROM part
+WHERE part_usage = ‘غیرموجودی’
+ORDER BY id DESC
+","```sql
+SELECT TITLE 
+FROM PART 
+WHERE PART_TYPE = 'غیرموجودی' 
+ORDER BY ID DESC 
+LIMIT 1;
+```"
+کد آخرین کالای قابل فروش رو میخوام,INV,"SELECT TOP (1) code
+FROM part
+WHERE part_usage = ‘قابل فروش’
+ORDER BY id DESC
+","```sql
+SELECT CODE 
+FROM PART 
+WHERE PART_TYPE = 'قابل فروش' 
+ORDER BY ID DESC 
+LIMIT 1;
+```"
+کارکرد کالای 8143000120 چیه؟,INV,"SELECT part_usage
+FROM part
+WHERE code = ‘8143000120’
+","SELECT PART_TYPE FROM PART WHERE CODE = '8143000120'; 
+"
+طبقه حساب کالای آهن اسفنجی رو میخوام,INV,"SELECT part_account_category_title
+FROM part
+WHERE Title Like ‘%آهن اسفنجی%’
+","```sql
+SELECT PART_ACCOUNT_CATEGORY_TITLE 
+FROM PART 
+WHERE TITLE = 'آهن اسفنجی';
+```"
+پیراهن مردانه یقه 7 سایز لارج، تو کدوم طبقه حساب تعریف شده؟,INV,"SELECT part_account_category_title
+FROM part
+WHERE Title Like ‘%پیراهن مردانه یقه 7 سایز لارج%’
+","```sql
+SELECT 
+    PART_ACCOUNT_CATEGORY_TITLE
+FROM 
+    PART
+WHERE 
+    TITLE = 'پیراهن مردانه یقه 7 سایز لارج';
+```"
+کالای 8143000120 با چه طبقه حسابی تو سیستم تعریف شده؟,INV,"SELECT part_account_category_title
+FROM part
+WHERE code = ‘8143000120’
+","```sql
+SELECT PART_ACCOUNT_CATEGORY_TITLE 
+FROM PART 
+WHERE CODE = '8143000120';
+```"
+کدوم کالاها واحد سنجش دومشون کارتن 12 تاییه؟,INV,"SELECT TOP (10) Title
+FROM part
+WHERE secondary_unit_title = ‘کارتن 12 تایی’
+","```sql
+SELECT PART.TITLE
+FROM PART
+WHERE PART.SECONDARY_UNIT_TITLE = 'کارتن 12 تایی';
+```"
+کد الگوی سند خرید خارجی چیه؟,INV,"SELECT code
+FROM Voucher_Specification
+WHERE title LIKE ‘%خرید خارجی%’
+","SELECT CODE FROM VOUCHER_SPECIFICATION WHERE VOUCHER_TYPE = 'خرید' AND PURCHASE_TYPE = 'خارجی'; 
+"
+الگوی سند انبار با کد VS_EXP_005 رو میخوام,INV,"SELECT title
+FROM Voucher_Specification
+WHERE code = ‘VS_EXP_00’
+","SELECT * FROM VOUCHER_SPECIFICATION WHERE CODE = 'VS_EXP_005'; 
+"
+جهت سند تو الگوی امانی دیگران نزد ما چی تعریف شده؟,INV,"SELECT direction
+FROM Voucher_Specification
+WHERE title LIKE ‘%امانی دیگران نزد ما%’
+","```sql
+SELECT 
+    TITLE
+FROM 
+    VOUCHER_SPECIFICATION
+WHERE 
+    COUNTER_PART_TYPE = 'طرف حساب امانی'
+```"
+"کدوم الگوها با جهت سند ""هر دو"" تو سیستم تعریف شدن؟",INV,"SELECT title
+FROM Voucher_Specification
+WHERE direction = ‘هر دو’
+","SELECT CODE FROM VOUCHER_SPECIFICATION WHERE DIRECTION = 'هر دو'; 
+"
+جهت سند برای الگوی VS_EXP_005 چیه؟,INV,"SELECT direction
+FROM Voucher_Specification
+WHERE Code = ‘VS_EXP_005’
+","SELECT VOUCHER_SPECIFICATION.TITLE 
+FROM VOUCHER_SPECIFICATION 
+WHERE VOUCHER_SPECIFICATION.CODE = 'VS_EXP_005'; 
+"
+نوع خرید برای الگوی VS_EXP_005 داخلیه یا خارجی؟,INV,"SELECT Purchase_Type
+FROM Voucher_Specification
+WHERE Code = ‘VS_EXP_005’
+","SELECT PURCHASE_TYPE FROM VOUCHER_SPECIFICATION WHERE CODE = 'VS_EXP_005'  
+"
+الگوهای نوع خرید داخلی رو برام لیست کن,INV,"SELECT title
+FROM Voucher_Specification
+WHERE purchase_Type = ‘داخلی’
+","```sql
+SELECT TITLE
+FROM VOUCHER_SPECIFICATION
+WHERE VOUCHER_TYPE = 'خرید' AND PURCHASE_TYPE = 'داخلی';
+```"
+"الگوهایی که نوع تاثیر بر موجودیشون ""موقت"" هستن کدومهان؟",INV,"SELECT title
+FROM Voucher_Specification
+WHERE type_of_effect = ‘موقت’
+","```sql
+SELECT CODE 
+FROM VOUCHER_SPECIFICATION 
+WHERE TYPE_OF_EFFECT = 'موقت';
+```"
+"نوع تاثیر بر موجودی ""برگشت به تولید"" چیه؟",INV,"SELECT type_of_effect
+FROM voucher_specification
+WHERE title LIKE ‘%برگشت به تولید%’
+","SELECT TYPE_OF_EFFECT 
+FROM VOUCHER_SPECIFICATION 
+WHERE TITLE = 'برگشت به تولید'; 
+"
+انواع تاثیر بر موجودی برای الگوها چی ها هستن؟,INV,"SELECT DISTINCT type_of_effect
+FROM voucher_specification
+","```sql
+SELECT TYPE_OF_EFFECT 
+FROM VOUCHER_SPECIFICATION;
+```"
+نوع طرف مقابل تعریف شده برای الگوی دریافت ضایعات تولید چی تعریف شده؟,INV,"SELECT counter_Part_Type
+FROM voucher_specification
+WHERE title ‘%دریافت ضایعات%’
+","```sql
+SELECT COUNTER_PART_TYPE 
+FROM VOUCHER_SPECIFICATION 
+WHERE TITLE = 'دریافت ضایعات تولید' AND VOUCHER_TYPE = 'ضایعات';
+```"
+لیست الگوهایی که طرف مقال اونها شخص-شرکت هستن رو نشون بده ,INV,"SELECT title
+FROM voucher_specification
+WHERE counter_Part_Type = ‘شخص - شرکت’","```sql
+SELECT * FROM VOUCHER_SPECIFICATION WHERE COUNTER_PART_TYPE = 'شخص-شرکت';
+```"
+انواع طرف مقابل تعریف شده برای الگوهای اسناد انبار چی ها هستن؟,INV,"SELECT DISTINCT counter_Part_Type
+FROM voucher_specification
+","SELECT DISTINCT COUNTER_PART_TYPE FROM VOUCHER_SPECIFICATION; 
+"
+الگوهای تحویل دارایی ثابت، چه نوع طرف مقابل هایی دارن؟,INV,"SELECT counter_Part_Type
+FROM voucher_specification
+WHERE voucher_Type = ‘تحویل دارایی ثابت’
+","SELECT COUNTER_PART_TYPE FROM VOUCHER_SPECIFICATION WHERE VOUCHER_TYPE = 'تحویل دارایی ثابت';  
+"
+"آخرین سند انبار ثبت شده در انبار ""مواد اولیه مصرفی تولید"" مربوط به چه تاریخی هست؟",INV,"SELECT TOP (1) DATE
+FROM Voucher
+JOIN store ON Inv_Voucher.Store_Id = Store.Id
+WHERE store.title LIKE ‘%مواد اولیه مصرفی تولید%’
+	AND Inv_Voucher.STATE IN (
+		‘تایید شده’
+		,’ثبت شده’)
+ORDER BY DATE DESC
+","```sql
+SELECT DATE 
+FROM INV_VOUCHER 
+WHERE TITLE = 'مواد اولیه مصرفی تولید' 
+AND STATE = 'ثبت شده' 
+ORDER BY ID DESC 
+LIMIT 1;
+```"
+"کد سند مربوط به آخرین سند انبار ثبت شده در انبار ""مواد اولیه مصرفی تولید"" چیه؟",INV,"SELECT TOP (1) number
+FROM Voucher
+JOIN store ON Inv_Voucher.Store_Id = Store.Id
+WHERE store.title LIKE ‘%مواد اولیه مصرفی تولید%’
+	AND Inv_Voucher.STATE IN (
+		‘تایید شده’
+		,’ثبت شده’)
+ORDER BY DATE DESC
+","```sql
+SELECT NUMBER 
+FROM INV_VOUCHER 
+WHERE STORE_REF = (SELECT ID FROM STORE WHERE TITLE = 'مواد اولیه مصرفی تولید') 
+ORDER BY DATE DESC 
+LIMIT 1;
+```"
+وضعیت سند انبار با شماره 540122301 چیه؟,INV,"SELECT STATE
+FROM Voucher
+WHERE number = ‘540122301’
+","```sql
+SELECT STATE 
+FROM INV_VOUCHER 
+WHERE NUMBER = '540122301';
+```"
+"معین مربوط به سند 540122301 تو انبار ""دارایی های ثابت"" چیه؟",INV,"SELECT SL_TITLE
+FROM Voucher
+JOIN store ON Inv_Voucher.Store_ID = Store.Id
+WHERE store.title LIKE ‘%دارایی های ثابت%’
+","```sql
+SELECT SL_TITLE 
+FROM INV_VOUCHER_ITEM
+WHERE INVENTORY_VOUCHER_REF = 540122301 AND STORE_REF = (SELECT ID FROM STORE WHERE TITLE = 'دارایی های ثابت');
+```"
+شرح سند 540122301 رو میخوام,INV,"SELECT description
+FROM voucher
+WHERE number = ‘540122301’
+","SELECT TITLE 
+FROM INV_VOUCHER 
+WHERE NUMBER = '540122301'; 
+"
+"کد آخرین سند رسید خرید داخلی به انبار ""مواد اولیه تولید"" چیه؟",INV,"SELECT number
+FROM voucher
+JOIN store ON Inv_Voucher.Store_id = store.id
+JOIN voucher_specification ON voucher_specification.id = Inv_Voucher.voucher_specification_id
+WHERE store.title LIKE ‘%مواد اولیه تولید%’
+	AND voucher_Specification.title LIKE ‘%رسید خرید%‘
+	AND Inv_Voucher.STATE IN (
+		‘تایید شده’
+		,’ثبت شده’)
+","```sql
+SELECT  NUMBER
+FROM INV_VOUCHER
+WHERE  VOUCHER_TYPE = 'خرید'
+  AND PURCHASE_TYPE = 'داخلی'
+  AND STORE_REF = (SELECT ID FROM STORE WHERE TITLE = 'مواد اولیه تولید')
+ORDER BY ID DESC
+LIMIT 1;
+```"
+مرکز هزینه سند 540122301 مربوط به انبار مواد اولیه چیه؟,INV,"SELECT COST_CENTER_TITLE
+FROM voucher
+JOIN store ON Inv_Voucher.store_id = store.id
+WHERE Inv_Voucher.number = ‘540122301’
+	AND store.title LIKE ‘%مواد اولیه%’
+","```sql
+SELECT 
+    COST_CENTER_TITLE
+FROM 
+    INV_VOUCHER
+WHERE 
+    NUMBER = '540122301';
+```"
+اسناد امروز مربوط به انبار مواد اولیه مصرفی که باطل شدن رو میخوام,INV,"SELECT number
+FROM voucher
+JOIN store ON Inv_Voucher.store_id = store.id
+WHERE Inv_Voucher.DATE = CAST(getdate() AS DATE)
+	AND store.title LIKE ‘%مواد اولیه%’
+	AND Inv_Voucher.STATE = ‘باطل شده’
+","```sql
+SELECT *
+FROM INV_VOUCHER
+WHERE DATE = CURDATE()
+  AND STATE = 'باطل شده'
+  AND SL_TITLE = 'مواد اولیه مصرفی'
+  AND STORE_REF IN (SELECT ID FROM STORE WHERE STORAGE_TYPE_TITLE = 'مواد اولیه')
+```"
+کالای DRI امروز از انبار مواد اولیه مصرفی تولید، به کدوم انبار انتقال داده شده؟,INV,"SELECT TOP (1) Store_2.Title
+FROM Voucher
+JOIN Store ON Inv_Voucher.Store_id = Store.Id
+JOIN Store AS Store_2 ON Inv_Voucher.COUNTER_PART_STORE_ID = Store_2.id
+JOIN Inv_Voucher_Item ON Inv_Voucher.id = Inv_Voucher_Item.INVENTORY_VOUCHER_ID
+JOIN Voucher_Specification ON Voucher_Specification.Id = Inv_Voucher.Voucher_Specification_id
+WHERE Inv_Voucher.DATE = CAST(getdate() AS DATE)
+	AND store.title LIKE ‘%مواد اولیه مصرفی تولید%’
+	AND Inv_Voucher.COUNTER_PART_STORE_ID IS NOT NULL
+	AND Inv_Voucher.STATE IN (
+		‘تایید شده’
+		,’ثبت شده’)
+	AND VOUCHER_SPECIFICATION.Voucher_Type = ‘انتقال بین انبار’
+","```sql
+SELECT 
+    I.STORE_REF2 
+FROM 
+    INV_VOUCHER I
+JOIN 
+    INV_VOUCHER_ITEM IVI ON I.ID = IVI.INVENTORY_VOUCHER_REF
+WHERE 
+    I.DATE = CURDATE()
+    AND IVI.PART_REF = (SELECT ID FROM PART WHERE TITLE = 'DRI')
+    AND I.STATE = 'ثبت شده'
+    AND I.VOUCHER_SPECIFICATION_REF IN (SELECT ID FROM VOUCHER_SPECIFICATION WHERE VOUCHER_TYPE = 'مصرف');
+```"
+"لیست تمام کالاهایی که امروز به انبار ""دارایی های ثابت"" انتقال داده شده اند رو میخوام",INV,"SELECT DISTINCT Part.Title
+FROM Inv_Voucher_Item
+JOIN Inv_Voucher ON Inv_Voucher_Item.Inventory_Voucher_id = Inv_Voucher.Id
+JOIN part ON Inv_Voucher_Item.Part_id = Part.Id
+JOIN Store ON Store.Id = Inv_Voucher.COUNTER_PART_STORE_ID
+JOIN VOUCHER_SPECIFICATION ON Inv_Voucher.VOUCHER_SPECIFICATION_ID = VOUCHER_SPECIFICATION.Id
+WHERE Inv_Voucher.DATE = CAST(getdate() AS DATE)
+	AND Inv_Voucher.COUNTER_PART_STORE_ID IS NOT NULL
+	AND VOUCHER_SPECIFICATION.Voucher_Type = ‘انتقال بین انبار’
+	AND Inv_Voucher.STATE IN (
+		‘تایید شده’
+		,’ثبت شده’)
+","```sql
+SELECT 
+    I.PART_REF
+FROM 
+    INV_VOUCHER_ITEM I
+JOIN 
+    INV_VOUCHER V ON I.INVENTORY_VOUCHER_REF = V.ID
+WHERE 
+    V.DATE = CURDATE()
+    AND I.STORE_REF = (SELECT ID FROM STORE WHERE TITLE = 'دارایی های ثابت')
+```"
+شماره اولین سند ثبت شده در ماه اردیبهشت در انبار مواد اولیه مصرفی چی بوده؟,INV,"SELECT TOP (1) number
+FROM voucher
+JOIN store ON Inv_Voucher.store_id = store.id
+WHERE Inv_Voucher.DATE >= shamsiTomiladi(cast(‘1403 / 02 / 01 ’) AS DATE)
+	AND store.title LIKE ‘%مواد اولیه مصرفی تولید%’
+	AND Inv_Voucher.STATE IN (
+		‘تایید شده’
+		,’ثبت شده’)
+ORDER BY Inv_Voucher.DATE
+	,voucher.id
+","```sql
+SELECT NUMBER
+FROM INV_VOUCHER
+WHERE DATE_FORMAT(DATE, '%m') = '04'
+AND STATE = 'ثبت شده'
+AND STORE_REF IN (SELECT ID FROM STORE WHERE STORAGE_TYPE_TITLE = 'مواد اولیه مصرفی')
+ORDER BY DATE ASC
+LIMIT 1;
+```"
+شماره آخرین سند ثبت شده در ماه اردیبهشت در انبار مواد اولیه مصرفی چی بوده؟,INV,"SELECT TOP (1) number
+FROM voucher
+JOIN store ON Inv_Voucher.store_id = store.id
+WHERE Inv_Voucher.DATE >= shamsiTomiladi(cast(‘1403 / 02 / 31 ’) AS DATE)
+	AND store.title LIKE ‘%مواد اولیه مصرفی تولید%’
+	AND Inv_Voucher.STATE IN (
+		‘تایید شده’
+		,’ثبت شده’)
+ORDER BY Inv_Voucher.DATE DESC
+	,voucher.id DESC
+","```sql
+SELECT MAX(NUMBER) 
+FROM INV_VOUCHER
+WHERE DATE_PART('month', DATE) = 4
+  AND STORE_REF IN (SELECT ID FROM STORE WHERE STORAGE_TYPE_TITLE = 'مواد اولیه مصرفی')
+  AND STATE = 'ثبت شده';
+```"
+کالای DRI که امروز تو انبار مواد اولیه مصرفی تولید با شماره  540122301 رسید شده مربوط به چه پروژه ای هست؟,INV,"SELECT Inv_Voucher.PROJECT_TITLE
+FROM Voucher
+JOIN Store ON Inv_Voucher.Store_Id = Store.Id
+JOIN Voucher_Specification ON Inv_Voucher.Voucher_Specification_id = Voucher_Specification.Id
+WHERE Inv_Voucher.Number = ‘540122301’
+	AND Inv_Voucher.DATE = Cast(getdate() AS DATE)
+	AND Store.Title LIKE ‘%مواد اولیه مصرفی تولید%’
+	AND Voucher_Specification.Direction = ‘ورودی’
+	AND Inv_Voucher.STATE IN (
+		‘تایید شده’
+		,’ثبت شده’)
+","```sql
+SELECT 
+    i.PROJECT_TITLE
+FROM 
+    INV_VOUCHER i
+JOIN 
+    INV_VOUCHER_ITEM it ON i.ID = it.INVENTORY_VOUCHER_REF
+WHERE 
+    it.PART_REF = (SELECT ID FROM PART WHERE TITLE = 'DRI')
+    AND i.NUMBER = '540122301'
+    AND i.DATE = CURDATE()
+```"
+"تحویل گیرنده ""لپ تاپ 17 اینچ ASUS"" دیروز از انبار ""دارایی های ثابت سیرجان"" کی بوده؟",INV,"SELECT Inv_Voucher.Deliver_To
+FROM Voucher
+JOIN Store ON Store.Id = Inv_Voucher.Store_id
+JOIN INV_VOUCHER_ITEM ON INV_VOUCHER_ITEM.INVENTORY_VOUCHER_ID = Inv_Voucher.Id
+WHERE Inv_Voucher.DATE = CAST(Adddate(Day, - 1, getdate()) AS DATE)
+	AND part.title LIKE ‘%لپ تاپ 17 اینچ ASUS%’
+	AND Inv_Voucher.STATE IN (
+		‘تایید شده’
+		,’ثبت شده’)
+	AND Inv_Voucher.Deliver_To IS NOT NULL
+","```sql
+SELECT 
+    DELIVERY_PERSON
+FROM 
+    INV_VOUCHER
+WHERE 
+    PART_REF IN (SELECT ID FROM PART WHERE TITLE = 'لپ تاپ 17 اینچ ASUS')
+    AND STORE_REF IN (SELECT ID FROM STORE WHERE TITLE = 'دارایی های ثابت سیرجان')
+    AND DATE = CURDATE() - INTERVAL 1 DAY;
+```"
+جمع کل آهن اسفنجی که بابت شماره سفارش خرید 14030124500 رسید شده چقدره؟,INV,"SELECT SUM(Inv_Voucher_Item.MAJOR_QUANTITY)
+FROM inv_Voucher_Item
+JOIN Inv_Voucher ON inv_Voucher_Item.INVENTORY_VOUCHER_ID = Inv_Voucher.Id
+JOIN Part ON inv_Voucher_Item.Part_Id = Part.Id
+JOIN Voucher_Specification ON Voucher_Specification.Id = Inv_Voucher.Voucher_Specification_Id
+WHERE Inv_Voucher.PURCHASE_ORDER_NO = ‘14030124500’
+	AND Part.Title LIKE ‘%آهن اسفنجی%’
+	AND Inv_Voucher.STATE IN (
+		‘تایید شده’
+		,’ثبت شده’)
+	AND Voucher_ Specification.Direction = ‘ورودی’
+","```sql
+SELECT SUM(II.QUANTITY) AS TotalSpongeIron
+FROM INV_VOUCHER_ITEM II
+JOIN INV_VOUCHER IV ON II.INVENTORY_VOUCHER_REF = IV.ID
+JOIN PART P ON II.PART_REF = P.ID
+WHERE IV.PURCHASE_ORDER_NO = '14030124500' AND P.TITLE = 'آهن اسفنجی';
+```"
+میانگین هر بار خروج کالا از انبار بابت کالای DRI برای تولید چقدر بوده؟,INV,"SELECT AVG(Inv_Voucher_Item.MAJOR_QUANTITY)
+FROM inv_Voucher_Item
+JOIN Inv_Voucher ON inv_Voucher_Item.INVENTORY_VOUCHER_ID = Inv_Voucher.Id
+JOIN Part ON inv_Voucher_Item.Part_Id = Part.Id
+JOIN Voucher_Specification ON Voucher_Specification.Id = Inv_Voucher.Voucher_Specification_Id
+WHERE Part.Title LIKE ‘%DRI%’
+	AND Inv_Voucher.STATE IN (
+		‘تایید شده’
+		,’ثبت شده’)
+	AND Voucher_Specification.Direction = ‘خروجی’
+	AND Voucher_Specification.Title LIKE ‘%تولید%’
+	AND Voucher_Specification.Direction = ‘خروجی’
+	AND Inv_Voucher.DATE >= ShamsiToMiladi(‘1403 / 01 / 01 ’)
+","```sql
+SELECT AVG(QUANTITY) AS ""میانگین هر بار خروج کالا""
+FROM INV_VOUCHER_ITEM
+WHERE PART_REF IN (SELECT ID FROM PART WHERE TITLE = 'DRI' AND PART_TYPE = 'ماده اولیه')
+  AND INV_VOUCHER_REF IN (SELECT ID FROM INV_VOUCHER WHERE VOUCHER_TYPE = 'تولید'); 
+```"
+شماره سفارش فروش مربوط به حواله فروش سند انبار 54002154 چیه؟,INV,"SELECT Inv_Voucher.SALES_ORDER_NO
+FROM Voucher
+JOIN Voucher_Specification ON Voucher_Specification.Id = Inv_Voucher.Voucher_Specification_Id
+WHERE Inv_Voucher.Number = ‘54002154’
+	AND Voucher_Specification.Title LIKE ‘%فروش%’
+	AND Voucher_Specification.Direction = ‘خروجی’
+	AND Inv_Voucher.STATE IN (
+		‘تایید شده’
+		,’ثبت شده’)
+","```sql
+SELECT SALES_ORDER_NO 
+FROM INV_VOUCHER 
+WHERE NUMBER = '54002154';
+```"
+تعداد کل اسناد باطل شده مرکز نگهداری سیرجان، در تیر ماه چقدر بوده؟,INV,"SELECT Count DISTINCT (Voucher.id)
+FROM Voucher
+JOIN Store ON Inv_Voucher.Store_id = Store.Id
+JOIN Plant ON Store.Plant_Id = Plant.Id
+WHERE Plant.Title LIKE ‘%سیرجان%’
+	AND Inv_Voucher.STATE = ‘باطل شده’
+	AND Inv_Voucher.DATE BETWEEN ShamsiToMiladi(‘1403 / 04 / 01 ’)
+		AND ShamsiToMiladi(‘1403 / 04 / 31 ’)
+","```sql
+SELECT COUNT(*) 
+FROM INV_VOUCHER 
+WHERE STATE = 'باطل شده' 
+  AND DATE BETWEEN '1399-06-01' AND '1399-06-30'
+  AND PLANT_REF IN (SELECT ID FROM PLANT WHERE TITLE = 'سیرجان');
+```"
+"تعداد متمایز اقلام اسناد ارسال به تولید امروز از انبار ""دارایی های ثابت"" چقدر بوده؟",INV,"SELECT count DISTINCT inv_voucher_detail.partId
+FROM inv_voucher_detail
+JOIN inv_voucher ON inv_voucher_detail.inventory_voucher_id = inv_voucher.id
+JOIN store ON store.id = inv_voucher.storeid
+JOIN voucher_specification ON voucher_specification.id = inv_voucher.voucher_specification_id
+WHERE inv_voucher.store inv_voucher.DATE = cast(getdate() AS DATE)
+	AND store.title LIKE '%دارایی های ثابت%'
+	AND Inv_Voucher.STATE IN (
+		‘تایید شده’
+		,’ثبت شده’)
+","```sql
+SELECT COUNT(DISTINCT IVI.PART_REF)
+FROM INV_VOUCHER IV
+JOIN INV_VOUCHER_ITEM IVI ON IV.ID = IVI.INVENTORY_VOUCHER_REF
+WHERE IV.DATE = CURDATE()
+  AND IV.VOUCHER_SPECIFICATION_REF IN (SELECT ID FROM VOUCHER_SPECIFICATION WHERE VOUCHER_TYPE = 'تولید')
+  AND IVI.STORE_REF = (SELECT ID FROM STORE WHERE TITLE = 'دارایی های ثابت');
+```"
+کل مقدار ارسال به تولید کالای پنی سیلین از اول بهار چقدر بوده؟,INV,"SELECT Sum(major_quantity)
+FROM inv_voucher_detail
+JOIN inv_voucher ON inv_voucher_detail.inventory_voucher_id = inv_voucher.id
+JOIN part ON part.id = inv_voucher_detail.partid
+JOIN voucher_specification ON voucher_specification.id = inv_voucher.voucher_specification_id
+WHERE part.title LIKE '%پنی سیلین 400%'
+	AND voucher_specification.voucher_type LIKE '%مصرف%'
+	AND voucher_specification.direction = 'خروجی'
+	AND inv_voucher.DATE BETWEEN '2024-03-21'
+		AND Getdate()
+	AND inv_voucher.STATE IN (
+		'تایید شده'
+		,'ثبت شده'
+		)
+","```sql
+SELECT SUM(II.QUANTITY) AS Total_Sent_To_Production
+FROM INV_VOUCHER_ITEM II
+JOIN INV_VOUCHER IV ON II.INVENTORY_VOUCHER_REF = IV.ID
+JOIN VOUCHER_SPECIFICATION VS ON IV.VOUCHER_SPECIFICATION_REF = VS.ID
+WHERE VS.TITLE = 'تولید'
+  AND II.PART_REF IN (SELECT ID FROM PART WHERE TITLE = 'پنی سیلین')
+  AND IV.DATE >= '2023-03-21'
+  AND IV.DATE < '2023-06-21';
+```"
+مقدار آخرین سند انبار مربوط به کالای پنی سیلین چقدره؟ ,INV,"SELECT TOP (1) quantity
+FROM inv_voucher_detail
+JOIN inv_voucher ON inv_voucher_detail.inventory_voucher_id = inv_voucher.id
+JOIN voucher_specification ON voucher_specification.id = inv_voucher.voucher_specification_id
+JOIN part ON voucher_detail.part_id = part.id
+WHERE voucher_specification.voucher_type = 'خرید'
+	AND part.title LIKE '%پنی سیلین 400%'
+	AND Inv_Voucher.STATE IN (
+		‘تایید شده’
+		,’ثبت شده’)
+	AND voucher_specification.direction = 'ورودی'
+ORDER BY inv_voucher.DATE DESC
+","```sql
+SELECT 
+    QUANTITY 
+FROM 
+    INV_VOUCHER_ITEM 
+WHERE 
+    PART_REF = (SELECT ID FROM PART WHERE TITLE = 'پنی سیلین') 
+ORDER BY 
+    INV_VOUCHER_REF DESC 
+LIMIT 1;
+```"
+کد آخرین سند خرید DRI چی هست؟,INV,"SELECT TOP (1) Inv_Voucher.Number
+FROM Inv_Voucher_Item
+JOIN Inv_Voucher ON Inv_Voucher_Item.INVENTORY_VOUCHER_ID = Inv_Voucher.Id
+JOIN Part ON Inv_Voucher_Item.Part_Id = Part.Id
+JOIN Voucher_Specification ON Voucher_Specification.Id = Inv_Voucher.Voucher_Specification_id
+WHERE Part.Title LIKE ‘%DRI%’
+	AND Inv_Voucher.STATE IN (
+		‘تایید شده’
+		,’ثبت شده’)
+	AND Voucher_Specification.VoucherType = ‘خرید’
+ORDER BY Inv_Voucher.DATE DESC
+","```sql
+SELECT NUMBER 
+FROM INV_VOUCHER 
+WHERE VOUCHER_SPECIFICATION_REF IN (SELECT ID FROM VOUCHER_SPECIFICATION WHERE TITLE = 'خرید' AND VOUCHER_TYPE = 'DRI')
+ORDER BY DATE DESC
+LIMIT 1;
+```"
+مقدار کل دولومیت مصرفی امروز تولید، به واحد دوم چقدر هست؟,INV,"SELECT SUM(Inv_Voucher_Item.SECOND_UNIT_QUANTITY)
+FROM inv_Voucher_item
+JOIN Inv_Voucher ON inv_Voucher_item.INVENTORY_VOUCHER_ID = Inv_Voucher.Id
+JOIN Voucher_Specification ON Voucher_Specification.Id = Inv_Voucher.Voucher_Specification_Id
+JOIN Part ON Part.Id = inv_Voucher_item.Part_Id
+WHERE Inv_Voucher.DATE = CAST(Getdate() AS DATE)
+	AND Inv_Voucher.STATE IN (
+		‘تایید شده’
+		,’ثبت شده’
+		)
+	AND Voucher_Specification.Voucher_Type = ‘مصرف’
+	AND Voucher_Specification.Title LIKE ‘%مصرف تولید%’
+	AND Part.title LIKE ‘%دولومیت%’
+","```sql
+SELECT SUM(II.QUANTITY * UI.DIMENSION) 
+FROM INV_VOUCHER_ITEM II
+JOIN INV_VOUCHER IV ON II.INVENTORY_VOUCHER_REF = IV.ID
+JOIN PART P ON II.PART_REF = P.ID
+JOIN UNIT UI ON II.UNIT_REF = UI.ID
+WHERE IV.DATE = CURDATE()
+AND P.TITLE = 'دولومیت'
+AND UI.DIMENSION = 'دوم';
+```"
+مقدار میانگین روزانه ضایعات تولید برای آهن اسفنجی، در بهار چقدر بوده؟,INV,"SELECT AVG(Inv_Voucher_Item.major_UNIT_QUANTITY)
+FROM inv_Voucher_item
+JOIN Inv_Voucher ON inv_Voucher_item.INVENTORY_VOUCHER_ID = Inv_Voucher.Id
+JOIN Voucher_Specification ON Voucher_Specification.Id = Inv_Voucher.Voucher_Specification_Id
+JOIN Part ON Part.Id = inv_Voucher_item.Part_Id
+WHERE Inv_Voucher.DATE = CAST(Getdate() AS DATE)
+	AND Inv_Voucher.STATE IN (
+		‘تایید شده’
+		,’ثبت شده’
+		)
+	AND Voucher_Specification.Voucher_Type = ‘ضایعات’
+	AND Voucher_Specification.Title LIKE ‘%ضایعات تولید%’
+	AND Part.title LIKE ‘%آهن اسفنجی%’
+","```sql
+-- This query is based on the provided schema and might not be accurate for real-world scenarios. 
+-- It assumes that ""ضایعات تولید"" is captured in the INV_VOUCHER table with appropriate data.
+
+SELECT AVG(QUANTITY) AS AVERAGE_DAILY_WASTE
+FROM INV_VOUCHER
+WHERE 
+    VOUCHER_TYPE = 'ضایعات' -- Assuming 'ضایعات' is the voucher type for production waste
+    AND PART_REF = (SELECT ID FROM PART WHERE TITLE = 'آهن اسفنجی') -- Assuming 'آهن اسفنجی' is the part name
+    AND DATE BETWEEN DATE('now', '-3 months') AND DATE('now') -- Assuming 'بهار' is the last three months
+    AND DATE_PART('month', DATE) IN (3, 4, 5); -- Assuming 'بهار' is March, April, May
+```"
+برگشت از خرید لپ تاپ ASUS دیروز به کدوم تامین کننده بوده؟,INV,"SELECT Inv_Voucher.SUPPLIER_TITLE
+FROM Inv_Voucher
+JOIN INV_Voucher_Item ON Inv_Voucher.Id = INV_Voucher_Item.INV_VOUCHER.ID
+JOIN Voucher_Specification ON Voucher_Specification.Id = Inv_Voucher.VOUCHER_SPECIFICATION.ID
+JOIN Part ON Part.Id = INV_Voucher_Item.Part_Id
+WHERE Inv_Voucher.DATE = DATEADD(DAY, - 1, CAST(Getdate() AS DATE))
+	AND Part.Title LIKE ‘%لپ تاپ ASUS%’
+	AND Voucher_Specification.Voucher_Type = ‘خرید’
+	AND Voucher_Specification.Title LIKE ‘%برگشت از خرید%’
+	AND Inv_Voucher.STATE IN (
+		‘تایید شده’
+		,’ثبت شده’
+		)
+","```sql
+SELECT 
+    SUPPLIER_TITLE
+FROM 
+    INV_VOUCHER
+WHERE 
+    DATE = CURDATE() - INTERVAL 1 DAY
+    AND TITLE LIKE '%لپ تاپ ASUS%'
+    AND VOUCHER_TYPE = 'خرید'
+    AND DIRECTION = 'ورودی';
+```"
+کالای امانی DRI رسبد شده به انبار مواد اولیه تولید، مربوط به کدام طرف حساب بوده؟,INV,"SELECT Inv_Voucher.CONSIGNMENT_PARTY_TITLE
+FROM Inv_Voucher
+JOIN INV_Voucher_Item ON Inv_Voucher.Id = INV_Voucher_Item.INV_VOUCHER.ID
+JOIN Voucher_Specification ON Voucher_Specification.Id = Inv_Voucher.VOUCHER_SPECIFICATION.ID
+JOIN Part ON Part.Id = INV_Voucher_Item.Part_Id
+WHERE Inv_Voucher.DATE = DATEADD(DAY, - 1, CAST(Getdate() AS DATE))
+	AND Part.Title LIKE ‘%لپ تاپ ASUS%’
+	AND Voucher_Specification.Voucher_Type = ‘امانی’
+	AND Voucher_Specification.Title LIKE ‘%دریافت امانی%’
+	AND Inv_Voucher.STATE IN (
+		‘تایید شده’
+		,’ثبت شده’
+		)
+","```sql
+SELECT CONSIGNMENT_PARTY_TITLE
+FROM INV_VOUCHER
+WHERE TITLE = 'DRI'
+  AND STATE = 'ثبت شده'
+  AND STORE_REF = (SELECT ID FROM STORE WHERE TITLE = 'مواد اولیه تولید');
+```"
+کل مقدار برگشت خورده کالای آهن قراضه، از انبار WH_001 شیراز چقدره؟,INV,"SELECT Inv_Voucher_Item.Major_Unit_Quantity
+FROM Inv_Voucher_Item
+JOIN INV_Voucher ON Inv_Voucher.Id = INV_Voucher_Item.INV_VOUCHER.ID
+JOIN Voucher_Specification ON Voucher_Specification.Id = Inv_Voucher.VOUCHER_SPECIFICATION.ID
+JOIN Part ON Part.Id = INV_Voucher_Item.Part_Id
+JOIN Store ON Inv_Voucher.Store_Id = Store.Id
+JOIN Plant ON Store.Plant_Id = Plant.Id
+WHERE Plant.Title LIKE ‘ % شیراز % ’
+	AND Store.Code = ‘WH_001’
+	AND Part.Title LIKE ‘ % آهن قراضه % ’
+	AND Voucher_Specification.Voucher_Type = ‘خرید’
+	AND Voucher_Specification.Title LIKE ‘ % برگشت از خرید % ’
+	AND Inv_Voucher.STATE IN (
+		‘تایید شده’
+		,’ثبت شده’
+		)
+","```sql
+SELECT SUM(II.QUANTITY) AS TotalReturnedQuantity
+FROM INV_VOUCHER_ITEM II
+JOIN INV_VOUCHER IV ON II.INVENTORY_VOUCHER_REF = IV.ID
+JOIN PART P ON II.PART_REF = P.ID
+WHERE IV.STORE_REF = (SELECT ID FROM STORE WHERE CODE = 'WH_001')
+  AND P.TITLE = 'آهن قراضه'
+  AND IV.STATE = 'ثبت شده'
+  AND II.SL_TITLE = 'برگشت'; 
+```"
+حداقل مصرف پروژه روزانه گریس از ابتدای سال چقدر بوده؟,INV,"SELECT Min(A.Major_Unit_Quantity)
+FROM (
+	SELECT SUM(INV_Voucher_Item.Major_Unit_Quantity)
+		,Inv_Voucher.DATE
+	FROM Inv_Voucher_Item
+	JOIN INV_Voucher ON Inv_Voucher.Id = INV_Voucher_Item.INV_VOUCHER.ID
+	JOIN Voucher_Specification ON Voucher_Specification.Id = Inv_Voucher.VOUCHER_SPECIFICATION.ID
+	JOIN Part ON Part.Id = INV_Voucher_Item.Part_Id
+	WHERE Inv_Voucher.DATE >= ‘2024 - 03 - 21 ’
+		AND Part.Title LIKE ‘%گریس%’
+		AND Voucher_Specification.Voucher_Type = ‘مصرف’
+		AND Voucher_Specification.Title LIKE ‘%مصرف پروژه%’
+		AND Inv_Voucher.STATE IN (
+			‘تایید شده’
+			,’ثبت شده’
+			)
+	GROUP BY Inv_Voucher.DATE
+	) AS A
+","```sql
+SELECT SUM(IIF(V.VOUCHER_TYPE = 'مصرف', II.QUANTITY, 0)) AS TotalGreaseConsumption
+FROM INV_VOUCHER V
+JOIN INV_VOUCHER_ITEM II ON V.ID = II.INVENTORY_VOUCHER_REF
+WHERE V.DATE >= '2023-01-01'
+  AND II.PART_REF IN (SELECT ID FROM PART WHERE TITLE = 'گریس')
+  AND V.PROJECT_TITLE = 'پروژه مورد نظر'; 
+```"
+حداکثر مصرف پروژه روزانه گریس، تو شعبه شیراز، از ابتدای سال چقدر بوده؟,INV,"SELECT MAX(A.Major_Unit_Quantity)
+FROM (
+	SELECT SUM(INV_Voucher_Item.Major_Unit_Quantity)
+		,Inv_Voucher.DATE
+	FROM Inv_Voucher_Item
+	JOIN INV_Voucher ON Inv_Voucher.Id = INV_Voucher_Item.INV_VOUCHER.ID
+	JOIN Voucher_Specification ON Voucher_Specification.Id = Inv_Voucher.VOUCHER_SPECIFICATION.ID
+	JOIN Part ON Part.Id = INV_Voucher_Item.Part_Id
+	JOIN Store ON INV_Voucher.Store_Id = Store.Id
+	JOIN Plant ON Store.Plant_Id = Plant.Id
+	WHERE Inv_Voucher.DATE >= ‘2024 - 03 - 21 ’
+		AND Part.Title LIKE ‘%گریس%’
+		AND Plant.Branch_Title LIKE ‘%شیراز%’
+		AND Voucher_Specification.Voucher_Type = ‘مصرف’
+		AND Voucher_Specification.Title LIKE ‘%مصرف پروژه%’
+		AND Inv_Voucher.STATE IN (
+			‘تایید شده’
+			,’ثبت شده’
+			)
+	GROUP BY Inv_Voucher.DATE
+	) AS A
+","```sql
+SELECT MAX(IIF(INV_VOUCHER_ITEM.SL_TITLE = 'مصرف', INV_VOUCHER_ITEM.QUANTITY, 0)) AS max_consumption
+FROM INV_VOUCHER_ITEM
+JOIN INV_VOUCHER ON INV_VOUCHER_ITEM.INVENTORY_VOUCHER_REF = INV_VOUCHER.ID
+JOIN PART ON INV_VOUCHER_ITEM.PART_REF = PART.ID
+WHERE PART.TITLE = 'گریس'
+  AND INV_VOUCHER.BRANCH_TITLE = 'شیراز'
+  AND INV_VOUCHER.DATE >= '2023-01-01'
+  AND INV_VOUCHER.STATE = 'ثبت شده';
+```"

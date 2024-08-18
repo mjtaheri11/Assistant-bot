@@ -1,0 +1,26 @@
+# Configurations for logging
+logging:
+  level: debug
+  file: app.log
+  max_size: 10*1024*1024
+
+
+# Configurations for streamlit
+streamlit:
+  host: 0.0.0.0
+  port: 8505
+
+# configurations for ollama
+ollama:
+  model_name: llama3:70b-instruct
+  temperature: 0
+  stream: true
+  keep_alive: 120
+
+
+# Evaluations configurations
+evaluation:
+  dataset: /home/user01/naser-workspace/SystemGroupAssistantBot/Fa2SQL/evaluation/fa2sql_eval_76.csv
+  model_name: llama3:70b-instruct
+  output_path: /home/user01/naser-workspace/SystemGroupAssistantBot/Fa2SQL/evaluation/
+

@@ -1,0 +1,1027 @@
+query,schema,sql,model_response
+وضعیت مرکز نگهداری سیرجان چیه؟,INV,"SELECT STATE
+FROM plant
+WHERE title = ‘سیرجان’","به دلیل اینکه در تبله های موجود، جزئیات خاصی درباره وضعیت انبارها وجود ندارد، نمیتوان به طور مستقیم پاسخی برای این سوال ارائه داد. ولی میتوان گزارشی را بر اساس موجودی کالاهای موجود در مرکز نگهداری سیرجان تهیه کرد.
+
+SQL Query:
+
+```sql
+SELECT 
+    INV_VOUCHER_ITEM.PART_REF, 
+    SUM(INV_VOUCHER_ITEM.REMAINED_MAJOR_QUANTITY) AS REMAINED_QUANTITY,
+    INV_VOUCHER.STORE_REF
+FROM 
+    INV_VOUCHER_ITEM 
+JOIN 
+    INV_VOUCHER ON INV_VOUCHER.ID = INV_VOUCHER_ITEM.INVENTORY_VOUCHER_REF
+WHERE 
+    INV_VOUCHER.STORE_REF = 'سیرجان' AND INV_VOUCHER.STATE = 'تایید شده'
+GROUP BY 
+    INV_VOUCHER_ITEM.PART_REF, INV_VOUCHER.STORE_REF;
+```
+
+توجه داشته باشید که در این سوال فرض بر این است که ستون STORE_REF یک ID منحصر به فرد برای هر مرکز نگهداری است و 'سیرجان' یک ID معتبر است. اگر 'سیرجان' عنوان یا توضیحاتی درباره مرکز نگهداری باشد، باید کوئری بر اساس آن تنظیم شود.
+همچنین فرض بر این است که فقط موجودی هایی که سند مربوط به آنها تایید شده است را در نظر گرفته ایم."
+شعبه مرتبط با مرکز نگهداری قزوین کدومه؟,INV,"SELECT TOP (1) branch_title
+FROM plant
+WHERE title LIKE '%قزوین%'","Based on the provided schema, there is no direct way to determine a branch related to a specific cost center like ""Qazvin"". The tables do not contain information about branches or locations other than what might be inferred from titles in certain fields (like COST_CENTER_TITLE). Therefore, it's impossible to construct an SQL query that answers this question with the given schema. Here is how you would attempt to find such information if it were available:
+
+```sql
+-- This is a hypothetical query and will not work with the provided schema.
+SELECT BRANCH_CODE 
+FROM BRANCHES 
+WHERE COST_CENTER_TITLE = 'Qazvin';
+```
+
+Since no such table or field exists in the schema, this query cannot be executed. The best we can do is to suggest that if there were additional tables defining branches and their relationships to cost centers, a query like the one above might work.
+
+If you meant to ask for information related to ""Qazvin"" within the existing schema, please clarify what specific data or relationship you are interested in, as the question currently does not align with the provided table structures."
+"کد مرکز نگهداری ""سیرجان"" تو سیستم چی تعریف شده؟",INV,"SELECT Code
+FROM branch_title
+WHERE title LIKE '%سیرجان%'
+",SELECT STORE_REF FROM INV_VOUCHER WHERE COST_CENTER_TITLE = 'سیرجان' LIMIT 1;
+مرکز نگهداری های غیرفعال تو سیستم چی ها هستن؟,INV,"SELECT Code
+FROM branch_title
+WHERE STATE = ‘غیرفعال’
+","با توجه به شما داده های موجود در schema، ما قادر به تعیین مرکز نگهداری های غیرفعال در سیستم نیستیم. این اطلاعات باید در یک جدول جداگانه ذخیره شده باشد و یا در ستون های خاصی مانند STATE در جدول INV_VOUCHER وجود داشته باشد که حالت غیرفعال را مشخص می کند. ولی این اطلاعات در schema موجود نیست.
+
+اما اگر فرض کنیم که ستون ""STATE"" در جدول ""INV_VOUCHER"" برای تعیین وضعیت فعال یا غیرفعال استفاده می شود، سپس پرس و جو SQL زیر را می توان به کار برد:
+
+```sql
+SELECT * FROM INV_VOUCHER WHERE STATE = 'غیرفعال';
+```
+
+لطفاً توجه داشته باشید که این فرض است. در عمل، نام مقادیر ستون ""STATE"" برای حالت غیرفعال ممکن است متفاوت باشد و بستگی به طراحی سیستم خاص شما دارد.
+"
+نوع انبار 001 چی هست؟,INV,"SELECT storage_Type_Title
+FROM Store
+WHERE Code = ‘001’","SELECT STORE_REF FROM INV_VOUCHER WHERE ID = 001;
+OR 
+SELECT STORE_REF2 FROM INV_VOUCHER WHERE ID = 001;
+
+Please note that neither of these queries will necessarily return a ""type"" of store, they will only return the reference to another table which may contain more information. The type of store would not be directly available from this schema without additional tables or data.
+Also, it's important to mention that ID = 001 might not work depending on how the database is set up to interpret numerical IDs. It could potentially need to be ID = 1 instead."
+انبار محصول سیرجان، تو سیتسم با چه نوعی تعریف شده؟,INV,"SELECT storage_Type_Title
+FROM store
+WHERE title LIKE ‘%محصول سیرجان%’","با توجه به شما دستورات ، جدول های موجود و محتوای آنها، امکان پاسخگویی دقیق به سوال شما وجود ندارد. ولی اگر فرض کنیم ""سیرجان"" عنوان یک انبار است، می توانید با استفاده از کوئری زیر بررسی کنید:
+
+```sql
+SELECT * FROM INV_VOUCHER WHERE STORE_REF = 'سیرجان' OR STORE_REF2 = 'سیرجان';
+```
+
+یا
+
+```sql
+SELECT * FROM INV_VOUCHER_ITEM WHERE INVENTORY_VOUCHER_REF IN (SELECT ID FROM INV_VOUCHER WHERE STORE_REF = 'سیرجان' OR STORE_REF2 = 'سیرجان');
+```
+لطفا توجه داشته باشید که این فرض بر اساس محتوای موجود در جدول ها است و ممکن است نیاز به تنظیمات خاص داشته باشد."
+وضعیت انبار محصول سیرجان چیه؟,INV,"SELECT state
+FROM store
+WHERE title LIKE ‘%محصول سیرجان%’
+","به نظر می رسد اطلاعات لازم برای پاسخگویی به این سوال در شما داده نشده است. ولی فرض کنیم که محصول ""سیرجان"" در جدول PARTS ذکر شده و موجودی آن در انبار را می خواهید بدانید، پس می توانیم چنین سوالی را با استفاده از SQL زیر بپرسیم:
+
+```sql
+SELECT SUM(INV_VOUCHER_ITEM.QUANTITY) 
+FROM INV_VOUCHER_ITEM 
+JOIN PARTS ON INV_VOUCHER_ITEM.PART_REF = PARTS.ID 
+WHERE PARTS.TITLE = 'سیرجان';
+```
+
+لطفا توجه داشته باشید که این فرض بر اساس اطلاعات موجود در ساختار دیتابیس شما است. اگر جدول یا مدل داده های شما متفاوت باشد، نیاز به تنظیم مجدد این پرس و جو خواهد بود.
+به علاوه، برخی از سوابق انبار ممکن است منفی باشند (برای مثال، در صورت بازگشت کالا)، بنابراین ممکن است نیاز به یک تابع ABS داشته باشید."
+انبار مواد اولیه تولید الان فعاله؟,INV,"SELECT state
+FROM store
+WHERE title LIKE ‘%مواد اولیه تولید%’
+","The provided schema does not include any table or column that indicates whether a raw materials warehouse is currently active. Therefore, an SQL query cannot be created to answer this question based on the given information."
+آخرین کدی که برای انبار با نوع محصول تو سیستم تعریف شده چی هست؟,INV,"SELECT TOP (1) Code
+FROM store
+WHERE storage_Type_Title LIKE ‘%محصول%’
+ORDER BY id DESC
+","SELECT MAX(ID) FROM INV_VOUCHER_ITEM WHERE PART_REF = (SELECT ID FROM PRODUCTS WHERE TYPE = 'YOUR_PRODUCT_TYPE') AND STORE_REF = (SELECT ID FROM WAREHOUSES WHERE NAME = 'YOUR_WAREHOUSE_NAME');
+Note: You need to replace 'YOUR_PRODUCT_TYPE' and 'YOUR_WAREHOUSE_NAME' with the actual product type and warehouse name. This query assumes that there is a PRODUCTS table which has an ID and TYPE field, and a WAREHOUSES table which has an ID and NAME field, none of which are provided in your schema. Since this information isn't available in the given schema, it's not possible to accurately answer the question with the data you've provided."
+عنوان انبار RAW_01 چیه؟,INV,"SELECT Title
+FROM Store
+WHERE code = ‘RAW_01’
+","به نظر می رسد اطلاعات لازم برای پاسخگویی به سوال شما در دستورالعمل های موجود وجود ندارد. برای چنین سؤالی، باید یک جدول یا فیلد وجود داشته باشد که اطلاعات مربوط به انبارها را ذخیره کند. ولی در توضیحات موجود، هیچ جدول یا فیلدی برای ذخیره این اطلاعات مشخص نشده است.
+
+اما اگر فرض کنیم که این اطلاعات در جدولی با نام `INV_STORE` وجود دارد، سپس می توانیم چنین پرس و جوی SQL را برای پیدا کردن عنوان انبار RAW_01 اجرا کنیم:
+
+```sql
+SELECT TITLE FROM INV_STORE WHERE CODE = 'RAW_01';
+```
+
+لطفاً توجه داشته باشید که در بالا فرض کردیم یک جدول `INV_STORE` وجود دارد و عنوان انبارها در فیلد `TITLE` ذخیره شده است. همچنین فرض کردیم کد انبار RAW_01 را می توان با استفاده از یک فیلد به نام `CODE` پیدا کرد.
+
+اما در صورت وجود جدول و فیلدهای دیگر، بسته به ساختار آنها، کوئری SQL ممکن است تغییر کند."
+انبار ضایعات تولید با کد 002 تو کدوم مرکز نگهداری تعریف شده؟,INV,"SELECT Plant.Title
+FROM Store
+JOIN Plant ON Plant_Id = Plant.Id
+WHERE code = ‘002’
+","SELECT COST_CENTER_TITLE 
+FROM INV_VOUCHER 
+WHERE STORE_REF = 002;
+OR
+
+SELECT COST_CENTER_TITLE 
+FROM INV_VOUCHER_ITEM 
+WHERE INVENTORY_VOUCHER_REF IN (SELECT ID FROM INV_VOUCHER WHERE STORE_REF = 002);
+
+Please note that the answer depends on how the cost center is linked to the store reference. The schema does not specify this relationship, so either of these queries could be correct based on implementation details.
+The first query assumes a direct link between COST_CENTER_TITLE and STORE_REF in INV_VOUCHER table.
+The second query assumes a link through INV_VOUCHER_ITEM table."
+انبارهای مرکز نگهداری سیرجان ,INV,"SELECT Title
+FROM Store
+JOIN Plant ON Store.Plant_id = plant.Id
+WHERE plant.title LIKE '%سیرجان%'
+","متاسفانه، بر اساس شما داده ها و ساختار پایگاه داده که ارائه دادید، اطلاعات خاصی در مورد ""انبارهای مرکز نگهداری سیرجان"" موجود نمی باشد. بنابراین، نمی توان یک پرس و جو SQL مناسب برای این درخواست ارائه داد."
+بعد واحد سنجش Kg چیه؟,INV,"SELECT dimension
+FROM Unit
+WHERE title = ‘kg’
+",با توجه به شما دستورالعمل ها و محدودیت های داده شده، این پرسیدگویی را نمیتوان پاسخ داد. در جدول های موجود واحد سنجش Kg ذکر نشده است.
+چه واحدهایی برای بعد وزن تو سیستم تعریف شدن؟,INV,"SELECT title
+FROM Unit
+WHERE Dimension = ‘وزن’
+","به نظر می رسد در دیتابیس موجود، جدول خاصی که تمام واحدهای وزن را فهرست می کند وجود ندارد. با این حال، ممکن است ""UNIT_REF"" در جدول ""INV_VOUCHER_ITEM"" به چنین جدولی اشاره داشته باشد. برای مشاهده واحدها باید به جدول مربوط به واحد ها (که در اینجا نام آن مشخص نشده است) مراجعه کرد.
+
+اما اگر فرض کنیم که یک جدول با نام ""INV_UNITS"" وجود دارد که شامل واحدهای وزن است، سپس پرسیده شده را به صورت زیر می توان پاسخ داد:
+
+```sql
+SELECT * FROM INV_UNITS WHERE TYPE = 'WEIGHT';
+```
+لطفاً توجه داشته باشید که این فرض بر اساس چگونگی طراحی ساختار دیتابیس است و ممکن است در عمل صحیح نباشد."
+انواع بعدهای واحد اندازه گیری چی ها هست؟,INV,"SELECT DISTINCT Dimension
+FROM unit
+",SELECT DISTINCT UNIT_REF FROM INV_VOUCHER_ITEM WHERE UNIT_REF IS NOT NULL;
+بعد واحد کیلوگرم چیه؟,INV,"SELECT dimension
+FROM Unit
+WHERE title = ‘کیلوگرم’
+","SELECT SECOND_UNIT_QUANTITY FROM INV_VOUCHER_ITEM WHERE UNIT_REF = 'کیلوگرم'; 
+
+(Note: This assumes that there is a reference somewhere in the database where 'کیلوگرم' can be linked to an ID, which is then used as UNIT_REF. However, based on provided schema this information isn't available.)"
+کد کالای پنی سیلین 1200 چیه؟,INV,"SELECT Code
+FROM part
+WHERE title LIKE ‘%پنی سیلین 1200%’
+","Based on the provided schema, there is no table or column that specifically contains product codes or names like ""پنی سیلین 1200"". Therefore, it's impossible to write an SQL query to find the code of this item. The information needed to answer this question does not exist in the given schema.
+
+However, if we assume that the product code or name might be stored in a table related to inventory items (which is not provided), and if ""PART_REF"" in the INV_VOUCHER_ITEM table refers to such an item, then you would need to join tables to find this information. But without knowing the exact structure of those potential tables, we cannot provide a specific SQL query.
+
+If there was a hypothetical table named ""INV_PARTS"" with columns like ""ID"", ""PRODUCT_CODE"", and ""PRODUCT_NAME"", the query might look something like:
+
+```sql
+SELECT p.PRODUCT_CODE 
+FROM INV_PARTS p
+JOIN INV_VOUCHER_ITEM i ON p.ID = i.PART_REF
+WHERE p.PRODUCT_NAME = 'پنی سیلین 1200';
+```
+
+But again, this is purely hypothetical and cannot be applied to the given schema."
+عنوان کالای 8143000120 چی هست؟,INV,"SELECT Title
+FROM part
+WHERE code = ‘8143000120’
+","SELECT PART_TITLE FROM INV_PART WHERE ID = 8143000120;
+```sql
+```
+Note: The provided schema does not contain a table named `INV_PART` or any table that could potentially hold part titles. This SQL query is based on the assumption that there exists an `INV_PART` table with columns `ID` and `PART_TITLE`. However, according to the given schema, this information cannot be retrieved as it's not specified where part titles are stored."
+واحد سنجش اصلی کالای پنی سیلین 1200,INV,"SELECT major_unit_title
+FROM part
+WHERE title LIKE '%پنی سیلین 1200%'
+","Based on the provided schema, there is no direct way to determine the main unit of measure for a specific item like ""پنی سیلین 1200"". The unit of an item would typically be stored in another table related to items or units. However, if we assume that this information might be indirectly available through the `UNIT_REF` field in the `INV_VOUCHER_ITEM` table and that there is a separate table for units (which is not provided), then you could potentially write a query like:
+
+```sql
+SELECT u.unit_name
+FROM INV_VOUCHER_ITEM i
+JOIN units u ON i.UNIT_REF = u.id
+WHERE i.PART_REF = (SELECT id FROM items WHERE item_description = 'پنی سیلین 1200');
+```
+
+This assumes the existence of an `items` table that links item descriptions to their IDs and a `units` table linking unit names to their IDs. Since these tables are not part of the provided schema, this is purely speculative.
+
+If you need to find out the main unit of measure for ""پنی سیلین 1200"" based strictly on the given schema without making any assumptions about additional tables, it would be impossible with the information provided."
+واحد سنجش دوم پنی سیلین 1200,INV,"SELECT secondary_unit_title
+FROM part
+WHERE title LIKE '%پنی سیلین 1200%'
+","SELECT SECOND_UNIT_QUANTITY FROM INV_VOUCHER_ITEM WHERE PART_REF = (SELECT ID FROM PART WHERE TITLE = 'پنی سیلین') AND SECOND_UNIT_QUANTITY = 1200; 
+Please note that I've assumed there is a table named ""PART"" which has an entry for 'پنی سیلین'. This assumption is not based on the provided schema. If such a table does not exist, this query will not work as expected."
+طبقه حساب آهن اسفنجی تو سیستم چیه؟,INV,"SELECT part_account_category_title
+FROM part
+WHERE title LIKE '%آهن اسفنجی%'
+","به نظر می رسد که در پرسید و جوی شما، اطلاعات لازم برای تولید یک پرس و جو SQL موجود نیست. به طور خاص، ""طبقه حساب آهن اسفنجی"" در داده ها ذکر نشده است. بنابراین، من قادر به ارائه یک پرس و جو SQL براساس این سوال نخواهم بود."
+کالای 8143000120 با چه طبقه حسابی تو سیتسم تعریف شده؟,INV,"SELECT part_account_category_title
+FROM part
+WHERE Code = ‘8143000120’
+","Based on the provided schema, there is no direct link between an item (part) and a specific accounting class. However, if we assume that the accounting class might be stored in another table which has a relationship with 'INV_VOUCHER_ITEM' through 'PART_REF', then you would need to join tables to find this information.
+
+Here's a hypothetical SQL query assuming there is a 'PARTS' table that contains an item's ID and its accounting class:
+
+```sql
+SELECT p.accounting_class 
+FROM INV_VOUCHER_ITEM i 
+JOIN PARTS p ON i.PART_REF = p.id 
+WHERE i.PART_REF = 8143000120;
+```
+
+But, as per the provided schema, this query will not work because there is no 'accounting_class' field in any of the tables and also no 'PARTS' table has been mentioned. So, without additional information or assumptions about the database structure, it's impossible to answer this question accurately.
+  
+The correct response based on the given schema would be:
+
+```sql
+-- No SQL query can be provided as there is no direct link between an item (part) and its accounting class in the provided schema.
+```
+  
+If you have additional information or if I misunderstood your question, please let me know."
+نوع کالای 8143000120 چیه؟,INV,"SELECT part_type
+FROM part
+WHERE Code = ‘8143000120’
+","Based on the provided schema, there is no direct table or column that holds information about product types. Therefore, it's impossible to construct a SQL query to answer this question without making assumptions about additional tables or data structures which are not included in the given schema.
+
+However, if we assume that 'PART_REF' in 'INV_VOUCHER_ITEM' refers to a product and there is another table (let's say 'PRODUCT') with columns like 'ID' and 'TYPE', then the SQL query might look something like this:
+
+```sql
+SELECT P.TYPE 
+FROM PRODUCT AS P
+JOIN INV_VOUCHER_ITEM AS IVI ON P.ID = IVI.PART_REF
+WHERE IVI.PART_REF = 8143000120;
+```
+
+But again, this is an assumption and not based on the provided schema."
+پنی سیلین 1200 نوعش چیه؟,INV,"SELECT part_type
+FROM part
+WHERE title LIKE '%پنی سیلین 1200%'
+","Based on the provided schema, there is no table or column that specifically contains information about product types or a product named ""پنی سیلین 1200"". Therefore, it's not possible to construct an SQL query to answer this question with the given data. The schema does not include a product table or any reference to product types.
+
+However, if we were to assume that the product type might be stored in the `SL_TITLE` column (which seems to hold specific titles for items), and ""پنی سیلین 1200"" is an item within one of these tables, a possible query could look like this:
+
+```sql
+SELECT SL_TITLE 
+FROM INV_VOUCHER_ITEM 
+WHERE SL_TITLE = 'پنی سیلین 1200';
+```
+
+Or if the product type is stored in another column or table not shown here, we would need that information to construct a proper query. Since there's no direct reference to ""پنی سیلین 1200"" or its type within the provided schema, this question cannot be answered with certainty using SQL based on the given data.
+
+But since I am instructed to output an SQL query and nothing else, here is a hypothetical one:
+
+```sql
+SELECT TYPE 
+FROM PRODUCTS 
+WHERE NAME = 'پنی سیلین 1200';
+```
+
+This assumes there's a `PRODUCTS` table with columns for product name (`NAME`) and type (`TYPE`), which does not exist in the provided schema."
+نوع کارکرد آهن اسفنجی چیه؟,INV,"SELECT part_usage
+FROM part
+WHERE title LIKE '%آهن اسفنجی%'
+","The provided schema does not contain any table or column related to the functionality of sponge iron. Therefore, an SQL query cannot be generated based on this information.
+
+However, if you were asking for a different type of information that could potentially be found in these tables, such as the description of a specific item, the SQL query might look something like:
+
+```sql
+SELECT DESCRIPTION 
+FROM INV_VOUCHER_ITEM 
+WHERE PART_REF = 'SpongeIron';
+```
+
+But again, this is purely hypothetical and based on an assumption that ""SpongeIron"" is a valid reference in your database. According to the provided schema, no such information exists."
+10 تا کالای اول ساختنی که با کد 81405 شروع میشن چی ها هستن؟,INV,"SELECT TOP (1) title
+FROM part
+WHERE part_usage = ‘ساختنی’
+","Based on the provided schema, there is no table or column that specifically holds information about products or their codes. Therefore, it's not possible to construct a SQL query to answer this question with the given database schema.
+
+However, if we assume that the product code might be stored in a column like `PART_REF` in `INV_VOUCHER_ITEM` and it is a string type (which is not mentioned), then a hypothetical query could look something like:
+
+```sql
+SELECT TOP 10 * FROM INV_VOUCHER_ITEM WHERE CAST(PART_REF AS VARCHAR) LIKE '81405%'
+```
+
+But this is purely speculative as the schema does not provide enough information to create such a query."
+آخرین کالای غیرموجودی تعریف شده تو سیستم چیه؟,INV,"SELECT TOP (1) title
+FROM part
+WHERE part_usage = ‘غیرموجودی’
+ORDER BY id DESC
+","Unfortunately, based on the provided schema, there is no direct way to determine the last non-existent item defined in the system. The schema does not include an explicit flag or field that indicates whether an item exists or not. Moreover, there's no timestamp or creation date available for items which could help us find the latest one. Therefore, we can't construct a SQL query to answer this question with the given information."
+کد آخرین کالای قابل فروش رو میخوام,INV,"SELECT TOP (1) code
+FROM part
+WHERE part_usage = ‘قابل فروش’
+ORDER BY id DESC
+","SELECT PART_REF FROM INV_VOUCHER_ITEM ORDER BY ID DESC LIMIT 1; 
+-- But this will give you the last item in the voucher, not necessarily the last saleable product. The schema does not provide enough information to determine the ""last saleable product"". We would need additional information about how products are marked as ""saleable"" or a specific table that tracks product status."
+کارکرد کالای 8143000120 چیه؟,INV,"SELECT part_usage
+FROM part
+WHERE code = ‘8143000120’
+","SELECT PART_REF, SL_TITLE FROM INV_VOUCHER_ITEM WHERE PART_REF = '8143000120';
+
+OR
+
+SELECT * FROM INV_PART WHERE ID = '8143000120';
+
+(در صورتی که جدول INV_PART وجود داشته باشد و حاوی اطلاعات مربوط به کالاها باشد)"
+طبقه حساب کالای آهن اسفنجی رو میخوام,INV,"SELECT part_account_category_title
+FROM part
+WHERE Title Like ‘%آهن اسفنجی%’
+","با توجه به جدول ها و مقادیر موجود در سوال شما، نمیتوان یک پرس و جو SQL دقیق برای درخواست شما ارائه داد. زیرا کلاس یا طبقه کالا (مانند آهن اسفنجی) در جدول های موجود ذکر نشده است. لطفاً جزئیات بیشتری را ارائه دهید.
+
+اما اگر فرض کنیم که ""PART_REF"" در جدول INV_VOUCHER_ITEM مربوط به طبقه یا نوع کالاست، پرس و جو SQL ممکن است شبیه به زیر باشد:
+
+```sql
+SELECT * FROM INV_VOUCHER_ITEM WHERE PART_REF = ' Sponge Iron ';
+```
+
+لطفاً توجه داشته باشید که این فرض بر اساس اطلاعات موجود در سوال شما است و ممکن است نیاز به تنظیمات خاص برای محیط شما داشته باشد."
+پیراهن مردانه یقه 7 سایز لارج، تو کدوم طبقه حساب تعریف شده؟,INV,"SELECT part_account_category_title
+FROM part
+WHERE Title Like ‘%پیراهن مردانه یقه 7 سایز لارج%’
+","The provided database schema does not include a table or field that would contain information about product classification or accounting classes for specific items like men's shirts. Therefore, it is impossible to construct an SQL query based on this schema to answer the user's question.
+
+However, if we were to assume there was such information and it might be stored in a 'product' table with fields like 'product_name', 'collar_size', 'size', and 'accounting_class', the SQL query could look something like:
+
+```sql
+SELECT accounting_class 
+FROM product 
+WHERE product_name = 'پیراهن مردانه' AND collar_size = 7 AND size = 'لارج';
+```
+
+But again, this is purely hypothetical based on the given schema."
+کالای 8143000120 با چه طبقه حسابی تو سیستم تعریف شده؟,INV,"SELECT part_account_category_title
+FROM part
+WHERE code = ‘8143000120’
+","Based on the provided schema, there is no direct link between an item (part) and its accounting class. However, if we assume that the accounting class is stored in another table which has a reference to 'PART_REF' in INV_VOUCHER_ITEM table, then you would need to join this hypothetical table with INV_VOUCHER_ITEM.
+
+But since there's no such table provided in the schema, I can't provide an SQL query for your question. The given schema does not contain enough information to answer the user's question about which accounting class a specific item is defined under.
+The SQL query would require knowing where the accounting class is stored and how it relates to the items (parts). Without this information, we cannot determine the accounting class of an item from the provided schema. 
+
+If you have more details or if there are other tables that contain such information, please provide them so I can help you create the SQL query.
+Unfortunately, with the current schema, your question cannot be answered."
+کدوم کالاها واحد سنجش دومشون کارتن 12 تاییه؟,INV,"SELECT TOP (10) Title
+FROM part
+WHERE secondary_unit_title = ‘کارتن 12 تایی’
+","با توجه به شما جویا هستید که کدام کالاهای واحد سنجش دومشان ""کارتن 12 تایی"" است، ولی در مدل داده ارائه شده، ما نمیتوانیم مستقیماً به این سوال پاسخ بدهیم. زیرا هیچ جدولی وجود ندارد که واحد سنجش را ذکر کند.
+
+اما اگر فرض کنیم که ""UNIT_REF"" در جدول ""INV_VOUCHER_ITEM"" به یک جدول واحد مرجع مانند ""INV_UNIT"" اشاره دارد، که شامل نام واحد ها است، سپس پرس و جو SQL زیر را می توان برای پاسخگویی به سوال شما استفاده کرد:
+
+```sql
+SELECT IVI.PART_REF, IVI.SECOND_UNIT_QUANTITY 
+FROM INV_VOUCHER_ITEM AS IVI 
+JOIN INV_UNIT AS IU ON IVI.UNIT_REF = IU.ID 
+WHERE IU.TITLE = 'کارتن 12 تایی';
+```
+
+لطفاً توجه داشته باشید که این پرس و جو براساس فرض است که ""INV_UNIT"" وجود دارد و شامل نام واحد ها است. در صورت وجود این جدول، میتواند به شما کمک کند."
+کد الگوی سند خرید خارجی چیه؟,INV,"SELECT code
+FROM Voucher_Specification
+WHERE title LIKE ‘%خرید خارجی%’
+",به نظر می رسد در تبل های موجود کد الگوی سند خرید خارجی ذکر نشده است. بنابراین، SQL Query ارائه داده نمی شود.
+الگوی سند انبار با کد VS_EXP_005 رو میخوام,INV,"SELECT title
+FROM Voucher_Specification
+WHERE code = ‘VS_EXP_00’
+","با توجه به شما دسترسی دقیقی به این پایگاه داده ندارم، من قادر به ارائه یک ساختار SQL کلی برای درخواست شما هستم. ولی باید توجه داشت که ممکن است بسته به نحوه ذخیره سازی الگوها و نحوه پیاده سازی آنها در پایگاه داده، این کوئری نیاز به تنظیمات خاص داشته باشد. 
+
+در صورت فرض که الگوهای سند انبار در یک ستون جداگانه ذخیره شده است، کوئری ممکن است به این صورت باشد:
+
+```sql
+SELECT * FROM INV_VOUCHER WHERE VOUCHER_SPECIFICATION_REF = 'VS_EXP_005';
+```
+
+اما در صورتی که الگوها در یک جدول جداگانه ذخیره شده است، باید از JOIN استفاده کرد. ولی برای این کار نیاز به نام جدول و ستون ها دارید.
+
+لطفاً توجه داشته باشید که ممکن است بسته به طراحی پایگاه داده، این کوئری نیاز به تنظیمات خاص داشته باشد."
+جهت سند تو الگوی امانی دیگران نزد ما چی تعریف شده؟,INV,"SELECT direction
+FROM Voucher_Specification
+WHERE title LIKE ‘%امانی دیگران نزد ما%’
+","به نظر می رسد که در پرسیدارتون به جزئیات خاصی اشاره نکردید. ولی براساس شما، فرض می زنم که ممکن است دنبال تعریف ""طرف حساب امانی"" در سند ها باشید. در صورت صحیح بودن فرض من، می توانید از کوئری SQL زیر برای گرفتن این اطلاعات استفاده کنید:
+
+```sql
+SELECT 
+    INV_VOUCHER.ID,
+    INV_VOUCHER.NUMBER,
+    INV_VOUCHER.DATE,
+    INV_VOUCHER.TITLE,
+    INV_VOUCHER.DESCRIPTION,
+    INV_VOUCHER.SL_TITLE,
+    INV_VOUCHER.STATE,
+    INV_VOUCHER.FY_TITLE,
+    INV_VOUCHER.CONSIGNMENT_PARTY_TITLE
+FROM 
+    INV_VOUCHER;
+```
+
+لطفاً توجه داشته باشید که این کوئری تمام سند های موجود در جدول `INV_VOUCHER` را بر می گرداند. اگر شما فقط به سند های خاصی نیاز دارید، باید شرط مناسبی در بخش WHERE اضافه کنید.
+ 
+اما اگر پرسش شما به موضوع دیگری مربوط است، لطفاً آن را با جزئیات بیشتر توضیح دهید."
+"کدوم الگوها با جهت سند ""هر دو"" تو سیستم تعریف شدن؟",INV,"SELECT title
+FROM Voucher_Specification
+WHERE direction = ‘هر دو’
+","با توجه به شما داده ها، نمی توانیم چنین پرس و جوهایی را انجام دهیم زیرا در تبله های موجود، ستون خاصی برای ذخیره ""جهت سند"" وجود ندارد. بنابراین، SQL مربوطه قابل ارائه نیست."
+جهت سند برای الگوی VS_EXP_005 چیه؟,INV,"SELECT direction
+FROM Voucher_Specification
+WHERE Code = ‘VS_EXP_005’
+","با توجه به اطلاعات موجود در شما، نمی‌توانم پرسیده شده را دقیقاً بفهمم. ولی اگر میخواهید سندی که براساس الگوی VS_EXP_005 است را پیدا کنید، ممکنه چنین Query SQLی نوشته باشید:
+
+```sql
+SELECT * FROM INV_VOUCHER WHERE TITLE = 'VS_EXP_005';
+```
+
+لطفاً توجه داشته باشید که این فرض را بر می‌آورد که عنوان (TITLE) سند در جدول INV_VOUCHER ذخیره شده است. اگر الگو به صورت دیگری ذخیره شده است، Query باید تغییر یابد.
+"
+نوع خرید برای الگوی VS_EXP_005 داخلیه یا خارجی؟,INV,"SELECT Purchase_Type
+FROM Voucher_Specification
+WHERE Code = ‘VS_EXP_005’
+","SELECT SUPPLIER_TITLE FROM INV_VOUCHER WHERE TITLE = 'VS_EXP_005'; 
+OR 
+SELECT SUPPLIER_TITLE, CONTRACTOR_TITLE FROM INV_VOUCHER_ITEM WHERE SL_TITLE = 'VS_EXP_005';
+The exact SQL query depends on where the information is stored in your database schema. The provided schema does not specify whether VS_EXP_005 is an internal or external purchase pattern, nor does it indicate which table and field this information would be located in. Therefore, these queries are based on assumptions about where such data might be found. Please adjust according to the actual structure of your database.
+The first query assumes that 'VS_EXP_005' is a title stored in the INV_VOUCHER table associated with supplier information. The second query assumes that 'VS_EXP_005' is an SL_TITLE stored in the INV_VOUCHER_ITEM table, also potentially related to supplier or contractor information.
+Please replace 'VS_EXP_005' and field names as necessary based on your actual data structure."
+الگوهای نوع خرید داخلی رو برام لیست کن,INV,"SELECT title
+FROM Voucher_Specification
+WHERE purchase_Type = ‘داخلی’
+","به نظر می رسد اطلاعات خاصی در مورد ""الگوهای نوع خرید داخلی"" در شما داده نشده است. با توجه به جدول ها و ستون های موجود، ما قادر به ساخت چنین Query ای نخواهیم بود. لطفاً جزئیات بیشتری را فراهم کنید. 
+
+اما در صورتی که می خواهید تمام اسناد خرید داخلی را مشاهده کنید، Query زیر می تواند کمک کند:
+
+```sql
+SELECT * FROM INV_VOUCHER 
+WHERE SUPPLIER_TITLE IS NOT NULL AND STATE = 'ثبت شده';
+```
+
+توجه داشته باشید که این Query فقط اسناد خرید داخلی را نشان می دهد که توسط یک تامین کننده ثبت شده است و همچنان در حالت ""ثبت شده"" هستند. 
+
+برای الگوهای خاص، باید جزئیات بیشتری را فراهم کنید."
+"الگوهایی که نوع تاثیر بر موجودیشون ""موقت"" هستن کدومهان؟",INV,"SELECT title
+FROM Voucher_Specification
+WHERE type_of_effect = ‘موقت’
+","Based on the provided schema, there is no column or table that directly indicates whether an inventory movement has a temporary effect on stock. Therefore, it's impossible to write an SQL query answering this question without additional information.
+
+However, if such information exists in one of the tables not shown here, you would need to join `INV_VOUCHER` and `INV_VOUCHER_ITEM` with that table (or use a subquery) to filter for records where the effect on inventory is ""temporary"". Here's an example assuming there was a column named `EFFECT_ON_STOCK` in the `INV_VOUCHER` table:
+
+```sql
+SELECT *
+FROM INV_VOUCHER
+WHERE EFFECT_ON_STOCK = 'موقت'
+```
+
+But since this information isn't present in the provided schema, we cannot write a valid SQL query to answer the question."
+"نوع تاثیر بر موجودی ""برگشت به تولید"" چیه؟",INV,"SELECT type_of_effect
+FROM voucher_specification
+WHERE title LIKE ‘%برگشت به تولید%’
+","با توجه به شما دستورالعمل ها و ساختار پایگاه داده، امکان استخراج نوع تاثیر بر موجودی ""برگشت به تولید"" مستقیماً وجود ندارد. چرا که این نوع جزئیات معمولاً در زیر مجموعه ها یا فیلدهای خاص ذخیره می شوند و در ساختار داده های موجود ذکر نشده است.
+به عبارت دیگر، این نوع تاثیر بر موجودی بستگی به جزئیات عملیات انبارداری خاص که در یک سند انبار (INV_VOUCHER) ثبت می شود و همچنین به تعداد واحدهای کالا که در اقلام سند انبار (INV_VOUCHER_ITEM) ذخیره می شوند، دارد. 
+
+به عنوان مثال، ""برگشت به تولید"" ممکن است به معنی بازگشت موجودی به انبار پس از یک عملیات تولید ناکام باشد که در نتیجه موجودی موجود را افزایش می دهد. ولی برای تعیین دقیق تر، باید جزئیات خاص هر سند انبار و آیتم انبار را بررسی کرد.
+
+با این حال، در صورت وجود چنین فرضیه ای، ممکن است چنین پرس و جوی SQL نمونه برای تعیین تاثیر ""برگشت به تولید"" بر موجودی وجود داشته باشد:
+
+```sql
+SELECT 
+    iv.DATE,
+    iv.TITLE,
+    ivi.QUANTITY, 
+    ivi.MAJOR_QUANTITY,
+    ivi.SECOND_UNIT_QUANTITY,
+    ivi.REMAINED_MAJOR_QUANTITY,
+    ivi.REMAINED_SECOND_UNIT_QUANTITY
+FROM INV_VOUCHER iv
+JOIN INV_VOUCHER_ITEM ivi ON iv.ID = ivi.INVENTORY_VOUCHER_REF 
+WHERE iv.TITLE LIKE '%برگشت به تولید%';
+```
+
+لطفاً توجه داشته باشید که این پرس و جوی SQL براساس فرض است که عنوان سند انبار (TITLE) شامل عبارت ""برگشت به تولید"" است. در عمل، ممکن است باید یک شرط یا منطق مختلف را اعمال کرد تا این نوع تاثیرات را تشخیص دهد.
+
+به طور خلاصه، بدون جزئیات بیشتر در مورد نحوه ثبت و ذخیره سازی ""برگشت به تولید"" در پایگاه داده، امکان تعیین دقیق تاثیر آن بر موجودی وجود ندارد."
+انواع تاثیر بر موجودی برای الگوها چی ها هستن؟,INV,"SELECT DISTINCT type_of_effect
+FROM voucher_specification
+","با توجه به شما داده ها، ما قادر به تعیین دقیق تاثیرات بر موجودی بر اساس الگوهای خاص نیستیم. ولی در کل، تاثیرات بر موجودی معمولاً شامل ورود (مانند خرید یا دریافت) و خروج (مانند فروش یا استفاده در تولید) هستند. این موارد ممکن است در جداول مختلف ذخیره شوند.
+
+اما برای پاسخ به سوال شما، ما نیاز به بیشتر جزئیات داریم چون ""الگوها"" که در سوال شما آمده است، در توضیحات ارائه شده وجود ندارد. 
+
+با این حال، برای مشاهده تاثیرات مختلف روی موجودی میتوانید به جدول `INV_VOUCHER` و `INV_VOUCHER_ITEM` مراجعه کنید.
+
+برای مثال:
+
+```sql
+SELECT * FROM INV_VOUCHER WHERE STATE = 'تایید شده';
+```
+
+و 
+
+```sql
+SELECT * FROM INV_VOUCHER_ITEM WHERE INVENTORY_VOUCHER_REF IN (SELECT ID FROM INV_VOUCHER WHERE STATE = 'تایید شده');
+```
+این دستورات SQL تمامی اسناد انبار را که تأثیر بر موجودی دارند و تایید شده اند را نشان می دهد."
+نوع طرف مقابل تعریف شده برای الگوی دریافت ضایعات تولید چی تعریف شده؟,INV,"SELECT counter_Part_Type
+FROM voucher_specification
+WHERE title ‘%دریافت ضایعات%’
+","SELECT DISTINCT SUPPLIER_TITLE, CONTRACTOR_TITLE, COST_CENTER_TITLE, PROJECT_TITLE, CUSTOMER_TITLE 
+FROM INV_VOUCHER 
+WHERE TITLE = 'الگوی دریافت ضایعات تولید'"
+لیست الگوهایی که طرف مقال اونها شخص-شرکت هستن رو نشون بده ,INV,"SELECT title
+FROM voucher_specification
+WHERE counter_Part_Type = ‘شخص - شرکت’","SELECT DISTINCT INV_VOUCHER.TITLE 
+FROM INV_VOUCHER 
+WHERE (INV_VOUCHER.SUPPLIER_TITLE = 'شخص' OR INV_VOUCHER.SUPPLIER_TITLE = 'شرکت') 
+OR (INV_VOUCHER.CONTRACTOR_TITLE = 'شخص' OR INV_VOUCHER.CONTRACTOR_TITLE = 'شرکت')
+OR (INV_VOUCHER.CUSTOMER_TITLE = 'شخص' OR INV_VOUCHER.CUSTOMER_TITLE = 'شرکت')
+OR (INV_VOUCHER.CARRIER_TITLE = 'شخص' OR INV_VOUCHER.CARRIER_TITLE = 'شرکت')
+OR (INV_VOUCHER.CONSIGNMENT_PARTY_TITLE = 'شخص' OR INV_VOUCHER.CONSIGNMENT_PARTY_TITLE = 'شرکت')
+OR (INV_VOUCHER.EMPLOYEE_TITLE = 'شخص' OR INV_VOUCHER.EMPLOYEE_TITLE = 'شرکت')
+OR (INV_VOUCHER.SALES_PERSON_TITLE = 'شخص' OR INV_VOUCHER.SALES_PERSON_TITLE = 'شرکت');"
+انواع طرف مقابل تعریف شده برای الگوهای اسناد انبار چی ها هستن؟,INV,"SELECT DISTINCT counter_Part_Type
+FROM voucher_specification
+","SELECT DISTINCT SUPPLIER_TITLE, CONTRACTOR_TITLE, COST_CENTER_TITLE, PROJECT_TITLE, CUSTOMER_TITLE, CARRIER_TITLE, CONSIGNMENT_PARTY_TITLE, EMPLOYEE_TITLE, SALES_PERSON_TITLE FROM INV_VOUCHER;"
+الگوهای تحویل دارایی ثابت، چه نوع طرف مقابل هایی دارن؟,INV,"SELECT counter_Part_Type
+FROM voucher_specification
+WHERE voucher_Type = ‘تحویل دارایی ثابت’
+","SELECT DISTINCT SUPPLIER_TITLE, CONTRACTOR_TITLE, CUSTOMER_TITLE, CARRIER_TITLE, CONSIGNMENT_PARTY_TITLE, EMPLOYEE_TITLE, SALES_PERSON_TITLE FROM INV_VOUCHER;"
+"آخرین سند انبار ثبت شده در انبار ""مواد اولیه مصرفی تولید"" مربوط به چه تاریخی هست؟",INV,"SELECT TOP (1) DATE
+FROM Voucher
+JOIN store ON Inv_Voucher.Store_Id = Store.Id
+WHERE store.title LIKE ‘%مواد اولیه مصرفی تولید%’
+	AND Inv_Voucher.STATE IN (
+		‘تایید شده’
+		,’ثبت شده’)
+ORDER BY DATE DESC
+","SELECT MAX(DATE) 
+FROM INV_VOUCHER 
+WHERE STORE_REF = (SELECT ID FROM Stores WHERE TITLE = 'مواد اولیه مصرفی تولید') AND STATE = 'ثبت شده'"
+"کد سند مربوط به آخرین سند انبار ثبت شده در انبار ""مواد اولیه مصرفی تولید"" چیه؟",INV,"SELECT TOP (1) number
+FROM Voucher
+JOIN store ON Inv_Voucher.Store_Id = Store.Id
+WHERE store.title LIKE ‘%مواد اولیه مصرفی تولید%’
+	AND Inv_Voucher.STATE IN (
+		‘تایید شده’
+		,’ثبت شده’)
+ORDER BY DATE DESC
+","SELECT ID FROM INV_VOUCHER WHERE STORE_REF = (SELECT ID FROM Stores WHERE TITLE = 'مواد اولیه مصرفی تولید') ORDER BY DATE DESC, ID DESC LIMIT 1;
+```sql
+SELECT ID 
+FROM INV_VOUCHER 
+WHERE STORE_REF = (
+    SELECT ID 
+    FROM Stores 
+    WHERE TITLE = 'مواد اولیه مصرفی تولید'
+) 
+ORDER BY DATE DESC, ID DESC 
+LIMIT 1;
+```
+Please note that the subquery `SELECT ID FROM Stores WHERE TITLE = 'مواد اولیه مصرفی تولید'` assumes there is a table named ""Stores"" which has an attribute ""TITLE"". However, based on the provided schema, such a table does not exist. Therefore, this query might not work as expected in your database.
+If you don't have a separate Stores table and store names are stored directly in INV_VOUCHER.STORE_REF2 or INV_VOUCHER.STORE_REF, then you would need to replace STORE_REF with the appropriate column name and remove the subquery. However, without knowing how stores are referenced in your schema, I cannot provide an exact query.
+```sql
+-- Assuming store names are stored directly in INV_VOUCHER.STORE_REF or INV_VOUCHER.STORE_REF2
+SELECT ID 
+FROM INV_VOUCHER 
+WHERE STORE_REF = 'مواد اولیه مصرفی تولید' -- replace with the correct column name and value
+ORDER BY DATE DESC, ID DESC 
+LIMIT 1;
+```
+Again, please replace `'مواد اولیه مصرفی تولید'` with the appropriate column name (either `STORE_REF` or `STORE_REF2`) based on how stores are referenced in your schema. If store names are not stored directly in INV_VOUCHER, you will need to adjust the query accordingly.
+```sql
+-- Assuming store names are NOT stored directly in INV_VOUCHER and there is no separate Stores table
+-- In this case, we cannot provide an exact SQL query without additional information about how stores are referenced in your schema.
+```
+If you have a different way of referencing stores or if the store name is not directly stored in INV_VOUCHER, please provide more details so I can help you construct the correct query."
+وضعیت سند انبار با شماره 540122301 چیه؟,INV,"SELECT STATE
+FROM Voucher
+WHERE number = ‘540122301’
+",SELECT STATE FROM INV_VOUCHER WHERE NUMBER = '540122301';
+"معین مربوط به سند 540122301 تو انبار ""دارایی های ثابت"" چیه؟",INV,"SELECT SL_TITLE
+FROM Voucher
+JOIN store ON Inv_Voucher.Store_ID = Store.Id
+WHERE store.title LIKE ‘%دارایی های ثابت%’
+","SELECT SL_TITLE FROM INV_VOUCHER WHERE ID = 540122301 AND STORE_REF = (SELECT ID FROM STORES WHERE TITLE = 'دارایی های ثابت'); 
+Note: The STORES table is not provided in the schema, so this query assumes its existence and structure. If it does not exist, this part of the query will fail."
+شرح سند 540122301 رو میخوام,INV,"SELECT description
+FROM voucher
+WHERE number = ‘540122301’
+",SELECT DESCRIPTION FROM INV_VOUCHER WHERE NUMBER = '540122301';
+"کد آخرین سند رسید خرید داخلی به انبار ""مواد اولیه تولید"" چیه؟",INV,"SELECT number
+FROM voucher
+JOIN store ON Inv_Voucher.Store_id = store.id
+JOIN voucher_specification ON voucher_specification.id = Inv_Voucher.voucher_specification_id
+WHERE store.title LIKE ‘%مواد اولیه تولید%’
+	AND voucher_Specification.title LIKE ‘%رسید خرید%‘
+	AND Inv_Voucher.STATE IN (
+		‘تایید شده’
+		,’ثبت شده’)
+","SELECT NUMBER FROM INV_VOUCHER WHERE STORE_REF = (SELECT ID FROM Stores WHERE TITLE = 'مواد اولیه تولید') AND SUPPLIER_TITLE IS NOT NULL ORDER BY DATE DESC, ID DESC LIMIT 1; 
+```
+Note: This assumes that there is another table ""Stores"" which contains the title and id of stores. However, based on provided schema this information might be directly stored in INV_VOUCHER.
+```"
+مرکز هزینه سند 540122301 مربوط به انبار مواد اولیه چیه؟,INV,"SELECT COST_CENTER_TITLE
+FROM voucher
+JOIN store ON Inv_Voucher.store_id = store.id
+WHERE Inv_Voucher.number = ‘540122301’
+	AND store.title LIKE ‘%مواد اولیه%’
+","SELECT COST_CENTER_TITLE 
+FROM INV_VOUCHER 
+WHERE ID = 540122301;"
+اسناد امروز مربوط به انبار مواد اولیه مصرفی که باطل شدن رو میخوام,INV,"SELECT number
+FROM voucher
+JOIN store ON Inv_Voucher.store_id = store.id
+WHERE Inv_Voucher.DATE = CAST(getdate() AS DATE)
+	AND store.title LIKE ‘%مواد اولیه%’
+	AND Inv_Voucher.STATE = ‘باطل شده’
+","SELECT * FROM INV_VOUCHER WHERE DATE = CURDATE() AND STATE = 'بطل شده' AND STORE_REF = 'انبار مواد اولیه مصرفی'; 
+Please note that ""STORE_REF = 'انبار مواد اولیه مصرفی'"" might not work if the store_ref is a reference to another table and does not directly contain the name of the warehouse. In this case, you would need to join with the relevant table(s) to filter on the warehouse name. Also CURDATE() function gives today's date in SQL.
+However, based on provided schema we can't determine data type of STORE_REF field so this query might need adjustment."
+کالای DRI امروز از انبار مواد اولیه مصرفی تولید، به کدوم انبار انتقال داده شده؟,INV,"SELECT TOP (1) Store_2.Title
+FROM Voucher
+JOIN Store ON Inv_Voucher.Store_id = Store.Id
+JOIN Store AS Store_2 ON Inv_Voucher.COUNTER_PART_STORE_ID = Store_2.id
+JOIN Inv_Voucher_Item ON Inv_Voucher.id = Inv_Voucher_Item.INVENTORY_VOUCHER_ID
+JOIN Voucher_Specification ON Voucher_Specification.Id = Inv_Voucher.Voucher_Specification_id
+WHERE Inv_Voucher.DATE = CAST(getdate() AS DATE)
+	AND store.title LIKE ‘%مواد اولیه مصرفی تولید%’
+	AND Inv_Voucher.COUNTER_PART_STORE_ID IS NOT NULL
+	AND Inv_Voucher.STATE IN (
+		‘تایید شده’
+		,’ثبت شده’)
+	AND VOUCHER_SPECIFICATION.Voucher_Type = ‘انتقال بین انبار’
+","SELECT STORE_REF2 FROM INV_VOUCHER WHERE TITLE = 'DRI' AND DATE = CURRENT_DATE AND DESCRIPTION LIKE '%انتقال از انبار مواد اولیه مصرفی تولید%'
+
+Please note that this is an interpretation based on the given schema. The actual query might need adjustments depending on how the data is actually structured and populated in your database.
+The query assumes:
+1) ""DRI"" is a unique title for the item being moved
+2) The description field contains information about the source store (in this case, 'انبار مواد اولیه مصرفی تولید')
+3) STORE_REF2 holds the ID of the destination store."
+"لیست تمام کالاهایی که امروز به انبار ""دارایی های ثابت"" انتقال داده شده اند رو میخوام",INV,"SELECT DISTINCT Part.Title
+FROM Inv_Voucher_Item
+JOIN Inv_Voucher ON Inv_Voucher_Item.Inventory_Voucher_id = Inv_Voucher.Id
+JOIN part ON Inv_Voucher_Item.Part_id = Part.Id
+JOIN Store ON Store.Id = Inv_Voucher.COUNTER_PART_STORE_ID
+JOIN VOUCHER_SPECIFICATION ON Inv_Voucher.VOUCHER_SPECIFICATION_ID = VOUCHER_SPECIFICATION.Id
+WHERE Inv_Voucher.DATE = CAST(getdate() AS DATE)
+	AND Inv_Voucher.COUNTER_PART_STORE_ID IS NOT NULL
+	AND VOUCHER_SPECIFICATION.Voucher_Type = ‘انتقال بین انبار’
+	AND Inv_Voucher.STATE IN (
+		‘تایید شده’
+		,’ثبت شده’)
+","SELECT IVI.PART_REF, IVI.QUANTITY 
+FROM INV_VOUCHER_ITEM AS IVI 
+JOIN INV_VOUCHER AS IV ON IV.ID = IVI.INVENTORY_VOUCHER_REF 
+WHERE IV.DATE = CURRENT_DATE AND IV.STORE_REF2 = (SELECT ID FROM STORE WHERE TITLE = 'دارایی های ثابت') 
+AND IV.SL_TITLE = 'انتقال کالا به انبار';"
+شماره اولین سند ثبت شده در ماه اردیبهشت در انبار مواد اولیه مصرفی چی بوده؟,INV,"SELECT TOP (1) number
+FROM voucher
+JOIN store ON Inv_Voucher.store_id = store.id
+WHERE Inv_Voucher.DATE >= shamsiTomiladi(cast(‘1403 / 02 / 01 ’) AS DATE)
+	AND store.title LIKE ‘%مواد اولیه مصرفی تولید%’
+	AND Inv_Voucher.STATE IN (
+		‘تایید شده’
+		,’ثبت شده’)
+ORDER BY Inv_Voucher.DATE
+	,voucher.id
+","SELECT NUMBER FROM INV_VOUCHER WHERE DATE BETWEEN '1399-04-01' AND '1399-04-30' AND STATE = 'ثبت شده' AND STORE_REF = (SELECT ID FROM STORES WHERE TITLE = 'انبار مواد اولیه مصرفی') ORDER BY DATE ASC LIMIT 1;
+Note: The SQL query assumes that there is a STORES table which has not been provided in the schema. If such a table does not exist, this part of the query will need to be adjusted accordingly. Also, the date format and the way dates are handled may vary based on your database system."
+شماره آخرین سند ثبت شده در ماه اردیبهشت در انبار مواد اولیه مصرفی چی بوده؟,INV,"SELECT TOP (1) number
+FROM voucher
+JOIN store ON Inv_Voucher.store_id = store.id
+WHERE Inv_Voucher.DATE >= shamsiTomiladi(cast(‘1403 / 02 / 31 ’) AS DATE)
+	AND store.title LIKE ‘%مواد اولیه مصرفی تولید%’
+	AND Inv_Voucher.STATE IN (
+		‘تایید شده’
+		,’ثبت شده’)
+ORDER BY Inv_Voucher.DATE DESC
+	,voucher.id DESC
+","SELECT NUMBER FROM INV_VOUCHER WHERE DATE BETWEEN '1399-04-01' AND '1399-04-30' AND STORE_REF = (SELECT ID FROM STORES WHERE TITLE = 'انبار مواد اولیه مصرفی') AND STATE = 'ثبت شده' ORDER BY DATE DESC, ID DESC LIMIT 1; 
+
+Please note that the date format is assumed to be in Persian calendar and SQL query might need adjustment based on how dates are handled in your database. Also, it's assumed that there's another table named STORES which contains information about stores/warehouses.
+The above query will not work as expected because we don't have a STORES table in the provided schema. The STORE_REF is an integer field and does not contain any descriptive title like 'انبار مواد اولیه مصرفی'. Therefore, this part of the query cannot be executed based on the given schema.
+Also, the state 'ثبت شده' should be translated to English if it's used in the database. The translation would be 'registered'.
+The correct and most accurate SQL query that can be written with the provided schema is:
+
+SELECT NUMBER FROM INV_VOUCHER WHERE DATE BETWEEN '1399-04-01' AND '1399-04-30' AND STORE_REF = <ID of the store> AND STATE = 'registered' ORDER BY ID DESC LIMIT 1;
+Replace '<ID of the store>' with the actual ID of the store you are interested in. This query will return the number of the last registered voucher in April (Persian month) for a specific store.
+However, this is not an exact answer to your question because we don't have information about which store ID corresponds to 'انبار مواد اولیه مصرفی'."
+کالای DRI که امروز تو انبار مواد اولیه مصرفی تولید با شماره  540122301 رسید شده مربوط به چه پروژه ای هست؟,INV,"SELECT Inv_Voucher.PROJECT_TITLE
+FROM Voucher
+JOIN Store ON Inv_Voucher.Store_Id = Store.Id
+JOIN Voucher_Specification ON Inv_Voucher.Voucher_Specification_id = Voucher_Specification.Id
+WHERE Inv_Voucher.Number = ‘540122301’
+	AND Inv_Voucher.DATE = Cast(getdate() AS DATE)
+	AND Store.Title LIKE ‘%مواد اولیه مصرفی تولید%’
+	AND Voucher_Specification.Direction = ‘ورودی’
+	AND Inv_Voucher.STATE IN (
+		‘تایید شده’
+		,’ثبت شده’)
+","SELECT PROJECT_TITLE 
+FROM INV_VOUCHER_ITEM 
+JOIN INV_VOUCHER ON INV_VOUCHER.ID = INV_VOUCHER_ITEM.INVENTORY_VOUCHER_REF 
+WHERE PART_REF = 'DRI' AND DATE = CURDATE() AND STORE_REF = '540122301'; 
+
+Please note that the current date is used assuming that ""امروز"" means today and it also assumes that 'DRI' is a unique identifier for the product in INV_VOUCHER_ITEM.PART_REF. Also, '540122301' should be replaced by the correct store reference if this number is not accurate.
+However, the date format might need to be adjusted based on your database settings and the actual column data type of DATE in INV_VOUCHER table.
+
+Also note that PROJECT_TITLE may return multiple projects if there are multiple items with same conditions. If you expect only one project, then you should add a DISTINCT keyword before PROJECT_TITLE.
+If you want to get only one project (for example, the first one), you can use LIMIT 1 at the end of your query.
+
+Please replace CURDATE() by the actual date if 'امروز' does not mean today in your case."
+"تحویل گیرنده ""لپ تاپ 17 اینچ ASUS"" دیروز از انبار ""دارایی های ثابت سیرجان"" کی بوده؟",INV,"SELECT Inv_Voucher.Deliver_To
+FROM Voucher
+JOIN Store ON Store.Id = Inv_Voucher.Store_id
+JOIN INV_VOUCHER_ITEM ON INV_VOUCHER_ITEM.INVENTORY_VOUCHER_ID = Inv_Voucher.Id
+WHERE Inv_Voucher.DATE = CAST(Adddate(Day, - 1, getdate()) AS DATE)
+	AND part.title LIKE ‘%لپ تاپ 17 اینچ ASUS%’
+	AND Inv_Voucher.STATE IN (
+		‘تایید شده’
+		,’ثبت شده’)
+	AND Inv_Voucher.Deliver_To IS NOT NULL
+","SELECT INV_VOUCHER.DATE 
+FROM INV_VOUCHER 
+JOIN INV_VOUCHER_ITEM ON INV_VOUCHER.ID = INV_VOUCHER_ITEM.INVENTORY_VOUCHER_REF 
+WHERE INV_VOUCHER_ITEM.PART_REF = (SELECT ID FROM PART WHERE TITLE = 'لپ تاپ 17 اینچ ASUS') 
+AND INV_VOUCHER.STORE_REF = (SELECT ID FROM STORE WHERE TITLE = 'دارایی های ثابت سیرجان') 
+AND INV_VOUCHER.DATE = DATE_SUB(CURDATE(), INTERVAL 1 DAY);"
+جمع کل آهن اسفنجی که بابت شماره سفارش خرید 14030124500 رسید شده چقدره؟,INV,"SELECT SUM(Inv_Voucher_Item.MAJOR_QUANTITY)
+FROM inv_Voucher_Item
+JOIN Inv_Voucher ON inv_Voucher_Item.INVENTORY_VOUCHER_ID = Inv_Voucher.Id
+JOIN Part ON inv_Voucher_Item.Part_Id = Part.Id
+JOIN Voucher_Specification ON Voucher_Specification.Id = Inv_Voucher.Voucher_Specification_Id
+WHERE Inv_Voucher.PURCHASE_ORDER_NO = ‘14030124500’
+	AND Part.Title LIKE ‘%آهن اسفنجی%’
+	AND Inv_Voucher.STATE IN (
+		‘تایید شده’
+		,’ثبت شده’)
+	AND Voucher_ Specification.Direction = ‘ورودی’
+","SELECT SUM(QUANTITY) 
+FROM INV_VOUCHER_ITEM 
+WHERE PURCHASE_ORDER_NO = '14030124500' AND PART_REF IN (SELECT ID FROM PART WHERE TITLE = 'آهن اسفنجی')"
+میانگین هر بار خروج کالا از انبار بابت کالای DRI برای تولید چقدر بوده؟,INV,"SELECT AVG(Inv_Voucher_Item.MAJOR_QUANTITY)
+FROM inv_Voucher_Item
+JOIN Inv_Voucher ON inv_Voucher_Item.INVENTORY_VOUCHER_ID = Inv_Voucher.Id
+JOIN Part ON inv_Voucher_Item.Part_Id = Part.Id
+JOIN Voucher_Specification ON Voucher_Specification.Id = Inv_Voucher.Voucher_Specification_Id
+WHERE Part.Title LIKE ‘%DRI%’
+	AND Inv_Voucher.STATE IN (
+		‘تایید شده’
+		,’ثبت شده’)
+	AND Voucher_Specification.Direction = ‘خروجی’
+	AND Voucher_Specification.Title LIKE ‘%تولید%’
+	AND Voucher_Specification.Direction = ‘خروجی’
+	AND Inv_Voucher.DATE >= ShamsiToMiladi(‘1403 / 01 / 01 ’)
+","SELECT AVG(T2.QUANTITY) 
+FROM INV_VOUCHER AS T1 
+JOIN INV_VOUCHER_ITEM AS T2 ON T1.ID = T2.INVENTORY_VOUCHER_REF 
+WHERE T2.PART_REF = (SELECT ID FROM PART WHERE TITLE = 'DRI') AND T1.TITLE LIKE '%خروج کالا%' AND T1.SL_TITLE LIKE '%تولید%'; 
+
+Please note that this query assumes the existence of a table named ""PART"" which is not provided in your schema. This table would contain information about parts, including their ID and title. Without such a table or similar reference to identify part 'DRI', it's impossible to accurately write this SQL query based on the given schema alone.
+Also, '%' signs are used as wildcards for LIKE operator assuming that 'خروج کالا' and 'تولید' might be parts of longer strings in TITLE and SL_TITLE columns respectively. If these strings exactly match with column values, '%' signs can be removed from respective places."
+شماره سفارش فروش مربوط به حواله فروش سند انبار 54002154 چیه؟,INV,"SELECT Inv_Voucher.SALES_ORDER_NO
+FROM Voucher
+JOIN Voucher_Specification ON Voucher_Specification.Id = Inv_Voucher.Voucher_Specification_Id
+WHERE Inv_Voucher.Number = ‘54002154’
+	AND Voucher_Specification.Title LIKE ‘%فروش%’
+	AND Voucher_Specification.Direction = ‘خروجی’
+	AND Inv_Voucher.STATE IN (
+		‘تایید شده’
+		,’ثبت شده’)
+","SELECT SALES_ORDER_NO FROM INV_VOUCHER WHERE NUMBER = '54002154'
+```sql
+```"
+تعداد کل اسناد باطل شده مرکز نگهداری سیرجان، در تیر ماه چقدر بوده؟,INV,"SELECT Count DISTINCT (Voucher.id)
+FROM Voucher
+JOIN Store ON Inv_Voucher.Store_id = Store.Id
+JOIN Plant ON Store.Plant_Id = Plant.Id
+WHERE Plant.Title LIKE ‘%سیرجان%’
+	AND Inv_Voucher.STATE = ‘باطل شده’
+	AND Inv_Voucher.DATE BETWEEN ShamsiToMiladi(‘1403 / 04 / 01 ’)
+		AND ShamsiToMiladi(‘1403 / 04 / 31 ’)
+","SELECT COUNT(*) 
+FROM INV_VOUCHER 
+WHERE STATE = 'بطل شده' AND COST_CENTER_TITLE = 'مرکز نگهداری سیرجان' AND MONTH(DATE) = 6;
+Note: In Persian calendar, Tir month is the sixth month. However, SQL date functions may not directly support Persian calendar. This query assumes that DATE field is in Gregorian format and we are looking for June (6th month). If DATE field uses Persian calendar, you will need a function to convert it to Gregorian before extracting the month.
+Also, 'بطل شده' should be replaced with the exact string used in your database to represent 'canceled'. The same applies to 'مرکز نگهداری سیرجان'.
+If SQL Server is being used, Persian date can be handled using built-in functions. If not, you may need a custom function or stored procedure for conversion.
+Please replace placeholders with actual values from your database."
+"تعداد متمایز اقلام اسناد ارسال به تولید امروز از انبار ""دارایی های ثابت"" چقدر بوده؟",INV,"SELECT count DISTINCT inv_voucher_detail.partId
+FROM inv_voucher_detail
+JOIN inv_voucher ON inv_voucher_detail.inventory_voucher_id = inv_voucher.id
+JOIN store ON store.id = inv_voucher.storeid
+JOIN voucher_specification ON voucher_specification.id = inv_voucher.voucher_specification_id
+WHERE inv_voucher.store inv_voucher.DATE = cast(getdate() AS DATE)
+	AND store.title LIKE '%دارایی های ثابت%'
+	AND Inv_Voucher.STATE IN (
+		‘تایید شده’
+		,’ثبت شده’)
+","SELECT COUNT(DISTINCT ivi.ID) 
+FROM INV_VOUCHER inv 
+JOIN INV_VOUCHER_ITEM ivi ON inv.ID = ivi.INVENTORY_VOUCHER_REF 
+WHERE inv.DATE = CURRENT_DATE AND inv.SL_TITLE = 'ارسال به تولید' AND inv.STORE_REF = (SELECT ID FROM STORE WHERE TITLE = 'دارایی های ثابت');
+Please note that the subquery to get store id with title 'دارایی های ثابت' is assumed based on common database design practices. If there's a different way to retrieve this information in your schema, please replace it accordingly.
+Also, the SL_TITLE value 'ارسال به تولید' should be replaced if it doesn't match exactly in your data."
+کل مقدار ارسال به تولید کالای پنی سیلین از اول بهار چقدر بوده؟,INV,"SELECT Sum(major_quantity)
+FROM inv_voucher_detail
+JOIN inv_voucher ON inv_voucher_detail.inventory_voucher_id = inv_voucher.id
+JOIN part ON part.id = inv_voucher_detail.partid
+JOIN voucher_specification ON voucher_specification.id = inv_voucher.voucher_specification_id
+WHERE part.title LIKE '%پنی سیلین 400%'
+	AND voucher_specification.voucher_type LIKE '%مصرف%'
+	AND voucher_specification.direction = 'خروجی'
+	AND inv_voucher.DATE BETWEEN '2024-03-21'
+		AND Getdate()
+	AND inv_voucher.STATE IN (
+		'تایید شده'
+		,'ثبت شده'
+		)
+","SELECT SUM(inv_voucher_item.quantity) 
+FROM inv_voucher_item 
+JOIN inv_voucher ON inv_voucher.id = inv_voucher_item.inventory_voucher_ref 
+WHERE inv_voucher.date >= '1399-06-21' AND inv_voucher.date < '1399-09-22' 
+AND inv_voucher_item.production_order_no LIKE '%پنی سیلین%' ;
+Note: The date format is based on the Persian calendar, and the search for production order number assumes that the name of product ('پنی سیلین') is included in this field. This might not be accurate depending on how these fields are actually used in your database."
+مقدار آخرین سند انبار مربوط به کالای پنی سیلین چقدره؟ ,INV,"SELECT TOP (1) quantity
+FROM inv_voucher_detail
+JOIN inv_voucher ON inv_voucher_detail.inventory_voucher_id = inv_voucher.id
+JOIN voucher_specification ON voucher_specification.id = inv_voucher.voucher_specification_id
+JOIN part ON voucher_detail.part_id = part.id
+WHERE voucher_specification.voucher_type = 'خرید'
+	AND part.title LIKE '%پنی سیلین 400%'
+	AND Inv_Voucher.STATE IN (
+		‘تایید شده’
+		,’ثبت شده’)
+	AND voucher_specification.direction = 'ورودی'
+ORDER BY inv_voucher.DATE DESC
+","SELECT INV_VOUCHER_ITEM.QUANTITY 
+FROM INV_VOUCHER_ITEM 
+JOIN INV_VOUCHER ON INV_VOUCHER.ID = INV_VOUCHER_ITEM.INVENTORY_VOUCHER_REF 
+WHERE INV_VOUCHER_ITEM.PART_REF = (SELECT ID FROM PART WHERE TITLE = 'پنی سیلین') 
+ORDER BY INV_VOUCHER.DATE DESC LIMIT 1;"
+کد آخرین سند خرید DRI چی هست؟,INV,"SELECT TOP (1) Inv_Voucher.Number
+FROM Inv_Voucher_Item
+JOIN Inv_Voucher ON Inv_Voucher_Item.INVENTORY_VOUCHER_ID = Inv_Voucher.Id
+JOIN Part ON Inv_Voucher_Item.Part_Id = Part.Id
+JOIN Voucher_Specification ON Voucher_Specification.Id = Inv_Voucher.Voucher_Specification_id
+WHERE Part.Title LIKE ‘%DRI%’
+	AND Inv_Voucher.STATE IN (
+		‘تایید شده’
+		,’ثبت شده’)
+	AND Voucher_Specification.VoucherType = ‘خرید’
+ORDER BY Inv_Voucher.DATE DESC
+","SELECT ID FROM INV_VOUCHER WHERE TITLE = 'DRI' ORDER BY DATE DESC, ID DESC LIMIT 1;"
+مقدار کل دولومیت مصرفی امروز تولید، به واحد دوم چقدر هست؟,INV,"SELECT SUM(Inv_Voucher_Item.SECOND_UNIT_QUANTITY)
+FROM inv_Voucher_item
+JOIN Inv_Voucher ON inv_Voucher_item.INVENTORY_VOUCHER_ID = Inv_Voucher.Id
+JOIN Voucher_Specification ON Voucher_Specification.Id = Inv_Voucher.Voucher_Specification_Id
+JOIN Part ON Part.Id = inv_Voucher_item.Part_Id
+WHERE Inv_Voucher.DATE = CAST(Getdate() AS DATE)
+	AND Inv_Voucher.STATE IN (
+		‘تایید شده’
+		,’ثبت شده’
+		)
+	AND Voucher_Specification.Voucher_Type = ‘مصرف’
+	AND Voucher_Specification.Title LIKE ‘%مصرف تولید%’
+	AND Part.title LIKE ‘%دولومیت%’
+","SELECT SUM(IVI.SECOND_UNIT_QUANTITY) 
+FROM INV_VOUCHER_ITEM IVI 
+JOIN INV_VOUCHER IV ON IV.ID = IVI.INVENTORY_VOUCHER_REF 
+WHERE IV.VOUCHER_SPECIFICATION_REF IN (SELECT ID FROM VOUCHER_SPECIFICATION WHERE TITLE = 'تولید') 
+AND IV.DATE = CURRENT_DATE 
+AND IVI.PART_REF IN (SELECT ID FROM PART WHERE TITLE = 'دولومیت مصرفی');"
+مقدار میانگین روزانه ضایعات تولید برای آهن اسفنجی، در بهار چقدر بوده؟,INV,"SELECT AVG(Inv_Voucher_Item.major_UNIT_QUANTITY)
+FROM inv_Voucher_item
+JOIN Inv_Voucher ON inv_Voucher_item.INVENTORY_VOUCHER_ID = Inv_Voucher.Id
+JOIN Voucher_Specification ON Voucher_Specification.Id = Inv_Voucher.Voucher_Specification_Id
+JOIN Part ON Part.Id = inv_Voucher_item.Part_Id
+WHERE Inv_Voucher.DATE = CAST(Getdate() AS DATE)
+	AND Inv_Voucher.STATE IN (
+		‘تایید شده’
+		,’ثبت شده’
+		)
+	AND Voucher_Specification.Voucher_Type = ‘ضایعات’
+	AND Voucher_Specification.Title LIKE ‘%ضایعات تولید%’
+	AND Part.title LIKE ‘%آهن اسفنجی%’
+","I'm sorry, but based on the provided schema, there is no specific information about daily production waste amounts or sponge iron, nor any temporal qualifiers like spring. Therefore, I can't construct a SQL query to answer this question. The schema does not contain enough information to determine average daily production waste for any product, let alone specify it by material type and season. Without additional context or data points in the schema related to these details, an accurate query cannot be generated. The tables provided focus on inventory transactions, purchase orders, sales invoices, etc., but do not detail production waste metrics over time."
+برگشت از خرید لپ تاپ ASUS دیروز به کدوم تامین کننده بوده؟,INV,"SELECT Inv_Voucher.SUPPLIER_TITLE
+FROM Inv_Voucher
+JOIN INV_Voucher_Item ON Inv_Voucher.Id = INV_Voucher_Item.INV_VOUCHER.ID
+JOIN Voucher_Specification ON Voucher_Specification.Id = Inv_Voucher.VOUCHER_SPECIFICATION.ID
+JOIN Part ON Part.Id = INV_Voucher_Item.Part_Id
+WHERE Inv_Voucher.DATE = DATEADD(DAY, - 1, CAST(Getdate() AS DATE))
+	AND Part.Title LIKE ‘%لپ تاپ ASUS%’
+	AND Voucher_Specification.Voucher_Type = ‘خرید’
+	AND Voucher_Specification.Title LIKE ‘%برگشت از خرید%’
+	AND Inv_Voucher.STATE IN (
+		‘تایید شده’
+		,’ثبت شده’
+		)
+","SELECT SUPPLIER_TITLE 
+FROM INV_VOUCHER 
+WHERE DESCRIPTION LIKE '%لپ تاپ ASUS%' AND STATE = 'تایید شده' AND DATE = DATE_SUB(CURDATE(), INTERVAL 1 DAY);"
+کالای امانی DRI رسبد شده به انبار مواد اولیه تولید، مربوط به کدام طرف حساب بوده؟,INV,"SELECT Inv_Voucher.CONSIGNMENT_PARTY_TITLE
+FROM Inv_Voucher
+JOIN INV_Voucher_Item ON Inv_Voucher.Id = INV_Voucher_Item.INV_VOUCHER.ID
+JOIN Voucher_Specification ON Voucher_Specification.Id = Inv_Voucher.VOUCHER_SPECIFICATION.ID
+JOIN Part ON Part.Id = INV_Voucher_Item.Part_Id
+WHERE Inv_Voucher.DATE = DATEADD(DAY, - 1, CAST(Getdate() AS DATE))
+	AND Part.Title LIKE ‘%لپ تاپ ASUS%’
+	AND Voucher_Specification.Voucher_Type = ‘امانی’
+	AND Voucher_Specification.Title LIKE ‘%دریافت امانی%’
+	AND Inv_Voucher.STATE IN (
+		‘تایید شده’
+		,’ثبت شده’
+		)
+","SELECT INV_VOUCHER.CARRIER_TITLE 
+FROM INV_VOUCHER 
+JOIN INV_VOUCHER_ITEM ON INV_VOUCHER.ID = INV_VOUCHER_ITEM.INVENTORY_VOUCHER_REF 
+WHERE INV_VOUCHER_ITEM.PART_REF = 'DRI' AND INV_VOUCHER.STORE_REF = 'مواد اولیه تولید' AND INV_VOUCHER.SL_TITLE = 'امانی';"
+کل مقدار برگشت خورده کالای آهن قراضه، از انبار WH_001 شیراز چقدره؟,INV,"SELECT Inv_Voucher_Item.Major_Unit_Quantity
+FROM Inv_Voucher_Item
+JOIN INV_Voucher ON Inv_Voucher.Id = INV_Voucher_Item.INV_VOUCHER.ID
+JOIN Voucher_Specification ON Voucher_Specification.Id = Inv_Voucher.VOUCHER_SPECIFICATION.ID
+JOIN Part ON Part.Id = INV_Voucher_Item.Part_Id
+JOIN Store ON Inv_Voucher.Store_Id = Store.Id
+JOIN Plant ON Store.Plant_Id = Plant.Id
+WHERE Plant.Title LIKE ‘ % شیراز % ’
+	AND Store.Code = ‘WH_001’
+	AND Part.Title LIKE ‘ % آهن قراضه % ’
+	AND Voucher_Specification.Voucher_Type = ‘خرید’
+	AND Voucher_Specification.Title LIKE ‘ % برگشت از خرید % ’
+	AND Inv_Voucher.STATE IN (
+		‘تایید شده’
+		,’ثبت شده’
+		)
+","SELECT SUM(IVI.QUANTITY) 
+FROM INV_VOUCHER IV 
+JOIN INV_VOUCHER_ITEM IVI ON IV.ID = IVI.INVENTORY_VOUCHER_REF 
+WHERE IV.SL_TITLE LIKE '%برگشت خورده%' 
+AND IVI.PART_REF IN (SELECT ID FROM PART WHERE TITLE LIKE '%آهن قراضه%') 
+AND IV.STORE_REF = (SELECT ID FROM STORE WHERE TITLE = 'WH_001 شیراز');"
+حداقل مصرف پروژه روزانه گریس از ابتدای سال چقدر بوده؟,INV,"SELECT Min(A.Major_Unit_Quantity)
+FROM (
+	SELECT SUM(INV_Voucher_Item.Major_Unit_Quantity)
+		,Inv_Voucher.DATE
+	FROM Inv_Voucher_Item
+	JOIN INV_Voucher ON Inv_Voucher.Id = INV_Voucher_Item.INV_VOUCHER.ID
+	JOIN Voucher_Specification ON Voucher_Specification.Id = Inv_Voucher.VOUCHER_SPECIFICATION.ID
+	JOIN Part ON Part.Id = INV_Voucher_Item.Part_Id
+	WHERE Inv_Voucher.DATE >= ‘2024 - 03 - 21 ’
+		AND Part.Title LIKE ‘%گریس%’
+		AND Voucher_Specification.Voucher_Type = ‘مصرف’
+		AND Voucher_Specification.Title LIKE ‘%مصرف پروژه%’
+		AND Inv_Voucher.STATE IN (
+			‘تایید شده’
+			,’ثبت شده’
+			)
+	GROUP BY Inv_Voucher.DATE
+	) AS A
+","Unfortunately, based on the provided schema, there is no direct way to answer this question. We don't have a table or column that specifically tracks daily consumption of projects, nor do we have any information about what ""گریس"" (gris) refers to in terms of inventory items. Moreover, there's no date field in INV_VOUCHER_ITEM which could be used to filter data from the beginning of the year.
+
+However, if ""گریس"" is an item that has been consumed by projects and recorded in the `INV_VOUCHER_ITEM` table, you would need to sum up all quantities related to this item for each project since the start of the year. Here's a hypothetical query assuming we can identify the item and project:
+
+```sql
+SELECT SUM(QUANTITY) AS DailyConsumption
+FROM INV_VOUCHER_ITEM
+WHERE PART_REF = (SELECT ID FROM Items WHERE TITLE = 'گریس') 
+AND PROJECT_TITLE IS NOT NULL 
+AND INVENTORY_VOUCHER_REF IN (
+    SELECT ID 
+    FROM INV_VOUCHER 
+    WHERE DATE >= '2023-01-01' -- Replace with the actual start of the year
+)
+```
+
+This query assumes there is an `Items` table that contains inventory items and their IDs, which isn't provided in the schema. Also, it assumes that the date field in `INV_VOUCHER` can be used to filter records from the beginning of the year.
+  
+Please replace `'2023-01-01'` with the actual start of your fiscal year.
+
+Again, this is a hypothetical query based on assumptions not supported by the given schema."
+حداکثر مصرف پروژه روزانه گریس، تو شعبه شیراز، از ابتدای سال چقدر بوده؟,INV,"SELECT MAX(A.Major_Unit_Quantity)
+FROM (
+	SELECT SUM(INV_Voucher_Item.Major_Unit_Quantity)
+		,Inv_Voucher.DATE
+	FROM Inv_Voucher_Item
+	JOIN INV_Voucher ON Inv_Voucher.Id = INV_Voucher_Item.INV_VOUCHER.ID
+	JOIN Voucher_Specification ON Voucher_Specification.Id = Inv_Voucher.VOUCHER_SPECIFICATION.ID
+	JOIN Part ON Part.Id = INV_Voucher_Item.Part_Id
+	JOIN Store ON INV_Voucher.Store_Id = Store.Id
+	JOIN Plant ON Store.Plant_Id = Plant.Id
+	WHERE Inv_Voucher.DATE >= ‘2024 - 03 - 21 ’
+		AND Part.Title LIKE ‘%گریس%’
+		AND Plant.Branch_Title LIKE ‘%شیراز%’
+		AND Voucher_Specification.Voucher_Type = ‘مصرف’
+		AND Voucher_Specification.Title LIKE ‘%مصرف پروژه%’
+		AND Inv_Voucher.STATE IN (
+			‘تایید شده’
+			,’ثبت شده’
+			)
+	GROUP BY Inv_Voucher.DATE
+	) AS A
+","Unfortunately, based on the provided schema, there is no direct way to calculate daily consumption for a specific project (GRIS) in a branch (Shiraz) from the beginning of the year. The schema does not provide information about daily consumption or location branches.
+
+However, if we assume that ""PROJECT_TITLE"" can be used to identify the project and ""COST_CENTER_TITLE"" could potentially represent different locations including Shiraz, then you might use SUM function on quantity field in INV_VOUCHER_ITEM table filtered by date range of this year and specific project and cost center. But it's not clear how the consumption is recorded or if there are any other tables that should be joined.
+
+Here is a hypothetical query:
+
+```sql
+SELECT SUM(QUANTITY) 
+FROM INV_VOUCHER_ITEM 
+WHERE PROJECT_TITLE = 'گریس' 
+AND COST_CENTER_TITLE LIKE '%شیراز%' 
+AND INVENTORY_VOUCHER_REF IN (
+    SELECT ID 
+    FROM INV_VOUCHER 
+    WHERE DATE >= '2023-01-01'
+);
+```
+
+This query assumes that ""COST_CENTER_TITLE"" contains the name of the branch in it and that consumption is recorded as positive quantities in the INV_VOUCHER_ITEM table. But again, this might not be accurate based on your actual business logic.
+  
+Please note that this answer is highly hypothetical due to lack of information about how data is actually structured and used within these tables."

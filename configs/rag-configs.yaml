@@ -1,0 +1,68 @@
+# Configurations for vector database
+database:
+  persist_directory: ./VectorDB
+  dbname: my-vdb
+  documents_addr: ./KB-G4
+
+# Configurations for logging
+logging:
+  level: debug
+  file: app.log
+  max_size: 10*1024*1024
+
+
+# Configurations for streamlit
+streamlit:
+  host: 0.0.0.0
+  port: 8505
+
+# configurations for ollama
+ollama:
+  model_name: qwen2:72b-instruct-q4_K_M
+  temperature: 0
+  stream: true
+  keep_alive: 120
+
+
+# configurations for embedding model
+embedding_model:
+  #model_name: BAAI/bge-m3
+  model_name: /home/user01/naser-workspace/models/models--BAAI--bge-m3/snapshots/babcf60cae0a1f438d7ade582983d4ba462303c2
+  device: cuda
+
+# configurations for reranker
+reranker:
+  #model_name: BAAI/bge-reranker-v2-m3
+  model_name: /home/user01/naser-workspace/models/models--BAAI--bge-reranker-v2-m3/snapshots/12e974610ba9083ed95f3edf08d7e899581f4de4
+  device: cpu
+  cutoff: 10
+
+# configurations for retriever
+retriever:
+  retrieved_documents: 5
+  alpha_threshold: 0
+  max_context_length: 4
+  expansion: false
+  rerank: true
+  chunk_size: 500
+  chunk_overlap: 50
+
+
+# configurations for langchain
+langchain:
+  enabled: true
+  model_path: ./models/langchain_model.pth
+  model_type: LangChain
+  model_name: en-de
+
+# Evaluations configurations
+evaluation:
+  persist_directory: ./VectorDB-Eval
+  dbname: my-vdb
+  documents_addr: ./KB_EVAL
+  dataset: /home/user01/naser-workspace/SystemGroupAssistantBot/Rag-Bot/evaluation/Exam-G4.csv
+  model_name: qwen2:72b-instruct-q6_K  
+  output_path: /home/user01/naser-workspace/SystemGroupAssistantBot/Rag-Bot/evaluation/
+  retrieved_documents: 10
+  chunk_size: 500
+  chunk_overlap: 50
