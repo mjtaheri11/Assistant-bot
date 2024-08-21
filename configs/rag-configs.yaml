@@ -1,8 +1,8 @@
 # Configurations for vector database
 database:
-  persist_directory: ./VectorDB
+  persist_directory: ./TempVectorDB
   dbname: my-vdb
-  documents_addr: ./KB-G4
+  documents_addr: ./KB-tavalla
 
 # Configurations for logging
 logging:
@@ -59,10 +59,10 @@ langchain:
 evaluation:
   persist_directory: ./VectorDB-Eval
   dbname: my-vdb
-  documents_addr: ./KB_EVAL
-  dataset: /home/user01/naser-workspace/SystemGroupAssistantBot/Rag-Bot/evaluation/Exam-G4.csv
+  documents_addr: /home/user01/mj-workspace/Assistant-bot/Rag-Bot/KB-tavalla
+  dataset: /home/user01/mj-workspace/Assistant-bot/Rag-Bot/evaluation/INV_QAQuestions.csv
   model_name: qwen2:72b-instruct-q6_K  
-  output_path: /home/user01/naser-workspace/SystemGroupAssistantBot/Rag-Bot/evaluation/
+  output_path: /home/user01/mj-workspace/Assistant-bot/Rag-Bot/evaluation/
   retrieved_documents: 10
   chunk_size: 500
   chunk_overlap: 50

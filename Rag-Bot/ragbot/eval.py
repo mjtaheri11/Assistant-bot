@@ -1,3 +1,5 @@
+import json
+
 import pandas as pd
 from tqdm import tqdm
 from statistics import mean
@@ -21,11 +23,6 @@ embedding_model_ = HuggingFaceEmbeddings(
 reranker_model_ = FlagReranker(
                 config["reranker"]["model_name"],
                 device=config["reranker"]["device"])
-
-
-test_dataset = pd.read_csv(config['evaluation']['dataset'],header=None)
-test_dataset.columns = ['source','question', 'a','b','c','d','answer']
-print(f"RUN THE EVALUATION ON {len(test_dataset)} SAMPLES" )
 
 llm_model = config['evaluation']['model_name']
 llm = ChatOllama(model= llm_model, temperature=config['ollama']['temperature'], keep_alive=config['ollama']['keep_alive'], timeout=300)
@@ -90,9 +87,10 @@ def write_to_file(results):
     for result in results:
         row = [result['question'], result['choices'][0], result['choices'][1], result['choices'][2], result['choices'][3], result['correct_answer'] ]
         try: 
-            obj = parser.parse(result['predicted_answer'])
-            answer = obj.answer
-            reason = obj.reasoning
+            answer, reason = result['predicted_answer']['answer'], result['predicted_answer']['reasoning']
+            # obj = parser.parse(result['predicted_answer'])
+            # answer = obj.answer
+            # reason = obj.reasoning
         except:
             answer, reason = output_parser(result['predicted_answer'])
 
@@ -106,7 +104,7 @@ def write_to_file(results):
         row.append(result['context_confidence'])
         clean_results.append(row)
 
-    addr = config['evaluation']['output_path'] + 'results_' + config['evaluation']['model_name'] + '.csv'
+    addr = config['evaluation']['output_path'] + 'results_' + config['evaluation']['model_name'] + config['evaluation']['dataset'].split('/')[-1]
     
     pd.DataFrame(clean_results, columns=headers).to_csv(addr, index=False)
     
@@ -116,11 +114,15 @@ def write_to_file(results):
 def main():
     processed_results = []
     num_hits = 0
-    for question in tqdm(test_dataset.iterrows()):
+    test_dataset = pd.read_csv(config['evaluation']['dataset'], header=None)
+    test_dataset.columns = ['source','question', 'a','b','c','d','answer']
+    print(f"RUN THE EVALUATION ON {len(test_dataset)} SAMPLES" )
 
-        query = question[1].question 
+    for question in tqdm(test_dataset.iterrows(), total=len(test_dataset)):
+
+        query = question[1].question
         result = {
-            'question': question[1].question, 
+            'question': question[1].question,
             'choices': [question[1].a, question[1].b, question[1].c, question[1].d], 
             'correct_answer': question[1].answer
         }
@@ -132,9 +134,9 @@ def main():
         prompt = RAG_EVAL_PROMPT.format(context=context, question=query, a=question[1].a, b=question[1].b, c=question[1].c, d=question[1].d)
         answer = llm.invoke(prompt)
 
-        prediction = {'actual_answer': question[1].answer, 'predicted_answer': answer.content}
+        prediction = {'actual_answer': question[1].answer, 'predicted_answer': json.loads(answer.content)}
         
-        if prediction['actual_answer'] in prediction['predicted_answer'].split('reasoning')[0].split(':')[1]:
+        if prediction['actual_answer'] == prediction['predicted_answer']['answer']:
             num_hits += 1
             
         result['predicted_answer'] = prediction['predicted_answer']

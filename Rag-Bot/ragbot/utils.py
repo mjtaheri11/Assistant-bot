@@ -3,7 +3,7 @@ import logging.handlers
 from pythonjsonlogger import jsonlogger
 import yaml
 
-CONFIG_ADDR = "../configs/rag-configs.yaml"
+CONFIG_ADDR = "/home/user01/mj-workspace/Assistant-bot/configs/rag-configs.yaml"
 
 with open(CONFIG_ADDR, 'r') as f:
     config_ = yaml.safe_load(f)

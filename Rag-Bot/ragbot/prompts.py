@@ -76,6 +76,6 @@ D {d}
 
 Be reasonable and think step by step. Output your response in JSON format as follows:
 
-answer: Your answer, accompanied by a brief explanation.
 reasoning: Explanation in Persian for supporting your choice.
+answer: The desired answer, which should be in the form of only one option among A, B, C, D
 """
