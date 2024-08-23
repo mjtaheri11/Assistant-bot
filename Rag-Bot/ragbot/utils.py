@@ -1,35 +1,62 @@
+import json
 import logging
 import logging.handlers
-from pythonjsonlogger import jsonlogger
+import uuid
+
+import streamlit as st
 import yaml
-
-CONFIG_ADDR = "/home/user01/mj-workspace/Assistant-bot/configs/rag-configs.yaml"
-
-with open(CONFIG_ADDR, 'r') as f:
-    config_ = yaml.safe_load(f)
-
-REQUIRED_KEYS = [
-    'logging', 'streamlit', 'database', 'ollama', 'embedding_model',
-    'reranker', 'retriever', 'langchain'
-]
-
-def validate_config():
-    missing_keys = [key for key in REQUIRED_KEYS if key not in config_]
-    if missing_keys:
-        raise ValueError(f'The following keys are missing from the config file: {", ".join(missing_keys)}')
+from pythonjsonlogger import jsonlogger
 
 
-def get_config():
-    return config_
+# def init_logger():
+#     logger = logging.getLogger(__name__)
+#     log_file = config_["logging"]["file"]
+#     log_format = "%(asctime)s - %(levelname)s - %(message)s"
+#     file_handler = logging.handlers.RotatingFileHandler(
+#         log_file, maxBytes=100 * 1024 * 1024, backupCount=2, encoding="utf-8"
+#     )
+#     formatter = jsonlogger.JsonFormatter(log_format, timestamp=True)
+#     file_handler.setFormatter(formatter)
+#     logger.addHandler(file_handler)
+#     logger.setLevel(logging.DEBUG)
 
-def init_logger():
-    logger = logging.getLogger(__name__)
-    log_file = config_['logging']['file']
-    log_format = '%(asctime)s - %(levelname)s - %(message)s'
-    file_handler = logging.handlers.RotatingFileHandler(log_file, maxBytes=100*1024*1024, backupCount=2, encoding='utf-8')
-    formatter = jsonlogger.JsonFormatter(log_format, timestamp=True)
-    file_handler.setFormatter(formatter)
-    logger.addHandler(file_handler)
-    logger.setLevel(logging.DEBUG)
-    
-    return logger
+#     return logger
+
+
+def init_session_state():
+    if "session_id" not in st.session_state:
+        st.session_state["session_id"] = uuid.uuid4().hex
+    if "user_input" not in st.session_state:
+        st.session_state["user_input"] = ""
+    if "user_input_storage" not in st.session_state:
+        st.session_state["user_input_storage"] = []
+    if "user_utterance" not in st.session_state:
+        st.session_state["user_utterance"] = []
+    if "response" not in st.session_state:
+        st.session_state["response"] = []
+    if "log" not in st.session_state:
+        st.session_state["log"] = []
+    if "urls" not in st.session_state:
+        st.session_state["urls"] = []
+    if "query" not in st.session_state:
+        st.session_state["query"] = []
+    if "suggested_questions" not in st.session_state:
+        st.session_state["suggested_questions"] = []
+    if "context_reference_url" not in st.session_state:
+        st.session_state["context_reference_url"] = ""
+    if "context" not in st.session_state:
+        st.session_state["context"] = ""
+    if "have_suggested_questions" not in st.session_state:
+        st.session_state["have_suggested_questions"] = False
+    if "have_clicked_on_feedback" not in st.session_state:
+        st.session_state["have_clicked_on_feedback"] = False
+    if "first_encounter_with_searchbox" not in st.session_state:
+        st.session_state["first_encounter_with_searchbox"] = True
+    if "first_encounter_with_extra_questions" not in st.session_state:
+        st.session_state["first_encounter_with_extra_questions"] = True
+    if "do_generate_questions" not in st.session_state:
+        st.session_state["do_generate_questions"] = False
+    if "context" not in st.session_state:
+        st.session_state["context"] = ""
+    if "response_is_valid" not in st.session_state:
+        st.session_state["response_is_valid"] = ""

@@ -160,6 +160,7 @@ venv
 vdb
 VectorDB
 VectorDB-Eval
+TempVectorDB
 log.csv
 app.log*
 .streamlit

@@ -1,13 +1,15 @@
-from statistics import mean
-from utils import get_config
 import logging
+from statistics import mean
 
-from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain.vectorstores import Chroma
 from FlagEmbedding import FlagReranker
+from langchain.vectorstores import Chroma
+from langchain_community.embeddings import HuggingFaceEmbeddings
 
-logger = logging.getLogger(__name__)
-config = get_config()
+# from utils import get_config
+from config import config
+from logs import get_logger
+
+logger = get_logger()
 
 class Retriever(object):
     _instance = None
@@ -15,7 +17,7 @@ class Retriever(object):
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
             cls._instance = super().__new__(cls, *args, **kwargs)
-            cls._instance.config_ = get_config()
+            cls._instance.config_ = config
 
             cls._instance.embedding_model_ = HuggingFaceEmbeddings(
                 model_name=cls._instance.config_["embedding_model"]["model_name"],
@@ -39,7 +41,8 @@ class Retriever(object):
         return cls._instance
 
     def retrieve_context(self, query, k=config['retriever']['retrieved_documents']):
-        logger.info("retriever is called", extra={"query": query, "k": k})
+        # TODO: appropriate logger
+        logger.info(f"retriever is called query: {query}, k: {k}")
 
         if self.config_["retriever"]["expansion"]:
             query = self.expand_query(query)
@@ -51,7 +54,8 @@ class Retriever(object):
             documents = [doc for doc, score in zip(documents, scores) if score > self.alpha_threshold_][0:config['reranker']['cutoff']]
             conf = mean(scores)
 
-        logger.info("retriever returns", extra={"query": query,"documents": '\n'.join(documents), "conf": conf})
+        # TODO: appropriate logger
+        logger.info("retriever returns query: {query}\ndocuments {'\n'.join(documents)} conf: {conf}")
         return '\n'.join(documents), conf
 
     def expand_query(self, query):
