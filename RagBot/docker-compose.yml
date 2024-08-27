@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  api:
+    build: .
+    container_name: chatbot_api
+    image: "chatbot"
+    ports:
+      - "8687:8687"
+    volumes:
+      - ./saved_models:/app/saved_models
+
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    runtime: nvidia
+
+volumes:
+  VectorDB:
