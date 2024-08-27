@@ -167,3 +167,5 @@ vdb
 VectorDB
 VectorDB-Eval
 TempVectorDB
+
+/RagBot/saved_models

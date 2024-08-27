@@ -108,7 +108,7 @@ async def chat_responder(request: ChatRequest, req: Request):
         output = ChatResponse(
             user_utterance=request.user_utterance,
             response="",
-            status=no_answer_response_status,
+            status=config["chat_responder"]["no_answer_status"],
         )
 
         non_generative_agent_logger(
