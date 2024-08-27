@@ -62,16 +62,16 @@ def chat_responder(
         context = prepare_final_context(user_utterance)
         response = query_responder(user_utterance, context, history)
         # TODO: response should be validated
-        response_is_valid = True
+        # response_is_valid = True
         # response_is_valid = answer_validator(
         #     paraphrased_utterance,
         #     context,
         #     response,
         # )
-        if response_is_valid:
-            return user_utterance, response, ok_response_status
-        else:
-            return user_utterance, response, ok_response_status
+        # if response_is_valid:
+        return user_utterance, response, ok_response_status
+        # else:
+        #     return user_utterance, response, ok_response_status
     except Exception:
         return user_utterance, "", no_answer_response_status
 

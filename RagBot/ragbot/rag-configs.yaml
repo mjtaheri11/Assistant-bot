@@ -71,3 +71,4 @@ chat_responder:
   ok_status: "OK"
   doubtful_status: "DOUBTFUL"
   no_answer_status: "NO_ANSWER"
+  error_status: "error"

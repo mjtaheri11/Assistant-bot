@@ -1,16 +1,19 @@
 import re
+import pathlib
 
 import streamlit as st
 from retriever import Retriever
 from streamlit.runtime.scriptrunner.script_run_context import get_script_run_ctx
 
-# from streamlit_feedback import streamlit_feedback
-
+from api import chat_request, send_feedback
 from logs import simple_logger, non_generative_agent_logger
 from prompts import RAG_SYSTEM_PROMPT
 from utils import init_session_state
 from config import config
-from logic import chat_responder, feedback
+
+
+# from logic import chat_responder, feedback
+# from streamlit_feedback import streamlit_feedback
 
 # from styles import (HTML_RTL_INPUT_BODY, HTML_RTL_INPUT_TITLE,
 #                     HTML_STYLE_FOR_RTL_INPUT_ELEMENT)
@@ -25,7 +28,7 @@ RESPONSE_TEMPLATE_FOR_NO_ANSWER = """
     """
 
 
-CSS_STYLE_FILE = "Rag-Bot/ragbot/style.css"
+CSS_STYLE_FILE = "{path}/style.css".format(path=pathlib.Path(__file__).parent.resolve())
 
 # with open(CSS_STYLE_FILE) as f:
 #     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
@@ -103,9 +106,13 @@ def main():
                         st.session_state["response"],
                     )
                 ]
-                query, response, response_status = chat_responder(
-                    history,
-                    user_input,
+                chat_response = chat_request(
+                    user_input, history, st.session_state.get("session_id")
+                )
+                query, response, response_status = (
+                    chat_response["user_utterance"],
+                    chat_response["response"],
+                    chat_response["status"],
                 )
                 if response_status == config["chat_responder"]["ok_status"]:
                     response_is_valid = True
@@ -168,16 +175,18 @@ def main():
                                 dislike = st.session_state.get("dislike", False)
                                 flag = st.session_state.get("flag", False)
                                 if like:
-                                    feedback(
+                                    send_feedback(
                                         paraphrased_query,
                                         response,
                                         "thumb_up",
+                                        st.session_state.get("session_id"),
                                     )
                                 elif dislike:
-                                    feedback(
+                                    send_feedback(
                                         paraphrased_query,
                                         response,
                                         "thumb_down",
+                                        st.session_state.get("session_id"),
                                     )
                                 elif flag:
                                     # todo flag is not included in the redis yet!
