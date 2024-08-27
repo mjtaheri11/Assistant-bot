@@ -171,4 +171,9 @@ async def feedback(request: FeedbackRequest, req: Request):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8686)
+    import argparse
+    parser = argparse.ArgumentParser(description='Let us build an app')
+    parser.add_argument('-p', '--port', default=8686,
+                    type=int, help='The port of the uvicorn')
+    args = parser.parse_args()
+    uvicorn.run(app, host="0.0.0.0", port=args.port)

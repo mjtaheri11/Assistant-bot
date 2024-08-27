@@ -1,10 +1,12 @@
+import os
 import yaml
+
 from langchain_community.document_loaders import DirectoryLoader, TextLoader
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-from .config import config
+from config import config
 
 embedding_model = HuggingFaceEmbeddings(
     model_name=config["embedding_model"]["model_name"],
@@ -12,8 +14,9 @@ embedding_model = HuggingFaceEmbeddings(
 )
 
 
-def main():
-    collection_path = config["database"]["persist_directory"]
+def main(args):
+    collection_path = args.persist_directory
+    os.makedirs(collection_path, exist_ok=True)
 
     print(f"Creating a vector DB in {collection_path} ...")
     document_loader = DirectoryLoader(
@@ -42,4 +45,9 @@ def main():
 
 
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description='Let us build an app')
+    parser.add_argument('-p', '--persist_directory', default=config["database"]["persist_directory"],
+                    type=str, help='The path of the persist directory')
+    args = parser.parse_args()
     main()
