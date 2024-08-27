@@ -1,8 +1,8 @@
 # Configurations for vector database
 database:
-  persist_directory: /home/user01/naser-workspace/SystemGroupAssistantBot/Rag-Bot/VectorDB
+  persist_directory: /home/user01/naser-workspace/SystemGroupAssistantBot/RagBot/VectorDB
   dbname: my-vdb
-  documents_addr: /home/user01/mj-workspace/Assistant-bot/Rag-Bot/KB-tavalla
+  documents_addr: /home/user01/mj-workspace/Assistant-bot/RagBot/KB-tavalla
 
 # Configurations for logging
 logging:

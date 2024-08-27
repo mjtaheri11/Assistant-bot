@@ -50,4 +50,4 @@ if __name__ == "__main__":
     parser.add_argument('-p', '--persist_directory', default=config["database"]["persist_directory"],
                     type=str, help='The path of the persist directory')
     args = parser.parse_args()
-    main()
+    main(args)
