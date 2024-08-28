@@ -12,9 +12,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from FlagEmbedding import FlagReranker
 
-import utils
-
-config = utils.get_config()
+from config import config
 
 embedding_model_ = HuggingFaceEmbeddings(
                 model_name=config["embedding_model"]["model_name"],
@@ -104,7 +102,7 @@ def write_to_file(results):
         row.append(result['context_confidence'])
         clean_results.append(row)
 
-    addr = config['evaluation']['output_path'] + 'results_' + config['evaluation']['model_name'] + config['evaluation']['dataset'].split('/')[-1]
+    addr = config['evaluation']['output_path'] + 'results_' + config['evaluation']['model_name'] + config["evaluation"]["chunk_size"] + config["evaluation"]["chunk_overlap"] + config['evaluation']['dataset'].split('/')[-1]
     
     pd.DataFrame(clean_results, columns=headers).to_csv(addr, index=False)
     

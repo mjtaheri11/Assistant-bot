@@ -1,6 +1,6 @@
 # Configurations for vector database
 database:
-  persist_directory: ./VectorDB
+  persist_directory: ./VectorDB-bahar-hanieh # initiate_vdb.py # ./VectorDB-bahar-hanieh #./VectorDB
   dbname: my-vdb
   documents_addr: ./KB-tavalla
 
@@ -39,13 +39,13 @@ reranker:
 
 # configurations for retriever
 retriever:
-  retrieved_documents: 5
+  retrieved_documents: 5 # initiate_vdb.py
   alpha_threshold: 0
   max_context_length: 4
   expansion: false
   rerank: true
-  chunk_size: 500
-  chunk_overlap: 50
+  chunk_size: 200
+  chunk_overlap: 20
 
 
 # configurations for langchain
@@ -57,12 +57,12 @@ langchain:
 
 # Evaluations configurations
 evaluation:
-  persist_directory: ./VectorDB-Eval
+  persist_directory: ./VectorDB-bahar-hanieh  # ./VectorDB-bahar-hanieh #./VectorDB-Eval
   dbname: my-vdb
-  documents_addr: /home/user01/mj-workspace/Assistant-bot/Rag-Bot/KB-tavalla
-  dataset: /home/user01/mj-workspace/Assistant-bot/Rag-Bot/evaluation/INV_QAQuestions.csv
+  documents_addr: /home/user01/mj-workspace/Assistant-bot/RagBot/KB-tavalla
+  dataset: /home/user01/mj-workspace/Assistant-bot/RagBot/evaluation/INV_QAQuestions.csv
   model_name: qwen2:72b-instruct-q6_K  
-  output_path: /home/user01/mj-workspace/Assistant-bot/Rag-Bot/evaluation/
+  output_path: /home/user01/mj-workspace/Assistant-bot/RagBot/evaluation/
   retrieved_documents: 10
   chunk_size: 500
   chunk_overlap: 50

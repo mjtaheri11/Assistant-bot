@@ -97,13 +97,14 @@ async def chat_responder(request: ChatRequest, req: Request):
             session_id,
             "chat_responder",
             "Chat response generated",
-            {"user_utterance": request.user_utterance, "history": request.history},
+            {"user_utterance": request.user_utterance, "history": request.history, "context": context},
             output.dict(),
             elapsed_time,
         )
 
         return output
     except Exception as e:
+        print(e)
         elapsed_time = time.time() - start_time
         output = ChatResponse(
             user_utterance=request.user_utterance,

@@ -60,7 +60,6 @@ def main():
         initial_sidebar_state="collapsed",
     )
     init_session_state()
-
     number_of_columns = [1, 4, 3]
     _, logging_column, main_column = st.columns(
         number_of_columns,

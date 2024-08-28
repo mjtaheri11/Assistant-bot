@@ -1,2 +1,2 @@
 #!/bin/bash
-python ragbot/initiate_vdb.py
+python3 ragbot/initiate_vdb.py

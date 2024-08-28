@@ -31,4 +31,4 @@ RUN chmod +x ./initiate_db.sh
 RUN ./initiate_db.sh
 
 # Command to run the application
-CMD ["python", "ragbot/api.py", "--port", "8687"]
+CMD ["python3", "ragbot/api.py", "--port", "8687"]

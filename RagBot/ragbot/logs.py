@@ -3,6 +3,8 @@ from datetime import datetime
 
 from jsonformatter import JsonFormatter  # type: ignore
 
+from config import config 
+
 LOGGER_NAME = "HamBot"
 
 def get_logger():
@@ -13,7 +15,7 @@ def get_logger():
     logger.propagate = False
     logger.setLevel(logging.INFO)
 
-    file_handler = logging.FileHandler("./ragbot.log", encoding="utf8")
+    file_handler = logging.FileHandler(config["log"]["file"], encoding="utf8")
     formatter = JsonFormatter(
         ensure_ascii=False,
         mix_extra=True,
