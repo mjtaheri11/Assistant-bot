@@ -102,7 +102,7 @@ def write_to_file(results):
         row.append(result['context_confidence'])
         clean_results.append(row)
 
-    addr = config['evaluation']['output_path'] + 'results_' + config['evaluation']['model_name'] + config["evaluation"]["chunk_size"] + config["evaluation"]["chunk_overlap"] + config['evaluation']['dataset'].split('/')[-1]
+    addr = config['evaluation']['output_path'] + 'results_' + config['evaluation']['model_name'] + str(config["evaluation"]["chunk_size"]) + "_" + str(config["evaluation"]["chunk_overlap"]) + config['evaluation']['dataset'].split('/')[-1]
     
     pd.DataFrame(clean_results, columns=headers).to_csv(addr, index=False)
     
@@ -130,15 +130,21 @@ def main():
         result['context_confidence'] = confidence
 
         prompt = RAG_EVAL_PROMPT.format(context=context, question=query, a=question[1].a, b=question[1].b, c=question[1].c, d=question[1].d)
-        answer = llm.invoke(prompt)
+        try:
+          answer = llm.invoke(prompt)
 
-        prediction = {'actual_answer': question[1].answer, 'predicted_answer': json.loads(answer.content)}
+          prediction = {'actual_answer': question[1].answer, 'predicted_answer': json.loads(answer.content)}
+        except:
+          answer = llm.invoke(prompt)
+
+          prediction = {'actual_answer': question[1].answer, 'predicted_answer': json.loads(answer.content)}
         
         if prediction['actual_answer'] == prediction['predicted_answer']['answer']:
             num_hits += 1
             
         result['predicted_answer'] = prediction['predicted_answer']
         processed_results.append(result)
+
         
     accuracy = num_hits / len(processed_results)
     print(num_hits, accuracy)

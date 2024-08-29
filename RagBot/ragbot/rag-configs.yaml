@@ -44,7 +44,7 @@ retriever:
   max_context_length: 4
   expansion: false
   rerank: true
-  chunk_size: 200
+  chunk_size: 500
   chunk_overlap: 20
 
 
@@ -64,7 +64,7 @@ evaluation:
   model_name: qwen2:72b-instruct-q6_K  
   output_path: /home/user01/mj-workspace/Assistant-bot/RagBot/evaluation/
   retrieved_documents: 10
-  chunk_size: 500
+  chunk_size: 300
   chunk_overlap: 50
 
 chat_responder:

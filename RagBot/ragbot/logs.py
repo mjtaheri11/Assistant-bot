@@ -15,7 +15,7 @@ def get_logger():
     logger.propagate = False
     logger.setLevel(logging.INFO)
 
-    file_handler = logging.FileHandler(config["log"]["file"], encoding="utf8")
+    file_handler = logging.FileHandler(config["logging"]["file"], encoding="utf8")
     formatter = JsonFormatter(
         ensure_ascii=False,
         mix_extra=True,
