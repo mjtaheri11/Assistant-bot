@@ -12,7 +12,7 @@ from FlagEmbedding import FlagReranker
 
 from prompts import RAG_EVAL_PROMPT
 from config import config
-from make_chunks import chunk_document
+from make_sentence_chunks import chunk_document
 
 
 embedding_model_ = HuggingFaceEmbeddings(
@@ -68,14 +68,15 @@ def create_retriever():
 retriever = create_retriever()
 
 
-def retrieve_context(prompt, k=config["evaluation"]["retrieved_rank2_documents"]):
+def retrieve_context(prompt, choices, k=config["evaluation"]["retrieved_rank2_documents"]):
+    prompt_with_choices = prompt + "\n" + "\n".join(choices)
     docs = retriever.invoke(prompt)
     docs = [doc.page_content for doc in docs]
     scores = reranker_model_.compute_score(
         [[prompt, doc] for doc in docs], normalize=True
     )
     docs_scores = [(docs[i], scores[i]) for i in range(len(docs))]
-    docs_scores_sorted = sorted(docs_scores, key=lambda x: x[1], reverse=False)[:k]
+    docs_scores_sorted = sorted(docs_scores, key=lambda x: x[1], reverse=True)[:k]
 
     conf = mean([d[1] for d in docs_scores])
 
@@ -178,7 +179,7 @@ def main():
             "correct_answer": question[1].answer,
         }
 
-        context, confidence = retrieve_context(query)
+        context, confidence = retrieve_context(query, choices=result["choices"])
         result["context"] = context
         result["context_confidence"] = confidence
         # import pdb
