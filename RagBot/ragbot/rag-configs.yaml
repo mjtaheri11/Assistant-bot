@@ -47,7 +47,7 @@ retriever:
   rerank: true
   chunk_overlap: 20
   chunk_size: 500
-  max_chunk_size: 1200
+  max_chunk_size: 900
   chunk_overlap: 50
   sentence_overlap: 1
 
@@ -65,13 +65,13 @@ evaluation:
   dbname: my-vdb
   documents_addr: /home/user01/mj-workspace/Assistant-bot/RagBot/new-KB/FAQ-202411408-temp.docx
   dataset: /home/user01/mj-workspace/Assistant-bot/RagBot/evaluation/INV_QAQuestions.csv
-  # model_name: qwen2:72b-instruct-q6_K  
-  model_name: gemma2:9b-instruct-fp16 
+  model_name: qwen2:72b-instruct-q6_K  
+  # model_name: gemma2:9b-instruct-fp16 
   output_path: /home/user01/mj-workspace/Assistant-bot/RagBot/evaluation/
   retrieved_documents: 5
   retrieved_rank2_documents: 5
-  chunk_size: 300
-  chunk_overlap: 50
+  # chunk_size: 300
+  # chunk_overlap: 50
 
 chat_responder:
   ok_status: "OK"

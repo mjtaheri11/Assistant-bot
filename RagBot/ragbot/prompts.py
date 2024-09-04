@@ -74,7 +74,7 @@ B {b}
 C {c}
 D {d}
 
-Be reasonable and think step by step. Output your response in JSON format that starts and ends with curly braces as follows:
+Be reasonable and think step by step. Make sure to output your response in JSON format that starts and ends with curly braces as follows:
 
 {{
 reasoning: Explanation in Persian for supporting your choice.,

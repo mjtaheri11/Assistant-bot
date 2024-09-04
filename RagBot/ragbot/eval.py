@@ -1,6 +1,8 @@
 import json
 from statistics import mean
 
+import numpy as np
+import torch
 import pandas as pd
 from tqdm import tqdm
 from langchain_community.chat_models import ChatOllama
@@ -12,8 +14,10 @@ from FlagEmbedding import FlagReranker
 
 from prompts import RAG_EVAL_PROMPT
 from config import config
-from make_sentence_chunks import chunk_document
+from make_paragraph_chunks import chunk_document
 
+torch.manual_seed(0)
+np.random.seed(0)
 
 embedding_model_ = HuggingFaceEmbeddings(
     model_name=config["embedding_model"]["model_name"],
@@ -68,8 +72,10 @@ def create_retriever():
 retriever = create_retriever()
 
 
-def retrieve_context(prompt, choices, k=config["evaluation"]["retrieved_rank2_documents"]):
-    prompt_with_choices = prompt + "\n" + "\n".join(choices)
+def retrieve_context(
+    prompt, choices, k=config["evaluation"]["retrieved_rank2_documents"]
+):
+    # prompt_with_choices = prompt + "\n" + "\n".join(choices)
     docs = retriever.invoke(prompt)
     docs = [doc.page_content for doc in docs]
     scores = reranker_model_.compute_score(
@@ -80,7 +86,7 @@ def retrieve_context(prompt, choices, k=config["evaluation"]["retrieved_rank2_do
 
     conf = mean([d[1] for d in docs_scores])
 
-    return "\n\n".join([d[0] for d in docs_scores_sorted]), conf
+    return "\n".join([d[0] for d in docs_scores_sorted]), conf
 
 
 from langchain.output_parsers import PydanticOutputParser
@@ -102,7 +108,7 @@ def output_parser(output):
     return (answer, reason)
 
 
-def write_to_file(results):
+def write_to_file(results, accuracy, num_hits, num_processed_data):
     print(f"WRTIE {len(results)} RESULTS TO A CSV FILE")
     headers = [
         "question",
@@ -148,14 +154,38 @@ def write_to_file(results):
         row.append(result["context_confidence"])
         clean_results.append(row)
 
+    # addr = (
+    #     config["evaluation"]["output_path"]
+    #     + "results_"
+    #     + config["evaluation"]["model_name"]
+    #     + str(config["retriever"]["chunk_size"])
+    #     + "_"
+    #     + str(config["evaluation"]["chunk_overlap"])
+    #     + config["evaluation"]["dataset"].split("/")[-1]
+    # )
+
     addr = (
         config["evaluation"]["output_path"]
-        + "results_"
-        + config["evaluation"]["model_name"]
-        + str(config["evaluation"]["chunk_size"])
+        + str(accuracy)
         + "_"
-        + str(config["evaluation"]["chunk_overlap"])
-        + config["evaluation"]["dataset"].split("/")[-1]
+        + str(num_hits)
+        + "_"
+        + str(num_processed_data)
+        + "_"
+        + config["evaluation"]["dataset"].split("/")[-1].replace(".csv", "")
+        + "_results_"
+        + config["evaluation"]["model_name"].replace(":", "-")
+        + "_"
+        + str(config["retriever"]["chunk_size"])
+        + "_"
+        + str(config["retriever"]["max_chunk_size"])
+        + "_"
+        + str(config["evaluation"]["retrieved_documents"])
+        + "_"
+        + str(config["evaluation"]["retrieved_rank2_documents"])
+        + "_"
+        + str(config["retriever"]["sentence_overlap"])
+        + ".csv"
     )
 
     pd.DataFrame(clean_results, columns=headers).to_csv(addr, index=False)
@@ -197,10 +227,13 @@ def main():
         try:
             output = answer.content.strip("'").strip()
             output = output.replace("\n", " ").replace("  ", " ")
-            prediction = {'actual_answer': question[1].answer, 'predicted_answer': json.loads(output)}
+            prediction = {
+                "actual_answer": question[1].answer,
+                "predicted_answer": json.loads(output),
+            }
         except:
             total_test_data -= 1
-            print('Decoding JSON has failed')
+            print("Decoding JSON has failed")
             continue
 
         if prediction["actual_answer"] == prediction["predicted_answer"]["answer"]:
@@ -213,7 +246,7 @@ def main():
 
     accuracy = num_hits / len(processed_results)
     print(num_hits, accuracy)
-    write_to_file(processed_results)
+    write_to_file(processed_results, accuracy, num_hits, len(processed_results))
 
 
 if __name__ == "__main__":
