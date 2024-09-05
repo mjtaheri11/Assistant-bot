@@ -7,7 +7,6 @@ from langchain_community.vectorstores import Chroma
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from config import config
-from make_chunks import chunk_document
 
 embedding_model = HuggingFaceEmbeddings(
     model_name=config["embedding_model"]["model_name"],
@@ -26,12 +25,11 @@ def main(args):
         loader_cls=TextLoader,
     )
     documents = document_loader.load()
-    # text_splitter = RecursiveCharacterTextSplitter(
-    #     chunk_size=config["retriever"]["chunk_size"],
-    #     chunk_overlap=config["retriever"]["chunk_overlap"],
-    # )
-    # chunks = text_splitter.split_documents(documents)
-    chunks = chunk_document()
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=config["retriever"]["chunk_size"],
+        chunk_overlap=config["retriever"]["chunk_overlap"],
+    )
+    chunks = text_splitter.split_documents(documents)
     print(f"Generated {len(chunks)} chunks from {len(documents)} documents")
 
     vdb = Chroma(persist_directory=collection_path, embedding_function=embedding_model)

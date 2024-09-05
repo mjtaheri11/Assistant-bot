@@ -82,46 +82,46 @@ async def chat_responder(request: ChatRequest, req: Request):
     error = config["chat_responder"]["error_status"]
 
     start_time = time.time()
-    try:
-        context = prepare_final_context(request.user_utterance)
-        response = query_responder(request.user_utterance, context, request.history)
+    # try:
+    context = prepare_final_context(request.user_utterance)
+    print('context',context)
+    response = query_responder(request.user_utterance, context, request.history)
 
-        elapsed_time = time.time() - start_time
-        output = ChatResponse(
-            user_utterance=request.user_utterance,
-            response=response,
-            status=ok_response_status,
-        )
+    elapsed_time = time.time() - start_time
+    output = ChatResponse(
+        user_utterance=request.user_utterance,
+        response=response,
+        status=ok_response_status,
+    )
 
-        non_generative_agent_logger(
-            session_id,
-            "chat_responder",
-            "Chat response generated",
-            {"user_utterance": request.user_utterance, "history": request.history, "context": context},
-            output.dict(),
-            elapsed_time,
-        )
+    non_generative_agent_logger(
+        session_id,
+        "chat_responder",
+        "Chat response generated",
+        {"user_utterance": request.user_utterance, "history": request.history},
+        output.dict(),
+        elapsed_time,
+    )
 
-        return output
-    except Exception as e:
-        print(e)
-        elapsed_time = time.time() - start_time
-        output = ChatResponse(
-            user_utterance=request.user_utterance,
-            response="",
-            status=config["chat_responder"]["no_answer_status"],
-        )
+    return output
+    # except Exception as e:
+    #     elapsed_time = time.time() - start_time
+    #     output = ChatResponse(
+    #         user_utterance=request.user_utterance,
+    #         response="",
+    #         status=config["chat_responder"]["no_answer_status"],
+    #     )
 
-        non_generative_agent_logger(
-            session_id,
-            "chat_responder",
-            f"Error in chat response: {str(e)}",
-            {"user_utterance": request.user_utterance, "history": request.history},
-            output.dict(),
-            elapsed_time,
-        )
+    #     non_generative_agent_logger(
+    #         session_id,
+    #         "chat_responder",
+    #         f"Error in chat response: {str(e)}",
+    #         {"user_utterance": request.user_utterance, "history": request.history},
+    #         output.dict(),
+    #         elapsed_time,
+    #     )
 
-        return output
+    #     return output
 
 
 @app.post("/feedback")

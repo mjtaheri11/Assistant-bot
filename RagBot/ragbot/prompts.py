@@ -74,11 +74,8 @@ B {b}
 C {c}
 D {d}
 
-Be reasonable and think step by step. Output your response in JSON format that starts and ends with curly braces as follows:
+Be reasonable and think step by step. Output your response in JSON format as follows:
 
-{{
-reasoning: Explanation in Persian for supporting your choice.,
+reasoning: Explanation in Persian for supporting your choice.
 answer: The desired answer, which should be in the form of only one option among A, B, C, D
-}}
- 
 """

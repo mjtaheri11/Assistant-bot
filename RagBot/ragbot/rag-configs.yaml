@@ -1,8 +1,8 @@
 # Configurations for vector database
 database:
-  persist_directory: ./VectorDB-TEMP # initiate_vdb.py # ./VectorDB-bahar-hanieh #./VectorDB
+  persist_directory:  VectorDB
   dbname: my-vdb
-  documents_addr: ./new-KB
+  documents_addr: KB-tavalla
 
 # Configurations for logging
 logging:
@@ -10,6 +10,8 @@ logging:
   file: app.log
   max_size: 10*1024*1024
 
+api:
+  port: 8686
 
 # Configurations for streamlit
 streamlit:
@@ -22,34 +24,31 @@ ollama:
   temperature: 0
   stream: true
   keep_alive: 120
+  saved_models: /apt/saved_models/qwen/
 
 
 # configurations for embedding model
 embedding_model:
   #model_name: BAAI/bge-m3
-  # model_name: ./saved_models/models--BAAI--bge-m3/snapshots/babcf60cae0a1f438d7ade582983d4ba462303c2
-  model_name: /home/user01/mj-workspace/Assistant-bot/RagBot/ragbot/saved_models/models--BAAI--bge-m3/snapshots/babcf60cae0a1f438d7ade582983d4ba462303c2
+  model_name: ../saved_models/models--BAAI--bge-m3/snapshots/babcf60cae0a1f438d7ade582983d4ba462303c2
   device: cuda
 
 # configurations for reranker
 reranker:
   #model_name: BAAI/bge-reranker-v2-m3
-  model_name: /home/user01/mj-workspace/Assistant-bot/RagBot/saved_models/models--BAAI--bge-reranker-v2-m3/snapshots/12e974610ba9083ed95f3edf08d7e899581f4de4
-  device: cuda
+  model_name: ../saved_models/models--BAAI--bge-reranker-v2-m3/snapshots/12e974610ba9083ed95f3edf08d7e899581f4de4
+  device: cpu
   cutoff: 10
 
 # configurations for retriever
 retriever:
-  retrieved_documents: 5 # initiate_vdb.py
+  retrieved_documents: 5
   alpha_threshold: 0
   max_context_length: 4
   expansion: false
   rerank: true
-  chunk_overlap: 20
   chunk_size: 500
-  max_chunk_size: 1200
   chunk_overlap: 50
-  sentence_overlap: 1
 
 
 # configurations for langchain
@@ -61,16 +60,14 @@ langchain:
 
 # Evaluations configurations
 evaluation:
-  persist_directory: ./VectorDB-TEMP  # ./VectorDB-bahar-hanieh #./VectorDB-Eval
+  persist_directory: ./VectorDB-Eval
   dbname: my-vdb
-  documents_addr: /home/user01/mj-workspace/Assistant-bot/RagBot/new-KB/FAQ-202411408-temp.docx
-  dataset: /home/user01/mj-workspace/Assistant-bot/RagBot/evaluation/INV_QAQuestions.csv
-  # model_name: qwen2:72b-instruct-q6_K  
-  model_name: gemma2:9b-instruct-fp16 
-  output_path: /home/user01/mj-workspace/Assistant-bot/RagBot/evaluation/
-  retrieved_documents: 5
-  retrieved_rank2_documents: 5
-  chunk_size: 300
+  documents_addr: /home/user01/mj-workspace/Assistant-bot/Rag-Bot/KB-tavalla
+  dataset: /home/user01/mj-workspace/Assistant-bot/Rag-Bot/evaluation/INV_QAQuestions.csv
+  model_name: qwen2:72b-instruct-q6_K  
+  output_path: /home/user01/mj-workspace/Assistant-bot/Rag-Bot/evaluation/
+  retrieved_documents: 10
+  chunk_size: 500
   chunk_overlap: 50
 
 chat_responder:

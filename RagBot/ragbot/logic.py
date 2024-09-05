@@ -7,13 +7,17 @@ from prompts import RAG_SYSTEM_PROMPT
 from retriever import Retriever
 from config import config
 from logs import simple_logger
-
+import os
 
 def get_chat_response(prompt: str) -> str:
+    OLLAMA_HOST = os.getenv('OLLAMA_HOST', 'http://dockerize_assistant-ollama-1:11434')
+    LLM_MODEL = os.getenv('LLM_MODEL', 'gemma2:9b-instruct-fp16')
+
     llm = ChatOllama(
         model=config["ollama"]["model_name"],
         temperature=config["ollama"]["temperature"],
         keep_alive=config["ollama"]["keep_alive"],
+        base_url=OLLAMA_HOST
     )
     messages = [SystemMessage(content=prompt)]
     response = llm.invoke(messages)  # type: ignore[arg-type]

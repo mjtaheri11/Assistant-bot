@@ -1,34 +1,30 @@
-# FROM python:3.10-slim
-# Start from NVIDIA's CUDA image with Python support
-FROM nvidia/cuda:11.8.0-runtime-ubuntu22.04
+# Use an official Python image as the base image
+FROM python:3.10-slim
+RUN apt-get update && apt-get -y install 
 
+# Set the working directory
+WORKDIR /app/ragbot
 
-# Set the working directory inside the container
-WORKDIR /app
-
-# Install Python and pip
-RUN apt-get update && apt-get install -y \
-    python3 \
-    python3-pip \
-    && rm -rf /var/lib/apt/lists/*
-
-
-# Copy the requirements.txt file to the working directory
+# Copy the requirements.txt file
 COPY requirements.txt .
-
-# Install the required Python packages
 RUN --mount=type=cache,target=/root/.cache/pip pip install -r requirements.txt
+# RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the ragbot directory into the working directory
-COPY initiate_db.sh .
-COPY ragbot/ ./ragbot/
-COPY saved_models ./saved_models/
-COPY KB-tavalla ./KB-tavalla
+# Install dependencies after cache
+RUN pip install python-docx==1.1.2
+
+# Copy the rest of the application code
+COPY . /app
+
+# Make the initiation script executable
+# RUN chmod +x /app/initiate_db.sh /app/run_app.sh
+
+# Run the database initiation script
+# RUN ./initiate_db.sh
+
 # Expose the port that the FastAPI app listens on
 EXPOSE 8687
 
-RUN chmod +x ./initiate_db.sh 
-RUN ./initiate_db.sh
-
 # Command to run the application
-CMD ["python3", "ragbot/api.py", "--port", "8687"]
+CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8687", "--reload"]
+
