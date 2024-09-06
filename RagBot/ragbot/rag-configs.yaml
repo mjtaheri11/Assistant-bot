@@ -1,8 +1,8 @@
 # Configurations for vector database
 database:
-  persist_directory:  VectorDB
+  persist_directory: ./VectorDB-TEMP # initiate_vdb.py # ./VectorDB-bahar-hanieh #./VectorDB
   dbname: my-vdb
-  documents_addr: KB-tavalla
+  documents_addr: /home/user01/mj-workspace/Assistant-bot/RagBot/new-KB/FAQ-202411408-temp.docx
 
 # Configurations for logging
 logging:
@@ -10,8 +10,6 @@ logging:
   file: app.log
   max_size: 10*1024*1024
 
-api:
-  port: 8687
 
 # Configurations for streamlit
 streamlit:
@@ -20,38 +18,38 @@ streamlit:
 
 # configurations for ollama
 ollama:
-  model_name: gemma2:9b-instruct-fp16 # llama3.1:70b-instruct-q3_K_S  
+  # model_name: qwen2:72b-instruct-q4_K_M
+  model_name: gemma2:9b-instruct-fp16
   temperature: 0
   stream: true
   keep_alive: 120
-  saved_models: /apt/saved_models/qwen/
 
 
 # configurations for embedding model
 embedding_model:
   #model_name: BAAI/bge-m3
-  model_name: ../saved_models/models--BAAI--bge-m3/snapshots/babcf60cae0a1f438d7ade582983d4ba462303c2
+  # model_name: ./saved_models/models--BAAI--bge-m3/snapshots/babcf60cae0a1f438d7ade582983d4ba462303c2
+  model_name: /home/user01/mj-workspace/Assistant-bot/RagBot/ragbot/saved_models/models--BAAI--bge-m3/snapshots/babcf60cae0a1f438d7ade582983d4ba462303c2
   device: cuda
 
 # configurations for reranker
 reranker:
   #model_name: BAAI/bge-reranker-v2-m3
-  model_name: ../saved_models/models--BAAI--bge-reranker-v2-m3/snapshots/12e974610ba9083ed95f3edf08d7e899581f4de4
+  model_name: /home/user01/mj-workspace/Assistant-bot/RagBot/saved_models/models--BAAI--bge-reranker-v2-m3/snapshots/12e974610ba9083ed95f3edf08d7e899581f4de4
   device: cuda
   cutoff: 10
 
 # configurations for retriever
 retriever:
-  retrieved_documents: 5
-  alpha_threshold: 0.1
-  max_context_length: 4
+  retrieved_documents: 10 # initiate_vdb.py
+  retrieved_rank2_documents: 5
+  alpha_threshold: 0
   expansion: false
   rerank: true
-  chunk_size: 750
+  chunk_size: 1000
   max_chunk_size: 1200
-  chunk_overlap: 50
   sentence_overlap: 1
-# 1000, 1200, 3
+
 
 # configurations for langchain
 langchain:
@@ -62,22 +60,20 @@ langchain:
 
 # Evaluations configurations
 evaluation:
-  persist_directory: ./VectorDB-Eval
+  persist_directory: ./VectorDB-TEMP  # ./VectorDB-bahar-hanieh #./VectorDB-Eval
   dbname: my-vdb
-  documents_addr: /app/ragbot/assets/FAQ-202411408-temp.docx
-  # documents_addr: /app/ragbot/assets/
-  # dataset: /app/ragbot/evaluation/IN_QAQUESTIONS_TEMP.csv
-  dataset: /app/ragbot/evaluation/copy-of-QA-sep.csv
-  model_name: gemma2:9b-instruct-fp16
-  output_path: /app/ragbot/evaluation/
+  documents_addr: /home/user01/mj-workspace/Assistant-bot/RagBot/new-KB/FAQ-202411408-temp.docx
+  dataset: /home/user01/mj-workspace/Assistant-bot/RagBot/evaluation/Copy-of-QA-sep.csv
+  # model_name: qwen2:72b-instruct-q6_K  
+  model_name: gemma2:9b-instruct-fp16 
+  output_path: /home/user01/mj-workspace/Assistant-bot/RagBot/evaluation/
   retrieved_documents: 10
   retrieved_rank2_documents: 5
-  chunk_size: 500
-  chunk_overlap: 50
+  # chunk_size: 300
+  # chunk_overlap: 50
 
 chat_responder:
   ok_status: "OK"
   doubtful_status: "DOUBTFUL"
   no_answer_status: "NO_ANSWER"
   error_status: "error"
-                          

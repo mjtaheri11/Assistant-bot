@@ -1,4 +1,5 @@
 import json
+import random
 import re
 import os 
 from statistics import mean
@@ -20,6 +21,8 @@ from make_sentence_chunks import chunk_document
 
 torch.manual_seed(0)
 np.random.seed(0)
+torch.cuda.manual_seed_all(0)
+random.seed(0)
 
 embedding_model_ = HuggingFaceEmbeddings(
                 model_name=config["embedding_model"]["model_name"],
@@ -29,12 +32,13 @@ reranker_model_ = FlagReranker(
                 config["reranker"]["model_name"],
                 device=config["reranker"]["device"])
 
-OLLAMA_HOST = os.getenv('OLLAMA_HOST', 'http://dockerize_assistant-ollama-1:11434')
+# OLLAMA_HOST = os.getenv('OLLAMA_HOST', 'http://dockerize_assistant-ollama-1:11434')
 llm = ChatOllama(
         model=config["ollama"]["model_name"],
         temperature=config["ollama"]["temperature"],
         keep_alive=config["ollama"]["keep_alive"],
-        base_url=OLLAMA_HOST,
+        seed=0
+        # base_url=OLLAMA_HOST,
     )
 
 def create_retriever():
@@ -152,20 +156,20 @@ def main(config=config):
         try:
             output = answer.content.strip("'").strip()
             output = output.replace("\n", " ").replace("  ", " ")
-            prediction = {'actual_answer': question[1].answer, 'predicted_answer': json.loads(output)}
+            output = json.loads(output)
         except:
             total_test_data -= 1
             print('Decoding JSON has failed')
             continue
         
-        if prediction['actual_answer'] == prediction['predicted_answer']['answer']:
+        if question[1].answer == output['answer']:
             num_hits += 1
 
-        result['predicted_answer'] = prediction['predicted_answer']
+        result['predicted_answer'] = output
         processed_results.append(result)
         accuracy = num_hits / total_test_data
-        print(accuracy)
-        
+        print(accuracy)        
+
     accuracy = num_hits / len(processed_results)
     print(num_hits, accuracy)
     write_to_file(processed_results, accuracy, num_hits, len(processed_results))

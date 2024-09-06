@@ -1,3 +1,5 @@
+import json
+import argparse
 import logging
 import time
 from datetime import datetime
@@ -11,8 +13,12 @@ from config import config
 from logs import simple_logger, non_generative_agent_logger
 from logic import query_responder, prepare_final_context
 
+# Parse command-line arguments
+parser = argparse.ArgumentParser(description='Let us build an app')
+parser.add_argument('-p', '--port', default=8686, type=int, help='The port of the uvicorn')
+args = parser.parse_args()
 
-BASE_URL = "http://localhost:8686"
+BASE_URL = f"http://localhost:{args.port}"
 app = FastAPI(title="سرویس سوال و جواب همکاران سیستم (همکار بات!)")
 # انتخاب تامین کننده برای رسید خرید داخلی اجباری است
 
@@ -85,11 +91,12 @@ async def chat_responder(request: ChatRequest, req: Request):
     try:
         context = prepare_final_context(request.user_utterance)
         response = query_responder(request.user_utterance, context, request.history)
+        response = json.loads(response)
 
         elapsed_time = time.time() - start_time
         output = ChatResponse(
             user_utterance=request.user_utterance,
-            response=response,
+            response=response["answer"],
             status=ok_response_status,
         )
 
@@ -172,9 +179,4 @@ async def feedback(request: FeedbackRequest, req: Request):
 
 if __name__ == "__main__":
     import uvicorn
-    import argparse
-    parser = argparse.ArgumentParser(description='Let us build an app')
-    parser.add_argument('-p', '--port', default=8686,
-                    type=int, help='The port of the uvicorn')
-    args = parser.parse_args()
     uvicorn.run(app, host="0.0.0.0", port=args.port)

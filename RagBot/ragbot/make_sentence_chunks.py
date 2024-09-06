@@ -106,7 +106,13 @@ def finalize_chunk(chunk, target_chunk_size, max_chunk_size, source_file):
     
     all_sentences = []
     for paragraph in chunk['content']:
-        all_sentences.extend(split_into_sentences(paragraph))
+        if paragraph.strip() == "":
+            continue
+        sentences = split_into_sentences(paragraph)
+        # to preserve the paragraphs in each chunk
+        if not sentences[-1].endswith("\n"):
+            sentences[-1] += "\n"
+        all_sentences.extend(sentences)
     
     current_chunk_sentences = []
     current_size = 0
@@ -131,7 +137,7 @@ def finalize_chunk(chunk, target_chunk_size, max_chunk_size, source_file):
             
             # Start new chunk with r-sentence overlap
             overlap_sentences = current_chunk_sentences[-config["retriever"]["sentence_overlap"]:] if len(current_chunk_sentences) >= config["retriever"]["sentence_overlap"] else current_chunk_sentences[-1:]
-            current_chunk_sentences = overlap_sentences
+            current_chunk_sentences = overlap_sentences + [sentence]
             current_size = sum(len(s) for s in current_chunk_sentences)
 
         else:

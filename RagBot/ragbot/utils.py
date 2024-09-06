@@ -56,5 +56,7 @@ def init_session_state():
         st.session_state["first_encounter_with_extra_questions"] = True
     if "do_generate_questions" not in st.session_state:
         st.session_state["do_generate_questions"] = False
+    # if "enable_show_logs" not in st.session_state:
+    #     st.session_state["enable_show_logs"] = False
     if "response_is_valid" not in st.session_state:
         st.session_state["response_is_valid"] = ""
