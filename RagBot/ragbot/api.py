@@ -11,7 +11,7 @@ from pydantic import BaseModel
 
 from config import config
 from logs import simple_logger, non_generative_agent_logger
-from logic import query_responder, prepare_final_context
+from logic import prepare_final_context, query_responder, utterance_paraphraser
 
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description='Let us build an app')
@@ -89,13 +89,14 @@ async def chat_responder(request: ChatRequest, req: Request):
 
     start_time = time.time()
     try:
-        context = prepare_final_context(request.user_utterance)
-        response = query_responder(request.user_utterance, context, request.history)
+        paraphrased_utterance = utterance_paraphraser(request.history, request.user_utterance)
+        context = prepare_final_context(paraphrased_utterance)
+        response = query_responder(paraphrased_utterance, context, request.history)
         response = json.loads(response)
 
         elapsed_time = time.time() - start_time
         output = ChatResponse(
-            user_utterance=request.user_utterance,
+            user_utterance=paraphrased_utterance,
             response=response["answer"],
             status=ok_response_status,
         )

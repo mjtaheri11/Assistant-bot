@@ -19,6 +19,8 @@ from prompts import RAG_EVAL_PROMPT
 from config import config
 from make_sentence_chunks import chunk_document
 
+# "میخوام طبقه حساب تعریف کنم چه مرحله هایی داره؟", "response"
+
 torch.manual_seed(0)
 np.random.seed(0)
 torch.cuda.manual_seed_all(0)
@@ -50,18 +52,18 @@ def create_retriever():
     # text_splitter = RecursiveCharacterTextSplitter(chunk_size=config["retriever"]["chunk_size"],
     #                                                chunk_overlap=config["evaluation"]["chunk_overlap"])
     # chunks = text_splitter.split_documents(documents)
-    chunks = chunk_document([config["evaluation"]["documents_addr"]], target_chunk_size=config["retriever"]["chunk_size"], max_chunk_size=config["retriever"]["max_chunk_size"])
+    chunks = chunk_document(config["evaluation"]["documents_addr"], target_chunk_size=config["retriever"]["chunk_size"], max_chunk_size=config["retriever"]["max_chunk_size"])
     print(f'Generated {len(chunks)} chunks')
 
     vdb = Chroma(persist_directory=collection_path, embedding_function=embedding_model_)
     if len(vdb.get()["ids"]) > 0:
         print(f'VectorDB has {len(vdb.get()["ids"])} documents already, deleting them ...')
         vdb._collection.delete(vdb.get()["ids"])
-
+        
     vdb.add_documents(chunks)
     print(f'{len(chunks)} documents have been added to the vector DB')
     retriever = vdb.as_retriever(search_kwargs={"k": config['evaluation']['retrieved_documents']})
-
+    
     return retriever
 
 retriever = create_retriever()

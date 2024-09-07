@@ -30,6 +30,28 @@
 
 # Response just in Persian:"""
 
+UTTERANCE_PARAPHRASER_PROMPT = """
+"Analyze the user's current utterance in relation to their previous conversation history. If the utterance contains incomplete, unclear, or overly repetitive information that could cause confusion or misunderstanding in the given context, rephrase it for clarity. The rephrased version should be in Farsi, retaining the original meaning while making the message more precise and comprehensible. **Only rephrase when necessary**, focusing on improving the flow and coherence without altering the user's intent."
+
+Chat History:
+
+{history}
+
+User Utterance:
+
+{question}
+
+**Note:** Ensure that the rephrasing maintains the original intent and tone of the user's utterance while addressing any issues that could impede clear communication or accurate translation.
+
+Be reasonable and think step by step. Make sure to output your response in JSON format that starts and ends with curly braces as follows:
+
+{{
+  "reasoning": "Explanation in Farsi for your answer, briefly addressing why your answer is correct or incorrect based on the history.",
+  "answer": "Original or rephrased user utterance"
+}}
+"""
+
+
 RAG_SYSTEM_PROMPT = """You are a polite and friendly digital assistant for Hamkaran System (همکاران سیستم) users. \ 
 Pretend to be a human assistant.
 Use the following context to answer the question. \
