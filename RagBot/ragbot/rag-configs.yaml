@@ -2,7 +2,7 @@
 database:
   persist_directory:  VectorDB
   dbname: my-vdb
-  documents_addr: KB-tavalla
+  documents_addr: /home/user01/mj-workspace/Assistant-bot/RagBot/new-KB/FAQ-202411408-temp.docx
 
 # Configurations for logging
 logging:
@@ -20,7 +20,8 @@ streamlit:
 
 # configurations for ollama
 ollama:
-  model_name: qwen2:72b-instruct-q4_K_M
+  # model_name: qwen2:72b-instruct-q4_K_M
+  model_name: gemma2:9b-instruct-fp16
   temperature: 0
   stream: true
   keep_alive: 120
@@ -42,13 +43,14 @@ reranker:
 
 # configurations for retriever
 retriever:
-  retrieved_documents: 5
+  retrieved_documents: 10 # initiate_vdb.py
+  retrieved_rank2_documents: 5
   alpha_threshold: 0
-  max_context_length: 4
   expansion: false
   rerank: true
-  chunk_size: 500
-  chunk_overlap: 50
+  chunk_size: 1000
+  max_chunk_size: 1200
+  sentence_overlap: 1
 
 
 # configurations for langchain
@@ -62,13 +64,15 @@ langchain:
 evaluation:
   persist_directory: ./VectorDB-Eval
   dbname: my-vdb
-  documents_addr: /home/user01/mj-workspace/Assistant-bot/Rag-Bot/KB-tavalla
-  dataset: /home/user01/mj-workspace/Assistant-bot/Rag-Bot/evaluation/INV_QAQuestions.csv
-  model_name: qwen2:72b-instruct-q6_K  
-  output_path: /home/user01/mj-workspace/Assistant-bot/Rag-Bot/evaluation/
+  documents_addr: /home/user01/mj-workspace/Assistant-bot/RagBot/new-KB/FAQ-202411408-temp.docx
+  dataset: /home/user01/mj-workspace/Assistant-bot/RagBot/evaluation/Copy-of-QA-sep.csv
+  # model_name: qwen2:72b-instruct-q6_K  
+  model_name: gemma2:9b-instruct-fp16 
+  output_path: /home/user01/mj-workspace/Assistant-bot/RagBot/evaluation/
   retrieved_documents: 10
-  chunk_size: 500
-  chunk_overlap: 50
+  retrieved_rank2_documents: 5
+  # chunk_size: 300
+  # chunk_overlap: 50
 
 chat_responder:
   ok_status: "OK"

@@ -106,7 +106,13 @@ def finalize_chunk(chunk, target_chunk_size, max_chunk_size, source_file):
     
     all_sentences = []
     for paragraph in chunk['content']:
-        all_sentences.extend(split_into_sentences(paragraph))
+        if paragraph.strip() == "":
+            continue
+        sentences = split_into_sentences(paragraph)
+        # to preserve the paragraphs in each chunk
+        if not sentences[-1].endswith("\n"):
+            sentences[-1] += "\n"
+        all_sentences.extend(sentences)
     
     current_chunk_sentences = []
     current_size = 0
@@ -119,24 +125,25 @@ def finalize_chunk(chunk, target_chunk_size, max_chunk_size, source_file):
             chunk_text = headers + ' '.join(current_chunk_sentences)
             finalized_chunks.append(Document(page_content=chunk_text, metadata={"source": source_file}))
             
-            # Start new chunk with 2-sentence overlap
+            # Start new chunk with r-sentence overlap
             overlap_sentences = current_chunk_sentences[-config["retriever"]["sentence_overlap"]:] if len(current_chunk_sentences) >= config["retriever"]["sentence_overlap"] else current_chunk_sentences[-1:]
             current_chunk_sentences = overlap_sentences + [sentence]
             current_size = sum(len(s) for s in current_chunk_sentences)
             
+        # Check if we've reached the target chunk size
+        elif current_size >= target_chunk_size and i < len(all_sentences) - 1:
+            chunk_text = headers + ' '.join(current_chunk_sentences)
+            finalized_chunks.append(Document(page_content=chunk_text, metadata={"source": source_file}))
+            
+            # Start new chunk with r-sentence overlap
+            overlap_sentences = current_chunk_sentences[-config["retriever"]["sentence_overlap"]:] if len(current_chunk_sentences) >= config["retriever"]["sentence_overlap"] else current_chunk_sentences[-1:]
+            current_chunk_sentences = overlap_sentences + [sentence]
+            current_size = sum(len(s) for s in current_chunk_sentences)
+
         else:
             current_chunk_sentences.append(sentence)
             current_size += sentence_size
         
-        # Check if we've reached the target chunk size
-        if current_size >= target_chunk_size and i < len(all_sentences) - 1:
-            chunk_text = headers + ' '.join(current_chunk_sentences)
-            finalized_chunks.append(Document(page_content=chunk_text, metadata={"source": source_file}))
-            
-            # Start new chunk with 2-sentence overlap
-            overlap_sentences = current_chunk_sentences[-config["retriever"]["sentence_overlap"]:] if len(current_chunk_sentences) >= config["retriever"]["sentence_overlap"] else current_chunk_sentences[-1:]
-            current_chunk_sentences = overlap_sentences
-            current_size = sum(len(s) for s in current_chunk_sentences)
     
     # Add any remaining content
     if current_chunk_sentences:

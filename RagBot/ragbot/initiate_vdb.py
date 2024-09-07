@@ -7,6 +7,8 @@ from langchain_community.vectorstores import Chroma
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from config import config
+from make_sentence_chunks import chunk_document
+
 
 embedding_model = HuggingFaceEmbeddings(
     model_name=config["embedding_model"]["model_name"],
@@ -19,18 +21,19 @@ def main(args):
     os.makedirs(collection_path, exist_ok=True)
 
     print(f"Creating a vector DB in {collection_path} ...")
-    document_loader = DirectoryLoader(
-        path=config["database"]["documents_addr"],
-        glob="**/*.txt",
-        loader_cls=TextLoader,
-    )
-    documents = document_loader.load()
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=config["retriever"]["chunk_size"],
-        chunk_overlap=config["retriever"]["chunk_overlap"],
-    )
-    chunks = text_splitter.split_documents(documents)
-    print(f"Generated {len(chunks)} chunks from {len(documents)} documents")
+    # document_loader = DirectoryLoader(
+    #     path=config["database"]["documents_addr"],
+    #     glob="**/*.txt",
+    #     loader_cls=TextLoader,
+    # )
+    # documents = document_loader.load()
+    # text_splitter = RecursiveCharacterTextSplitter(
+    #     chunk_size=config["retriever"]["chunk_size"],
+    #     chunk_overlap=config["retriever"]["chunk_overlap"],
+    # )
+    # chunks = text_splitter.split_documents(documents)
+    chunks = chunk_document([config["database"]["documents_addr"]], target_chunk_size=config["retriever"]["chunk_size"], max_chunk_size=config["retriever"]["max_chunk_size"])
+    print(f"Generated {len(chunks)} chunks")
 
     vdb = Chroma(persist_directory=collection_path, embedding_function=embedding_model)
 

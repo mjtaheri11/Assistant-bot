@@ -1,5 +1,9 @@
+import random
 from typing import List
+import os
 
+import torch
+import numpy as np
 from langchain.schema import SystemMessage
 from langchain_community.chat_models import ChatOllama
 
@@ -7,7 +11,14 @@ from prompts import RAG_SYSTEM_PROMPT
 from retriever import Retriever
 from config import config
 from logs import simple_logger
-import os
+
+SEED = 0
+torch.manual_seed(SEED)
+np.random.seed(SEED)
+torch.cuda.manual_seed_all(SEED)
+random.seed(SEED)
+
+
 
 def get_chat_response(prompt: str) -> str:
     OLLAMA_HOST = os.getenv('OLLAMA_HOST', 'http://dockerize_assistant-ollama-1:11434')
@@ -17,6 +28,7 @@ def get_chat_response(prompt: str) -> str:
         model=config["ollama"]["model_name"],
         temperature=config["ollama"]["temperature"],
         keep_alive=config["ollama"]["keep_alive"],
+        seed=SEED.
         base_url=OLLAMA_HOST
     )
     messages = [SystemMessage(content=prompt)]
@@ -26,7 +38,8 @@ def get_chat_response(prompt: str) -> str:
 
 def history_serializer(history: List[tuple[str, str]]) -> str:
     serialized_history = ""
-    for question, answer in history:
+    # TODO this history part should be considered effectively. I just wrote something messy.
+    for question, answer in history[-4:]:
         serialized_history += f"USER: {question}\nASSISTANT: {answer}\n\n"
     return serialized_history
 

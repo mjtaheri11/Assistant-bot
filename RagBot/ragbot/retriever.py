@@ -49,28 +49,24 @@ class Retriever(object):
 
         return cls._instance
 
-    def retrieve_context(self, query, k=config["retriever"]["retrieved_documents"]):
+    def retrieve_context(self, query, k=config["retriever"]["retrieved_rank2_documents"]):
         # TODO: appropriate logger
         logger.info(f"retriever is called query: {query}, k: {k}")
 
         if self.config_["retriever"]["expansion"]:
             query = self.expand_query(query)
         documents = self.retriever_.invoke(query)
-        documents = [doc.page_content for doc in documents][:k]
+        documents = [doc.page_content for doc in documents]
         conf = None
         if self.config_["retriever"]["rerank"]:
-            scores = self.reranker_model_.compute_score(
-                [[query, doc] for doc in documents], normalize=True
-            )
-            documents = [
-                doc
-                for doc, score in zip(documents, scores)
-                if score > self.alpha_threshold_
-            ][0 : config["reranker"]["cutoff"]]
-            conf = mean(scores)
+            scores = self.reranker_model_.compute_score([[query, doc] for doc in documents], normalize=True)
+            docs_scores = [(documents[i], scores[i]) for i in range(len(documents))]
+            docs_scores_sorted = sorted(docs_scores, key=lambda x: x[1], reverse=True)[:k]
+
+            conf = mean([d[1] for d in docs_scores])
 
         # TODO: appropriate logger
-        documents = "\n".join(documents)
+        documents = "\n\n".join(documents)
         logger.info(
             "retriever returns query: {query}\ndocuments {documents} conf: {conf}".format(
                 query=query, documents=documents, conf=conf
