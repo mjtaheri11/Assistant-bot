@@ -3,12 +3,24 @@ version: '3.8'
 services:
   api:
     build: .
-    container_name: chatbot_api
-    image: "chatbot"
+    container_name: ragbot_api
+    command: tail -F anything
     ports:
       - "8687:8687"
     volumes:
+      - ./ragbot/VectorDB:/app/ragbot/VectorDB
+      - ./ragbot/rag-configs.yaml:/app/ragbot/rag-configs.yaml
       - ./saved_models:/app/saved_models
+    environment:
+      - OLLAMA_HOST=http://dockerize_assistant-ollama-1:11434
+      - LLM_MODEL=gemma2:9b-instruct-fp16
+      
+    command: uvicorn api:app --host 0.0.0.0 --port 8687 --reload
+    restart: always
+    depends_on:
+      - ollama
+    networks:
+      - ollama-docker
 
     deploy:
       resources:
@@ -19,5 +31,35 @@ services:
               capabilities: [gpu]
     runtime: nvidia
 
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - 8089:11434
+    volumes:
+      - /usr/share/ollama/.ollama/:/root/.ollama
+    container_name: ollama
+    tty: true
+    restart: always
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+    networks:
+      - ollama-docker
+
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    runtime: nvidia
+
+
+
 volumes:
   VectorDB:
+
+networks:
+  ollama-docker:
+    external: false

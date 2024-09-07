@@ -1,5 +1,6 @@
 import random
 from typing import List
+import os
 
 import torch
 import numpy as np
@@ -18,12 +19,17 @@ torch.cuda.manual_seed_all(SEED)
 random.seed(SEED)
 
 
+
 def get_chat_response(prompt: str) -> str:
+    OLLAMA_HOST = os.getenv('OLLAMA_HOST', 'http://dockerize_assistant-ollama-1:11434')
+    LLM_MODEL = os.getenv('LLM_MODEL', 'gemma2:9b-instruct-fp16')
+
     llm = ChatOllama(
         model=config["ollama"]["model_name"],
         temperature=config["ollama"]["temperature"],
         keep_alive=config["ollama"]["keep_alive"],
-        seed=SEED
+        seed=SEED.
+        base_url=OLLAMA_HOST
     )
     messages = [SystemMessage(content=prompt)]
     response = llm.invoke(messages)  # type: ignore[arg-type]

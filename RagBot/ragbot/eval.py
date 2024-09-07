@@ -8,6 +8,9 @@ import torch
 import numpy as np 
 import pandas as pd
 from tqdm import tqdm
+from statistics import mean
+
+from prompts import RAG_EVAL_PROMPT
 from langchain_community.chat_models import ChatOllama
 from langchain_community.vectorstores import Chroma
 from langchain_community.document_loaders import DirectoryLoader, TextLoader
@@ -15,14 +18,14 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from FlagEmbedding import FlagReranker
 
-from prompts import RAG_EVAL_PROMPT
-from config import config
-from make_sentence_chunks import chunk_document
+import utils
 
 torch.manual_seed(0)
 np.random.seed(0)
 torch.cuda.manual_seed_all(0)
 random.seed(0)
+
+config = utils.get_config()
 
 embedding_model_ = HuggingFaceEmbeddings(
                 model_name=config["embedding_model"]["model_name"],
@@ -41,10 +44,12 @@ llm = ChatOllama(
         # base_url=OLLAMA_HOST,
     )
 
+
 def create_retriever():
     collection_path = config["evaluation"]["persist_directory"]
     
     print(f'Creating an evaluation vector DB in {collection_path} ...')
+
     # document_loader = DirectoryLoader(path=config["evaluation"]['documents_addr'], glob="**/*.txt", loader_cls=TextLoader)
     # documents = document_loader.load()
     # text_splitter = RecursiveCharacterTextSplitter(chunk_size=config["retriever"]["chunk_size"],
@@ -54,6 +59,7 @@ def create_retriever():
     print(f'Generated {len(chunks)} chunks')
 
     vdb = Chroma(persist_directory=collection_path, embedding_function=embedding_model_)
+
     if len(vdb.get()["ids"]) > 0:
         print(f'VectorDB has {len(vdb.get()["ids"])} documents already, deleting them ...')
         vdb._collection.delete(vdb.get()["ids"])
@@ -71,7 +77,7 @@ def retrieve_context(prompt, k=config['evaluation']['retrieved_rank2_documents']
     docs = [doc.page_content for doc in docs]
     scores = reranker_model_.compute_score([[prompt, doc] for doc in docs], normalize=True)
     docs_scores = [(docs[i], scores[i]) for i in range(len(docs))]
-    docs_scores_sorted = sorted(docs_scores, key=lambda x: x[1], reverse=True)[:k]
+    docs_scores_sorted = sorted(docs_scores, key=lambda x: x[1], reverse=False)[0:k]
 
     conf = mean([d[1] for d in docs_scores])
 
@@ -122,7 +128,7 @@ def write_to_file(results, accuracy, num_hits, num_processed_data):
     pd.DataFrame(clean_results, columns=headers).to_csv(addr, index=False)
     
     print(f'RESULTS WRITTEN TO {addr}')
-
+    
 
 def main(config=config):
     processed_results = []

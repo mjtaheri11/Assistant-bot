@@ -9,6 +9,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from config import config
 from make_sentence_chunks import chunk_document
 
+
 embedding_model = HuggingFaceEmbeddings(
     model_name=config["embedding_model"]["model_name"],
     model_kwargs={"device": config["embedding_model"]["device"]},
