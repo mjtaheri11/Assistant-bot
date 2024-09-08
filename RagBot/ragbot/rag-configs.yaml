@@ -1,6 +1,6 @@
 # Configurations for vector database
 database:
-  persist_directory: ./VectorDB-TEMP # initiate_vdb.py # ./VectorDB-bahar-hanieh #./VectorDB
+  persist_directory: ./VectorDB # initiate_vdb.py # ./VectorDB-bahar-hanieh #./VectorDB
   dbname: my-vdb
   documents_addr:
     - /home/user01/mj-workspace/Assistant-bot/RagBot/new-KB/FAQ-202411408-temp.docx

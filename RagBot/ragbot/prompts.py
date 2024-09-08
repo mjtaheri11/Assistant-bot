@@ -30,6 +30,42 @@
 
 # Response just in Persian:"""
 
+
+# UTTERANCE_PARAPHRASER_PROMPT = """
+# Analyze the user's latest utterance in the context of the conversation history. Determine if rephrasing is necessary based on the following criteria:
+
+# 1. Ambiguity: The utterance is unclear or could have multiple interpretations given the context.
+# 2. Incomplete information: The utterance relies heavily on context from previous messages and may not be understandable on its own.
+# 3. Contradiction: The utterance seems to contradict earlier statements or established facts in the conversation.
+# 4. Implicit reference: The utterance contains pronouns or vague references that need clarification.
+# 5. Idiomatic expressions: The utterance uses culture-specific idioms or expressions that may not translate well.
+
+# If any of these criteria are met, rephrase the utterance to address the issue(s). The rephrasing should:
+
+# - Clarify ambiguities
+# - Include necessary context
+# - Resolve contradictions
+# - Replace vague references with specific terms
+# - Express idiomatic content in more universal language
+
+# Chat History:
+
+# {history}
+
+# User Utterance:
+
+# {question}
+
+# Note: Ensure that the rephrasing maintains the original intent and tone of the user's utterance while addressing any issues that could impede clear communication or accurate translation.
+
+# Be reasonable and think step by step. The rephrased version should be in **Farsi**. Make sure to output your response in JSON format that starts and ends with curly braces as follows:
+
+# {{
+#   "reasoning": "Explanation in Farsi for your answer, briefly addressing why your answer is correct or incorrect based on the history.",
+#   "answer": "Original or rephrased user utterance"
+# }}
+# """
+
 UTTERANCE_PARAPHRASER_PROMPT = """
 "Analyze the user's current utterance in relation to their previous conversation history. If the utterance contains incomplete, unclear, or overly repetitive information that could cause confusion or misunderstanding in the given context, rephrase it for clarity. The rephrased version should be in Farsi, retaining the original meaning while making the message more precise and comprehensible. **Only rephrase when necessary**, focusing on improving the flow and coherence without altering the user's intent."
 
