@@ -12,13 +12,14 @@ from pydantic import BaseModel
 from config import config
 from logs import simple_logger, non_generative_agent_logger
 from logic import prepare_final_context, query_responder, utterance_paraphraser
+from utils import json_cleaning
 
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description='Let us build an app')
 parser.add_argument('-p', '--port', default=8686, type=int, help='The port of the uvicorn')
 args = parser.parse_args()
 
-BASE_URL = f"http://localhost:{args.port}"
+BASE_URL = f"http://0.0.0.0:{args.port}"
 app = FastAPI(title="سرویس سوال و جواب همکاران سیستم (همکار بات!)")
 # انتخاب تامین کننده برای رسید خرید داخلی اجباری است
 
@@ -91,8 +92,8 @@ async def chat_responder(request: ChatRequest, req: Request):
     try:
         paraphrased_utterance = utterance_paraphraser(request.history, request.user_utterance)
         context = prepare_final_context(paraphrased_utterance)
-        response = query_responder(paraphrased_utterance, context, request.history)
-        response = json.loads(response)
+        response = query_responder(request.user_utterance, context, request.history)
+        response = json.loads(json_cleaning(response))
 
         elapsed_time = time.time() - start_time
         output = ChatResponse(

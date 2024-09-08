@@ -21,7 +21,9 @@ from pythonjsonlogger import jsonlogger
 #     logger.setLevel(logging.DEBUG)
 
 #     return logger
-
+def json_cleaning(input_string):
+    cleaned_string = input_string.replace("json", "").replace("```", "")
+    return cleaned_string
 
 def init_session_state():
     if "session_id" not in st.session_state:
