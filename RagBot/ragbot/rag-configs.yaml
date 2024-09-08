@@ -68,7 +68,7 @@ evaluation:
   documents_addr: 
     - /home/user01/mj-workspace/Assistant-bot/RagBot/new-KB/FAQ-202411408-temp.docx
     - /home/user01/mj-workspace/Assistant-bot/RagBot/new-KB/GL_QA_Base Data-temp.docx
-  dataset: /home/user01/mj-workspace/Assistant-bot/RagBot/evaluation/Copy-of-QA-sep.csv
+  dataset: /home/user01/mj-workspace/Assistant-bot/RagBot/eval-questions/Copy-of-QA-sep.csv
   # model_name: qwen2:72b-instruct-q6_K  
   model_name: gemma2:9b-instruct-fp16 
   output_path: /home/user01/mj-workspace/Assistant-bot/RagBot/evaluation/

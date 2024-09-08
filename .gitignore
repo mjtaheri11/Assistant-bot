@@ -168,7 +168,6 @@ VectorDB
 VectorDB-Eval
 TempVectorDB
 VectorDB-TEMP
-new-KB
 
 saved_models
 VectorDB-bahar-hanieh
