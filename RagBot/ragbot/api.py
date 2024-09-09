@@ -13,9 +13,11 @@ import traceback
 
 from config import config
 from logs import simple_logger, non_generative_agent_logger
-from logic import query_responder, prepare_final_context
+from logic import prepare_final_context, query_responder, utterance_paraphraser
+from utils import json_cleaning
 
 app = FastAPI(title="Digital Assistant")
+
 # انتخاب تامین کننده برای رسید خرید داخلی اجباری است
 
 # Models for request and response
@@ -128,14 +130,15 @@ async def chat_responder(request: ChatRequest, req: Request):
         ok_response_status = config["chat_responder"]["ok_status"]
         error = config["chat_responder"]["error_status"]
 
-        context = prepare_final_context(request.query)
-
         q = f"SELECT user_query, bot_response FROM message WHERE session_id='{session_id}' ORDER BY create_time DESC LIMIT {config['retriever']['history_length']};"
         selected_history = query(q)
         history = [[h[0], h[1]] for h in selected_history[::-1]]
-
+        
+        paraphrased_utterance = utterance_paraphraser(history, request.query)
+        context = prepare_final_context(paraphrased_utterance)
+        
         response = query_responder(request.query, context, history)
-        response = json.loads(response)['answer']
+        response = json.loads(json_cleaning(response))['answer']
 
         q = "INSERT INTO message (session_id, user_query, bot_response) VALUES (%s, %s, %s) RETURNING message_id;"
         values = (session_id, request.query, response)

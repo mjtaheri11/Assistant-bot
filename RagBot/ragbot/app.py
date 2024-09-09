@@ -139,6 +139,8 @@ def main():
                             unsafe_allow_html=True,
                         )
                     with st.chat_message("assistant"):
+                        help_msg = f"""برای پاسخ به سوال شما کوئری «{st.session_state['query'][i]}» \
+                        جستجو شده است."""
                         content = (
                             st.session_state["response"][i]
                             .replace("*", "&ast;")
@@ -152,6 +154,7 @@ def main():
                                 content,
                             ),
                             unsafe_allow_html=True,
+                            help=help_msg
                         )
                         response_is_valid = st.session_state.get(
                             "response_is_valid",
