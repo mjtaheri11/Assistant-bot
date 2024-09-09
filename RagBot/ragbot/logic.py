@@ -28,7 +28,7 @@ def get_chat_response(prompt: str) -> str:
         model=config["ollama"]["model_name"],
         temperature=config["ollama"]["temperature"],
         keep_alive=config["ollama"]["keep_alive"],
-        seed=SEED.
+        seed=SEED,
         base_url=OLLAMA_HOST
     )
     messages = [SystemMessage(content=prompt)]

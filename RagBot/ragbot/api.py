@@ -3,32 +3,26 @@ import argparse
 import logging
 import time
 from datetime import datetime
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 import requests
 from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel
 import psycopg2
+import traceback
 
 from config import config
 from logs import simple_logger, non_generative_agent_logger
 from logic import query_responder, prepare_final_context
 
-# Parse command-line arguments
-parser = argparse.ArgumentParser(description='Let us build an app')
-parser.add_argument('-p', '--port', default=8686, type=int, help='The port of the uvicorn')
-args = parser.parse_args()
- 
-BASE_URL = f"http://localhost:{args.port}"
-
-app = FastAPI(title="سرویس سوال و جواب همکاران سیستم (همکار بات!)")
+app = FastAPI(title="Digital Assistant")
 # انتخاب تامین کننده برای رسید خرید داخلی اجباری است
 
 # Models for request and response
 
 class ChatRequest(BaseModel):
     query: str
-    session_id: str
+    session_id: Optional[str] = None
 
 
 class ChatResponse(BaseModel):
@@ -36,46 +30,14 @@ class ChatResponse(BaseModel):
     response: str
 
 
+class SessionResponse(BaseModel):
+    session_id: str
+
+
 class FeedbackRequest(BaseModel):
     message_id: str
     feedback_type: str
     session_id: str
-
-
-def chat_request(user_utterance, history, session_id=-1):
-    url = f"{BASE_URL}/chat"
-
-    payload = {"history": history, "user_utterance": user_utterance}
-    headers = {
-        "Content-Type": "application/json",
-        "Session-ID": session_id
-    }
-    response = requests.post(url, headers=headers, json=payload)
-
-    if response.status_code == 200:
-        return response.json()
-    else:
-        # TODO: here we should write a propoer logger
-        # response.text
-        return None
-
-
-def send_feedback(query, response, feedback_type, session_id=-1):
-    url = f"{BASE_URL}/feedback"
-
-    payload = {"query": query, "response": response, "feedback_type": feedback_type}
-    headers = {
-        "Content-Type": "application/json",
-        "Session-ID": session_id
-    }
-    response = requests.post(url, headers=headers, json=payload)
-
-    if response.status_code == 200:
-        return response.json()
-    else:
-        # TODO: here we should write a propoer logger
-        # response.text
-        return None
 
 
 def query(q, is_insert=False, insert_values=None):
@@ -103,7 +65,6 @@ def query(q, is_insert=False, insert_values=None):
 
                 
     except psycopg2.ProgrammingError as ex:
-        print("...", ex)
         raise ex
     
     finally:
@@ -112,45 +73,69 @@ def query(q, is_insert=False, insert_values=None):
 
     return output
 
-@app.post('/session/create')
+@app.post('/session/create', response_model=SessionResponse, responses={
+    200: {},
+    500: {"description": "Unhandled error that should be reported"}
+})
 async def create_session():
-    q = "INSERT INTO public.session(history_length) VALUES (5) RETURNING session_id;"
-    sid = query(q, True)
+    try:
+        q = f"INSERT INTO public.session(history_length) VALUES ({config['retriever']['history_length']}) RETURNING session_id;"
+        sid = query(q, True)
 
-    return {
-        'session_id': sid[0]
-    }
+        return {
+            'session_id': sid[0]
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Unhandled error, Please report")
 
 
-@app.post("/chat", response_model=ChatResponse)
+@app.post("/chat", response_model=ChatResponse, responses={
+    200: {},
+    500: {"description": "Unhandled error that should be reported"},
+    404: {"description": "Session not found", "content": {"application/json": {"example": {"detail": "Session not found"}}}},
+    422: {"description": "unprocessable entity e.g. no session id, or no query", "content": {"application/json": {"example": {"detail": "Query is empty"}}}}
+})
 async def chat_responder(request: ChatRequest, req: Request):
-    if not isinstance(request.query, str):
-        raise HTTPException(status_code=400, detail="Query must be a string")
-
-    session_id = req.headers.get("Session-ID", None)
-    if session_id is None:
-        try:
+    try:
+        start_time = time.time()
+        
+        session_id = req.headers.get("Session-ID", None)
+        if session_id is None:
             session_id = request.session_id
 
+            if session_id is None:
+                raise HTTPException(status_code=422, detail="No Session-ID")
+                return
+
+        if len(request.query.strip()) == 0:
+            raise HTTPException(status_code=422, detail="Query is empty")
+            return
+
+        try:
+            q = f"SELECT session_id FROM session WHERE session_id='{session_id}';"
+            result = query(q)
+            if len(result) == 0:
+                raise HTTPException(status_code=404, detail="Session not found")
+                return
+
         except Exception as e:
-            print(e)
-            raise HTTPException(status_code=400, detail="No Session-ID")
+            traceback.print_exc()
+            raise HTTPException(status_code=404, detail="Session not found")
+            return
 
-    print('SID =', session_id)
-    simple_logger(f"Received chat request", session_id)
-    ok_response_status = config["chat_responder"]["ok_status"]
-    error = config["chat_responder"]["error_status"]
+        simple_logger(f"Received chat request", session_id)
+        ok_response_status = config["chat_responder"]["ok_status"]
+        error = config["chat_responder"]["error_status"]
 
-    start_time = time.time()
-    try:
         context = prepare_final_context(request.query)
 
-        q = f"SELECT user_query, bot_response FROM message WHERE session_id='{session_id}' ORDER BY create_time DESC LIMIT 5;"
+        q = f"SELECT user_query, bot_response FROM message WHERE session_id='{session_id}' ORDER BY create_time DESC LIMIT {config['retriever']['history_length']};"
         selected_history = query(q)
         history = [[h[0], h[1]] for h in selected_history[::-1]]
 
         response = query_responder(request.query, context, history)
-        response = json.loads(response)
+        response = json.loads(response)['answer']
 
         q = "INSERT INTO message (session_id, user_query, bot_response) VALUES (%s, %s, %s) RETURNING message_id;"
         values = (session_id, request.query, response)
@@ -170,56 +155,64 @@ async def chat_responder(request: ChatRequest, req: Request):
             output.dict(),
             elapsed_time,
         )
-
+            
         return output
 
+    except HTTPException as e:
+        raise e
+
     except Exception as e:
-        print(e)
-        elapsed_time = time.time() - start_time
-        
+        traceback.print_exc()
+
         non_generative_agent_logger(
-            session_id,         
+            session_id,
             "chat_responder",
             f"Error in chat response: {str(e)}",
             {"user_utterance": request.query, "history": history},
-            output.dict(),
-            elapsed_time,                                                                                                                           
+            {},
+            elapsed_time,
         )
 
-        raise HTTPException(status_code=500, detail=".....")
 
-                                            return outputapp.post("/feedback")
+        raise HTTPException(status_code=500, detail="Unhandled error, Please report")
+        
+
+@app.post("/feedback", responses={
+    200: {"content": {"application/json": {"example": {"message": "Feedback received"}}}},
+    422: {"description": "Unprocessable entity e.g. no session id, or invalid feedabck", "content": {"application/json": {"example": {"detail": "No Session-ID"}}}},
+    404: {"description": "No message found with sent message id and session id", "content": {"application/json": {"example": {"detail": "Message not found"}}}},
+    500: {"description": "Unhandled error that should be reported"}
+})
 async def feedback(request: FeedbackRequest, req: Request):
-    session_id = req.headers.get("Session-ID", None)
-    if session_id is None:
-        try:
+    try:
+        start_time = time.time()
+        
+        session_id = req.headers.get("Session-ID", None)
+        if session_id is None:
             session_id = request.session_id
             
-        except Exception as e:
-            print(e)
-            raise HTTPException(status_code=400, detail="No Session-ID")
-    
-    try:
+            if session_id is None:
+                raise HTTPException(status_code=422, detail="No Session-ID")
+
         msg_id = request.message_id
+        
+        try:
+            q = f"SELECT FROM message WHERE message_id='{msg_id}' and session_id='{session_id}';"
+            result = query(q)
 
-    except Exception as e:
-        print(e)
-        raise HTTPException(status_code=400, detail="No message id")
+            if len(result) == 0:
+                raise HTTPException(status_code=404, detail="Message not found")
 
-    simple_logger(f"Received feedback request", session_id)
+        except Exception as e:
+            raise HTTPException(status_code=404, detail="Message not found")
 
-    start_time = time.time()
-    output = {"message": "Feedback received"}
-    try:
+
+        simple_logger(f"Received feedback request", session_id)
+
+        output = {"message": "Feedback received"}
+        
         if request.feedback_type not in ["thumb_up", "thumb_down", "flag"]:
-            raise ValueError("Invalid feedback type")
-
-        # TODO: Implement appropriate caching strategy
-        # cache = Cache()
-        # if request.feedback_type == "thumb_up":
-        #     cache.increment_thumb_up(request.query, request.response, url)
-        # elif request.feedback_type == "thumb_down":
-        #     cache.increment_thumb_down(request.query, request.response, url)
+            raise HTTPException(status_code=422, detail="Invalid feedback")
 
         elapsed_time = time.time() - start_time
 
@@ -234,25 +227,25 @@ async def feedback(request: FeedbackRequest, req: Request):
 
         q = f"UPDATE message SET feedback='{request.feedback_type}' WHERE message_id='{msg_id}' RETURNING message_id;"
         result = query(q)
-        print(result)
 
         return output
+    
+    except HTTPException as e:
+        raise e
+
     except Exception as e:
-        elapsed_time = time.time() - start_time
-        error_output = {"error": str(e)}
+        traceback.print_exc() 
 
         non_generative_agent_logger(
             session_id,
             "feedback",
             f"Error in feedback: {str(e)}",
             request.dict(),
-            error_output,
-            elapsed_time,
+            {},
+            time.time() - start_time,
         )
+        
+        
+        raise HTTPException(status_code=500, detail="Unhandled error, Please report")
 
-        raise HTTPException(status_code=422, detail=str(e))
 
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=args.port)

@@ -51,6 +51,7 @@ retriever:
   chunk_size: 1000
   max_chunk_size: 1200
   sentence_overlap: 1
+  history_length: 2
 
 
 # configurations for langchain
