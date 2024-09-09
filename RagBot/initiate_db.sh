@@ -1,2 +1,3 @@
 #!/bin/bash
-python3 ragbot/initiate_vdb.py
+mkdir VectorDB
+python ragbot/initiate_vdb.py
