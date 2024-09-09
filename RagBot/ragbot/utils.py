@@ -22,7 +22,7 @@ from pythonjsonlogger import jsonlogger
 
 #     return logger
 def json_cleaning(input_string):
-    cleaned_string = input_string.replace("json", "").replace("```", "")
+    cleaned_string = input_string.replace("json", "").replace("```", "").strip()
     return cleaned_string
 
 def init_session_state():

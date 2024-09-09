@@ -48,7 +48,7 @@ def history_serializer(history: List[tuple[str, str]]) -> str:
 
 def utterance_paraphraser(history: List[tuple[str, str]], user_utterance: str) -> str:
     # TODO such a messy modification. resolve it as soon as you can 
-    serialized_history = "\n".join(["USER: " + user_hist[0] for user_hist in history])
+    serialized_history = "\n".join(["USER: " + user_hist[0] for user_hist in history[-2:]])
     prompt = UTTERANCE_PARAPHRASER_PROMPT.format(
         history=serialized_history,
         question=user_utterance,

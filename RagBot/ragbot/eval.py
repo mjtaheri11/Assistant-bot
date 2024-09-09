@@ -18,7 +18,10 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from FlagEmbedding import FlagReranker
 
-import utils
+from prompts import RAG_EVAL_PROMPT
+from config import config
+from make_sentence_chunks import chunk_document
+from logic import utterance_paraphraser
 
 # "میخوام طبقه حساب تعریف کنم چه مرحله هایی داره؟", "response"
 
@@ -103,7 +106,7 @@ def output_parser(output):
 
 def write_to_file(results, accuracy, num_hits, num_processed_data):
     print(f'WRTIE {len(results)} RESULTS TO A CSV FILE')
-    headers = ['question', 'A', 'B', 'C','D', 'Answer', 'Model_Answer','Correct?', 'Model_Reason', 'Model_Context', 'Confidence']
+    headers = ['question', 'A', 'B', 'C','D', 'Answer', 'Model_Answer','Correct?', 'paraphrased_utterance', 'Model_Reason', 'Model_Context', 'Confidence']
     clean_results = []
     for result in results:
         row = [result['question'], result['choices'][0], result['choices'][1], result['choices'][2], result['choices'][3], result['correct_answer'] ]
@@ -120,6 +123,7 @@ def write_to_file(results, accuracy, num_hits, num_processed_data):
             row.append('1')
         else:
             row.append('0')
+        row.append(result['paraphrased_utterance'])
         row.append(reason)
         row.append(result['context'])
         row.append(result['context_confidence'])
@@ -141,27 +145,25 @@ def main(config=config):
     total_test_data = len(test_dataset)
 
     for question in tqdm(test_dataset.iterrows(), total=len(test_dataset)):
-        query = question[1].question
-        prompt_lst = [query]
+        raw_question = question[1].question
+        # prompt_lst = [query]
         result = {
-            'question': question[1].question,
+            'question': raw_question,
             'choices': [question[1].a, question[1].b, question[1].c, question[1].d], 
             'correct_answer': question[1].answer
         }
         
         # prompt_lst.extend(result["choices"])
         # prompt = "\n".join(prompt_lst)
-        context, confidence = retrieve_context(prompt=query)
-        result['context'] = context
-        result['context_confidence'] = confidence
-        # import pdb
-        # pdb.set_trace()
-
-        prompt = RAG_EVAL_PROMPT.format(context=context, question=query, a=question[1].a, b=question[1].b, c=question[1].c, d=question[1].d)
-        # import pdb 
-        # pdb.set_trace()
-        answer = llm.invoke(prompt)
         try:
+            paraphrased_utterance = utterance_paraphraser([], raw_question)
+            result["paraphrased_utterance"] = paraphrased_utterance
+            context, confidence = retrieve_context(prompt=paraphrased_utterance)
+            result['context'] = context
+            result['context_confidence'] = confidence
+            
+            prompt = RAG_EVAL_PROMPT.format(context=context, question=raw_question, a=question[1].a, b=question[1].b, c=question[1].c, d=question[1].d)
+            answer = llm.invoke(prompt)
             output = answer.content.strip("'").strip()
             output = output.replace("\n", " ").replace("  ", " ")
             output = json.loads(output)
@@ -182,32 +184,10 @@ def main(config=config):
     print(num_hits, accuracy)
     write_to_file(processed_results, accuracy, num_hits, len(processed_results))
 
-
-def do_eval():
-    retrieved_rank2_documents = [5, 10, 15]
-    retrieved_documents = [5, 10, 15]
-    chunk_sizes = [400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500]
-    max_chunk_sizes = [500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600]
-    sentence_overlaps = [1, 2, 3, 4]
-    
-    for t, retrieved_document in enumerate(retrieved_rank2_documents):
-        for i, chunk_size in enumerate(chunk_sizes):
-            for sentence_overlap in sentence_overlaps:
-                for j in range(4):
-                    for k in range(3):
-                        if k + t < len(retrieved_documents):
-                            if i + j < len(chunk_sizes):
-                                config["retriever"]["sentence_overlap"] = sentence_overlap
-                                config["retriever"]["chunk_size"] = chunk_size
-                                config["retriever"]["max_chunk_size"] = max_chunk_sizes[i + j]
-                                config["evaluation"]["retrieved_documents"] = retrieved_document
-                                config["evaluation"]["retrieved_rank2_documents"] = retrieved_rank2_documents[k + t]
-                                main(config)
                 
 if __name__ == "__main__":
     main()
     # do_eval()    
-
 
 
 # def retrieve_context(k=config['evaluation']['retrieved_rank2_documents'], **kwargs):
