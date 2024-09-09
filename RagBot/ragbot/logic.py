@@ -23,15 +23,15 @@ random.seed(SEED)
 
 
 def get_chat_response(prompt: str) -> str:
-    OLLAMA_HOST = os.getenv('OLLAMA_HOST', 'http://dockerize_assistant-ollama-1:11434')
-    LLM_MODEL = os.getenv('LLM_MODEL', 'gemma2:9b-instruct-fp16')
+    # OLLAMA_HOST = os.getenv('OLLAMA_HOST', 'http://dockerize_assistant-ollama-1:11434')
+    # LLM_MODEL = os.getenv('LLM_MODEL', 'gemma2:9b-instruct-fp16')
 
     llm = ChatOllama(
         model=config["ollama"]["model_name"],
         temperature=config["ollama"]["temperature"],
         keep_alive=config["ollama"]["keep_alive"],
         seed=SEED,
-        base_url=OLLAMA_HOST
+        # base_url=OLLAMA_HOST
     )
     messages = [SystemMessage(content=prompt)]
     response = llm.invoke(messages)  # type: ignore[arg-type]
@@ -54,7 +54,7 @@ def utterance_paraphraser(history: List[tuple[str, str]], user_utterance: str) -
         question=user_utterance,
     )
     response = get_chat_response(prompt)
-    paraphrased_query = json.loads(json_cleaning(response))["answer"]
+    paraphrased_query = json.loads(json_cleaning(response))["rephrased_query"]
     return paraphrased_query
 
 

@@ -1,3 +1,4 @@
+import json 
 import re
 import pathlib
 
@@ -5,7 +6,7 @@ import streamlit as st
 from retriever import Retriever
 from streamlit.runtime.scriptrunner.script_run_context import get_script_run_ctx
 
-from api import chat_request, send_feedback
+from api import chat_request, send_feedback, session_create
 from logs import simple_logger, non_generative_agent_logger
 from prompts import RAG_SYSTEM_PROMPT
 from utils import init_session_state
@@ -60,6 +61,9 @@ def main():
         initial_sidebar_state="collapsed",
     )
     init_session_state()
+    if "session_id" not in st.session_state:
+        session_id = session_create()
+        st.session_state["session_id"] = session_id
     number_of_columns = [1, 4, 3]
     _, logging_column, main_column = st.columns(
         number_of_columns,
@@ -106,14 +110,14 @@ def main():
                     )
                 ]
                 chat_response = chat_request(
-                    user_input, history, st.session_state.get("session_id")
+                    st.session_state.get("session_id"), user_input, 
                 )
-                query, response, response_status = (
-                    chat_response["user_utterance"],
+                message_id, response, query = (
+                    chat_response["message_id"],
                     chat_response["response"],
-                    chat_response["status"],
+                    chat_response["query"],
                 )
-                if response_status == config["chat_responder"]["ok_status"]:
+                if chat_response["status"] == config["chat_responder"]["ok_status"]:
                     response_is_valid = True
                 # elif response_status == config["chat_responder"]["doubtful_status"]:
                 #     response = RESPONSE_TEMPLATE_FOR_DOUBTFUL_ANSWER
@@ -128,6 +132,7 @@ def main():
                 st.session_state["user_input"] = ""
                 st.session_state["have_clicked_on_feedback"] = False
                 st.session_state["response_is_valid"] = response_is_valid
+                st.session_state["message_id"].append(message_id)
 
             if st.session_state.get("response") and st.session_state.get(
                 "user_utterance",
@@ -178,15 +183,13 @@ def main():
                                 flag = st.session_state.get("flag", False)
                                 if like:
                                     send_feedback(
-                                        paraphrased_query,
-                                        response,
+                                        st.session_state["message_id"][-1],
                                         "thumb_up",
                                         st.session_state.get("session_id"),
                                     )
                                 elif dislike:
                                     send_feedback(
-                                        paraphrased_query,
-                                        response,
+                                        st.session_state["message_id"][-1],
                                         "thumb_down",
                                         st.session_state.get("session_id"),
                                     )

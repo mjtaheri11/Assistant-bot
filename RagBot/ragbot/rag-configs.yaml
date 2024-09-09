@@ -3,7 +3,7 @@ database:
   persist_directory: ./VectorDB # initiate_vdb.py # ./VectorDB-bahar-hanieh #./VectorDB
   dbname: my-vdb
   documents_addr:
-    - /home/user01/mj-workspace/Assistant-bot/RagBot/new-KB/FAQ-202411408-temp.docx
+    - /home/user01/mj-workspace/Assistant-bot/RagBot/new-KB/UPDATED-FAQ 202411408-temp.docx
     - /home/user01/mj-workspace/Assistant-bot/RagBot/new-KB/GL_QA_Base Data-temp.docx
   # documents_addr: /home/user01/mj-workspace/Assistant-bot/RagBot/new-KB/FAQ-202411408-temp.docx
 
@@ -81,7 +81,7 @@ evaluation:
   # chunk_overlap: 50
 
 chat_responder:
-  ok_status: "OK"
+  ok_status: "success"
   doubtful_status: "DOUBTFUL"
   no_answer_status: "NO_ANSWER"
   error_status: "error"

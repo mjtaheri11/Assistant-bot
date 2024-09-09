@@ -1,34 +1,34 @@
 version: '3.8'
 
 services:
-  api:
-    build: .
-    container_name: ragbot_api
-    ports:
-      - "8687:8687"
-    volumes:
-      - ./ragbot/VectorDB:/app/ragbot/VectorDB
-      - ./ragbot/rag-configs.yaml:/app/ragbot/rag-configs.yaml
-      - ./saved_models:/app/saved_models
-    environment:
-      - OLLAMA_HOST=http://ollama:11434
-      - LLM_MODEL=gemma2:9b-instruct-fp16
+  # api:
+  #   build: .
+  #   container_name: ragbot_api
+  #   ports:
+  #     - "8687:8687"
+  #   volumes:
+  #     - ./ragbot/VectorDB:/app/ragbot/VectorDB
+  #     - ./ragbot/rag-configs.yaml:/app/ragbot/rag-configs.yaml
+  #     - ./saved_models:/app/saved_models
+  #   environment:
+  #     - OLLAMA_HOST=http://ollama:11434
+  #     - LLM_MODEL=gemma2:9b-instruct-fp16
       
-    command: uvicorn api:app --host 0.0.0.0 --port 8687 --reload
-    restart: always
-    depends_on:
-      - ollama
-    networks:
-      - ollama-docker
+  #   command: uvicorn api:app --host 0.0.0.0 --port 8687 --reload
+  #   restart: always
+  #   depends_on:
+  #     - ollama
+  #   networks:
+  #     - ollama-docker
 
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
-    runtime: nvidia
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             count: all
+  #             capabilities: [gpu]
+  #   runtime: nvidia
 
   ollama:
     image: ollama/ollama:latest

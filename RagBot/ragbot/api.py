@@ -30,7 +30,7 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     message_id: str
     response: str
-
+    query: str
 
 class SessionResponse(BaseModel):
     session_id: str
@@ -42,13 +42,13 @@ class FeedbackRequest(BaseModel):
     session_id: str
 
 
-def query(q, is_insert=False, insert_values=None):
+def query(q, is_insert=False, insert_values=None):   
     conn = psycopg2.connect(database="chatbot",
-        host="postgres",
+        host="192.168.48.3",#"postgres",
         user="postgres",
         password="MySecretPassword123!@#",
         port="5432")
-    
+
     try:
         with conn:
             with conn.cursor() as cursor:
@@ -74,6 +74,69 @@ def query(q, is_insert=False, insert_values=None):
         conn.close()
 
     return output
+
+
+def session_create(api_url: str = "http://185.13.230.222:8690"):
+    """
+    Sends a POST request to create a session and returns the session ID if successful.
+
+    :param api_url: The URL for the session creation API endpoint.
+    :return: The session ID if successful, None otherwise.
+    """
+    try:
+        response = requests.post(f"{api_url}/session/create")
+
+        # Check if the request was successful
+        if response.status_code == 200:
+            # Parse the JSON response and extract the session_id
+            data = response.json()
+            session_id = data.get('session_id')
+            print(f"Session ID: {session_id}")
+            return session_id
+        else:
+            # Handle any other status codes
+            return None
+
+    except requests.exceptions.RequestException as e:
+        # Handle any errors that occur during the request
+        return None
+
+def chat_request(session_id: str, query: str, api_url: str = "http://185.13.230.222:8690"):
+    # Define the request data
+    chat_data = {
+        "query": query,
+        "session_id": session_id,  # Assume this is generated or fetched from somewhere
+    }
+
+    # Send the POST request with the chat data
+    headers = {"Session-ID": session_id}
+    response = requests.post(f"{api_url}/chat", json=chat_data, headers=headers)
+
+    # Handle the different response status codes
+    json_response = response.json()
+    if response.status_code == 200:
+        return {"status": "success", "query": json_response["query"], "response": json_response["response"], "message_id": json_response["message_id"]}
+    elif response.status_code == 404:
+        return {"status": "error", "query": "", "response": "", "message_id": ""}
+    elif response.status_code == 422:
+        return {"status": "error", "query": "", "response": "", "message_id": ""}
+    elif response.status_code == 500:
+        return {"status": "error", "query": "", "response": "", "message_id": ""}
+    else:
+        return {"status": "error", "query": "", "response": "", "message_id": ""}
+
+
+def send_feedback(message_id: str, feedback_type: str, session_id: str, api_url: str = "http://185.13.230.222:8690"):
+    # Define the request data
+    feedback_data = {
+        "message_id": message_id,
+        "feedback_type": feedback_type,
+        "session_id": session_id
+    }
+
+    # Send the POST request with the feedback data
+    response = requests.post(f"{api_url}/feedback", json=feedback_data, headers={"Session-ID": session_id})
+
 
 @app.post('/session/create', response_model=SessionResponse, responses={
     200: {},
@@ -147,7 +210,8 @@ async def chat_responder(request: ChatRequest, req: Request):
         elapsed_time = time.time() - start_time
         output = ChatResponse(
             response=response,
-            message_id=msg_id[0]
+            message_id=msg_id[0],
+            query=paraphrased_utterance
         )
 
         non_generative_agent_logger(
@@ -166,7 +230,7 @@ async def chat_responder(request: ChatRequest, req: Request):
 
     except Exception as e:
         traceback.print_exc()
-
+        elapsed_time = time.time() - start_time
         non_generative_agent_logger(
             session_id,
             "chat_responder",

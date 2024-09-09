@@ -7,7 +7,6 @@ import streamlit as st
 import yaml
 from pythonjsonlogger import jsonlogger
 
-
 # def init_logger():
 #     logger = logging.getLogger(__name__)
 #     log_file = config_["logging"]["file"]
@@ -26,8 +25,8 @@ def json_cleaning(input_string):
     return cleaned_string
 
 def init_session_state():
-    if "session_id" not in st.session_state:
-        st.session_state["session_id"] = uuid.uuid4().hex
+    if "message_id" not in st.session_state:
+        st.session_state["message_id"] = []
     if "user_input" not in st.session_state:
         st.session_state["user_input"] = ""
     if "user_input_storage" not in st.session_state:

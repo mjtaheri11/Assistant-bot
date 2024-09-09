@@ -106,6 +106,27 @@
 # }}
 # """
 
+UTTERANCE_PARAPHRASER_PROMPT = """
+You are an assistant to Hamkaran System (همکاران سیستم) users. Based on the Follow-up question, suggest a user query in Farsi that remains consistent with the intent of the conversation.
+Be concise and to the point, and rephrase if user new query disambiguate previous user questions or correct previous questions. Focus on improving the flow and coherence while maintaining the user’s intent, especially when clarifying questions. do not rephrase if user input is not disambiguate.
+
+Use conversation history only when the follow-up question depends on it to be fully understood. Avoid adding any unnecessary details.
+
+Conversation History:
+{history}
+
+User question: {question}
+
+Consider the full context of the user’s questions, and if the follow-up seems to be about previous conversations, ensure that your rephrased query use main subjects of previous queries.
+REMEMBER : rephrase if user new query disambiguate previous user questions or correct previous questions. otherwise DO NOT CHANGE THE INPUT QUERY, while rephrasing try using last user query words in rephrased_query , remain the style of input.
+
+Output your response in JSON format starting and ending with curly braces, do not use double qutation inside double qutations use single qutations if needed, as follows:
+{{
+  "reasoning": "Explanation in Farsi for your rephrased query, addressing why your rephrased query is 'appropriate' based on the context and ensuring coherence with the conversation history."
+  "rephrased_query": "ًRephrased user input if needed. Do 'NOT' answer the question, just 'reformulate' it if needed and otherwise return it as is."
+}}
+"""
+
 # UTTERANCE_PARAPHRASER_PROMPT = """
 # "Analyze the user's current utterance in relation to their previous conversation history. 
 # If the utterance contains incomplete, unclear, or overly repetitive information that could cause confusion or misunderstanding in the given context, rephrase it for clarity. 
