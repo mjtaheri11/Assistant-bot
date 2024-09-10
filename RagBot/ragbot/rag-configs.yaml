@@ -51,7 +51,7 @@ retriever:
   alpha_threshold: 0
   expansion: false
   rerank: true
-  chunk_size: 850
+  chunk_size: 900
   max_chunk_size: 1200
   sentence_overlap: 1
   history_length: 2
