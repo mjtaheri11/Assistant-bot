@@ -21,6 +21,8 @@ app = FastAPI(title="Digital Assistant")
 # انتخاب تامین کننده برای رسید خرید داخلی اجباری است
 
 # Models for request and response
+# TODO api_url should be a hyper parameter
+# 
 
 class ChatRequest(BaseModel):
     query: str
@@ -43,8 +45,10 @@ class FeedbackRequest(BaseModel):
 
 
 def query(q, is_insert=False, insert_values=None):   
+    # import pdb
+    # pdb.set_trace()
     conn = psycopg2.connect(database="chatbot",
-        host="192.168.48.3",#"postgres",
+        host="192.168.48.2",#"postgres",
         user="postgres",
         password="MySecretPassword123!@#",
         port="5432")
@@ -76,7 +80,7 @@ def query(q, is_insert=False, insert_values=None):
     return output
 
 
-def session_create(api_url: str = "http://185.13.230.222:8690"):
+def session_create(api_url: str = "http://185.13.230.222:8691"): 
     """
     Sends a POST request to create a session and returns the session ID if successful.
 
@@ -85,7 +89,6 @@ def session_create(api_url: str = "http://185.13.230.222:8690"):
     """
     try:
         response = requests.post(f"{api_url}/session/create")
-
         # Check if the request was successful
         if response.status_code == 200:
             # Parse the JSON response and extract the session_id
@@ -101,7 +104,7 @@ def session_create(api_url: str = "http://185.13.230.222:8690"):
         # Handle any errors that occur during the request
         return None
 
-def chat_request(session_id: str, query: str, api_url: str = "http://185.13.230.222:8690"):
+def chat_request(session_id: str, query: str, api_url: str = "http://185.13.230.222:8691"):
     # Define the request data
     chat_data = {
         "query": query,
@@ -126,7 +129,7 @@ def chat_request(session_id: str, query: str, api_url: str = "http://185.13.230.
         return {"status": "error", "query": "", "response": "", "message_id": ""}
 
 
-def send_feedback(message_id: str, feedback_type: str, session_id: str, api_url: str = "http://185.13.230.222:8690"):
+def send_feedback(message_id: str, feedback_type: str, session_id: str, api_url: str = "http://185.13.230.222:8691"):
     # Define the request data
     feedback_data = {
         "message_id": message_id,
@@ -197,7 +200,8 @@ async def chat_responder(request: ChatRequest, req: Request):
         selected_history = query(q)
         history = [[h[0], h[1]] for h in selected_history[::-1]]
         
-        paraphrased_utterance = utterance_paraphraser(history, request.query)
+        query_history = [h[0] for h in history]
+        paraphrased_utterance = utterance_paraphraser(query_history, request.query)
         context = prepare_final_context(paraphrased_utterance)
         
         response = query_responder(request.query, context, history)

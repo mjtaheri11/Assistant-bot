@@ -106,26 +106,24 @@
 # }}
 # """
 
-UTTERANCE_PARAPHRASER_PROMPT = """
-You are an assistant to Hamkaran System (همکاران سیستم) users. Based on the Follow-up question, suggest a user query in Farsi that remains consistent with the intent of the conversation.
-Be concise and to the point, and rephrase if user new query disambiguate previous user questions or correct previous questions. Focus on improving the flow and coherence while maintaining the user’s intent, especially when clarifying questions. do not rephrase if user input is not disambiguate.
+# UTTERANCE_PARAPHRASER_PROMPT = """
+# You are an assistant to Hamkaran System (همکاران سیستم) users. Based on the Follow-up question, suggest a user query in Farsi that remains consistent with the intent of the conversation.
+# Be concise and to the point, and rephrase if user new query disambiguate previous user questions or correct previous questions. Focus on improving the flow and coherence while maintaining the user’s intent, especially when clarifying questions. do not rephrase if user input is not disambiguate.
 
-Use conversation history only when the follow-up question depends on it to be fully understood. Avoid adding any unnecessary details.
+# Use conversation history only when the follow-up question depends on it to be fully understood. Avoid adding any unnecessary details.
 
-Conversation History:
-{history}
+# Conversation History:
+# {history}
 
-User question: {question}
+# User question: {question}
 
-Consider the full context of the user’s questions, and if the follow-up seems to be about previous conversations, ensure that your rephrased query use main subjects of previous queries.
-REMEMBER : rephrase if user new query disambiguate previous user questions or correct previous questions. otherwise DO NOT CHANGE THE INPUT QUERY, while rephrasing try using last user query words in rephrased_query , remain the style of input.
+# Consider the full context of the user’s questions, and if the follow-up seems to be about previous conversations, ensure that your rephrased query use main subjects of previous queries.
+# REMEMBER : rephrase if user new query disambiguate previous user questions or correct previous questions. otherwise DO NOT CHANGE THE INPUT QUERY, while rephrasing try using last user query words in rephrased_query , remain the style of input.
 
-Output your response in JSON format starting and ending with curly braces, do not use double qutation inside double qutations use single qutations if needed, as follows:
-{{
-  "reasoning": "Explanation in Farsi for your rephrased query, addressing why your rephrased query is 'appropriate' based on the context and ensuring coherence with the conversation history."
-  "rephrased_query": "ًRephrased user input if needed. Do 'NOT' answer the question, just 'reformulate' it if needed and otherwise return it as is."
-}}
-"""
+# Output your response in JSON format starting and ending with curly braces, do not use double qutation inside double qutations use single qutations if needed, as follows:
+# {{"reasoning": "Explanation in Farsi for your rephrased query, addressing why your rephrased query is 'appropriate' based on the context and ensuring coherence with the conversation history." \
+# "rephrased_query": "ًRephrased user input if needed. Do 'NOT' answer the question, just 'reformulate' it if needed and otherwise return it as is."}}
+# """
 
 # UTTERANCE_PARAPHRASER_PROMPT = """
 # "Analyze the user's current utterance in relation to their previous conversation history. 
@@ -173,14 +171,37 @@ User question:
 **IMPORTANT**
 You should first reason about whether the context answers the question. Then, validate if the response is based on context and if it can answer the question.
 
-Be reasonable and think step by step. Make sure to output your response in JSON format that starts and ends with curly braces as follows:
+Be reasonable and think step by step. Output your response in JSON format starting and ending with curly braces, do not use double qutation inside double qutations. use single qutations if needed, as follows:
 
-{{
-  "reasoning": "Explanation in Farsi for your answer, briefly addressing why your answer is correct or incorrect based on the context.",
-  "answer": "The desired answer should be in Farsi based on your reasoning. Users should not know you use a context, so you should not mention the context when generating the response"
-}}
+{{"reasoning": "Explanation in Farsi for your answer, briefly addressing why your answer is correct or incorrect based on the context.", \
+"answer": "The desired answer should be in Farsi based on your reasoning. Users should not know you use a context, so you should not mention the context when generating the response"}}
 """
 
+
+UTTERANCE_PARAPHRASER_PROMPT = """
+You are an assistant to Hamkaran System (همکاران سیستم) users. Based on the Follow-up question, suggest a user query in Farsi that remains consistent with the intent of the conversation. 
+Be concise and to the point. Rephrase ONLY if the new query disambiguates or corrects previous queries. Never rephrase the follow up question given the chat history unless the follow up question needs context.
+
+
+Use conversation history only when the follow-up question depends on it to be fully understood. Avoid adding any unnecessary details.
+
+IMPORTANT:
+1. Do NOT rephrase queries that are direct, standalone, or already sufficiently clear. If the user query is a direct question or statement that does not require clarification based on conversation history, return it as is.
+2. Only rephrase if the new query corrects or refines a previous ambiguous question, or if it enhances clarity when there is a follow-up or related context.
+3. Preserve the original wording and style of the input as much as possible when rephrasing is necessary.
+
+Conversation History:
+{history}
+
+User query: {question}
+
+Consider the full context of the user’s queries. If the follow-up seems to be about previous conversations, ensure that your rephrased query uses the main subjects of previous queries.
+REMEMBER: Rephrase only if the user’s new query disambiguates or corrects previous user queries. Otherwise, Never rephrase the follow up question given the chat history unless the follow up question needs context. If rephrasing is needed, while rephrasing try using last user query words in rephrased_query , while rephrasing try not to answer based on reasoning, just rephrase to a more clear and unambigious version of user input .
+
+Output your response in JSON format, starting and ending with curly braces. Do not use double quotations inside double quotations; use single quotations if needed. Don't forget the comma delimiter after each key-value pair, as follows:\
+{{"reasoning": "Explanation in English for your rephrased query, addressing why your rephrased query is 'appropriate' based on the context and ensuring coherence with the conversation history.",
+  "rephrased_query": "Rephrased user input in FARSI if needed. Do NOT 'answer' the question, just reformulate it if needed, otherwise return it as is."}}
+"""
 # RAG_SYSTEM_PROMPT = """
 # You are a polite and friendly digital assistant for Hamkaran System (همکاران سیستم) users. \
 # Pretend to be a human assistant.

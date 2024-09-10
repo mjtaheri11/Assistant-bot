@@ -8,9 +8,6 @@ import torch
 import numpy as np 
 import pandas as pd
 from tqdm import tqdm
-from statistics import mean
-
-from prompts import RAG_EVAL_PROMPT
 from langchain_community.chat_models import ChatOllama
 from langchain_community.vectorstores import Chroma
 from langchain_community.document_loaders import DirectoryLoader, TextLoader
@@ -22,6 +19,7 @@ from prompts import RAG_EVAL_PROMPT
 from config import config
 from make_sentence_chunks import chunk_document
 from logic import utterance_paraphraser
+from utils import json_cleaning
 
 # "میخوام طبقه حساب تعریف کنم چه مرحله هایی داره؟", "response"
 
@@ -30,7 +28,6 @@ np.random.seed(0)
 torch.cuda.manual_seed_all(0)
 random.seed(0)
 
-config = utils.get_config()
 
 embedding_model_ = HuggingFaceEmbeddings(
                 model_name=config["embedding_model"]["model_name"],
@@ -164,11 +161,13 @@ def main(config=config):
             
             prompt = RAG_EVAL_PROMPT.format(context=context, question=raw_question, a=question[1].a, b=question[1].b, c=question[1].c, d=question[1].d)
             answer = llm.invoke(prompt)
-            output = answer.content.strip("'").strip()
-            output = output.replace("\n", " ").replace("  ", " ")
-            output = json.loads(output)
+            output = json.loads(json_cleaning(answer.content))
+            import pdb
+            pdb.set_trace()
         except:
             total_test_data -= 1
+            import pdb
+            pdb.set_trace()
             print('Decoding JSON has failed')
             continue
         

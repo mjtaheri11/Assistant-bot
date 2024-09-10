@@ -122,7 +122,7 @@ def main():
                 # elif response_status == config["chat_responder"]["doubtful_status"]:
                 #     response = RESPONSE_TEMPLATE_FOR_DOUBTFUL_ANSWER
                 #     response_is_valid = False
-                elif response_status == config["chat_responder"]["no_answer_status"]:
+                elif chat_response["status"] == config["chat_responder"]["no_answer_status"]:
                     response = RESPONSE_TEMPLATE_FOR_NO_ANSWER
                     response_is_valid = False
                 progress_bar.progress(value=100, text="Done.")
