@@ -19,7 +19,7 @@ from prompts import RAG_EVAL_PROMPT
 from config import config
 from make_sentence_chunks import chunk_document
 from logic import utterance_paraphraser
-from utils import json_cleaning
+from utils import json_cleaning, json_text_cleaning
 
 # "میخوام طبقه حساب تعریف کنم چه مرحله هایی داره؟", "response"
 
@@ -152,24 +152,18 @@ def main(config=config):
         
         # prompt_lst.extend(result["choices"])
         # prompt = "\n".join(prompt_lst)
+        paraphrased_utterance = utterance_paraphraser([], raw_question)
+        result["paraphrased_utterance"] = paraphrased_utterance
+        context, confidence = retrieve_context(prompt=paraphrased_utterance)
+        result['context'] = context
+        result['context_confidence'] = confidence
+        
+        prompt = RAG_EVAL_PROMPT.format(context=context, question=raw_question, a=question[1].a, b=question[1].b, c=question[1].c, d=question[1].d)
+        answer = llm.invoke(prompt)
         try:
-            paraphrased_utterance = utterance_paraphraser([], raw_question)
-            result["paraphrased_utterance"] = paraphrased_utterance
-            context, confidence = retrieve_context(prompt=paraphrased_utterance)
-            result['context'] = context
-            result['context_confidence'] = confidence
-            
-            prompt = RAG_EVAL_PROMPT.format(context=context, question=raw_question, a=question[1].a, b=question[1].b, c=question[1].c, d=question[1].d)
-            answer = llm.invoke(prompt)
-            output = json.loads(json_cleaning(answer.content))
-            import pdb
-            pdb.set_trace()
+            output = json.loads(json_cleaning(answer.content, key="answer"))
         except:
-            total_test_data -= 1
-            import pdb
-            pdb.set_trace()
-            print('Decoding JSON has failed')
-            continue
+            output = json_text_cleaning(json_cleaning(answer.content, key="answer"))
         
         if question[1].answer == output['answer']:
             num_hits += 1

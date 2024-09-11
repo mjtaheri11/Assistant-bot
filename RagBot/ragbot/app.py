@@ -28,7 +28,6 @@ RESPONSE_TEMPLATE_FOR_NO_ANSWER = """
     با تشکر
     """
 
-
 CSS_STYLE_FILE = "{path}/style.css".format(path=pathlib.Path(__file__).parent.resolve())
 
 # with open(CSS_STYLE_FILE) as f:

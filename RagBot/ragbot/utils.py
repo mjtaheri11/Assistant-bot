@@ -3,6 +3,7 @@ import logging
 import logging.handlers
 import uuid
 import re
+from json.decoder import JSONDecodeError
 
 import streamlit as st
 import yaml
@@ -21,11 +22,43 @@ from pythonjsonlogger import jsonlogger
 #     logger.setLevel(logging.DEBUG)
 
 #     return logger
-def json_cleaning(input_string):
+
+def json_text_cleaning(text, key="answer"):
     # import pdb
     # pdb.set_trace()
-    cleaned_string = input_string.replace("json", "").replace("```", "").strip()
+    if key == "answer":
+        match_answer = re.search(rf'"{key}"\s*:\s*"((?:[^"\\]|\\.)*)"\s*(?:,|}})', text, re.DOTALL)
+        
+    elif key == "rephrased_query":
+        match_answer = re.search(rf'"{key}"\s*:\s*(.*?)(?=,\s*"(?:reasoning|[^"]+)"\s*:|}}$)', text, re.DOTALL)
+    # import pdb
+    # pdb.set_trace()
+    match_reasoning = re.search(r'"reasoning"\s*:\s*"((?:[^"\\]|\\.)*)"\s*,', text, re.DOTALL)
+    if match_answer:
+        answer_value = match_answer.group(1)
+        answer_value = answer_value.strip('"')
+        # Unescape any escaped quotes within the value
+        answer_value = answer_value.replace('\\"', '"')
+    else:
+        answer_value = ""
+    
+    if match_reasoning:
+        reasoning_value = match_reasoning.group(1)
+        reasoning_value = answer_value.strip('"')
+        # Unescape any escaped quotes within the value
+        reasoning_value = answer_value.replace('\\"', '"')
+    else:
+        reasoning_value = ""
+    
+    json_output = {key: str(answer_value), "reasoning": str(reasoning_value)}
+    return json_output
+
+
+def json_cleaning(input_string, key):    
+    cleaned_string = input_string.replace("json", "").replace("```", "").replace("\n\n", "\n").strip()
+    # cleaned_string = re.sub(r'\n+', '\n', cleaned_string)
     return cleaned_string
+
 
 def init_session_state():
     if "message_id" not in st.session_state:

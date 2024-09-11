@@ -168,14 +168,15 @@ User question:
 
 {question}
 
-**REMEMBER**
+**IMPORTANT**
 You should first reason about whether the context answers the question. Then, validate if the response is based on context and if it can answer the question.
 
 Be reasonable and think step by step. Output your response in JSON format starting and ending with curly braces, do not use double qutation inside double qutations. use single qutations if needed, as follows:
 
 {{"reasoning": "Explanation in English for your answer, briefly addressing why your answer is correct or incorrect based on the context.", \
-"answer": "The desired answer should be in Farsi based on your reasoning. Users should not know you use a context, so you should not mention the context when generating the response"}}
+"answer": "The desired answer should be in Farsi based on your reasoning."}}
 """
+# Users should not know you use a context, so you should not mention the context when generating the response
 
 # current version
 # UTTERANCE_PARAPHRASER_PROMPT = """
@@ -260,6 +261,30 @@ Output your response in JSON format, starting and ending with curly braces. Do n
  "rephrased_query": "Rephrased user input in FARSI if needed. Do NOT 'answer' the question; just reformulate it if needed; otherwise return it as is."}}
 """
 
+# UTTERANCE_PARAPHRASER_PROMPT = """
+# As an assistant in the Hamkaran System (همکاران سیستم), your role is to suggest a user query in Farsi that aligns with the conversation's intent based on the follow-up question. 
+# Rephrase ONLY if the new query disambiguates or corrects previous queries. Given the chat history, only rephrase the follow-up question if it needs context to be fully understood. Avoid adding any unnecessary details.
+
+# IMPORTANT:
+# 1. If the query is vague (e.g., 'بیشتر توضیح بده'), check the conversation history for context. Incorporate that context into the rephrased query to ensure it is specific and actionable.
+# 2. Do NOT rephrase queries that are direct, standalone, without history, or already sufficiently clear. Thus, return the original query if the user query is a direct question or statement that does not require clarification based on conversation history.
+# 3. Only rephrase if the new query corrects or refines a previous ambiguous question or if it enhances clarity when there is a follow-up or related context. Otherwise, never rephrase the follow-up question
+# 4. When rephrasing is necessary, add relevant context from the conversation history to make the query more complete, specific, or coherent. Avoid adding unnecessary details that are not derived from the user's prior queries
+
+# REMEMBER:
+# 1. When rephrasing is necessary, it is vital to preserve the original wording and style of the input as much as possible. This ensures the user's voice and intent are maintained in the rephrased query.
+# 2. While rephrasing, try not to answer based on reasoning; just rephrase to a clearer and more unambiguous version of user input. This will make the user feel that their original query is clear and understandable.
+
+# Conversation History:
+# {history}
+
+# User query: {question}
+
+# Output your response in JSON format, starting and ending with curly braces. Do not use double quotations inside double quotations; use single quotations if needed. Don't forget the comma delimiter after each key-value pair, as follows:\
+# {{"reasoning": "Explanation in English for your rephrased query, addressing why your rephrased query is 'appropriate' based on the context and ensuring coherence with the conversation history.",
+#  "rephrased_query": "Rephrased user input in FARSI if needed. Do NOT 'answer' the question; just reformulate it if needed; otherwise return it as is." }}
+# """
+
 
 # RAG_SYSTEM_
 # ROMPT = """
@@ -320,8 +345,6 @@ D {d}
 
 Be reasonable and think step by step. Make sure to output your response in JSON format that starts and ends with curly braces as follows:
 
-{{
-  "answer": "The desired answer, which should be in the form of only one option among A, B, C, D"
-  "reasoning": "Explanation in Persian for your choice, briefly addressing why each option is correct or incorrect based on the context.",
-}}
+{{"answer": "The desired answer, which should be in the form of only one option among A, B, C, D"\
+  "reasoning": "Explanation in Persian for your choice, briefly addressing why each option is correct or incorrect based on the context.",}}
 """

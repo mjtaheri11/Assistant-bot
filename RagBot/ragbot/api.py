@@ -14,7 +14,6 @@ import traceback
 from config import config
 from logs import simple_logger, non_generative_agent_logger
 from logic import prepare_final_context, query_responder, utterance_paraphraser
-from utils import json_cleaning
 
 app = FastAPI(title="Digital Assistant")
 
@@ -48,7 +47,7 @@ def query(q, is_insert=False, insert_values=None):
     # import pdb
     # pdb.set_trace()
     conn = psycopg2.connect(database="chatbot",
-        host="192.168.48.2",#"postgres",
+        host="172.19.0.1", #"postgres",
         user="postgres",
         password="MySecretPassword123!@#",
         port="5432")
@@ -201,15 +200,18 @@ async def chat_responder(request: ChatRequest, req: Request):
         history = [[h[0], h[1]] for h in selected_history[::-1]]
         
         query_history = [h[0] for h in history]
-        paraphrased_utterance = utterance_paraphraser(query_history, request.query)
+        paraphrased_utterance_dict = utterance_paraphraser(query_history, request.query)
+        paraphrased_utterance = paraphrased_utterance_dict["rephrased_query"]
         context = prepare_final_context(paraphrased_utterance)
         
-        response = query_responder(request.query, context, history)
-        response = json.loads(json_cleaning(response))['answer']
+        json_response = query_responder(request.query, context, history)
+        response = json_response["answer"]
 
         q = "INSERT INTO message (session_id, user_query, bot_response) VALUES (%s, %s, %s) RETURNING message_id;"
         values = (session_id, request.query, response)
         msg_id = query(q, True, values)
+        # import pdb
+        # pdb.set_trace()
         
         elapsed_time = time.time() - start_time
         output = ChatResponse(

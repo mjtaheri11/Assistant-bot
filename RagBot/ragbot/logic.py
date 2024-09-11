@@ -12,7 +12,7 @@ from prompts import RAG_SYSTEM_PROMPT, UTTERANCE_PARAPHRASER_PROMPT
 from retriever import Retriever
 from config import config
 from logs import simple_logger
-from utils import json_cleaning
+from utils import json_cleaning, json_text_cleaning
 
 SEED = 0
 torch.manual_seed(SEED)
@@ -54,8 +54,9 @@ def utterance_paraphraser(history: List[tuple[str, str]], user_utterance: str) -
         question=user_utterance,
     )
     response = get_chat_response(prompt)
-    paraphrased_query = json.loads(json_cleaning(response))["rephrased_query"]
-    return paraphrased_query
+    paraphrased_query = json_cleaning(response, key="rephrased_query")
+    paraphrased_query_dict = json_text_cleaning(paraphrased_query, key="rephrased_query")
+    return paraphrased_query_dict
 
 
 def query_responder(query: str, context: str, history: str) -> str:
@@ -66,10 +67,10 @@ def query_responder(query: str, context: str, history: str) -> str:
         history=serialized_history,
         question=query,
     )
-
     response = get_chat_response(prompt)
-    return response
-
+    cleaned_response = json_cleaning(response, key="answer")
+    cleaned_response_dict = json_text_cleaning(cleaned_response, "answer")
+    return cleaned_response_dict
 
 def prepare_final_context(query: str) -> str:
     retriever = Retriever()
