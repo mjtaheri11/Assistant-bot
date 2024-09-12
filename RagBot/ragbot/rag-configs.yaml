@@ -24,8 +24,8 @@ streamlit:
 # configurations for ollama
 ollama:
   # model_name: qwen2:72b-instruct-q4_K_M
-  # model_name: gemma2:9b-instruct-fp16
-  model_name: gemma2:27b-instruct-q8_0 
+  model_name: gemma2:9b-instruct-fp16
+  # model_name: gemma2:27b-instruct-q8_0 
   temperature: 0
   stream: true
   keep_alive: 120
