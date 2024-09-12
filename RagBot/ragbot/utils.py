@@ -33,7 +33,6 @@ def json_text_cleaning(text, key="answer"):
         match_answer = re.search(rf'"{key}"\s*:\s*(.*?)(?=,\s*"(?:reasoning|[^"]+)"\s*:|}}$)', text, re.DOTALL)
     # import pdb
     # pdb.set_trace()
-    match_reasoning = re.search(r'"reasoning"\s*:\s*"((?:[^"\\]|\\.)*)"\s*,', text, re.DOTALL)
     if match_answer:
         answer_value = match_answer.group(1)
         answer_value = answer_value.strip('"')
@@ -42,6 +41,7 @@ def json_text_cleaning(text, key="answer"):
     else:
         answer_value = ""
     
+    match_reasoning = re.search(r'"reasoning"\s*:\s*"((?:[^"\\]|\\.)*)"', text, re.DOTALL)
     if match_reasoning:
         reasoning_value = match_reasoning.group(1)
         reasoning_value = answer_value.strip('"')

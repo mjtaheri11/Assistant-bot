@@ -2,24 +2,17 @@ import json
 import re
 import pathlib
 
+import requests
 import streamlit as st
 from retriever import Retriever
 from streamlit.runtime.scriptrunner.script_run_context import get_script_run_ctx
 
-from api import chat_request, send_feedback, session_create
 from logs import simple_logger, non_generative_agent_logger
 from prompts import RAG_SYSTEM_PROMPT
 from utils import init_session_state
 from config import config
 
 
-# from logic import chat_responder, feedback
-# from streamlit_feedback import streamlit_feedback
-
-# from styles import (HTML_RTL_INPUT_BODY, HTML_RTL_INPUT_TITLE,
-#                     HTML_STYLE_FOR_RTL_INPUT_ELEMENT)
-
-# st.set_page_config(page_title="SG-DA RAG BOT", page_icon="🤖")
 
 RESPONSE_TEMPLATE_FOR_NO_ANSWER = """
     به سامانه سوال و جواب همکاران سیستم خوش آمدید. 
@@ -29,9 +22,70 @@ RESPONSE_TEMPLATE_FOR_NO_ANSWER = """
     """
 
 CSS_STYLE_FILE = "{path}/style.css".format(path=pathlib.Path(__file__).parent.resolve())
-
+BASE_URL = "http://185.13.230.222:8691"
 # with open(CSS_STYLE_FILE) as f:
 #     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+
+
+def session_create(api_url: str = BASE_URL): 
+    """
+    Sends a POST request to create a session and returns the session ID if successful.
+
+    :param api_url: The URL for the session creation API endpoint.
+    :return: The session ID if successful, None otherwise.
+    """
+    try:
+        response = requests.post(f"{api_url}/session/create")
+        # Check if the request was successful
+        if response.status_code == 200:
+            # Parse the JSON response and extract the session_id
+            data = response.json()
+            session_id = data.get('session_id')
+            print(f"Session ID: {session_id}")
+            return session_id
+        else:
+            # Handle any other status codes
+            return None
+
+    except requests.exceptions.RequestException as e:
+        # Handle any errors that occur during the request
+        return None
+
+def chat_request(session_id: str, query: str, api_url: str = BASE_URL):
+    # Define the request data
+    chat_data = {
+        "query": query,
+        "session_id": session_id,  # Assume this is generated or fetched from somewhere
+    }
+
+    # Send the POST request with the chat data
+    headers = {"Session-ID": session_id}
+    response = requests.post(f"{api_url}/chat", json=chat_data, headers=headers)
+
+    # Handle the different response status codes
+    json_response = response.json()
+    if response.status_code == 200:
+        return {"status": "success", "query": json_response["query"], "response": json_response["response"], "message_id": json_response["message_id"]}
+    elif response.status_code == 404:
+        return {"status": "error", "query": "", "response": "", "message_id": ""}
+    elif response.status_code == 422:
+        return {"status": "error", "query": "", "response": "", "message_id": ""}
+    elif response.status_code == 500:
+        return {"status": "error", "query": "", "response": "", "message_id": ""}
+    else:
+        return {"status": "error", "query": "", "response": "", "message_id": ""}
+
+
+def send_feedback(message_id: str, feedback_type: str, session_id: str, api_url: str = BASE_URL):
+    # Define the request data
+    feedback_data = {
+        "message_id": message_id,
+        "feedback_type": feedback_type,
+        "session_id": session_id
+    }
+
+    # Send the POST request with the feedback data
+    response = requests.post(f"{api_url}/feedback", json=feedback_data, headers={"Session-ID": session_id})
 
 
 def clear_logs():
@@ -260,6 +314,14 @@ def main():
                 with st.expander(title):
                     st.write(description)
 
+
+# from logic import chat_responder, feedback
+# from streamlit_feedback import streamlit_feedback
+
+# from styles import (HTML_RTL_INPUT_BODY, HTML_RTL_INPUT_TITLE,
+#                     HTML_STYLE_FOR_RTL_INPUT_ELEMENT)
+
+# st.set_page_config(page_title="SG-DA RAG BOT", page_icon="🤖")
 
 # st.title("Welcome to System Group RAG BOT!!")
 # ctx = get_script_run_ctx()

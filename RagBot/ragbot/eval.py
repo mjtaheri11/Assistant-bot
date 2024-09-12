@@ -19,7 +19,7 @@ from prompts import RAG_EVAL_PROMPT
 from config import config
 from make_sentence_chunks import chunk_document
 from logic import utterance_paraphraser
-from utils import json_cleaning, json_text_cleaning
+from utils import json_text_cleaning, json_cleaning
 
 # "میخوام طبقه حساب تعریف کنم چه مرحله هایی داره؟", "response"
 
@@ -79,7 +79,7 @@ def retrieve_context(prompt, k=config['evaluation']['retrieved_rank2_documents']
     docs = [doc.page_content for doc in docs]
     scores = reranker_model_.compute_score([[prompt, doc] for doc in docs], normalize=True)
     docs_scores = [(docs[i], scores[i]) for i in range(len(docs))]
-    docs_scores_sorted = sorted(docs_scores, key=lambda x: x[1], reverse=False)[0:k]
+    docs_scores_sorted = sorted(docs_scores, key=lambda x: x[1], reverse=True)[:k]
 
     conf = mean([d[1] for d in docs_scores])
 
@@ -107,14 +107,7 @@ def write_to_file(results, accuracy, num_hits, num_processed_data):
     clean_results = []
     for result in results:
         row = [result['question'], result['choices'][0], result['choices'][1], result['choices'][2], result['choices'][3], result['correct_answer'] ]
-        try: 
-            answer, reason = result['predicted_answer']['answer'], result['predicted_answer']['reasoning']
-            # obj = parser.parse(result['predicted_answer'])
-            # answer = obj.answer
-            # reason = obj.reasoning
-        except:
-            answer, reason = output_parser(result['predicted_answer'])
-
+        answer, reason = result['predicted_answer']['answer'], result['predicted_answer']['reasoning']
         row.append(answer)
         if result['correct_answer'] in answer:
             row.append('1')
@@ -152,7 +145,8 @@ def main(config=config):
         
         # prompt_lst.extend(result["choices"])
         # prompt = "\n".join(prompt_lst)
-        paraphrased_utterance = utterance_paraphraser([], raw_question)
+        # paraphrased_utterance = utterance_paraphraser([], raw_question)
+        paraphrased_utterance = raw_question
         result["paraphrased_utterance"] = paraphrased_utterance
         context, confidence = retrieve_context(prompt=paraphrased_utterance)
         result['context'] = context
@@ -160,11 +154,8 @@ def main(config=config):
         
         prompt = RAG_EVAL_PROMPT.format(context=context, question=raw_question, a=question[1].a, b=question[1].b, c=question[1].c, d=question[1].d)
         answer = llm.invoke(prompt)
-        try:
-            output = json.loads(json_cleaning(answer.content, key="answer"))
-        except:
-            output = json_text_cleaning(json_cleaning(answer.content, key="answer"))
-        
+        cleaned_response = json_cleaning(answer.content, key="answer")
+        output = json_text_cleaning(cleaned_response, "answer")
         if question[1].answer == output['answer']:
             num_hits += 1
 

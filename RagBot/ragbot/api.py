@@ -5,7 +5,6 @@ import time
 from datetime import datetime
 from typing import List, Tuple, Optional
 
-import requests
 from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel
 import psycopg2
@@ -79,67 +78,6 @@ def query(q, is_insert=False, insert_values=None):
     return output
 
 
-def session_create(api_url: str = "http://185.13.230.222:8691"): 
-    """
-    Sends a POST request to create a session and returns the session ID if successful.
-
-    :param api_url: The URL for the session creation API endpoint.
-    :return: The session ID if successful, None otherwise.
-    """
-    try:
-        response = requests.post(f"{api_url}/session/create")
-        # Check if the request was successful
-        if response.status_code == 200:
-            # Parse the JSON response and extract the session_id
-            data = response.json()
-            session_id = data.get('session_id')
-            print(f"Session ID: {session_id}")
-            return session_id
-        else:
-            # Handle any other status codes
-            return None
-
-    except requests.exceptions.RequestException as e:
-        # Handle any errors that occur during the request
-        return None
-
-def chat_request(session_id: str, query: str, api_url: str = "http://185.13.230.222:8691"):
-    # Define the request data
-    chat_data = {
-        "query": query,
-        "session_id": session_id,  # Assume this is generated or fetched from somewhere
-    }
-
-    # Send the POST request with the chat data
-    headers = {"Session-ID": session_id}
-    response = requests.post(f"{api_url}/chat", json=chat_data, headers=headers)
-
-    # Handle the different response status codes
-    json_response = response.json()
-    if response.status_code == 200:
-        return {"status": "success", "query": json_response["query"], "response": json_response["response"], "message_id": json_response["message_id"]}
-    elif response.status_code == 404:
-        return {"status": "error", "query": "", "response": "", "message_id": ""}
-    elif response.status_code == 422:
-        return {"status": "error", "query": "", "response": "", "message_id": ""}
-    elif response.status_code == 500:
-        return {"status": "error", "query": "", "response": "", "message_id": ""}
-    else:
-        return {"status": "error", "query": "", "response": "", "message_id": ""}
-
-
-def send_feedback(message_id: str, feedback_type: str, session_id: str, api_url: str = "http://185.13.230.222:8691"):
-    # Define the request data
-    feedback_data = {
-        "message_id": message_id,
-        "feedback_type": feedback_type,
-        "session_id": session_id
-    }
-
-    # Send the POST request with the feedback data
-    response = requests.post(f"{api_url}/feedback", json=feedback_data, headers={"Session-ID": session_id})
-
-
 @app.post('/session/create', response_model=SessionResponse, responses={
     200: {},
     500: {"description": "Unhandled error that should be reported"}
@@ -197,11 +135,12 @@ async def chat_responder(request: ChatRequest, req: Request):
 
         q = f"SELECT user_query, bot_response FROM message WHERE session_id='{session_id}' ORDER BY create_time DESC LIMIT {config['retriever']['history_length']};"
         selected_history = query(q)
-        history = [[h[0], h[1]] for h in selected_history[::-1]]
+        history = [[h[0], h[1]] for h in selected_history[::-10]]
         
         query_history = [h[0] for h in history]
-        paraphrased_utterance_dict = utterance_paraphraser(query_history, request.query)
-        paraphrased_utterance = paraphrased_utterance_dict["rephrased_query"]
+        # paraphrased_utterance_dict = utterance_paraphraser(query_history, request.query)
+        # paraphrased_utterance = paraphrased_utterance_dict["rephrased_query"]
+        paraphrased_utterance = request.query
         context = prepare_final_context(paraphrased_utterance)
         
         json_response = query_responder(request.query, context, history)
@@ -224,7 +163,7 @@ async def chat_responder(request: ChatRequest, req: Request):
             session_id,
             "chat_responder",
             "Chat response generated",
-            {"user_utterance": request.query, "history": history},
+            {"user_utterance": request.query, "history": history, "context": context},
             output.dict(),
             elapsed_time,
         )
@@ -320,5 +259,3 @@ async def feedback(request: FeedbackRequest, req: Request):
         
         
         raise HTTPException(status_code=500, detail="Unhandled error, Please report")
-
-

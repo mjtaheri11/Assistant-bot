@@ -62,17 +62,16 @@ class Retriever(object):
             scores = self.reranker_model_.compute_score([[query, doc] for doc in documents], normalize=True)
             docs_scores = [(documents[i], scores[i]) for i in range(len(documents))]
             docs_scores_sorted = sorted(docs_scores, key=lambda x: x[1], reverse=True)[:k]
-
-            conf = mean([d[1] for d in docs_scores])
+            conf = mean([d[1] for d in docs_scores_sorted])
 
         # TODO: appropriate logger
-        documents = "\n\n".join(documents)
+        sorted_documents = '\n\n'.join([d[0] for d in reversed(docs_scores_sorted)])
         logger.info(
             "retriever returns query: {query}\ndocuments {documents} conf: {conf}".format(
-                query=query, documents=documents, conf=conf
+                query=query, documents=sorted_documents, conf=conf
             )
         )
-        return documents, conf
+        return sorted_documents, conf
 
     def expand_query(self, query):
         # TODO: Add implementation for expanding the query using the first docuemnt outputed from KB
