@@ -36,8 +36,16 @@ def json_text_cleaning(text, key="answer"):
     if match_answer:
         answer_value = match_answer.group(1)
         answer_value = answer_value.strip('"')
-        # Unescape any escaped quotes within the value
-        answer_value = answer_value.replace('\\"', '"')
+        # Unescape any escaped quotes and preserve newlines
+        answer_value = answer_value.replace('\\"', '"').replace('\\n', '\n')
+        # Properly format numbered lists while preserving newlines
+        answer_value = re.sub(r'(\n|^)(\d+)[\.:]?\s*', r'\1\2. ', answer_value)
+        # Replace asterisks used for bullet points with actual bullet points, preserving newlines
+        answer_value = re.sub(r'(\n|^)\s*\*\s*', r'\1• ', answer_value)
+        # Ensure there's a newline before each bullet point (except the first one)
+        answer_value = re.sub(r'([^\n])(\n• )', r'\1\n\n• ', answer_value)
+        # Remove any extra newlines
+        answer_value = re.sub(r'\n{3,}', '\n\n', answer_value)
     else:
         answer_value = ""
     
@@ -46,7 +54,11 @@ def json_text_cleaning(text, key="answer"):
         reasoning_value = match_reasoning.group(1)
         reasoning_value = answer_value.strip('"')
         # Unescape any escaped quotes within the value
-        reasoning_value = answer_value.replace('\\"', '"')
+        reasoning_value = reasoning_value.replace('\\"', '"').replace('\\n', '\n')
+        # Properly format numbered lists
+        reasoning_value = re.sub(r'\n(\d+)[\.:]?\s*', r'\n\1. ', reasoning_value)
+        # Replace asterisks used for bullet points with actual bullet points
+        reasoning_value = re.sub(r'^\s*\*\s*', '• ', reasoning_value, flags=re.MULTILINE)
     else:
         reasoning_value = ""
     
@@ -55,7 +67,7 @@ def json_text_cleaning(text, key="answer"):
 
 
 def json_cleaning(input_string, key):    
-    cleaned_string = input_string.replace("json", "").replace("```", "").replace("\n\n", "\n").strip()
+    cleaned_string = input_string.replace("json", "").replace("```", "").strip() #.replace("\n\n", "\n").strip()
     # cleaned_string = re.sub(r'\n+', '\n', cleaned_string)
     return cleaned_string
 

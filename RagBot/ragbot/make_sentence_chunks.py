@@ -1,8 +1,8 @@
+import re
+from typing import List, Dict
+
 import docx
 from docx.enum.style import WD_STYLE_TYPE
-from typing import List, Dict
-import re
-
 from langchain.schema import Document
 
 from config import config
@@ -62,20 +62,22 @@ def process_single_document(doc_path: str, target_chunk_size: int=config["retrie
     
     return chunks
 
-def chunk_document(doc_paths: List[str], target_chunk_size: int = 1000, max_chunk_size: int = 1500) -> List[Document]:
+def chunk_document(doc_settings: Dict[str, Dict[str, int]]) -> List[Document]:
     """
     Process multiple Word documents and return chunks as Document objects.
     
-    :param doc_paths: List of paths to Word documents
-    :param target_chunk_size: Target size of each chunk
-    :param max_chunk_size: Maximum allowed size of a chunk
+    :param doc_settings: Dictionary mapping document paths to their chunk settings
     :return: List of Document objects
     """
     all_chunks = []
     
-    for doc_path in doc_paths:
+    for doc_path, settings in doc_settings.items():
         try:
-            chunks = process_single_document(doc_path, target_chunk_size, max_chunk_size)
+            chunks = process_single_document(
+                doc_path, 
+                settings['target_chunk_size'], 
+                settings['max_chunk_size']
+            )
             all_chunks.extend(chunks)
             print(f"Successfully processed: {doc_path}")
         except Exception as e:

@@ -166,6 +166,7 @@ runs
 vdb
 VectorDB
 VectorDB-Eval
+VectorDB-Eval-2
 TempVectorDB
 VectorDB-TEMP
 

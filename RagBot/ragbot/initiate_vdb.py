@@ -32,7 +32,7 @@ def main(args):
     #     chunk_overlap=config["retriever"]["chunk_overlap"],
     # )
     # chunks = text_splitter.split_documents(documents)
-    chunks = chunk_document(config["database"]["documents_addr"], target_chunk_size=config["retriever"]["chunk_size"], max_chunk_size=config["retriever"]["max_chunk_size"])
+    chunks = chunk_document(config["database"]["documents"])
     print(f"Generated {len(chunks)} chunks")
 
     vdb = Chroma(persist_directory=collection_path, embedding_function=embedding_model)

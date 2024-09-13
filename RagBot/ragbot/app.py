@@ -17,12 +17,12 @@ from config import config
 RESPONSE_TEMPLATE_FOR_NO_ANSWER = """
     به سامانه سوال و جواب همکاران سیستم خوش آمدید. 
     سوال فعلی شما به همکاران سیستم مرتبط نیست. 
-    خواهشا سوالاتی را که به همکاران سیستم مرتبط هستند، بپرسید. 
+    لطفا سوالاتی را که به همکاران سیستم مرتبط هستند، بپرسید. 
     با تشکر
     """
 
 CSS_STYLE_FILE = "{path}/style.css".format(path=pathlib.Path(__file__).parent.resolve())
-BASE_URL = "http://185.13.230.222:8691"
+BASE_URL = "http://185.13.230.222:8691" # "http://172.17.224.24:8686" 
 # with open(CSS_STYLE_FILE) as f:
 #     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
@@ -65,7 +65,7 @@ def chat_request(session_id: str, query: str, api_url: str = BASE_URL):
     # Handle the different response status codes
     json_response = response.json()
     if response.status_code == 200:
-        return {"status": "success", "query": json_response["query"], "response": json_response["response"], "message_id": json_response["message_id"]}
+        return {"status": "success", "query": query, "response": json_response["response"], "message_id": json_response["message_id"]}
     elif response.status_code == 404:
         return {"status": "error", "query": "", "response": "", "message_id": ""}
     elif response.status_code == 422:

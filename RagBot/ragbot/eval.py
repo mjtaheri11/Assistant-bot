@@ -57,7 +57,9 @@ def create_retriever():
     # text_splitter = RecursiveCharacterTextSplitter(chunk_size=config["retriever"]["chunk_size"],
     #                                                chunk_overlap=config["evaluation"]["chunk_overlap"])
     # chunks = text_splitter.split_documents(documents)
-    chunks = chunk_document(config["evaluation"]["documents_addr"], target_chunk_size=config["retriever"]["chunk_size"], max_chunk_size=config["retriever"]["max_chunk_size"])
+    import pdb
+    pdb.set_trace()
+    chunks = chunk_document(config["evaluation"]["documents"])
     print(f'Generated {len(chunks)} chunks')
 
     vdb = Chroma(persist_directory=collection_path, embedding_function=embedding_model_)

@@ -18,8 +18,7 @@ SEED = 0
 torch.manual_seed(SEED)
 np.random.seed(SEED)
 torch.cuda.manual_seed_all(SEED)
-random.seed(SEED)
-
+random.seed(SEED)  
 
 
 def get_chat_response(prompt: str) -> str:
@@ -31,6 +30,7 @@ def get_chat_response(prompt: str) -> str:
         temperature=config["ollama"]["temperature"],
         keep_alive=config["ollama"]["keep_alive"],
         seed=SEED,
+        base_url="http://ollama:11434",
         # base_url=OLLAMA_HOST
     )
     messages = [SystemMessage(content=prompt)]

@@ -30,7 +30,7 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     message_id: str
     response: str
-    query: str
+    # query: str
 
 class SessionResponse(BaseModel):
     session_id: str
@@ -39,14 +39,14 @@ class SessionResponse(BaseModel):
 class FeedbackRequest(BaseModel):
     message_id: str
     feedback_type: str
-    session_id: str
+    session_id: Optional[str] = None
 
 
 def query(q, is_insert=False, insert_values=None):   
     # import pdb
     # pdb.set_trace()
     conn = psycopg2.connect(database="chatbot",
-        host="172.19.0.1", #"postgres",
+        host="postgres",#"172.19.0.3",
         user="postgres",
         password="MySecretPassword123!@#",
         port="5432")
@@ -135,7 +135,7 @@ async def chat_responder(request: ChatRequest, req: Request):
 
         q = f"SELECT user_query, bot_response FROM message WHERE session_id='{session_id}' ORDER BY create_time DESC LIMIT {config['retriever']['history_length']};"
         selected_history = query(q)
-        history = [[h[0], h[1]] for h in selected_history[::-10]]
+        history = [[h[0], h[1]] for h in selected_history[::-5]]
         
         query_history = [h[0] for h in history]
         # paraphrased_utterance_dict = utterance_paraphraser(query_history, request.query)
@@ -156,7 +156,7 @@ async def chat_responder(request: ChatRequest, req: Request):
         output = ChatResponse(
             response=response,
             message_id=msg_id[0],
-            query=paraphrased_utterance
+            # query=paraphrased_utterance
         )
 
         non_generative_agent_logger(
@@ -184,7 +184,6 @@ async def chat_responder(request: ChatRequest, req: Request):
             {},
             elapsed_time,
         )
-
 
         raise HTTPException(status_code=500, detail="Unhandled error, Please report")
         
