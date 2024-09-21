@@ -11,6 +11,7 @@ from logs import simple_logger, non_generative_agent_logger
 from prompts import RAG_SYSTEM_PROMPT
 from utils import init_session_state
 from config import config
+from logic import feedback_
 
 
 
@@ -22,7 +23,7 @@ RESPONSE_TEMPLATE_FOR_NO_ANSWER = """
     """
 
 CSS_STYLE_FILE = "{path}/style.css".format(path=pathlib.Path(__file__).parent.resolve())
-BASE_URL = "http://185.13.230.222:8691" # "http://172.17.224.24:8686" 
+BASE_URL = "http://185.13.230.222:8691" # "http://172.27.0.6:8686" #
 # with open(CSS_STYLE_FILE) as f:
 #     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
@@ -65,7 +66,7 @@ def chat_request(session_id: str, query: str, api_url: str = BASE_URL):
     # Handle the different response status codes
     json_response = response.json()
     if response.status_code == 200:
-        return {"status": "success", "query": query, "response": json_response["response"], "message_id": json_response["message_id"]}
+        return {"status": "success", "query": json_response["query"], "response": json_response["response"], "message_id": json_response["message_id"]}
     elif response.status_code == 404:
         return {"status": "error", "query": "", "response": "", "message_id": ""}
     elif response.status_code == 422:
@@ -172,6 +173,7 @@ def main():
                 )
                 if chat_response["status"] == config["chat_responder"]["ok_status"]:
                     response_is_valid = True
+                    
                 # elif response_status == config["chat_responder"]["doubtful_status"]:
                 #     response = RESPONSE_TEMPLATE_FOR_DOUBTFUL_ANSWER
                 #     response_is_valid = False
@@ -229,6 +231,7 @@ def main():
                                     "user_input_storage",
                                 )[i]
                                 paraphrased_query = st.session_state.get("query")[i]
+                                message_id = st.session_state["message_id"][-1]
                                 response = st.session_state.get("response")[i]
                                 # TODO: has bug when you click on a suggested question and then on thumbup/down buttons
                                 like = st.session_state.get("like", False)
@@ -236,19 +239,23 @@ def main():
                                 flag = st.session_state.get("flag", False)
                                 if like:
                                     send_feedback(
-                                        st.session_state["message_id"][-1],
+                                        message_id,
                                         "thumb_up",
                                         st.session_state.get("session_id"),
                                     )
                                 elif dislike:
                                     send_feedback(
-                                        st.session_state["message_id"][-1],
+                                        message_id,
                                         "thumb_down",
                                         st.session_state.get("session_id"),
                                     )
                                 elif flag:
                                     # todo flag is not included in the redis yet!
-                                    pass
+                                    send_feedback(
+                                        message_id,
+                                        "flag",
+                                        st.session_state.get("session_id")
+                                    )
                                     # feedback(paraphrased_query, response, url, "flag")
                                 non_generative_agent_logger(
                                     session_id=st.session_state.get("session_id"),

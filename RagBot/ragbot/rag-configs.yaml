@@ -21,6 +21,38 @@ logging:
 api:
   port: 8686
 
+cache:
+  host: redis-stack
+  # host: 127.0.0.1
+  port: 6379
+  index_name: Hamkar
+  knn: 50
+  alpha_threshold: 0.04
+  beta_threshold: 0.2
+  redis_result_num_documents: 5
+  socket_timeout: 10
+  embedding_model:
+    #model_name: BAAI/bge-m3
+    model_name: /home/user01/mj-workspace/Assistant-bot/RagBot/saved_models/models--BAAI--bge-m3/snapshots/babcf60cae0a1f438d7ade582983d4ba462303c2
+    device: cuda
+
+  # configurations for reranker
+  reranker:
+    #model_name: BAAI/bge-reranker-v2-m3
+    model_name: /home/user01/mj-workspace/Assistant-bot/RagBot/saved_models/models--BAAI--bge-reranker-v2-m3/snapshots/12e974610ba9083ed95f3edf08d7e899581f4de4
+    device: cuda
+    cutoff: 10
+    
+  schema:
+    query_field_name: query
+    vector_field_name: vector
+    answer_field_name: answer
+    url_field_name: url
+    message_id_field_name: message_id
+    thumb_up_field_name: thumb_up
+    thumb_down_field_name: thumb_down
+    flag_field_name: flag
+
 # Configurations for streamlit
 streamlit:
   host: 0.0.0.0
@@ -40,13 +72,13 @@ ollama:
 # configurations for embedding model
 embedding_model:
   #model_name: BAAI/bge-m3
-  model_name: ../saved_models/models--BAAI--bge-m3/snapshots/babcf60cae0a1f438d7ade582983d4ba462303c2
+  model_name: ./saved_models/models--BAAI--bge-m3/snapshots/babcf60cae0a1f438d7ade582983d4ba462303c2
   device: cuda
 
 # configurations for reranker
 reranker:
   #model_name: BAAI/bge-reranker-v2-m3
-  model_name: ../saved_models/models--BAAI--bge-reranker-v2-m3/snapshots/12e974610ba9083ed95f3edf08d7e899581f4de4
+  model_name: ./saved_models/models--BAAI--bge-reranker-v2-m3/snapshots/12e974610ba9083ed95f3edf08d7e899581f4de4
   device: cpu
   cutoff: 10
 
@@ -60,7 +92,7 @@ retriever:
   chunk_size: 800
   max_chunk_size: 1200
   sentence_overlap: 1
-  history_length: 2
+  history_length: 1
 
 
 # configurations for langchain
@@ -98,3 +130,7 @@ chat_responder:
   doubtful_status: "DOUBTFUL"
   no_answer_status: "NO_ANSWER"
   error_status: "error"
+
+
+followup_query_generator:
+  number_of_suggested_queries: 3

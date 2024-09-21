@@ -5,11 +5,11 @@ services:
     build: .
     container_name: ragbot_api_3
     ports:
-      - "8686:8686"
+      - "8686:8687"
     volumes:
-      - /home/ubuntu/Assistant-bot/VectorDB:/app/ragbot/VectorDB
+      - ./ragbot/VectorDB:/app/ragbot/VectorDB
       - ./ragbot/rag-configs.yaml:/app/ragbot/rag-configs.yaml
-      - /home/ubuntu/chatbot/saved_models:/app/saved_models
+      - ./saved_models:/app/saved_models
     environment:
       - OLLAMA_HOST=http://ollama:11434
       - LLM_MODEL=gemma2:9b-instruct-fp16
@@ -17,6 +17,7 @@ services:
     restart: always
     depends_on:
       - ollama
+      # - redis-stack
     networks:
       - ollama-docker2
 
@@ -40,6 +41,7 @@ services:
     restart: always
     environment:
       - OLLAMA_KEEP_ALIVE=24h
+      - CUDA_VISIBLE_DEVICES=1
     networks:
       - ollama-docker2
 
@@ -81,22 +83,32 @@ services:
       PGADMIN_DEFAULT_PASSWORD: admin
     restart: always
     volumes:
-      - /home/ubuntu/v3/pgadmin:/var/lib/pgadmin
+      - /home/user01/mj-workspace/Assistant-bot/RagBot/pgadmin:/var/lib/pgadmin
 
 
-  redis-stack:
-    image: redis/redis-stack:latest
-    container_name: redis-stack
-    ports:
-      - "6379:6379" # Redis server
-      - "8001:8001" # Redis Insight UI
-    environment:
-      REDIS_PASSWORD: myRedisPassword123!@#
-    volumes:
-      - redis_data:/data
-    networks:
-      - ollama-docker2
-    restart: always
+  # redis-stack:
+  #   image: redis/redis-stack:latest
+  #   container_name: redis-stack
+  #   ports:
+  #     - "6379:6379" # Redis server
+  #     - "8001:8001" # Redis Insight UI
+  #   environment:
+  #     REDIS_ARGS: >
+  #       --appendonly yes
+  #   volumes:
+  #     - redis_data:/data
+  #     # - ./redis.conf:/etc/redis/redis-stack.conf # Mount redis.conf file
+  #     # - ./redis.conf:/redis-stack.conf
+  #   # command: ["redis-stack-server", "/etc/redis/redis.conf"]
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 3
+
+  #   networks:
+  #     - ollama-docker2
+  #   restart: always
 
 volumes:
   VectorDB:

@@ -29,10 +29,9 @@ def json_text_cleaning(text, key="answer"):
     if key == "answer":
         match_answer = re.search(rf'"{key}"\s*:\s*"((?:[^"\\]|\\.)*)"\s*(?:,|}})', text, re.DOTALL)
         
-    elif key == "rephrased_query":
+    elif key == "rephrased_question":
         match_answer = re.search(rf'"{key}"\s*:\s*(.*?)(?=,\s*"(?:reasoning|[^"]+)"\s*:|}}$)', text, re.DOTALL)
-    # import pdb
-    # pdb.set_trace()
+
     if match_answer:
         answer_value = match_answer.group(1)
         answer_value = answer_value.strip('"')
@@ -66,7 +65,7 @@ def json_text_cleaning(text, key="answer"):
     return json_output
 
 
-def json_cleaning(input_string, key):    
+def json_cleaning(input_string):    
     cleaned_string = input_string.replace("json", "").replace("```", "").strip() #.replace("\n\n", "\n").strip()
     # cleaned_string = re.sub(r'\n+', '\n', cleaned_string)
     return cleaned_string

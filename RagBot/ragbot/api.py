@@ -12,16 +12,11 @@ import traceback
 
 from config import config
 from logs import simple_logger, non_generative_agent_logger
-from logic import prepare_final_context, query_responder, utterance_paraphraser
+from logic import prepare_final_context, query_responder, utterance_paraphraser, feedback_, chat_responder_
 
 app = FastAPI(title="Digital Assistant")
 
-# انتخاب تامین کننده برای رسید خرید داخلی اجباری است
-
 # Models for request and response
-# TODO api_url should be a hyper parameter
-# 
-
 class ChatRequest(BaseModel):
     query: str
     session_id: Optional[str] = None
@@ -30,7 +25,8 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     message_id: str
     response: str
-    # query: str
+    query: str
+
 
 class SessionResponse(BaseModel):
     session_id: str
@@ -42,40 +38,80 @@ class FeedbackRequest(BaseModel):
     session_id: Optional[str] = None
 
 
-def query(q, is_insert=False, insert_values=None):   
-    # import pdb
-    # pdb.set_trace()
-    conn = psycopg2.connect(database="chatbot",
-        host="postgres",#"172.19.0.3",
+def query_executor(q: str, is_insert: bool = False, insert_values: Optional[Tuple] = None, fetch_results: bool = True):
+    """
+    Executes a SQL query against the PostgreSQL database.
+
+    Args:
+        q (str): The SQL query to execute.
+        is_insert (bool): Indicates if the query is an INSERT statement that returns a value.
+        insert_values (Optional[Tuple]): Values to insert into the query.
+        fetch_results (bool): Whether to fetch and return results from the query.
+
+    Returns:
+        Optional[List[Tuple]]: Fetched results if any, else None.
+    """   
+    conn = psycopg2.connect(
+        database="chatbot",
+        host="192.168.192.4",  # postgres
         user="postgres",
         password="MySecretPassword123!@#",
-        port="5432")
+        port="5432"
+    )
 
     try:
         with conn:
             with conn.cursor() as cursor:
                 if insert_values is not None:
                     cursor.execute(q, insert_values)
-
                 else:
                     cursor.execute(q)
 
-
-                if is_insert:
-                    output = cursor.fetchone()
-
+                if fetch_results:
+                    if is_insert:
+                        output = cursor.fetchone()
+                    else:
+                        output = cursor.fetchall()
                 else:
-                    output = cursor.fetchall()
+                    output = None
 
-                
     except psycopg2.ProgrammingError as ex:
         raise ex
-    
+
     finally:
         conn.commit()
         conn.close()
 
     return output
+
+
+def maintain_history(session_id: str, history_length: int):
+    """
+    Ensures that the number of messages for a session does not exceed history_length.
+    If it does, deletes the oldest messages to maintain the limit.
+    """
+    # Count the total number of messages for the session
+    count_query = "SELECT COUNT(*) FROM message WHERE session_id = %s;"
+    count_result = query_executor(count_query, fetch_results=True, insert_values=(session_id,))
+    total_messages = count_result[0][0] if count_result else 0
+
+    if total_messages > history_length:
+        # Calculate how many messages need to be deleted
+        messages_to_delete = total_messages - history_length
+
+        # Use a Common Table Expression (CTE) to delete the oldest messages
+        delete_query = """
+            WITH oldest_messages AS (
+                SELECT message_id FROM message
+                WHERE session_id = %s
+                ORDER BY create_time ASC
+                LIMIT %s
+            )
+            DELETE FROM message
+            WHERE message_id IN (SELECT message_id FROM oldest_messages);
+        """
+        # Execute the DELETE query without fetching results
+        query_executor(delete_query, fetch_results=False, insert_values=(session_id, messages_to_delete))
 
 
 @app.post('/session/create', response_model=SessionResponse, responses={
@@ -84,14 +120,15 @@ def query(q, is_insert=False, insert_values=None):
 })
 async def create_session():
     try:
-        q = f"INSERT INTO public.session(history_length) VALUES ({config['retriever']['history_length']}) RETURNING session_id;"
-        sid = query(q, True)
+        q = "INSERT INTO public.session(history_length) VALUES (%s) RETURNING session_id;"
+        sid = query_executor(q, is_insert=True, insert_values=(config['retriever']['history_length'],), fetch_results=True)
 
         return {
             'session_id': sid[0]
         }
 
     except Exception as e:
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail="Unhandled error, Please report")
 
 
@@ -99,10 +136,11 @@ async def create_session():
     200: {},
     500: {"description": "Unhandled error that should be reported"},
     404: {"description": "Session not found", "content": {"application/json": {"example": {"detail": "Session not found"}}}},
-    422: {"description": "unprocessable entity e.g. no session id, or no query", "content": {"application/json": {"example": {"detail": "Query is empty"}}}}
+    422: {"description": "Unprocessable entity e.g. no session id, or no query", "content": {"application/json": {"example": {"detail": "Query is empty"}}}}
 })
 async def chat_responder(request: ChatRequest, req: Request):
-    try:
+
+    try:    
         start_time = time.time()
         
         session_id = req.headers.get("Session-ID", None)
@@ -118,8 +156,8 @@ async def chat_responder(request: ChatRequest, req: Request):
             return
 
         try:
-            q = f"SELECT session_id FROM session WHERE session_id='{session_id}';"
-            result = query(q)
+            q = "SELECT session_id FROM session WHERE session_id = %s;"
+            result = query_executor(q, fetch_results=True, insert_values=(session_id,))
             if len(result) == 0:
                 raise HTTPException(status_code=404, detail="Session not found")
                 return
@@ -130,33 +168,31 @@ async def chat_responder(request: ChatRequest, req: Request):
             return
 
         simple_logger(f"Received chat request", session_id)
-        ok_response_status = config["chat_responder"]["ok_status"]
-        error = config["chat_responder"]["error_status"]
-
-        q = f"SELECT user_query, bot_response FROM message WHERE session_id='{session_id}' ORDER BY create_time DESC LIMIT {config['retriever']['history_length']};"
-        selected_history = query(q)
-        history = [[h[0], h[1]] for h in selected_history[::-5]]
+        q = """
+            SELECT user_query, bot_response FROM message
+            WHERE session_id = %s
+            ORDER BY create_time ASC
+            LIMIT %s;
+        """
+        selected_history = query_executor(q, fetch_results=True, insert_values=(session_id, config['retriever']['history_length']))
+        history = [[h[0], h[1]] for h in selected_history]
         
         query_history = [h[0] for h in history]
-        # paraphrased_utterance_dict = utterance_paraphraser(query_history, request.query)
-        # paraphrased_utterance = paraphrased_utterance_dict["rephrased_query"]
-        paraphrased_utterance = request.query
-        context = prepare_final_context(paraphrased_utterance)
+        paraphrased_utterance, response, context = chat_responder_(history, request.query)
         
-        json_response = query_responder(request.query, context, history)
-        response = json_response["answer"]
-
-        q = "INSERT INTO message (session_id, user_query, bot_response) VALUES (%s, %s, %s) RETURNING message_id;"
-        values = (session_id, request.query, response)
-        msg_id = query(q, True, values)
-        # import pdb
-        # pdb.set_trace()
+        # Insert the new message into the database
+        insert_query = "INSERT INTO message (session_id, user_query, bot_response) VALUES (%s, %s, %s) RETURNING message_id;"
+        values = (session_id, paraphrased_utterance, response)
+        msg_id = query_executor(insert_query, is_insert=True, insert_values=values, fetch_results=True)
+        
+        # Maintain the history length by deleting oldest messages if necessary
+        maintain_history(session_id, config['retriever']['history_length'])
         
         elapsed_time = time.time() - start_time
         output = ChatResponse(
             response=response,
             message_id=msg_id[0],
-            # query=paraphrased_utterance
+            query=paraphrased_utterance
         )
 
         non_generative_agent_logger(
@@ -186,11 +222,11 @@ async def chat_responder(request: ChatRequest, req: Request):
         )
 
         raise HTTPException(status_code=500, detail="Unhandled error, Please report")
-        
+
 
 @app.post("/feedback", responses={
     200: {"content": {"application/json": {"example": {"message": "Feedback received"}}}},
-    422: {"description": "Unprocessable entity e.g. no session id, or invalid feedabck", "content": {"application/json": {"example": {"detail": "No Session-ID"}}}},
+    422: {"description": "Unprocessable entity e.g. no session id, or invalid feedback", "content": {"application/json": {"example": {"detail": "No Session-ID"}}}},
     404: {"description": "No message found with sent message id and session id", "content": {"application/json": {"example": {"detail": "Message not found"}}}},
     500: {"description": "Unhandled error that should be reported"}
 })
@@ -208,25 +244,27 @@ async def feedback(request: FeedbackRequest, req: Request):
         msg_id = request.message_id
         
         try:
-            q = f"SELECT FROM message WHERE message_id='{msg_id}' and session_id='{session_id}';"
-            result = query(q)
+            q = "SELECT * FROM message WHERE message_id = %s AND session_id = %s;"
+            query_ = query_executor(q, fetch_results=True, insert_values=(msg_id, session_id))
 
-            if len(result) == 0:
+            if len(query_) == 0:
                 raise HTTPException(status_code=404, detail="Message not found")
 
         except Exception as e:
             raise HTTPException(status_code=404, detail="Message not found")
 
-
         simple_logger(f"Received feedback request", session_id)
 
         output = {"message": "Feedback received"}
-        
         if request.feedback_type not in ["thumb_up", "thumb_down", "flag"]:
             raise HTTPException(status_code=422, detail="Invalid feedback")
-
+        temp_query = "SELECT user_query, bot_response FROM message WHERE message_id = %s AND session_id = %s;"
+        response = query_executor(temp_query, fetch_results=True, insert_values=(msg_id, session_id))
+        response_ = response[0][1]
+        query_ = response[0][0]
+        feedback_(query_, response_, "", request.feedback_type)
         elapsed_time = time.time() - start_time
-
+        
         non_generative_agent_logger(
             session_id,
             "feedback",
@@ -236,8 +274,8 @@ async def feedback(request: FeedbackRequest, req: Request):
             elapsed_time,
         )
 
-        q = f"UPDATE message SET feedback='{request.feedback_type}' WHERE message_id='{msg_id}' RETURNING message_id;"
-        result = query(q)
+        update_query = "UPDATE message SET feedback = %s WHERE message_id = %s RETURNING message_id;"
+        result = query_executor(update_query, fetch_results=True, insert_values=(request.feedback_type, msg_id))
 
         return output
     
@@ -255,6 +293,5 @@ async def feedback(request: FeedbackRequest, req: Request):
             {},
             time.time() - start_time,
         )
-        
         
         raise HTTPException(status_code=500, detail="Unhandled error, Please report")

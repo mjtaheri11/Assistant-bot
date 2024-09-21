@@ -242,54 +242,31 @@ Be reasonable and think step by step. Output your response in JSON format starti
 # }}
 # """
 
-UTTERANCE_PARAPHRASER_PROMPT = """
-As an assistant in the Hamkaran System (همکاران سیستم), your role is to suggest a user query in Farsi that aligns with the conversation's intent based on the follow-up question. 
-Be concise and to the point. Rephrase ONLY if the new query disambiguates or corrects previous queries. Only rephrase the follow-up question given the chat history if the follow-up question needs context.
 
-Use conversation history only when the follow-up question depends on it to be fully understood. Avoid adding any unnecessary details.
+UTTERANCE_PARAPHRASER_PROMPT = """
+You are an assistant for Hamkaran System (همکاران سیستم) users. Based on the user question, suggest a user question in Farsi that remains consistent with the intent of the conversation.
+Be concise and to the point. Rephrase the user's question if it is ambiguous or incomplete without the conversation history. Include necessary context to make it a clear and standalone question. Do not rephrase if the user's question is already clear and does not depend on the conversation history.
+Use the conversation history to add necessary context when the user's question depends on it to be fully understood. Avoid adding any unnecessary details.
 
 IMPORTANT:
-1. Do NOT rephrase queries that are direct, standalone, or already sufficiently clear. If the user query is a direct question or statement that does not require clarification based on conversation history, return the original query.
-2. Only rephrase if the new query corrects or refines a previous ambiguous question or if it enhances clarity when there is a follow-up or related context.
-When rephrasing is necessary, it's vital to preserve the original wording and style of the input as much as possible. This ensures the user's voice and intent are maintained in the rephrased query.
+1. Do NOT rephrase questions that are direct, standalone, or already sufficiently clear. If the user question is a direct question or statement that does not require additional context, return it as is.
+2. Rephrase the user's question if it is ambiguous, lacks sufficient context, or depends on previous conversation to be understood. Incorporate necessary details from the conversation history to enhance clarity.
+3. Preserve the original wording and style of the input as much as possible when rephrasing is necessary.
 
-Conversation History:
+Conversation History: 
 {history}
 
-User query: {question}
+User question: 
+{question}
 
-Consider the full context of the user’s queries. If the follow-up seems to be about previous conversations, ensure that your rephrased query uses the main subjects of previous queries. This will make the user feel that their concerns are fully understood and addressed.
-REMEMBER: Rephrase only when necessary. If the user’s new query disambiguates or corrects previous user queries, then rephrase. Otherwise, never rephrase the follow-up question, given the chat history, unless the follow-up question needs context. If rephrasing is needed, try using the last user query words in rephrased_query. While rephrasing, try not to answer based on reasoning; just rephrase to a more clear and unambiguous version of user input. This will make the user feel that their original query is clear and understandable.
 
-Output your response in JSON format, starting and ending with curly braces. Do not use double quotations inside double quotations; use single quotations if needed. Don't forget the comma delimiter after each key-value pair, as follows:\
-{{"reasoning": "Explanation in English for your rephrased query, addressing why your rephrased query is 'appropriate' based on the context and ensuring coherence with the conversation history.",
- "rephrased_query": "Rephrased user input in FARSI if needed. Do NOT 'answer' the question; just reformulate it if needed; otherwise return it as is."}}
+Consider the full context of the user's question. If the user's question depends on the conversation history to be fully understood, rephrase it to include key subjects from the previous conversation, ensuring it is clear and can stand alone.
+Output your response in JSON format, starting and ending with curly braces. Do not use double quotations inside double quotations; use single quotations if needed. Use a comma delimiter after each key-value pair, as follows:
+
+{{"reasoning": "Explanation in English for your rephrased question, addressing why your rephrased question is 'appropriate' based on the context and ensuring coherence with the conversation history.", "rephrased_question": "Rephrased user input in FARSI, but do not translate to Persian if English phrases are used in user's queries. Do NOT 'answer' the question, just reformulate it if needed, otherwise return the user's original input question."}}
+
+REMEMBER: Rephrase the user's question if it is ambiguous or incomplete without context. In such cases, include necessary details from the conversation history to make it a clear and standalone question. Do not translate input from English to Persian; use sentences as they are.
 """
-
-# UTTERANCE_PARAPHRASER_PROMPT = """
-# As an assistant in the Hamkaran System (همکاران سیستم), your role is to suggest a user query in Farsi that aligns with the conversation's intent based on the follow-up question. 
-# Rephrase ONLY if the new query disambiguates or corrects previous queries. Given the chat history, only rephrase the follow-up question if it needs context to be fully understood. Avoid adding any unnecessary details.
-
-# IMPORTANT:
-# 1. If the query is vague (e.g., 'بیشتر توضیح بده'), check the conversation history for context. Incorporate that context into the rephrased query to ensure it is specific and actionable.
-# 2. Do NOT rephrase queries that are direct, standalone, without history, or already sufficiently clear. Thus, return the original query if the user query is a direct question or statement that does not require clarification based on conversation history.
-# 3. Only rephrase if the new query corrects or refines a previous ambiguous question or if it enhances clarity when there is a follow-up or related context. Otherwise, never rephrase the follow-up question
-# 4. When rephrasing is necessary, add relevant context from the conversation history to make the query more complete, specific, or coherent. Avoid adding unnecessary details that are not derived from the user's prior queries
-
-# REMEMBER:
-# 1. When rephrasing is necessary, it is vital to preserve the original wording and style of the input as much as possible. This ensures the user's voice and intent are maintained in the rephrased query.
-# 2. While rephrasing, try not to answer based on reasoning; just rephrase to a clearer and more unambiguous version of user input. This will make the user feel that their original query is clear and understandable.
-
-# Conversation History:
-# {history}
-
-# User query: {question}
-
-# Output your response in JSON format, starting and ending with curly braces. Do not use double quotations inside double quotations; use single quotations if needed. Don't forget the comma delimiter after each key-value pair, as follows:\
-# {{"reasoning": "Explanation in English for your rephrased query, addressing why your rephrased query is 'appropriate' based on the context and ensuring coherence with the conversation history.",
-#  "rephrased_query": "Rephrased user input in FARSI if needed. Do NOT 'answer' the question; just reformulate it if needed; otherwise return it as is." }}
-# """
-
 
 # RAG_SYSTEM_
 # ROMPT = """
@@ -352,4 +329,22 @@ Be reasonable and think step by step. Make sure to output your response in JSON 
 
 {{"answer": "The desired answer, which should be in the form of only one option among A, B, C, D"\
   "reasoning": "Explanation in Persian for your choice, briefly addressing why each option is correct or incorrect based on the context.",}}
+"""
+
+SUGGEST_QUESTIONS_FROM_CONTEXT_PROMPT = """
+Suggest up to {number_of_questions} questions from context.
+
+Context:
+
+{context}
+
+Suggested questions should be follow up topic of the given questions below.
+
+{question}
+
+Suggested questions should have a valid and acceptable answer available in the context.
+
+Suggested questions should be unique and different.
+
+Suggested questions in Persian, separated by new line:
 """
