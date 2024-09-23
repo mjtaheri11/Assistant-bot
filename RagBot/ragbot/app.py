@@ -8,7 +8,6 @@ from retriever import Retriever
 from streamlit.runtime.scriptrunner.script_run_context import get_script_run_ctx
 
 from logs import simple_logger, non_generative_agent_logger
-from prompts import RAG_SYSTEM_PROMPT
 from utils import init_session_state
 from config import config
 from logic import feedback_

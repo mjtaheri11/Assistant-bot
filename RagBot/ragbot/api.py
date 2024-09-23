@@ -175,9 +175,11 @@ async def chat_responder(request: ChatRequest, req: Request):
             LIMIT %s;
         """
         selected_history = query_executor(q, fetch_results=True, insert_values=(session_id, config['retriever']['history_length']))
+        # import pdb
+        # pdb.set_trace()
         history = [[h[0], h[1]] for h in selected_history]
         
-        query_history = [h[0] for h in history]
+        # query_history = [h[0] for h in history]
         paraphrased_utterance, response, context = chat_responder_(history, request.query)
         
         # Insert the new message into the database

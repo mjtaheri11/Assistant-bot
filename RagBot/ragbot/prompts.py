@@ -161,10 +161,6 @@ Context:
 
 {context} 
 
-Chat History:
-
-{history} 
-
 User question: 
 
 {question}

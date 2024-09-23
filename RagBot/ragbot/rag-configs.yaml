@@ -7,7 +7,7 @@ database:
       target_chunk_size: 750
       max_chunk_size: 1200
       sentence_overlap: 1
-    /home/user01/mj-workspace/Assistant-bot/RagBot/new-KB/GL_QA_Base Data-temp.docx:
+    /home/user01/mj-workspace/Assistant-bot/RagBot/new-KB/GL_CompleteDoc-new.docx:
       target_chunk_size: 800
       max_chunk_size: 1200
       sentence_overlap: 1
@@ -92,7 +92,7 @@ retriever:
   chunk_size: 800
   max_chunk_size: 1200
   sentence_overlap: 1
-  history_length: 1
+  history_length: 10
 
 
 # configurations for langchain

@@ -85,7 +85,10 @@ def history_serializer(history: List[tuple[str, str]]) -> str:
 
 def utterance_paraphraser(history: List[tuple[str, str]], user_utterance: str) -> str:
     # TODO such a messy modification. resolve it as soon as you can 
-    serialized_history = "\n".join(["USER: " + user_hist[0] for user_hist in history[-2:]])
+    # serialized_history = "\n".join(["USER: " + user_hist[0] + "\n" + "ASSISTANT" + user_hist[1] for user_hist in history])
+    # import pdb
+    # pdb.set_trace()
+    serialized_history = history_serializer(history)
     prompt = UTTERANCE_PARAPHRASER_PROMPT.format(
         history=serialized_history,
         question=user_utterance,
@@ -103,7 +106,7 @@ def query_responder(query: str, context: str, history: str) -> str:
     serialized_history = history_serializer(history)
     prompt = RAG_SYSTEM_PROMPT.format(
         context=context,
-        history=serialized_history,
+        # history=serialized_history,
         question=query,
     )
     response = get_chat_response(prompt)
@@ -144,7 +147,9 @@ def chat_responder_(
         return paraphrased_utterance, response, ""
 
     context = prepare_final_context(paraphrased_utterance)
-    json_response = query_responder(context, paraphrased_utterance, history)
+    # import pdb
+    # pdb.set_trace()
+    json_response = query_responder(paraphrased_utterance, context, history)
 
     return paraphrased_utterance, json_response["answer"], context
 
