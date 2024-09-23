@@ -110,14 +110,28 @@ def query_responder(query: str, context: str, history: str) -> str:
         question=query,
     )
     response = get_chat_response(prompt)
-    cleaned_response = json_cleaning(response)
-    cleaned_response_dict = json_text_cleaning(cleaned_response, "answer")
-    return cleaned_response_dict
-
+    return response
+    # cleaned_response = json_cleaning(response)
+    # cleaned_response_dict = json_text_cleaning(cleaned_response, "answer")
+    # return cleaned_response_dict
 
 def prepare_final_context(query: str) -> str:
+    cache = Cache()
+    records = cache.get_embedding_match(
+        query,
+        config["cache"]["beta_threshold"],
+        config["cache"]["knn"],
+    )
+    
+    context = "\n\n".join(
+        "Q: " + result["query"] + "\n" + "A: " + result["answer"]
+        for result in reversed(records)
+        if result["query"].strip() != ""
+    )
+    # import pdb
+    # pdb.set_trace()
     retriever = Retriever()
-    context = retriever.retrieve_context(query)[0]
+    context = retriever.retrieve_context(query)[0] + "\n\n" + context
     # TODO: need appropriate context management > context = context[: config["context"]["max_length"]]
     if context.strip() == "":
         raise Exception("no context fetched")
@@ -147,12 +161,10 @@ def chat_responder_(
         return paraphrased_utterance, response, ""
 
     context = prepare_final_context(paraphrased_utterance)
-    # import pdb
-    # pdb.set_trace()
     json_response = query_responder(paraphrased_utterance, context, history)
 
-    return paraphrased_utterance, json_response["answer"], context
-
+    # return paraphrased_utterance, json_response["answer"], context
+    return paraphrased_utterance, json_response, context
 
 def feedback_(
     query: str,

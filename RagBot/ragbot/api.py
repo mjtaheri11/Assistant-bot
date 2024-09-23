@@ -1,3 +1,5 @@
+import os
+import csv
 import json
 import argparse
 import logging
@@ -9,6 +11,8 @@ from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel
 import psycopg2
 import traceback
+import aiofiles
+import aiocsv
 
 from config import config
 from logs import simple_logger, non_generative_agent_logger
@@ -205,7 +209,7 @@ async def chat_responder(request: ChatRequest, req: Request):
             output.dict(),
             elapsed_time,
         )
-            
+                
         return output
 
     except HTTPException as e:
@@ -225,6 +229,20 @@ async def chat_responder(request: ChatRequest, req: Request):
 
         raise HTTPException(status_code=500, detail="Unhandled error, Please report")
 
+
+        
+CSV_FILE_PATH = 'feedback.csv'
+CSV_HEADERS = ['timestamp', 'session_id', 'message_id', 'feedback_type', 'user_query', 'bot_response']
+
+async def append_feedback_to_csv(feedback_data):
+    async with aiofiles.open('feedback.csv', mode='a', encoding='utf-8', newline='') as f:
+        writer = aiocsv.AsyncDictWriter(f, fieldnames=CSV_HEADERS)
+        
+        # If the file is new, write the header
+        if await f.tell() == 0:
+            await writer.writeheader()
+        
+        await writer.writerow(feedback_data)
 
 @app.post("/feedback", responses={
     200: {"content": {"application/json": {"example": {"message": "Feedback received"}}}},
@@ -278,6 +296,21 @@ async def feedback(request: FeedbackRequest, req: Request):
 
         update_query = "UPDATE message SET feedback = %s WHERE message_id = %s RETURNING message_id;"
         result = query_executor(update_query, fetch_results=True, insert_values=(request.feedback_type, msg_id))
+
+        # Prepare feedback data
+        feedback_data = {
+            'timestamp': time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()),
+            'session_id': session_id,
+            'message_id': msg_id,
+            'feedback_type': request.feedback_type,
+            'user_query': query_,
+            'bot_response': response_
+        }
+
+        # Append feedback to CSV asynchronously
+        # import pdb
+        # pdb.set_trace()
+        await append_feedback_to_csv(feedback_data)
 
         return output
     

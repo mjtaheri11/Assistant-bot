@@ -24,10 +24,12 @@ from pythonjsonlogger import jsonlogger
 #     return logger
 
 def json_text_cleaning(text, key="answer"):
-    # import pdb
-    # pdb.set_trace()
     if key == "answer":
-        match_answer = re.search(rf'"{key}"\s*:\s*"((?:[^"\\]|\\.)*)"\s*(?:,|}})', text, re.DOTALL)
+        # match_answer = re.search(rf'"{key}"\s*:\s*"((?:[^"\\]|\\.)*)"\s*(?:,|}})', text, re.DOTALL)
+
+        # Adjusted regex to allow for a single closing brace '}'
+        match_answer = re.search(rf'"{key}"\s*:\s*(.*?)(?=,\s*"(?:reasoning|[^"]+)"\s*:|}}$)', text, re.DOTALL)
+        
         
     elif key == "rephrased_question":
         match_answer = re.search(rf'"{key}"\s*:\s*(.*?)(?=,\s*"(?:reasoning|[^"]+)"\s*:|}}$)', text, re.DOTALL)
@@ -51,7 +53,7 @@ def json_text_cleaning(text, key="answer"):
     match_reasoning = re.search(r'"reasoning"\s*:\s*"((?:[^"\\]|\\.)*)"', text, re.DOTALL)
     if match_reasoning:
         reasoning_value = match_reasoning.group(1)
-        reasoning_value = answer_value.strip('"')
+        reasoning_value = reasoning_value.strip('"')
         # Unescape any escaped quotes within the value
         reasoning_value = reasoning_value.replace('\\"', '"').replace('\\n', '\n')
         # Properly format numbered lists
