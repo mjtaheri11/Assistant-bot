@@ -1,0 +1,99 @@
+@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;900&display=swap');
+
+* {
+    font-family: 'Vazirmatn', sans-serif !important;
+}
+
+/* Styling for input element to be right to left */
+
+input {
+    direction: RTL;
+    text-align: start;
+}
+
+/* Styling for message content to be right to left */
+
+[data-testid="stChatMessageContent"] p,
+[data-testid="stChatMessageContent"] li,
+[data-testid="stChatMessageContent"] ol,
+[data-testid="stChatMessageContent"] ul{
+    text-align: start;
+    direction: rtl;
+}
+
+[data-testid="stMarkdownContainer"]:has(.reference) {
+    display: flex;
+    flex-direction: row;
+    text-align: left;
+    direction: rtl;
+}
+
+/* Styling the tipbox rtl content */
+
+div.e10yodom1 {
+    display: flex;
+    justify-content: flex-end;
+}
+
+div.stAlert {
+    direction: RTL;
+    text-align: start;
+}
+
+/* Styling for columns in order to be scrollable */
+
+section.main>div {
+    padding-bottom: 1rem;
+}
+
+[data-testid="column"] {
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 10px;
+    height: 80vh;
+    box-sizing: border-box;
+}
+
+[data-testid="stChatMessageContent"] [data-testid="stHorizontalBlock"] {
+    border: 1px dashed #faa81a98;
+    background-color: #54c6d01f;
+    border-radius: 10px;
+}
+
+[data-testid="stChatMessageContent"] [data-testid="column"] {
+    height: auto;
+    overflow-y: hidden;
+}
+
+[data-testid="stChatMessageContent"] [data-testid="stMarkdownContainer"] {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
+    height: auto;
+}
+
+[data-testid="stChatMessageContent"] [data-testid="stMarkdownContainer"] p {
+    height: auto;
+    padding: 2px;
+    margin: 2px;
+}
+
+/* Special styling for ussd code */
+
+.ussd-code {
+    border: 1px solid #54c5d0;
+    border-radius: 3px;
+    font-size: 14px;
+    padding: 0 3px 0 3px;
+    background-color: #54c5d0;
+    font-weight: 500;
+    color: white;
+    text-align: left;
+    direction: ltr;
+}
+
+.stTextInput p{
+    font-family: monospace !important;
+    font-size: 10px;
+}

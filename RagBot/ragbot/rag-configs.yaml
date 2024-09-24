@@ -1,0 +1,136 @@
+# Configurations for vector database
+database:
+  persist_directory: ./VectorDB # initiate_vdb.py # ./VectorDB-bahar-hanieh #./VectorDB
+  dbname: my-vdb
+  documents:
+    /home/user01/mj-workspace/Assistant-bot/RagBot/new-KB/UPDATED-FAQ 202411408-temp.docx:
+      target_chunk_size: 750
+      max_chunk_size: 1200
+      sentence_overlap: 1
+    /home/user01/mj-workspace/Assistant-bot/RagBot/new-KB/GL_CompleteDoc-new.docx:
+      target_chunk_size: 800
+      max_chunk_size: 1200
+      sentence_overlap: 1
+
+# Configurations for logging
+logging:
+  level: debug
+  file: app.log
+  max_size: 10*1024*1024
+
+api:
+  port: 8686
+
+cache:
+  host: redis-stack
+  # host: 127.0.0.1
+  port: 6379
+  index_name: Hamkar
+  knn: 50
+  alpha_threshold: 0.04
+  beta_threshold: 0.2
+  redis_result_num_documents: 5
+  socket_timeout: 10
+  embedding_model:
+    #model_name: BAAI/bge-m3
+    model_name: /home/user01/mj-workspace/Assistant-bot/RagBot/saved_models/models--BAAI--bge-m3/snapshots/babcf60cae0a1f438d7ade582983d4ba462303c2
+    device: cuda
+
+  # configurations for reranker
+  reranker:
+    #model_name: BAAI/bge-reranker-v2-m3
+    model_name: /home/user01/mj-workspace/Assistant-bot/RagBot/saved_models/models--BAAI--bge-reranker-v2-m3/snapshots/12e974610ba9083ed95f3edf08d7e899581f4de4
+    device: cuda
+    cutoff: 10
+    
+  schema:
+    query_field_name: query
+    vector_field_name: vector
+    answer_field_name: answer
+    url_field_name: url
+    message_id_field_name: message_id
+    thumb_up_field_name: thumb_up
+    thumb_down_field_name: thumb_down
+    flag_field_name: flag
+
+# Configurations for streamlit
+streamlit:
+  host: 0.0.0.0
+  port: 8505
+
+# configurations for ollama
+ollama:
+  # model_name: qwen2:72b-instruct-q4_K_M
+  model_name: gemma2:9b-instruct-fp16
+  # model_name: gemma2:27b-instruct-q8_0 
+  temperature: 0
+  stream: true
+  keep_alive: -1
+  saved_models: /apt/saved_models/qwen/
+
+
+# configurations for embedding model
+embedding_model:
+  #model_name: BAAI/bge-m3
+  model_name: ./saved_models/models--BAAI--bge-m3/snapshots/babcf60cae0a1f438d7ade582983d4ba462303c2
+  device: cuda
+
+# configurations for reranker
+reranker:
+  #model_name: BAAI/bge-reranker-v2-m3
+  model_name: ./saved_models/models--BAAI--bge-reranker-v2-m3/snapshots/12e974610ba9083ed95f3edf08d7e899581f4de4
+  device: cpu
+  cutoff: 10
+
+# configurations for retriever
+retriever:
+  retrieved_documents: 10 # initiate_vdb.py
+  retrieved_rank2_documents: 5
+  alpha_threshold: 0
+  expansion: false
+  rerank: true
+  chunk_size: 800
+  max_chunk_size: 1200
+  sentence_overlap: 1
+  history_length: 10
+
+
+# configurations for langchain
+langchain:
+  enabled: true
+  model_path: ./models/langchain_model.pth
+  model_type: LangChain
+  model_name: en-de
+
+# Evaluations configurations
+evaluation:
+  persist_directory: ./VectorDB-Eval-2
+  dbname: my-vdb
+  documents:
+    # /home/user01/mj-workspace/Assistant-bot/RagBot/new-KB/UPDATED-FAQ 202411408-temp.docx:
+    #   target_chunk_size: 750
+    #   max_chunk_size: 1200
+    #   sentence_overlap: 1
+    /home/user01/mj-workspace/Assistant-bot/RagBot/new-KB/GL_QA_Base Data-temp.docx:
+      target_chunk_size: 800
+      max_chunk_size: 1200
+      sentence_overlap: 1
+
+  # dataset: /home/user01/mj-workspace/Assistant-bot/RagBot/eval-questions/Copy-of-QA-sep.csv
+  dataset: /home/user01/mj-workspace/Assistant-bot/RagBot/eval-questions/GL_QA_Questions.csv
+  model_name: gemma2:9b-instruct-fp16 
+  # model_name: gemma2:27b-instruct-q8_0 
+  output_path: /home/user01/mj-workspace/Assistant-bot/RagBot/evaluation/
+  retrieved_documents: 12
+  retrieved_rank2_documents: 5
+  # chunk_overlap: 50
+
+chat_responder:
+  ok_status: "success"
+  doubtful_status: "DOUBTFUL"
+  no_answer_status: "NO_ANSWER"
+  error_status: "error"
+
+
+followup_query_generator:
+  number_of_suggested_queries: 3

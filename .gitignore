@@ -150,17 +150,28 @@ dmypy.json
 # pytype static type analyzer
 .pytype/
 
+# vscode arguments 
+.vscode/
+
 # Cython debug symbols
 cython_debug/
-data
+# data
 runs
-*.ipynb
-.gitignore
-venv
+.env
+
+# streamlit
+.streamlit
+
+# vector database
 vdb
 VectorDB
 VectorDB-Eval
-log.csv
-app.log*
-.streamlit
-.env
+VectorDB-Eval-2
+TempVectorDB
+VectorDB-TEMP
+
+saved_models
+VectorDB-bahar-hanieh
+evaluation
+RagBot/ollama/
+RagBot/pgadmin/
