@@ -15,7 +15,7 @@ WORKDIR /app/ragbot
 
 # Copy the rest of the application code
 COPY . /app
-RUN pip install redis
+# RUN pip install redis
 
 # Make the initiation script executable
 # RUN chmod +x /app/initiate_db.sh /app/run_app.sh

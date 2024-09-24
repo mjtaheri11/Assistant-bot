@@ -11,8 +11,8 @@ from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel
 import psycopg2
 import traceback
-import aiofiles
-import aiocsv
+# import aiofiles
+# import aiocsv
 
 from config import config
 from logs import simple_logger, non_generative_agent_logger
@@ -57,7 +57,7 @@ def query_executor(q: str, is_insert: bool = False, insert_values: Optional[Tupl
     """   
     conn = psycopg2.connect(
         database="chatbot",
-        host="192.168.192.4",  # postgres
+        host="postgres", # "192.168.192.2",  
         user="postgres",
         password="MySecretPassword123!@#",
         port="5432"
@@ -234,15 +234,15 @@ async def chat_responder(request: ChatRequest, req: Request):
 CSV_FILE_PATH = 'feedback.csv'
 CSV_HEADERS = ['timestamp', 'session_id', 'message_id', 'feedback_type', 'user_query', 'bot_response']
 
-async def append_feedback_to_csv(feedback_data):
-    async with aiofiles.open('feedback.csv', mode='a', encoding='utf-8', newline='') as f:
-        writer = aiocsv.AsyncDictWriter(f, fieldnames=CSV_HEADERS)
+# async def append_feedback_to_csv(feedback_data):
+#     async with aiofiles.open('feedback.csv', mode='a', encoding='utf-8', newline='') as f:
+#         writer = aiocsv.AsyncDictWriter(f, fieldnames=CSV_HEADERS)
         
-        # If the file is new, write the header
-        if await f.tell() == 0:
-            await writer.writeheader()
+#         # If the file is new, write the header
+#         if await f.tell() == 0:
+#             await writer.writeheader()
         
-        await writer.writerow(feedback_data)
+#         await writer.writerow(feedback_data)
 
 @app.post("/feedback", responses={
     200: {"content": {"application/json": {"example": {"message": "Feedback received"}}}},
@@ -282,7 +282,7 @@ async def feedback(request: FeedbackRequest, req: Request):
         response = query_executor(temp_query, fetch_results=True, insert_values=(msg_id, session_id))
         response_ = response[0][1]
         query_ = response[0][0]
-        feedback_(query_, response_, "", request.feedback_type)
+        # feedback_(query_, response_, "", request.feedback_type)
         elapsed_time = time.time() - start_time
         
         non_generative_agent_logger(
@@ -308,9 +308,7 @@ async def feedback(request: FeedbackRequest, req: Request):
         }
 
         # Append feedback to CSV asynchronously
-        # import pdb
-        # pdb.set_trace()
-        await append_feedback_to_csv(feedback_data)
+        # await append_feedback_to_csv(feedback_data)
 
         return output
     
