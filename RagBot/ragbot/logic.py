@@ -11,7 +11,7 @@ from langchain_community.chat_models import ChatOllama
 from prompts import RAG_SYSTEM_PROMPT, UTTERANCE_PARAPHRASER_PROMPT, SUGGEST_QUESTIONS_FROM_CONTEXT_PROMPT
 from retriever import Retriever
 from config import config
-# from cache import Cache
+from cache import Cache
 from logs import simple_logger
 from utils import json_cleaning, json_text_cleaning
 
@@ -33,7 +33,7 @@ def get_chat_response(prompt: str) -> str:
         keep_alive=config["ollama"]["keep_alive"],
         seed=SEED,
         # base_url="127.0.0.1:8089"
-        base_url="http://ollama:11434",
+        # base_url="http://ollama:11434",
         # base_url=OLLAMA_HOST
     )
     messages = [SystemMessage(content=prompt)]
@@ -54,7 +54,7 @@ def get_cache_response(
         knn=knn,
     )
     if records:
-        return records[0]["answer"], records[0]["url"]
+        return records[0]["response"], records[0]["url"]
     else:
         return "", ""
 
@@ -116,23 +116,29 @@ def query_responder(query: str, context: str, history: str) -> str:
     # return cleaned_response_dict
 
 def prepare_final_context(query: str) -> str:
-    # cache = Cache()
-    # records = cache.get_embedding_match(
-    #     query,
-    #     config["cache"]["beta_threshold"],
-    #     config["cache"]["knn"],
-    # )
+    cache = Cache()
+    records = cache.get_embedding_match(
+        query,
+        config["cache"]["beta_threshold"],
+        config["cache"]["knn"],
+    )
     
     # context = "\n\n".join(
     #     "Q: " + result["query"] + "\n" + "A: " + result["answer"]
     #     for result in reversed(records)
     #     if result["query"].strip() != ""
     # )
+    
+    context = "\n\n".join(
+        "Q: " + result["query"] + "\n" + "A: " + result["response"]
+        for result in reversed(records)
+        if result["query"].strip() != ""
+    )
     retriever = Retriever()
-    context = retriever.retrieve_context(query)[0] # + "\n\n" + context
+    context = retriever.retrieve_context(query) # + "\n\n" + context
     # TODO: need appropriate context management > context = context[: config["context"]["max_length"]]
-    if context.strip() == "":
-        raise Exception("no context fetched")
+    # if context.strip() == "":
+    #     raise Exception("no context fetched")
     return context
 
 
@@ -143,20 +149,19 @@ def chat_responder_(
 
     # import pdb
     # pdb.set_trace()
-    # response, url = get_cache_response(
-    #     user_utterance,
-    # )
-    # if response:
-    #     return user_utterance, response, ""
+    response, url = get_cache_response(
+        user_utterance,
+    )
+    if response:
+        return user_utterance, response, ""
 
-    # paraphrased_utterance = user_utterance
     paraphrased_utterance_dict = utterance_paraphraser(history, user_utterance)
     paraphrased_utterance = paraphrased_utterance_dict["rephrased_question"]
-    # response, url = get_cache_response(
-    #     paraphrased_utterance,
-    # )
-    # if response:
-    #     return paraphrased_utterance, response, ""
+    response, url = get_cache_response(
+        paraphrased_utterance,
+    )
+    if response:
+        return paraphrased_utterance, response, ""
 
     context = prepare_final_context(paraphrased_utterance)
     json_response = query_responder(paraphrased_utterance, context, history)

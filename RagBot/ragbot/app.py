@@ -59,6 +59,8 @@ def chat_request(session_id: str, query: str, api_url: str = BASE_URL):
     }
 
     # Send the POST request with the chat data
+    import pdb
+    pdb.set_trace()
     headers = {"Session-ID": session_id}
     response = requests.post(f"{api_url}/chat", json=chat_data, headers=headers)
 

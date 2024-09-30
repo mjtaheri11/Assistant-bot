@@ -8,8 +8,10 @@ services:
       - "8686:8687"
     volumes:
       - ./ragbot/VectorDB:/app/ragbot/VectorDB
+      - ./ragbot/cache_db:/app/ragbot/cache_db
       - ./ragbot/rag-configs.yaml:/app/ragbot/rag-configs.yaml
       - ./saved_models:/app/saved_models
+      - log_data:/var/log  # Shared volume for log files
     environment:
       - OLLAMA_HOST=http://ollama:11434
       - LLM_MODEL=gemma2:9b-instruct-fp16
@@ -17,7 +19,8 @@ services:
     restart: always
     depends_on:
       - ollama
-      # - redis-stack
+      - kibana
+      - elasticsearch
     networks:
       - ollama-docker2
 
@@ -41,7 +44,7 @@ services:
     restart: always
     environment:
       - OLLAMA_KEEP_ALIVE=24h
-      - CUDA_VISIBLE_DEVICES=3
+      # - CUDA_VISIBLE_DEVICES=0
     networks:
       - ollama-docker2
 
@@ -53,7 +56,6 @@ services:
               count: all
               capabilities: [gpu]
     runtime: nvidia
-
 
   postgres:
     image: postgres:latest
@@ -83,8 +85,80 @@ services:
       PGADMIN_DEFAULT_PASSWORD: admin
     restart: always
     volumes:
-      - /home/user01/mj-workspace/Assistant-bot/RagBot/pgadmin:/var/lib/pgadmin
+      - ./pgadmin:/var/lib/pgadmin
 
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.9
+    container_name: elasticsearch
+    environment:
+      - node.name=elasticsearch
+      - discovery.type=single-node
+      - cluster.name=docker-cluster
+      - bootstrap.memory_lock=true
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - "xpack.security.enabled=false"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+      # - ./esdata:/usr/share/elasticsearch/data
+    ports:
+      - 9200:9200
+    networks:
+      - ollama-docker2
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.17.9
+    container_name: kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY=RASFyGVFAtgtk+2N/PL/rsWvrykiHOtufLiN0+2HyXc=
+    ports:
+      - 5601:5601
+    networks:
+      - ollama-docker2
+
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:7.17.9
+    container_name: filebeat
+    volumes:
+      - ./filebeat.yml:/usr/share/filebeat/filebeat.yml
+      - log_data:/var/log  # Mount the same shared volume here
+    networks:
+      - ollama-docker2
+    depends_on:
+      - elasticsearch
+    user: root
+    command: >
+      sh -c "chmod go-w /usr/share/filebeat/filebeat.yml &&
+            filebeat -e -c /usr/share/filebeat/filebeat.yml"
+
+
+volumes:
+  log_data:  
+  VectorDB:
+  postgres_data:
+  redis_data:
+  esdata:
+
+networks:
+  ollama-docker2:
+    external: false
+    driver: bridge
+  # logstash:
+  #   image: docker.elastic.co/logstash/logstash:7.17.9
+  #   container_name: logstash
+  #   # volumes:
+  #   #   - ./logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+  #   ports:
+  #     - "5044:5044" # Filebeat to Logstash
+  #     - "9600:9600" # Logstash monitoring
+  #   environment:
+  #     - "xpack.monitoring.enabled=false"
+  #   networks:
+  #     - ollama-docker2
 
   # redis-stack:
   #   image: redis/redis-stack:latest
@@ -109,12 +183,3 @@ services:
   #   networks:
   #     - ollama-docker2
   #   restart: always
-
-volumes:
-  VectorDB:
-  postgres_data:
-  redis_data:
-
-networks:
-  ollama-docker2:
-    external: false

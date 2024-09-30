@@ -57,7 +57,7 @@ def query_executor(q: str, is_insert: bool = False, insert_values: Optional[Tupl
     """   
     conn = psycopg2.connect(
         database="chatbot",
-        host="postgres", # "192.168.192.2",  
+        host="192.168.80.2",# "postgres", # 
         user="postgres",
         password="MySecretPassword123!@#",
         port="5432"
@@ -202,12 +202,15 @@ async def chat_responder(request: ChatRequest, req: Request):
         )
 
         non_generative_agent_logger(
-            session_id,
-            "chat_responder",
-            "Chat response generated",
-            {"user_utterance": request.query, "history": history, "context": context},
-            output.dict(),
-            elapsed_time,
+            session_id=session_id,
+            agent="chat_responder",
+            message="Chat response generated",
+            input_dict={"user_utterance": request.query,
+                        "paraphrased_query": paraphrased_utterance,
+                        "context": context
+                        },
+            output_dict={"response": output.response},
+            elapsed_time=elapsed_time,
         )
                 
         return output
@@ -219,13 +222,15 @@ async def chat_responder(request: ChatRequest, req: Request):
         traceback.print_exc()
         elapsed_time = time.time() - start_time
         non_generative_agent_logger(
-            session_id,
-            "chat_responder",
-            f"Error in chat response: {str(e)}",
-            {"user_utterance": request.query, "history": history},
-            {},
-            elapsed_time,
-        )
+            session_id=session_id,
+            agent="chat_responder",
+            message="Chat response not generated",
+            input_dict={"user_utterance": request.query,
+                        "paraphrased_query": "",
+                        },
+            output_dict={"response": ""},
+            elapsed_time=elapsed_time,
+    )
 
         raise HTTPException(status_code=500, detail="Unhandled error, Please report")
 
@@ -282,16 +287,16 @@ async def feedback(request: FeedbackRequest, req: Request):
         response = query_executor(temp_query, fetch_results=True, insert_values=(msg_id, session_id))
         response_ = response[0][1]
         query_ = response[0][0]
-        # feedback_(query_, response_, "", request.feedback_type)
+        feedback_(query_, response_, "", request.feedback_type)
         elapsed_time = time.time() - start_time
         
         non_generative_agent_logger(
-            session_id,
-            "feedback",
-            f"Feedback processed: {request.feedback_type}",
-            request.dict(),
-            output,
-            elapsed_time,
+            session_id=session_id,
+            agent="feedback",
+            message="feedback generated",
+            input_dict={"user_utterance": query_},
+            output_dict={"response": request.feedback_type},
+            elapsed_time=elapsed_time,
         )
 
         update_query = "UPDATE message SET feedback = %s WHERE message_id = %s RETURNING message_id;"

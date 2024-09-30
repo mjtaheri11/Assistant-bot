@@ -24,7 +24,7 @@ COPY . /app
 # RUN ./initiate_db.sh
 
 # Expose the port that the FastAPI app listens on
+RUN chmod go-w /app/filebeat.yml
 EXPOSE 8687
-
 # Command to run the application
 CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8687", "--reload"]

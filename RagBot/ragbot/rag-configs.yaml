@@ -3,11 +3,19 @@ database:
   persist_directory: ./VectorDB # initiate_vdb.py # ./VectorDB-bahar-hanieh #./VectorDB
   dbname: my-vdb
   documents:
-    /home/user01/mj-workspace/Assistant-bot/RagBot/new-KB/UPDATED-FAQ 202411408-temp.docx:
+    ../new-KB/UPDATED-FAQ 202411408-temp.docx:
       target_chunk_size: 750
       max_chunk_size: 1200
       sentence_overlap: 1
-    /home/user01/mj-workspace/Assistant-bot/RagBot/new-KB/GL_CompleteDoc-new.docx:
+    ../new-KB/GL_CompleteDoc-new.docx:
+      target_chunk_size: 800
+      max_chunk_size: 1200
+      sentence_overlap: 1
+    ../new-KB/AboutSG-temp.docx:
+      target_chunk_size: 800
+      max_chunk_size: 1200
+      sentence_overlap: 1
+    ../new-KB/DA-Help.docx:
       target_chunk_size: 800
       max_chunk_size: 1200
       sentence_overlap: 1
@@ -22,24 +30,26 @@ api:
   port: 8686
 
 cache:
-  host: redis-stack
-  # host: 127.0.0.1
-  port: 6379
-  index_name: Hamkar
+  # host: redis-stack
+  host: 127.0.0.1
+  port: 9200
   knn: 50
-  alpha_threshold: 0.04
+  alpha_threshold: 0.07
   beta_threshold: 0.2
   redis_result_num_documents: 5
   socket_timeout: 10
+  index_name: HamBot
+  persist_directory: ./cache_db
+  num_rank2_documents: 5
   embedding_model:
     #model_name: BAAI/bge-m3
-    model_name: /home/user01/mj-workspace/Assistant-bot/RagBot/saved_models/models--BAAI--bge-m3/snapshots/babcf60cae0a1f438d7ade582983d4ba462303c2
+    model_name: ../saved_models/models--BAAI--bge-m3/snapshots/babcf60cae0a1f438d7ade582983d4ba462303c2
     device: cuda
 
   # configurations for reranker
   reranker:
     #model_name: BAAI/bge-reranker-v2-m3
-    model_name: /home/user01/mj-workspace/Assistant-bot/RagBot/saved_models/models--BAAI--bge-reranker-v2-m3/snapshots/12e974610ba9083ed95f3edf08d7e899581f4de4
+    model_name: ../saved_models/models--BAAI--bge-reranker-v2-m3/snapshots/12e974610ba9083ed95f3edf08d7e899581f4de4
     device: cuda
     cutoff: 10
     
@@ -72,19 +82,19 @@ ollama:
 # configurations for embedding model
 embedding_model:
   #model_name: BAAI/bge-m3
-  model_name: ./saved_models/models--BAAI--bge-m3/snapshots/babcf60cae0a1f438d7ade582983d4ba462303c2
+  model_name: ../saved_models/models--BAAI--bge-m3/snapshots/babcf60cae0a1f438d7ade582983d4ba462303c2
   device: cuda
 
 # configurations for reranker
 reranker:
   #model_name: BAAI/bge-reranker-v2-m3
-  model_name: ./saved_models/models--BAAI--bge-reranker-v2-m3/snapshots/12e974610ba9083ed95f3edf08d7e899581f4de4
-  device: cpu
+  model_name: ../saved_models/models--BAAI--bge-reranker-v2-m3/snapshots/12e974610ba9083ed95f3edf08d7e899581f4de4
+  device: cuda
   cutoff: 10
 
 # configurations for retriever
 retriever:
-  retrieved_documents: 10 # initiate_vdb.py
+  retrieved_documents: 12 # initiate_vdb.py
   retrieved_rank2_documents: 5
   alpha_threshold: 0
   expansion: false
@@ -93,6 +103,7 @@ retriever:
   max_chunk_size: 1200
   sentence_overlap: 1
   history_length: 10
+  retriever_threshold: 0.5
 
 
 # configurations for langchain

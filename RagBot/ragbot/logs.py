@@ -13,7 +13,7 @@ def get_logger():
     logger.propagate = False
     logger.setLevel(logging.INFO)
 
-    file_handler = logging.FileHandler("./ragbot.log", encoding="utf8")
+    file_handler = logging.FileHandler("/var/log/HamBot.log", encoding="utf8")
     formatter = JsonFormatter(
         ensure_ascii=False,
         mix_extra=True,
