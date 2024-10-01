@@ -59,7 +59,7 @@ class Retriever(object):
             docs_scores_sorted = sorted(docs_with_scores, key=lambda x: x[1], reverse=True)
             if len(docs_scores_sorted) > k and docs_scores_sorted[k-1][1] > 0.2:
                 # TODO: here I want to add all the documents with similarity more that 35 percent
-                docs_scores_sorted = [elem for i, elem in enumerate(docs_scores_sorted) if elem[1] > 0.2]
+                docs_scores_sorted = [elem for i, elem in enumerate(docs_scores_sorted) if elem[1] > 0.2 and i < 7]
             else:
                 docs_scores_sorted[:k]
             # conf = mean([d[1] for d in docs_scores_sorted])        
