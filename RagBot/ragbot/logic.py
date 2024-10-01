@@ -33,7 +33,7 @@ def get_chat_response(prompt: str) -> str:
         keep_alive=config["ollama"]["keep_alive"],
         seed=SEED,
         # base_url="127.0.0.1:8089"
-        # base_url="http://ollama:8089",
+        base_url="http://ollama:11434",
         # base_url=OLLAMA_HOST
     )
     messages = [SystemMessage(content=prompt)]
@@ -165,7 +165,7 @@ def chat_responder_(
 
     context = prepare_final_context(paraphrased_utterance)
     json_response = query_responder(paraphrased_utterance, context, history)
-
+    # json_response = fix_asterisks(json_response)
     # return paraphrased_utterance, json_response["answer"], context
     return paraphrased_utterance, json_response, context
 

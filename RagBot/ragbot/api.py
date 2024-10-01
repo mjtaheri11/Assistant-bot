@@ -57,7 +57,7 @@ def query_executor(q: str, is_insert: bool = False, insert_values: Optional[Tupl
     """   
     conn = psycopg2.connect(
         database="chatbot",
-        host="192.168.96.2",# "postgres", # 
+        host="postgres", # "192.168.96.2"
         user="postgres",
         password="MySecretPassword123!@#",
         port="5432"

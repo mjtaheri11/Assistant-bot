@@ -204,8 +204,8 @@ def main():
                         جستجو شده است."""
                         content = (
                             st.session_state["response"][i]
-                            .replace("*", "&ast;")
-                            .replace("#", "&#35;")
+                            # .replace("*", "&ast;")
+                            # .replace("#", "&#35;")
                         )
                         st.markdown(
                             re.sub(

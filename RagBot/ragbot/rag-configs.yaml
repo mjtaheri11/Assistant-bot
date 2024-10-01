@@ -44,13 +44,13 @@ cache:
   embedding_model:
     #model_name: BAAI/bge-m3
     model_name: ../saved_models/models--BAAI--bge-m3/snapshots/babcf60cae0a1f438d7ade582983d4ba462303c2
-    device: cpu
+    device: cuda
 
   # configurations for reranker
   reranker:
     #model_name: BAAI/bge-reranker-v2-m3
     model_name: ../saved_models/models--BAAI--bge-reranker-v2-m3/snapshots/12e974610ba9083ed95f3edf08d7e899581f4de4
-    device: cpu
+    device: cuda
     cutoff: 10
     
   schema:
@@ -83,13 +83,13 @@ ollama:
 embedding_model:
   #model_name: BAAI/bge-m3
   model_name: ../saved_models/models--BAAI--bge-m3/snapshots/babcf60cae0a1f438d7ade582983d4ba462303c2
-  device: cpu
+  device: cuda
 
 # configurations for reranker
 reranker:
   #model_name: BAAI/bge-reranker-v2-m3
   model_name: ../saved_models/models--BAAI--bge-reranker-v2-m3/snapshots/12e974610ba9083ed95f3edf08d7e899581f4de4
-  device: cpu
+  device: cuda
   cutoff: 10
 
 # configurations for retriever
