@@ -25,15 +25,15 @@ random.seed(SEED)
 def get_chat_response(prompt: str) -> str:
     # OLLAMA_HOST = os.getenv('OLLAMA_HOST', 'http://dockerize_assistant-ollama-1:11434')
     # LLM_MODEL = os.getenv('LLM_MODEL', 'gemma2:9b-instruct-fp16')
-    print("Character Length of the prompt: " , len(prompt.split()))
-    print("words length of the prompt: ", len(prompt))
+    print("Character Length of the prompt: " , len(prompt))
+    print("words length of the prompt: ", len(prompt.split()))
     llm = ChatOllama(
         model=config["ollama"]["model_name"],
         temperature=config["ollama"]["temperature"],
         keep_alive=config["ollama"]["keep_alive"],
         seed=SEED,
         # base_url="127.0.0.1:8089"
-        # base_url="http://ollama:11434",
+        # base_url="http://ollama:8089",
         # base_url=OLLAMA_HOST
     )
     messages = [SystemMessage(content=prompt)]
@@ -135,7 +135,7 @@ def prepare_final_context(query: str) -> str:
         if result["query"].strip() != ""
     )
     retriever = Retriever()
-    context = retriever.retrieve_context(query) # + "\n\n" + context
+    context = retriever.retrieve_context(query) + "\n\n" + context
     # TODO: need appropriate context management > context = context[: config["context"]["max_length"]]
     # if context.strip() == "":
     #     raise Exception("no context fetched")

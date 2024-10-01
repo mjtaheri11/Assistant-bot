@@ -57,7 +57,7 @@ def query_executor(q: str, is_insert: bool = False, insert_values: Optional[Tupl
     """   
     conn = psycopg2.connect(
         database="chatbot",
-        host="192.168.80.2",# "postgres", # 
+        host="192.168.96.2",# "postgres", # 
         user="postgres",
         password="MySecretPassword123!@#",
         port="5432"
@@ -179,8 +179,6 @@ async def chat_responder(request: ChatRequest, req: Request):
             LIMIT %s;
         """
         selected_history = query_executor(q, fetch_results=True, insert_values=(session_id, config['retriever']['history_length']))
-        # import pdb
-        # pdb.set_trace()
         history = [[h[0], h[1]] for h in selected_history]
         
         # query_history = [h[0] for h in history]
@@ -188,7 +186,7 @@ async def chat_responder(request: ChatRequest, req: Request):
         
         # Insert the new message into the database
         insert_query = "INSERT INTO message (session_id, user_query, bot_response) VALUES (%s, %s, %s) RETURNING message_id;"
-        values = (session_id, paraphrased_utterance, response)
+        values = (session_id, request.query, response)
         msg_id = query_executor(insert_query, is_insert=True, insert_values=values, fetch_results=True)
         
         # Maintain the history length by deleting oldest messages if necessary

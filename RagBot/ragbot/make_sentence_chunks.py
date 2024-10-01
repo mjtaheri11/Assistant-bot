@@ -33,6 +33,7 @@ def process_single_document(doc_path: str, target_chunk_size: int=config["retrie
         'h1': '',
         'h2': '',
         'h3': '',
+        'h4': '',
         'content': []
     }
     
@@ -105,7 +106,9 @@ def finalize_chunk(chunk, target_chunk_size, max_chunk_size, source_file):
 
     if chunk['h3'].strip() != "":
         headers += chunk['h3'] + '\n'
-    
+
+    if chunk['h3'].strip() != "":
+        headers += chunk['h3'] + '\n'
     all_sentences = []
     for paragraph in chunk['content']:
         if paragraph.strip() == "":
@@ -153,15 +156,3 @@ def finalize_chunk(chunk, target_chunk_size, max_chunk_size, source_file):
         finalized_chunks.append(Document(page_content=chunk_text, metadata={"source": source_file}))
     
     return finalized_chunks
-
-# # Example usage
-# doc_path = 'path/to/your/document.docx'
-# chunks = chunk_document(doc_path)
-
-# # Print chunks (for demonstration)
-# for i, chunk in enumerate(chunks):
-#     print(f"Chunk {i + 1}:")
-#     print(chunk)
-#     print("-" * 50)
-
-# Here you would typically add code to insert these chunks into your Chroma vector database

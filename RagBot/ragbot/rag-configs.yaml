@@ -7,7 +7,7 @@ database:
       target_chunk_size: 750
       max_chunk_size: 1200
       sentence_overlap: 1
-    ../new-KB/GL_CompleteDoc-new.docx:
+    ../new-KB/GL_CompleteDoc-new-temp.docx:
       target_chunk_size: 800
       max_chunk_size: 1200
       sentence_overlap: 1
@@ -44,13 +44,13 @@ cache:
   embedding_model:
     #model_name: BAAI/bge-m3
     model_name: ../saved_models/models--BAAI--bge-m3/snapshots/babcf60cae0a1f438d7ade582983d4ba462303c2
-    device: cuda
+    device: cpu
 
   # configurations for reranker
   reranker:
     #model_name: BAAI/bge-reranker-v2-m3
     model_name: ../saved_models/models--BAAI--bge-reranker-v2-m3/snapshots/12e974610ba9083ed95f3edf08d7e899581f4de4
-    device: cuda
+    device: cpu
     cutoff: 10
     
   schema:
@@ -83,13 +83,13 @@ ollama:
 embedding_model:
   #model_name: BAAI/bge-m3
   model_name: ../saved_models/models--BAAI--bge-m3/snapshots/babcf60cae0a1f438d7ade582983d4ba462303c2
-  device: cuda
+  device: cpu
 
 # configurations for reranker
 reranker:
   #model_name: BAAI/bge-reranker-v2-m3
   model_name: ../saved_models/models--BAAI--bge-reranker-v2-m3/snapshots/12e974610ba9083ed95f3edf08d7e899581f4de4
-  device: cuda
+  device: cpu
   cutoff: 10
 
 # configurations for retriever
@@ -103,7 +103,7 @@ retriever:
   max_chunk_size: 1200
   sentence_overlap: 1
   history_length: 10
-  retriever_threshold: 0.5
+  retriever_threshold: 0.001
 
 
 # configurations for langchain
