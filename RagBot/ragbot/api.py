@@ -57,7 +57,7 @@ def query_executor(q: str, is_insert: bool = False, insert_values: Optional[Tupl
     """   
     conn = psycopg2.connect(
         database="chatbot",
-        host="postgres",
+        host="192.168.112.2", #"postgres",
         user="postgres",
         password="MySecretPassword123!@#",
         port="5432"
@@ -179,7 +179,7 @@ async def chat_responder(request: ChatRequest, req: Request):
             LIMIT %s;
         """
         selected_history = query_executor(q, fetch_results=True, insert_values=(session_id, config['retriever']['history_length']))
-        history = [[h[0], h[1]] for h in selected_history]
+        history = [[h[0], h[1]] for h in selected_history[-5:]]
         
         # query_history = [h[0] for h in history]
         paraphrased_utterance, response, context = chat_responder_(history, request.query)

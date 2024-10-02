@@ -248,6 +248,15 @@ class Cache:
 
         return self.filter_documents(filters)
 
+    def delete_document(self, query: str) -> None:
+        """
+        Delete a specific document from the ChromaDB dataset based on its query (ID).
+
+        Args:
+            query (str): The unique identifier (query) of the document to delete.
+        """
+        self._vector_store.delete(ids=[query])
+        self._vector_store.persist()
 
 # import os
 # from typing import Any, List, Mapping

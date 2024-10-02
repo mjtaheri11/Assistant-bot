@@ -33,7 +33,7 @@ def get_chat_response(prompt: str) -> str:
         keep_alive=config["ollama"]["keep_alive"],
         seed=SEED,
         # base_url="127.0.0.1:8089"
-        base_url="http://ollama:11434",
+        # base_url="http://ollama:11434",
         # base_url=OLLAMA_HOST
     )
     messages = [SystemMessage(content=prompt)]
@@ -96,10 +96,10 @@ def utterance_paraphraser(history: List[tuple[str, str]], user_utterance: str) -
     response = get_chat_response(prompt)
     # import pdb
     # pdb.set_trace()
-    paraphrased_query = json_cleaning(response)
-    paraphrased_query_dict = json_text_cleaning(paraphrased_query, key="rephrased_question")
-    return paraphrased_query_dict
-
+    # paraphrased_query = json_cleaning(response)
+    # paraphrased_query_dict = json_text_cleaning(paraphrased_query, key="rephrased_question")
+    # return paraphrased_query_dict
+    return response
 
 def query_responder(query: str, context: str, history: str) -> str:
     # TODO: Add appropriate logger.
@@ -156,7 +156,8 @@ def chat_responder_(
         return user_utterance, response, ""
 
     paraphrased_utterance_dict = utterance_paraphraser(history, user_utterance)
-    paraphrased_utterance = paraphrased_utterance_dict["rephrased_question"]
+    # paraphrased_utterance = paraphrased_utterance_dict["rephrased_question"]
+    paraphrased_utterance = paraphrased_utterance_dict
     response, url = get_cache_response(
         paraphrased_utterance,
     )
