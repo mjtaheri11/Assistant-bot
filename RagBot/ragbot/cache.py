@@ -258,6 +258,18 @@ class Cache:
         self._vector_store.delete(ids=[query])
         self._vector_store.persist()
 
+
+
+if __name__ == "__main__":
+    
+    cache = Cache()
+    cache.delete_document("بیشتر توضیح میدی؟")
+    import pdb
+    pdb.set_trace()
+    print("hello world")
+    
+    
+    
 # import os
 # from typing import Any, List, Mapping
 

@@ -62,7 +62,7 @@ def chat_request(session_id: str, query: str, api_url: str = BASE_URL):
     # import pdb
     # pdb.set_trace()
     headers = {"Session-ID": session_id}
-    response = requests.post(f"{api_url}/chat", json=chat_data, headers=headers)
+    response = requests.post(f"{api_url}/chat", json=chat_data, headers=headers) # , timeout=11
 
     # Handle the different response status codes
     json_response = response.json()
