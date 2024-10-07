@@ -5,7 +5,6 @@ import pathlib
 import requests
 import streamlit as st
 from retriever import Retriever
-from streamlit.runtime.scriptrunner.script_run_context import get_script_run_ctx
 
 from logs import simple_logger, non_generative_agent_logger
 from utils import init_session_state
@@ -22,7 +21,7 @@ RESPONSE_TEMPLATE_FOR_NO_ANSWER = """
     """
 
 CSS_STYLE_FILE = "{path}/style.css".format(path=pathlib.Path(__file__).parent.resolve())
-BASE_URL = "http://185.13.230.222:8691" # "http://172.27.0.6:8686" #
+BASE_URL = "http://172.17.224.24:8686/" # "http://172.27.0.6:8686" #
 # with open(CSS_STYLE_FILE) as f:
 #     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
