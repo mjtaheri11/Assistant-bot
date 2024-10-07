@@ -132,9 +132,9 @@ services:
       - elasticsearch
     user: root
     command: >
-      sh -c "chmod go-w /usr/share/filebeat/filebeat.yml &&
+      sh -c "chown root:root /usr/share/filebeat/filebeat.yml &&
+            chmod go-w /usr/share/filebeat/filebeat.yml &&
             filebeat -e -c /usr/share/filebeat/filebeat.yml"
-
 
 volumes:
   log_data:  

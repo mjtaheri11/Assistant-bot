@@ -21,7 +21,7 @@ output.elasticsearch:
   hosts: ["http://elasticsearch:9200"]
 
 setup.kibana:
-  host: "http://kibana:5601"
+  host: "http://kibana:8001"
 
 processors:
   - drop_fields:

@@ -53,7 +53,7 @@ def get_cache_response(
         threshold=threshold,
         knn=knn,
     )
-    if records:
+    if records and records[0]["thumb_up"] > 0:
         return records[0]["response"], records[0]["url"]
     else:
         return "", ""
@@ -134,6 +134,8 @@ def prepare_final_context(query: str) -> str:
         for result in reversed(records)
         if result["query"].strip() != ""
     )
+    # import pdb
+    # pdb.set_trace()
     retriever = Retriever()
     context = retriever.retrieve_context(query) + "\n\n" + context
     # TODO: need appropriate context management > context = context[: config["context"]["max_length"]]

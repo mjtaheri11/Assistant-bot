@@ -12,6 +12,27 @@ from logs import get_logger
 logger = get_logger()
 
 
+class ModelManager:
+    _instance = None
+
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = super(ModelManager, cls).__new__(cls)
+            cls._instance._initialize()
+        return cls._instance
+
+    def _initialize(self):
+        self.embedding_model = HuggingFaceEmbeddings(
+            model_name=config["embedding_model"]["model_name"],
+            model_kwargs={"device": config["embedding_model"]["device"]}
+        )
+        self.reranker_model = FlagReranker(
+            config["reranker"]["model_name"],
+            device=config["reranker"]["device"]
+        )
+
+
+
 class Retriever(object):
     _instance = None
 
@@ -23,18 +44,10 @@ class Retriever(object):
     
     def _initialize(self):
         self.config_ = config
+        model_manager = ModelManager()
 
-        self.embedding_model_ = HuggingFaceEmbeddings(
-            model_name=self.config_["embedding_model"]["model_name"],
-            model_kwargs={
-                "device": self.config_["embedding_model"]["device"]
-            },
-        )
-
-        self.reranker_model_ = FlagReranker(
-            self.config_["reranker"]["model_name"],
-            device=self.config_["reranker"]["device"],
-        )
+        self.embedding_model_ = model_manager.embedding_model
+        self.reranker_model_ = model_manager.reranker_model
 
         self.vectordb_ = Chroma(
             persist_directory=self.config_["database"][

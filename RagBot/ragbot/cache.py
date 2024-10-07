@@ -7,6 +7,7 @@ from langchain.embeddings import HuggingFaceEmbeddings  # Ensure compatibility
 from FlagEmbedding import FlagReranker
 
 from config import config
+from retriever import ModelManager
 
 
 class Cache:
@@ -15,32 +16,26 @@ class Cache:
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
             cls._instance = super().__new__(cls, *args, **kwargs)
-
-            cls._instance.embedding_model = HuggingFaceEmbeddings(
-                model_name=config["cache"]["embedding_model"]["model_name"],
-                model_kwargs={"device": config["embedding_model"]["device"]},
-            )
-
-            cls._instance.reranker_model = FlagReranker(
-                config["cache"]["reranker"]["model_name"],
-                device=config["reranker"]["device"],
-            )
-
-            # Initialize Chroma with persistence
-            persist_directory = config["cache"].get("persist_directory", "./cache_db")
-            cls._instance._collection_name = config["cache"]["index_name"]
-
-            # Initialize the Chroma vector store
-            cls._instance._vector_store = Chroma(
-                collection_name=cls._instance._collection_name,
-                embedding_function=cls._instance.embedding_model,
-                persist_directory=persist_directory,
-            )
-
-            # Ensure persistence
-            cls._instance._vector_store.persist()
-
+            cls._instance._initialize()
         return cls._instance
+
+
+    def _initialize(self):
+        model_manager = ModelManager()
+        self.embedding_model = model_manager.embedding_model
+        self.reranker_model = model_manager.reranker_model
+
+        # Initialize Chroma with persistence
+        persist_directory = config["cache"].get("persist_directory", "./cache_db")
+        self._collection_name = config["cache"]["index_name"]
+
+        # Initialize the Chroma vector store
+        self._vector_store = Chroma(
+            collection_name=self._collection_name,
+            embedding_function=self.embedding_model,
+            persist_directory=persist_directory,
+        )
+
 
     def _get_embedding(self, query: str) -> List[float]:
         return self.embedding_model.embed_query(query)
@@ -69,7 +64,7 @@ class Cache:
             embeddings=[embedding],
             ids=[query],  # Using query as the unique ID
         )
-        self._vector_store.persist()
+        # self._vector_store.persist()
 
     def _update_row(
         self,
@@ -89,7 +84,7 @@ class Cache:
                 embeddings=[self._get_embedding(query)],
                 ids=[query],
             )
-            self._vector_store.persist()
+            # self._vector_store.persist()
         else:
             # If the record doesn't exist, insert it with default values
             self._insert_row(
@@ -255,18 +250,19 @@ class Cache:
         Args:
             query (str): The unique identifier (query) of the document to delete.
         """
-        self._vector_store.delete(ids=[query])
-        self._vector_store.persist()
+        if self._get_row(query) is not None:
+            self._vector_store.delete(ids=[query])
+        # self._vector_store.persist()
 
 
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
     
-    cache = Cache()
-    cache.delete_document("بیشتر توضیح میدی؟")
-    import pdb
-    pdb.set_trace()
-    print("hello world")
+#     cache = Cache()
+#     cache.delete_document("چرا در رسید خرید داخلی انبار مواد اولیه را نمیبینم")
+#     import pdb
+#     pdb.set_trace()
+#     print("hello world")
     
     
     
