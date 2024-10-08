@@ -15,7 +15,7 @@ database:
       target_chunk_size: 800
       max_chunk_size: 1200
       sentence_overlap: 1
-    ../new-KB/DA-Help.docx:
+    ../new-KB/DA-Help-temp.docx:
       target_chunk_size: 800
       max_chunk_size: 1200
       sentence_overlap: 1
@@ -34,7 +34,7 @@ cache:
   host: 127.0.0.1
   port: 9200
   knn: 50
-  alpha_threshold: 0.07
+  alpha_threshold: 0.08
   beta_threshold: 0.2
   redis_result_num_documents: 5
   socket_timeout: 10
