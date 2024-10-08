@@ -179,7 +179,7 @@ async def chat_responder(request: ChatRequest, req: Request):
             LIMIT %s;
         """
         selected_history = query_executor(q, fetch_results=True, insert_values=(session_id, config['retriever']['history_length']))
-        history = [[h[0], h[1]] for h in selected_history[-5:]]
+        history = [[h[0], h[1]] for h in selected_history[-4:]]
         
         # query_history = [h[0] for h in history]
         paraphrased_utterance, response, context = chat_responder_(history, request.query)
