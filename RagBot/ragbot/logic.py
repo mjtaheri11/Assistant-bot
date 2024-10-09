@@ -33,7 +33,7 @@ def get_chat_response(prompt: str) -> str:
         keep_alive=config["ollama"]["keep_alive"],
         seed=SEED,
         # base_url="127.0.0.1:8089"
-        # base_url="http://ollama:11434",
+        base_url="http://ollama:11434",
         # base_url=OLLAMA_HOST
     )
     messages = [SystemMessage(content=prompt)]
