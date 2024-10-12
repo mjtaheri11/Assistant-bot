@@ -21,6 +21,29 @@ from logic import prepare_final_context, query_responder, utterance_paraphraser,
 app = FastAPI(title="Digital Assistant")
 
 # Models for request and response
+
+
+# sudo docker exec -it postgres psql -U postgres -d chatbot -c "CREATE TABLE public.session (session_id UUID DEFAULT gen_random_uuid() PRIMARY KEY, history_length INT)"
+
+# CREATE EXTENSION IF NOT EXISTS "pgcrypto";  
+
+# CREATE TABLE public.session (
+#     session_id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+#     history_length INT
+# );
+
+
+# CREATE TABLE public.message (
+#     message_id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+#     session_id UUID REFERENCES public.session(session_id),
+#     user_query TEXT,
+#     paraphrased_query TEXT,
+#     bot_response TEXT,
+#     feedback TEXT,
+#     create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+# );
+
+
 class ChatRequest(BaseModel):
     query: str
     session_id: Optional[str] = None
@@ -57,7 +80,7 @@ def query_executor(q: str, is_insert: bool = False, insert_values: Optional[Tupl
     """   
     conn = psycopg2.connect(
         database="chatbot",
-        host="postgres", #"192.168.192.4", # 
+        host="postgres", #"192.168.192.2", # 
         user="postgres",
         password="MySecretPassword123!@#",
         port="5432"
@@ -89,43 +112,14 @@ def query_executor(q: str, is_insert: bool = False, insert_values: Optional[Tupl
     return output
 
 
-def maintain_history(session_id: str, history_length: int):
-    """
-    Ensures that the number of messages for a session does not exceed history_length.
-    If it does, deletes the oldest messages to maintain the limit.
-    """
-    # Count the total number of messages for the session
-    count_query = "SELECT COUNT(*) FROM message WHERE session_id = %s;"
-    count_result = query_executor(count_query, fetch_results=True, insert_values=(session_id,))
-    total_messages = count_result[0][0] if count_result else 0
-
-    if total_messages > history_length:
-        # Calculate how many messages need to be deleted
-        messages_to_delete = total_messages - history_length
-
-        # Use a Common Table Expression (CTE) to delete the oldest messages
-        delete_query = """
-            WITH oldest_messages AS (
-                SELECT message_id FROM message
-                WHERE session_id = %s
-                ORDER BY create_time ASC
-                LIMIT %s
-            )
-            DELETE FROM message
-            WHERE message_id IN (SELECT message_id FROM oldest_messages);
-        """
-        # Execute the DELETE query without fetching results
-        query_executor(delete_query, fetch_results=False, insert_values=(session_id, messages_to_delete))
-
-
 @app.post('/session/create', response_model=SessionResponse, responses={
     200: {},
     500: {"description": "Unhandled error that should be reported"}
 })
 async def create_session():
     try:
-        q = "INSERT INTO public.session(history_length) VALUES (%s) RETURNING session_id;"
-        sid = query_executor(q, is_insert=True, insert_values=(config['retriever']['history_length'],), fetch_results=True)
+        q = "INSERT INTO public.session DEFAULT VALUES RETURNING session_id;"
+        sid = query_executor(q, is_insert=True, fetch_results=True)
 
         return {
             'session_id': sid[0]
@@ -173,25 +167,20 @@ async def chat_responder(request: ChatRequest, req: Request):
 
         simple_logger(f"Received chat request", session_id)
         q = """
-            SELECT user_query, bot_response FROM message
+            SELECT user_query, paraphrased_query, bot_response FROM message
             WHERE session_id = %s
-            ORDER BY create_time ASC
+            ORDER BY create_time DESC
             LIMIT %s;
         """
         selected_history = query_executor(q, fetch_results=True, insert_values=(session_id, config['retriever']['history_length']))
-        history = [[h[0], h[1]] for h in selected_history[-3:]]
-        
-        # query_history = [h[0] for h in history]
+        history = [[h[0], h[2]] if len(h[0]) < 200 else [h[1], h[2]] for h in reversed(selected_history)]
         paraphrased_utterance, response, context = chat_responder_(history, request.query)
         
         # Insert the new message into the database
-        insert_query = "INSERT INTO message (session_id, user_query, bot_response) VALUES (%s, %s, %s) RETURNING message_id;"
-        values = (session_id, request.query, response)
+        insert_query = "INSERT INTO message (session_id, user_query, paraphrased_query, bot_response) VALUES (%s, %s, %s, %s) RETURNING message_id;"
+        values = (session_id, request.query, paraphrased_utterance, response)
         msg_id = query_executor(insert_query, is_insert=True, insert_values=values, fetch_results=True)
-        
-        # Maintain the history length by deleting oldest messages if necessary
-        maintain_history(session_id, config['retriever']['history_length'])
-        
+                
         elapsed_time = time.time() - start_time
         output = ChatResponse(
             response=response,
@@ -281,11 +270,11 @@ async def feedback(request: FeedbackRequest, req: Request):
         output = {"message": "Feedback received"}
         if request.feedback_type not in ["thumb_up", "thumb_down", "flag"]:
             raise HTTPException(status_code=422, detail="Invalid feedback")
-        temp_query = "SELECT user_query, bot_response FROM message WHERE message_id = %s AND session_id = %s;"
-        response = query_executor(temp_query, fetch_results=True, insert_values=(msg_id, session_id))
-        response_ = response[0][1]
-        query_ = response[0][0]
-        feedback_(query_, response_, "", request.feedback_type)
+        temp_query = "SELECT paraphrased_query, bot_response FROM message WHERE message_id = %s AND session_id = %s;"
+        retrieved_results = query_executor(temp_query, fetch_results=True, insert_values=(msg_id, session_id))
+        paraphrased_query = retrieved_results[0][0]
+        bot_response = retrieved_results[0][1]
+        feedback_(paraphrased_query, bot_response, "", request.feedback_type)
         elapsed_time = time.time() - start_time
         
         non_generative_agent_logger(

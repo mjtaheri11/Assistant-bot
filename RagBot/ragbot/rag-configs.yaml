@@ -102,7 +102,7 @@ retriever:
   chunk_size: 800
   max_chunk_size: 1200
   sentence_overlap: 1
-  history_length: 10
+  history_length: 3
   retriever_threshold: 0.001
 
 
