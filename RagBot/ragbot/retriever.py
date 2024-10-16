@@ -28,7 +28,8 @@ class ModelManager:
         )
         self.reranker_model = FlagReranker(
             config["reranker"]["model_name"],
-            device=config["reranker"]["device"]
+            device=config["reranker"]["device"],
+            use_fp16=True
         )
 
 
@@ -70,11 +71,11 @@ class Retriever(object):
         docs_with_scores = [(documents[i], scores[i]) for i in range(len(documents)) if scores[i] > config["retriever"]["retriever_threshold"]]
         if len(docs_with_scores) > 0:
             docs_scores_sorted = sorted(docs_with_scores, key=lambda x: x[1], reverse=True)
-            if len(docs_scores_sorted) > k and docs_scores_sorted[k-1][1] > 0.2:
+            if len(docs_scores_sorted) > k and docs_scores_sorted[k-1][1] > 0.06:
                 # TODO: here I want to add all the documents with similarity more that 35 percent
-                docs_scores_sorted = [elem for i, elem in enumerate(docs_scores_sorted) if elem[1] > 0.2 and i < 7]
+                docs_scores_sorted = [elem for i, elem in enumerate(docs_scores_sorted) if i < k+3]
             else:
-                docs_scores_sorted[:k]
+                docs_scores_sorted = docs_scores_sorted[:k]
             # conf = mean([d[1] for d in docs_scores_sorted])        
             # TODO: appropriate logger
             sorted_documents = '\n\n'.join([d[0] for d in reversed(docs_scores_sorted)])

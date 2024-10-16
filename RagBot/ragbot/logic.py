@@ -15,7 +15,7 @@ from cache import Cache
 from logs import simple_logger
 from utils import json_cleaning, json_text_cleaning
 
-SEED = 0
+SEED = 44
 torch.manual_seed(SEED)
 np.random.seed(SEED)
 torch.cuda.manual_seed_all(SEED)
@@ -33,7 +33,7 @@ def get_chat_response(prompt: str) -> str:
         keep_alive=config["ollama"]["keep_alive"],
         seed=SEED,
         # base_url="127.0.0.1:8089"
-        base_url="http://ollama:11434",
+        # base_url="http://ollama:11434",
         # base_url=OLLAMA_HOST
     )
     messages = [SystemMessage(content=prompt)]
@@ -137,7 +137,7 @@ def prepare_final_context(query: str) -> str:
     # import pdb
     # pdb.set_trace()
     retriever = Retriever()
-    context = retriever.retrieve_context(query) + "\n\n" + context
+    context = retriever.retrieve_context(query) #+ "\n\n" + context
     # TODO: need appropriate context management > context = context[: config["context"]["max_length"]]
     # if context.strip() == "":
     #     raise Exception("no context fetched")

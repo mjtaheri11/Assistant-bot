@@ -21,6 +21,7 @@ services:
       - ollama
       - kibana
       - elasticsearch
+      - grafana
     networks:
       - ollama-docker2
 
@@ -139,12 +140,30 @@ services:
             chmod go-w /usr/share/filebeat/filebeat.yml &&
             filebeat -e -c /usr/share/filebeat/filebeat.yml"
 
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "8002:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    networks:
+      - ollama-docker2
+    depends_on:
+      - postgres
+    volumes:
+      - grafana_data:/var/lib/grafana
+    user: root
+    restart: always
+
 volumes:
   log_data:  
   VectorDB:
   postgres_data:
   redis_data:
   esdata:
+  grafana_data:
 
 networks:
   ollama-docker2:

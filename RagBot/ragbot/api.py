@@ -11,13 +11,18 @@ from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel
 import psycopg2
 import traceback
-# import aiofiles
-# import aiocsv
 
 from config import config
 from logs import simple_logger, non_generative_agent_logger
-from logic import prepare_final_context, query_responder, utterance_paraphraser, feedback_, chat_responder_
+from logic import (
+    prepare_final_context,
+    query_responder,
+    utterance_paraphraser,
+    feedback_,
+    chat_responder_,
+)
 
+RESPONSE_TEMPLATE_FOR_NO_ANSWER = "در حال حاضر نمی‌توانم به سوال شما پاسخ دهم"
 app = FastAPI(title="Digital Assistant")
 
 # Models for request and response
@@ -25,11 +30,10 @@ app = FastAPI(title="Digital Assistant")
 
 # sudo docker exec -it postgres psql -U postgres -d chatbot -c "CREATE TABLE public.session (session_id UUID DEFAULT gen_random_uuid() PRIMARY KEY, history_length INT)"
 
-# CREATE EXTENSION IF NOT EXISTS "pgcrypto";  
+# CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 # CREATE TABLE public.session (
 #     session_id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-#     history_length INT
 # );
 
 
@@ -40,6 +44,7 @@ app = FastAPI(title="Digital Assistant")
 #     paraphrased_query TEXT,
 #     bot_response TEXT,
 #     feedback TEXT,
+#     elapsed_time TEXT,
 #     create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 # );
 
@@ -65,142 +70,223 @@ class FeedbackRequest(BaseModel):
     session_id: Optional[str] = None
 
 
-def query_executor(q: str, is_insert: bool = False, insert_values: Optional[Tuple] = None, fetch_results: bool = True):
-    """
-    Executes a SQL query against the PostgreSQL database.
+class Postgres:
+    _instance = None
 
-    Args:
-        q (str): The SQL query to execute.
-        is_insert (bool): Indicates if the query is an INSERT statement that returns a value.
-        insert_values (Optional[Tuple]): Values to insert into the query.
-        fetch_results (bool): Whether to fetch and return results from the query.
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = super().__new__(cls, *args, **kwargs)
+            cls._instance._initialize()
+        return cls._instance
 
-    Returns:
-        Optional[List[Tuple]]: Fetched results if any, else None.
-    """   
-    conn = psycopg2.connect(
-        database="chatbot",
-        host="postgres", #"192.168.192.2", # 
-        user="postgres",
-        password="MySecretPassword123!@#",
-        port="5432"
-    )
+    def _initialize(self):
+        self.database = config["postgres"]["database"]
+        self.connection_address = config["postgres"]["address"]
 
-    try:
-        with conn:
-            with conn.cursor() as cursor:
-                if insert_values is not None:
-                    cursor.execute(q, insert_values)
-                else:
-                    cursor.execute(q)
-
-                if fetch_results:
-                    if is_insert:
-                        output = cursor.fetchone()
-                    else:
-                        output = cursor.fetchall()
-                else:
-                    output = None
-
-    except psycopg2.ProgrammingError as ex:
-        raise ex
-
-    finally:
-        conn.commit()
-        conn.close()
-
-    return output
-
-
-@app.post('/session/create', response_model=SessionResponse, responses={
-    200: {},
-    500: {"description": "Unhandled error that should be reported"}
-})
-async def create_session():
-    try:
-        q = "INSERT INTO public.session DEFAULT VALUES RETURNING session_id;"
-        sid = query_executor(q, is_insert=True, fetch_results=True)
-
-        return {
-            'session_id': sid[0]
-        }
-
-    except Exception as e:
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail="Unhandled error, Please report")
-
-
-@app.post("/chat", response_model=ChatResponse, responses={
-    200: {},
-    500: {"description": "Unhandled error that should be reported"},
-    404: {"description": "Session not found", "content": {"application/json": {"example": {"detail": "Session not found"}}}},
-    422: {"description": "Unprocessable entity e.g. no session id, or no query", "content": {"application/json": {"example": {"detail": "Query is empty"}}}}
-})
-async def chat_responder(request: ChatRequest, req: Request):
-
-    try:    
-        start_time = time.time()
-        
-        session_id = req.headers.get("Session-ID", None)
-        if session_id is None:
-            session_id = request.session_id
-
-            if session_id is None:
-                raise HTTPException(status_code=422, detail="No Session-ID")
-                return
-
-        if len(request.query.strip()) == 0:
-            raise HTTPException(status_code=422, detail="Query is empty")
-            return
-
+    def _execute_query(
+        self,
+        query: str,
+        is_insert: bool = False,
+        insert_values: Optional[Tuple] = None,
+        fetch_results: bool = True,
+    ):
         try:
-            q = "SELECT session_id FROM session WHERE session_id = %s;"
-            result = query_executor(q, fetch_results=True, insert_values=(session_id,))
-            if len(result) == 0:
-                raise HTTPException(status_code=404, detail="Session not found")
-                return
+            postgres_connection = psycopg2.connect(
+                    database=self.database,
+                    host=self.connection_address,  # "postgres", #
+                    user="postgres",
+                    password="MySecretPassword123!@#", # add to environment variables``
+                    port="5432",
+                )
+            with postgres_connection:
+                with postgres_connection.cursor() as cursor:
+                    if insert_values is not None:
+                        cursor.execute(query, insert_values)
+                    else:
+                        cursor.execute(query)
 
-        except Exception as e:
-            traceback.print_exc()
-            raise HTTPException(status_code=404, detail="Session not found")
-            return
+                    if fetch_results:
+                        if is_insert:
+                            output = cursor.fetchone()
+                        else:
+                            output = cursor.fetchall()
+                    else:
+                        output = None
 
-        simple_logger(f"Received chat request", session_id)
-        q = """
+        except psycopg2.ProgrammingError as ex:
+            raise ex
+
+        finally:
+            postgres_connection.commit()
+            postgres_connection.close()
+
+        return output
+
+    def exist_session(self, session_id):
+        sql_exist_session_query = (
+            "SELECT session_id FROM session WHERE session_id = %s;"
+        )
+        result = self._execute_query(
+            sql_exist_session_query, fetch_results=True, insert_values=(session_id,)
+        )
+        if len(result):
+            return True
+        return False
+
+    def get_message_fields(self, session_id, message_id):
+        sql_get_message_fileds = (
+            "SELECT user_query, paraphrased_query, bot_response FROM message WHERE message_id = %s AND session_id = %s;"
+        )
+        message_fields = self._execute_query(
+            sql_get_message_fileds,
+            fetch_results=True,
+            insert_values=(message_id, session_id),
+        )
+        if not len(message_fields):
+            return []
+        return message_fields[0]
+
+    def create_session(self):
+        sql_create_session_query = (
+            "INSERT INTO public.session DEFAULT VALUES RETURNING session_id;"
+        )
+        sid = self._execute_query(
+            sql_create_session_query, is_insert=True, fetch_results=True
+        )
+        output = SessionResponse(session_id=sid[0])
+        return output
+
+    def get_history(self, session_id, history_length):
+        sql_history_query = """
             SELECT user_query, paraphrased_query, bot_response FROM message
             WHERE session_id = %s
             ORDER BY create_time DESC
             LIMIT %s;
         """
-        selected_history = query_executor(q, fetch_results=True, insert_values=(session_id, config['retriever']['history_length']))
-        history = [[h[0], h[2]] if len(h[0]) < 200 else [h[1], h[2]] for h in reversed(selected_history)]
-        paraphrased_utterance, response, context = chat_responder_(history, request.query)
-        
-        # Insert the new message into the database
-        insert_query = "INSERT INTO message (session_id, user_query, paraphrased_query, bot_response) VALUES (%s, %s, %s, %s) RETURNING message_id;"
-        values = (session_id, request.query, paraphrased_utterance, response)
-        msg_id = query_executor(insert_query, is_insert=True, insert_values=values, fetch_results=True)
-                
-        elapsed_time = time.time() - start_time
-        output = ChatResponse(
-            response=response,
-            message_id=msg_id[0],
-            query=paraphrased_utterance
+        selected_history = self._execute_query(
+            sql_history_query,
+            fetch_results=True,
+            insert_values=(session_id, history_length)
+        )
+        history = [
+            (
+                [h[0], h[2]]
+                if len(h[0]) < config["postgres"]["max_user_input_character_length"]
+                else [h[1], h[2]]
+            )
+            for h in reversed(selected_history)
+        ]
+        return history
+
+    def insert_chat_row(
+        self, session_id, user_query, paraphrased_query, bot_response, elapsed_time
+    ):
+        values = (
+            session_id,
+            user_query,
+            paraphrased_query,
+            bot_response,
+            elapsed_time,
+        )
+        sql_insert_query = "INSERT INTO message (session_id, user_query, paraphrased_query, bot_response, elapsed_time) VALUES (%s, %s, %s, %s, %s) RETURNING message_id;"
+        message_id = self._execute_query(
+            sql_insert_query, is_insert=True, insert_values=values, fetch_results=True
+        )
+        return message_id[0]
+
+    def set_feedback(self, message_id, feedback_type):
+        update_query = "UPDATE message SET feedback = %s WHERE message_id = %s RETURNING message_id;"
+        _ = self._execute_query(
+            update_query,
+            fetch_results=True,
+            insert_values=(feedback_type, message_id),
         )
 
+
+def get_session_id(request: Request, content_request: ChatRequest):
+    # Try to get the session ID from headers, fall back to request object
+    session_id = request.headers.get("Session-ID") or content_request.session_id
+    if not session_id:
+        raise HTTPException(status_code=422, detail="No Session-ID")
+    return session_id
+
+
+def validate_query(query):
+    if not query.strip():
+        raise HTTPException(status_code=422, detail="Query is empty")
+
+
+
+@app.post(
+    "/session/create",
+    response_model=SessionResponse,
+    responses={
+        200: {},
+        500: {"description": "Unhandled error that should be reported"},
+    },
+)
+async def create_session():
+    try:
+        postgres = Postgres()
+        session_id = postgres.create_session()
+        return session_id
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Unhandled error, Please report")
+
+
+@app.post(
+    "/chat",
+    response_model=ChatResponse,
+    responses={
+        200: {},
+        500: {"description": "Unhandled error that should be reported"},
+        404: {
+            "description": "Session not found",
+            "content": {
+                "application/json": {"example": {"detail": "Session not found"}}
+            },
+        },
+        422: {
+            "description": "Unprocessable entity e.g. no session id, or no query",
+            "content": {"application/json": {"example": {"detail": "Query is empty"}}},
+        },
+    },
+)
+async def chat_responder(chat_request: ChatRequest, request: Request):
+
+    try:
+        start_time = time.time()
+        postgres = Postgres()
+        session_id = get_session_id(request, chat_request)
+        validate_query(chat_request.query)
+        simple_logger(f"Received chat request", session_id)
+        history = postgres.get_history(session_id, config["postgres"]["history_length"])
+        if len(chat_request.query.split()) > 60:
+            paraphrased_utterance, response, context = "No valid query", RESPONSE_TEMPLATE_FOR_NO_ANSWER, ""
+        else:
+            paraphrased_utterance, response, context = chat_responder_(
+                history, chat_request.query
+            )
+        elapsed_time = time.time() - start_time
+        message_id = postgres.insert_chat_row(
+            session_id, chat_request.query, paraphrased_utterance, response, elapsed_time
+        )
         non_generative_agent_logger(
             session_id=session_id,
             agent="chat_responder",
             message="Chat response generated",
-            input_dict={"user_utterance": request.query,
-                        "paraphrased_query": paraphrased_utterance,
-                        "context": context
-                        },
-            output_dict={"response": output.response},
+            input_dict={
+                "user_utterance": chat_request.query,
+                "paraphrased_query": paraphrased_utterance,
+                "context": context,
+            },
+            output_dict={"response": response},
             elapsed_time=elapsed_time,
         )
-                
-        return output
+        return ChatResponse(
+            response=response, message_id=message_id, query=paraphrased_utterance
+        )
 
     except HTTPException as e:
         raise e
@@ -212,111 +298,85 @@ async def chat_responder(request: ChatRequest, req: Request):
             session_id=session_id,
             agent="chat_responder",
             message="Chat response not generated",
-            input_dict={"user_utterance": request.query,
-                        "paraphrased_query": "",
-                        },
+            input_dict={
+                "user_utterance": chat_request.query,
+                "paraphrased_query": "",
+            },
             output_dict={"response": ""},
             elapsed_time=elapsed_time,
-    )
+        )
 
         raise HTTPException(status_code=500, detail="Unhandled error, Please report")
 
 
-        
-CSV_FILE_PATH = 'feedback.csv'
-CSV_HEADERS = ['timestamp', 'session_id', 'message_id', 'feedback_type', 'user_query', 'bot_response']
-
-# async def append_feedback_to_csv(feedback_data):
-#     async with aiofiles.open('feedback.csv', mode='a', encoding='utf-8', newline='') as f:
-#         writer = aiocsv.AsyncDictWriter(f, fieldnames=CSV_HEADERS)
-        
-#         # If the file is new, write the header
-#         if await f.tell() == 0:
-#             await writer.writeheader()
-        
-#         await writer.writerow(feedback_data)
-
-@app.post("/feedback", responses={
-    200: {"content": {"application/json": {"example": {"message": "Feedback received"}}}},
-    422: {"description": "Unprocessable entity e.g. no session id, or invalid feedback", "content": {"application/json": {"example": {"detail": "No Session-ID"}}}},
-    404: {"description": "No message found with sent message id and session id", "content": {"application/json": {"example": {"detail": "Message not found"}}}},
-    500: {"description": "Unhandled error that should be reported"}
-})
-async def feedback(request: FeedbackRequest, req: Request):
+@app.post(
+    "/feedback",
+    responses={
+        200: {
+            "content": {
+                "application/json": {"example": {"message": "Feedback received"}}
+            }
+        },
+        422: {
+            "description": "Unprocessable entity e.g. no session id, or invalid feedback",
+            "content": {"application/json": {"example": {"detail": "No Session-ID"}}},
+        },
+        404: {
+            "description": "No message found with sent message id and session id",
+            "content": {
+                "application/json": {"example": {"detail": "Message not found"}}
+            },
+        },
+        500: {"description": "Unhandled error that should be reported"},
+    },
+)
+async def feedback(feedback_request: FeedbackRequest, request: Request):
     try:
+        if feedback_request.feedback_type not in ["thumb_up", "thumb_down", "flag"]:
+            raise HTTPException(status_code=422, detail="Invalid feedback")
+
         start_time = time.time()
+        session_id = get_session_id(request, feedback_request)
+        message_id = feedback_request.message_id
+        postgres = Postgres()
+        message_fields = postgres.get_message_fields(session_id, message_id)
         
-        session_id = req.headers.get("Session-ID", None)
-        if session_id is None:
-            session_id = request.session_id
-            
-            if session_id is None:
-                raise HTTPException(status_code=422, detail="No Session-ID")
-
-        msg_id = request.message_id
-        
-        try:
-            q = "SELECT * FROM message WHERE message_id = %s AND session_id = %s;"
-            query_ = query_executor(q, fetch_results=True, insert_values=(msg_id, session_id))
-
-            if len(query_) == 0:
-                raise HTTPException(status_code=404, detail="Message not found")
-
-        except Exception as e:
+        if not len(message_fields):
             raise HTTPException(status_code=404, detail="Message not found")
-
+        else:
+            user_query, paraphrased_query, bot_response = message_fields
+            
         simple_logger(f"Received feedback request", session_id)
 
         output = {"message": "Feedback received"}
-        if request.feedback_type not in ["thumb_up", "thumb_down", "flag"]:
-            raise HTTPException(status_code=422, detail="Invalid feedback")
-        temp_query = "SELECT paraphrased_query, bot_response FROM message WHERE message_id = %s AND session_id = %s;"
-        retrieved_results = query_executor(temp_query, fetch_results=True, insert_values=(msg_id, session_id))
-        paraphrased_query = retrieved_results[0][0]
-        bot_response = retrieved_results[0][1]
-        feedback_(paraphrased_query, bot_response, "", request.feedback_type)
+
+        feedback_(paraphrased_query, bot_response, "", feedback_request.feedback_type)
+        postgres.set_feedback(message_id, feedback_request.feedback_type)
         elapsed_time = time.time() - start_time
         
         non_generative_agent_logger(
             session_id=session_id,
             agent="feedback",
             message="feedback generated",
-            input_dict={"user_utterance": query_},
-            output_dict={"response": request.feedback_type},
+            input_dict={"user_utterance": user_query, "paraphrased_query": paraphrased_query},
+            output_dict={"response": feedback_request.feedback_type},
             elapsed_time=elapsed_time,
         )
-
-        update_query = "UPDATE message SET feedback = %s WHERE message_id = %s RETURNING message_id;"
-        result = query_executor(update_query, fetch_results=True, insert_values=(request.feedback_type, msg_id))
-
-        # Prepare feedback data
-        feedback_data = {
-            'timestamp': time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()),
-            'session_id': session_id,
-            'message_id': msg_id,
-            'feedback_type': request.feedback_type,
-            'user_query': query_,
-            'bot_response': response_
-        }
-
-        # Append feedback to CSV asynchronously
-        # await append_feedback_to_csv(feedback_data)
-
+        
         return output
-    
+
     except HTTPException as e:
         raise e
 
     except Exception as e:
-        traceback.print_exc() 
-
+        traceback.print_exc()
         non_generative_agent_logger(
             session_id,
             "feedback",
             f"Error in feedback: {str(e)}",
-            request.dict(),
+            feedback_request.dict(),
             {},
             time.time() - start_time,
         )
-        
+
         raise HTTPException(status_code=500, detail="Unhandled error, Please report")
