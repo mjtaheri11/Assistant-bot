@@ -164,7 +164,6 @@ runs
 
 # vector database
 vdb
-VectorDB
 VectorDB-Eval
 VectorDB-Eval-2
 TempVectorDB
@@ -175,3 +174,5 @@ VectorDB-bahar-hanieh
 evaluation
 RagBot/ollama/
 RagBot/pgadmin/
+RagBot/ragbot/VectorDB.zip
+RagBot/pgadmin.tar

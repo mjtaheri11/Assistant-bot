@@ -5,7 +5,6 @@ import pathlib
 import requests
 import streamlit as st
 from retriever import Retriever
-from streamlit.runtime.scriptrunner.script_run_context import get_script_run_ctx
 
 from logs import simple_logger, non_generative_agent_logger
 from utils import init_session_state
@@ -59,8 +58,10 @@ def chat_request(session_id: str, query: str, api_url: str = BASE_URL):
     }
 
     # Send the POST request with the chat data
+    # import pdb
+    # pdb.set_trace()
     headers = {"Session-ID": session_id}
-    response = requests.post(f"{api_url}/chat", json=chat_data, headers=headers)
+    response = requests.post(f"{api_url}/chat", json=chat_data, headers=headers) # , timeout=11
 
     # Handle the different response status codes
     json_response = response.json()
@@ -202,8 +203,8 @@ def main():
                         جستجو شده است."""
                         content = (
                             st.session_state["response"][i]
-                            .replace("*", "&ast;")
-                            .replace("#", "&#35;")
+                            # .replace("*", "&ast;")
+                            # .replace("#", "&#35;")
                         )
                         st.markdown(
                             re.sub(
