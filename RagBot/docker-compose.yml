@@ -17,6 +17,7 @@ services:
       - LLM_MODEL=gemma2:9b-instruct-fp16
 
     restart: always
+    user: root
     depends_on:
       - ollama
       - kibana

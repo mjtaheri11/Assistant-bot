@@ -53,7 +53,7 @@ def get_cache_response(
         threshold=threshold,
         knn=knn,
     )
-    if records and records[0]["thumb_up"] > 10:
+    if records and records[0]["thumb_up"] > 0:
         return records[0]["response"], records[0]["url"]
     else:
         return "", ""
@@ -110,7 +110,7 @@ def query_responder(query: str, context: str, history: str) -> str:
         question=query,
     )
     response = get_chat_response(prompt)
-    return response
+    return response.replace("متن", "دانش")
     # cleaned_response = json_cleaning(response)
     # cleaned_response_dict = json_text_cleaning(cleaned_response, "answer")
     # return cleaned_response_dict
@@ -123,11 +123,11 @@ def prepare_final_context(query: str) -> str:
         config["cache"]["knn"],
     )
     
-    # context = "\n\n".join(
-    #     "Q: " + result["query"] + "\n" + "A: " + result["answer"]
-    #     for result in reversed(records)
-    #     if result["query"].strip() != ""
-    # )
+    context = "\n\n".join(
+        "Q: " + result["query"] + "\n" + "A: " + result["response"]
+        for result in reversed(records)
+        if result["query"].strip() != ""
+    )
     
     context = "\n\n".join(
         "Q: " + result["query"] + "\n" + "A: " + result["response"]
@@ -137,7 +137,7 @@ def prepare_final_context(query: str) -> str:
     # import pdb
     # pdb.set_trace()
     retriever = Retriever()
-    context = retriever.retrieve_context(query) #+ "\n\n" + context
+    context = retriever.retrieve_context(query) + "\n\n" + context
     # TODO: need appropriate context management > context = context[: config["context"]["max_length"]]
     # if context.strip() == "":
     #     raise Exception("no context fetched")

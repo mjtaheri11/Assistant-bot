@@ -42,17 +42,22 @@ def process_single_document(doc_path: str, target_chunk_size: int=config["retrie
         if heading_level == 1:
             if current_chunk['content']:
                 chunks.extend(finalize_chunk(current_chunk, target_chunk_size, max_chunk_size, doc_path))
-            current_chunk = {'h1': paragraph.text, 'h2': '', 'h3': '', 'content': []}
+            current_chunk = {'h1': paragraph.text, 'h2': '', 'h3': '', 'h4': '', 'content': []}
         elif heading_level == 2:
             if current_chunk['content']:
                 chunks.extend(finalize_chunk(current_chunk, target_chunk_size, max_chunk_size, doc_path))
             current_chunk['h2'] = paragraph.text
             current_chunk['h3'] = ''
+            current_chunk['h4'] = ''
             current_chunk['content'] = []
         elif heading_level == 3:
             if current_chunk['content']:
                 chunks.extend(finalize_chunk(current_chunk, target_chunk_size, max_chunk_size, doc_path))
             current_chunk['h3'] = paragraph.text
+            current_chunk['h4'] = ''
+            current_chunk['content'] = []
+        elif heading_level == 4:
+            current_chunk['h4'] = paragraph.text
             current_chunk['content'] = []
         else:
             current_chunk['content'].append(paragraph.text)
@@ -106,9 +111,10 @@ def finalize_chunk(chunk, target_chunk_size, max_chunk_size, source_file):
 
     if chunk['h3'].strip() != "":
         headers += chunk['h3'] + '\n'
+    
+    if chunk['h4'].strip() != "":
+        headers += chunk['h4'] + '\n'
 
-    if chunk['h3'].strip() != "":
-        headers += chunk['h3'] + '\n'
     all_sentences = []
     for paragraph in chunk['content']:
         if paragraph.strip() == "":

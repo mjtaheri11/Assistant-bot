@@ -85,15 +85,8 @@ class Retriever(object):
 
     def retrieve_context(self, query, k=config["retriever"]["retrieved_rank2_documents"]):
         # TODO: appropriate logger
-
-        if self.config_["retriever"]["expansion"]:
-            query = self.expand_query(query)
         documents = self.retriever_.invoke(query)
         documents = [doc.page_content for doc in documents]
         conf = None
         sorted_documents = self._rerank_documents(query, documents, k)
         return sorted_documents
-
-    def expand_query(self, query):
-        # TODO: Add implementation for expanding the query using the first docuemnt outputed from KB
-        pass
