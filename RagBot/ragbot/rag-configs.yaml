@@ -3,19 +3,19 @@ database:
   persist_directory: ./VectorDB # initiate_vdb.py # ./VectorDB-bahar-hanieh #./VectorDB
   dbname: my-vdb
   documents:
-    ../new-KB/UPDATED-FAQ 202411408-temp.docx:
+    ../../knowledge_base/new-KB/UPDATED-FAQ 202411408-temp.docx:
       target_chunk_size: 800
       max_chunk_size: 1200
       sentence_overlap: 1
-    ../new-KB/GL_CompleteDoc-new-temp.docx:
+    ../../knowledge_base/new-KB/GL_CompleteDoc-new-temp.docx:
       target_chunk_size: 700
       max_chunk_size: 1200
       sentence_overlap: 1
-    ../new-KB/AboutSG-temp.docx:
+    ../../knowledge_base/new-KB/AboutSG-temp.docx:
       target_chunk_size: 800
       max_chunk_size: 1200
       sentence_overlap: 1
-    ../new-KB/DA-Help-temp.docx:
+    ../../knowledge_base/new-KB/DA-Help-temp.docx:
       target_chunk_size: 800
       max_chunk_size: 1200
       sentence_overlap: 1
@@ -30,7 +30,7 @@ api:
   port: 8686
 
 postgres:
-  address: 172.21.0.3 # postgres #
+  address: 172.22.0.4# postgres #
   database: chatbot
   max_user_input_character_length: 200
   history_length: 3

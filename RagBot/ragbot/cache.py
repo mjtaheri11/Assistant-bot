@@ -26,7 +26,7 @@ class Cache:
         self.reranker_model = model_manager.reranker_model
 
         # Initialize Chroma with persistence
-        persist_directory = config["cache"].get("persist_directory", "./cache_db")
+        persist_directory = config["cache"].get("persist_directory", "../../cache_db")
         self._collection_name = config["cache"]["index_name"]
 
         # Initialize the Chroma vector store

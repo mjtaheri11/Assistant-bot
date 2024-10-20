@@ -7,10 +7,9 @@ services:
     ports:
       - "8686:8687"
     volumes:
-      - ./ragbot/VectorDB:/app/ragbot/VectorDB
-      - ./ragbot/cache_db:/app/ragbot/cache_db
-      - ./ragbot/rag-configs.yaml:/app/ragbot/rag-configs.yaml
-      - ./saved_models:/app/saved_models
+      - ../VectorDB:/app/ragbot/VectorDB
+      - ../cache_db:/app/ragbot/cache_db
+      - ../saved_models:/app/saved_models
       - log_data:/var/log  # Shared volume for log files
     environment:
       - OLLAMA_HOST=http://ollama:11434
@@ -68,7 +67,7 @@ services:
       POSTGRES_PASSWORD: MySecretPassword123!@#
       POSTGRES_DB: chatbot
     volumes:
-      - ./postgres_data:/var/lib/postgresql/data
+      - /var/lib/postgresql:/var/lib/postgresql/data
     networks:
       - ollama-docker2
     restart: always
@@ -90,7 +89,7 @@ services:
     user: root
     restart: always
     volumes:
-      - ./pgadmin:/var/lib/pgadmin
+      - /var/lib/pgadmin:/var/lib/pgadmin
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:7.17.9

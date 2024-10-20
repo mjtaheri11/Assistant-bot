@@ -93,7 +93,7 @@ class Postgres:
         try:
             postgres_connection = psycopg2.connect(
                     database=self.database,
-                    host=self.connection_address,  # "postgres", #
+                    host="postgres", #"172.22.0.4",  #
                     user="postgres",
                     password="MySecretPassword123!@#", # add to environment variables``
                     port="5432",
