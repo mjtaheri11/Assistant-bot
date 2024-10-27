@@ -8,13 +8,15 @@ from datetime import datetime
 from typing import List, Tuple, Optional
 
 from fastapi import FastAPI, HTTPException, Request
+from prometheus_client import Counter, Histogram, generate_latest
+from starlette.responses import Response
 from pydantic import BaseModel
 import psycopg2
 import traceback
 
-from config import config
-from logs import simple_logger, non_generative_agent_logger
-from logic import (
+from src.config import config
+from src.logs import simple_logger, non_generative_agent_logger
+from src.logic import (
     prepare_final_context,
     query_responder,
     utterance_paraphraser,
@@ -24,6 +26,11 @@ from logic import (
 
 RESPONSE_TEMPLATE_FOR_NO_ANSWER = "در حال حاضر نمی‌توانم به سوال شما پاسخ دهم"
 app = FastAPI(title="Digital Assistant")
+
+# Define Prometheus metrics
+REQUEST_COUNT = Counter("api_http_requests_total", "Total API Requests", ["endpoint"])
+REQUEST_LATENCY = Histogram("api_request_latency_seconds", "Latency of API Requests", ["endpoint"])
+
 
 # Models for request and response
 
@@ -93,7 +100,7 @@ class Postgres:
         try:
             postgres_connection = psycopg2.connect(
                     database=self.database,
-                    host="postgres", #"172.22.0.4",  #
+                    host=self.connection_address, #172.22.0.4",  #
                     user="postgres",
                     password="MySecretPassword123!@#", # add to environment variables``
                     port="5432",
@@ -216,6 +223,9 @@ def validate_query(query):
         raise HTTPException(status_code=422, detail="Query is empty")
 
 
+@app.get("/metrics")
+async def metrics():
+    return Response(generate_latest(), media_type="text/plain")
 
 @app.post(
     "/session/create",
@@ -254,9 +264,10 @@ async def create_session():
     },
 )
 async def chat_responder(chat_request: ChatRequest, request: Request):
-
+    REQUEST_COUNT.labels(endpoint="/chat").inc()  # Increment request count for /chat
+    start_time = time.time()
+    
     try:
-        start_time = time.time()
         postgres = Postgres()
         session_id = get_session_id(request, chat_request)
         validate_query(chat_request.query)
@@ -269,6 +280,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                 history, chat_request.query
             )
         elapsed_time = time.time() - start_time
+        REQUEST_LATENCY.labels(endpoint="/chat").observe(elapsed_time)  # Record latency
         message_id = postgres.insert_chat_row(
             session_id, chat_request.query, paraphrased_utterance, response, elapsed_time
         )
@@ -294,6 +306,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
     except Exception as e:
         traceback.print_exc()
         elapsed_time = time.time() - start_time
+        REQUEST_LATENCY.labels(endpoint="/chat").observe(elapsed_time)
         non_generative_agent_logger(
             session_id=session_id,
             agent="chat_responder",
@@ -331,11 +344,13 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
     },
 )
 async def feedback(feedback_request: FeedbackRequest, request: Request):
+    REQUEST_COUNT.labels(endpoint="/chat").inc()  # Increment request count for /chat
+    start_time = time.time()
+
     try:
         if feedback_request.feedback_type not in ["thumb_up", "thumb_down", "flag"]:
             raise HTTPException(status_code=422, detail="Invalid feedback")
 
-        start_time = time.time()
         session_id = get_session_id(request, feedback_request)
         message_id = feedback_request.message_id
         postgres = Postgres()
@@ -353,6 +368,7 @@ async def feedback(feedback_request: FeedbackRequest, request: Request):
         feedback_(paraphrased_query, bot_response, "", feedback_request.feedback_type)
         postgres.set_feedback(message_id, feedback_request.feedback_type)
         elapsed_time = time.time() - start_time
+        REQUEST_LATENCY.labels(endpoint="/feedback").observe(elapsed_time)  # Record latency
         
         non_generative_agent_logger(
             session_id=session_id,
@@ -370,6 +386,8 @@ async def feedback(feedback_request: FeedbackRequest, request: Request):
 
     except Exception as e:
         traceback.print_exc()
+        REQUEST_LATENCY.labels(endpoint="/feedback").observe(elapsed_time)
+        
         non_generative_agent_logger(
             session_id,
             "feedback",

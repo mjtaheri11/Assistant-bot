@@ -3,12 +3,13 @@ version: '3.8'
 services:
   api:
     build: .
-    container_name: ragbot_api_3
+    image: assistant-bot-temp
+    container_name: assistant-bot-container
     ports:
       - "8686:8687"
     volumes:
-      - ../VectorDB:/app/ragbot/VectorDB
-      - ../cache_db:/app/ragbot/cache_db
+      - ../VectorDB:/app/VectorDB
+      - ../db-cache:/app/db-cache
       - ../saved_models:/app/saved_models
       - log_data:/var/log  # Shared volume for log files
     environment:
@@ -156,6 +157,16 @@ services:
       - grafana_data:/var/lib/grafana
     user: root
     restart: always
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - ollama-docker2
 
 volumes:
   log_data:  

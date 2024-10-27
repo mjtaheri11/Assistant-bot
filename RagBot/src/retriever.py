@@ -6,8 +6,8 @@ from langchain.vectorstores import Chroma
 from langchain_community.embeddings import HuggingFaceEmbeddings
 
 # from utils import get_config
-from config import config
-from logs import get_logger
+from .config import config
+from .logs import get_logger
 
 logger = get_logger()
 

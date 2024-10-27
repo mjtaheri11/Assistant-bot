@@ -1,6 +1,6 @@
 # Configurations for vector database
 database:
-  persist_directory: ./VectorDB # initiate_vdb.py # ./VectorDB-bahar-hanieh #./VectorDB
+  persist_directory: ../VectorDB # initiate_vdb.py # ./VectorDB-bahar-hanieh #./VectorDB
   dbname: my-vdb
   documents:
     ../../knowledge_base/new-KB/UPDATED-FAQ 202411408-temp.docx:
@@ -30,23 +30,22 @@ api:
   port: 8686
 
 postgres:
-  address: 172.22.0.4# postgres #
+  address: postgres # 192.168.16.6 
   database: chatbot
   max_user_input_character_length: 200
   history_length: 3
-
 
 cache:
   # host: redis-stack
   host: 127.0.0.1
   port: 9200
   knn: 50
-  alpha_threshold: 0.07
+  alpha_threshold: 0.1
   beta_threshold: 0.2
   redis_result_num_documents: 5
   socket_timeout: 10
-  index_name: HamBot
-  persist_directory: ./cache_db
+  index_name: Hamzan
+  persist_directory: ../db-cache
   num_rank2_documents: 5
   embedding_model:
     #model_name: BAAI/bge-m3
@@ -79,7 +78,7 @@ streamlit:
 ollama:
   # model_name: qwen2:72b-instruct-q4_K_M
   # model_name: gemma2:9b-instruct-fp16
-  model_name: gemma2:27b-instruct-q5_K_M 
+  model_name: aya-expanse:32b-q5_K_M
   # model_name: gemma2:27b-instruct-q8_0
   temperature: 0
   stream: true
@@ -92,14 +91,14 @@ embedding_model:
   #model_name: BAAI/bge-m3
   model_name: ../saved_models/models--BAAI--bge-m3/snapshots/babcf60cae0a1f438d7ade582983d4ba462303c2
   # model_name: /home/user01/.cache/huggingface/hub/models--alefbot--alef-zibert/snapshots/b5a9d43b612b57191bb3a618b51b09b8ecabd927
-  device: cuda
+  device: cpu
 
 # configurations for reranker
 reranker:
   #model_name: BAAI/bge-reranker-v2-m3
   model_name: ../saved_models/models--BAAI--bge-reranker-v2-m3/snapshots/12e974610ba9083ed95f3edf08d7e899581f4de4
   # model_name: /home/user01/.cache/huggingface/hub/models--BAAI--bge-reranker-v2-gemma/snapshots/1787044f8b6fb740a9de4557c3a12377f84d9e17
-  device: cuda
+  device: cpu
 
 # configurations for retriever
 retriever:
@@ -136,7 +135,8 @@ evaluation:
 
   # dataset: /home/user01/mj-workspace/Assistant-bot/RagBot/eval-questions/Copy-of-QA-sep.csv
   dataset: /home/user01/mj-workspace/Assistant-bot/RagBot/eval-questions/GL_QA_Questions.csv
-  model_name: gemma2:9b-instruct-fp16 
+  # model_name: gemma2:9b-instruct-fp16 
+  model_name: qwen2.5:32b-instruct-q5_K_M
   # model_name: gemma2:27b-instruct-q8_0 
   output_path: /home/user01/mj-workspace/Assistant-bot/RagBot/evaluation/
   retrieved_documents: 12

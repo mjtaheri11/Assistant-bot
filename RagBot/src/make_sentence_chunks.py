@@ -5,7 +5,7 @@ import docx
 from docx.enum.style import WD_STYLE_TYPE
 from langchain.schema import Document
 
-from config import config
+from .config import config
 
 
 def get_heading_level(paragraph):

@@ -15,11 +15,11 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from FlagEmbedding import FlagReranker
 
-from prompts import RAG_EVAL_PROMPT
-from config import config
-from make_sentence_chunks import chunk_document
-from logic import utterance_paraphraser
-from utils import json_text_cleaning, json_cleaning
+from .prompts import RAG_EVAL_PROMPT
+from .config import config
+from .make_sentence_chunks import chunk_document
+from .logic import utterance_paraphraser
+from .utils import json_text_cleaning, json_cleaning
 
 # "میخوام طبقه حساب تعریف کنم چه مرحله هایی داره؟", "response"
 

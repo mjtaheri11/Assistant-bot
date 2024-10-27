@@ -8,12 +8,12 @@ import numpy as np
 from langchain.schema import SystemMessage
 from langchain_community.chat_models import ChatOllama
 
-from prompts import RAG_SYSTEM_PROMPT, UTTERANCE_PARAPHRASER_PROMPT, SUGGEST_QUESTIONS_FROM_CONTEXT_PROMPT
-from retriever import Retriever
-from config import config
-from cache import Cache
-from logs import simple_logger
-from utils import json_cleaning, json_text_cleaning
+from .prompts import RAG_SYSTEM_PROMPT, UTTERANCE_PARAPHRASER_PROMPT, SUGGEST_QUESTIONS_FROM_CONTEXT_PROMPT
+from .retriever import Retriever
+from .config import config
+from .cache import Cache
+from .logs import simple_logger
+from .utils import json_cleaning, json_text_cleaning
 
 SEED = 44
 torch.manual_seed(SEED)
@@ -33,7 +33,7 @@ def get_chat_response(prompt: str) -> str:
         keep_alive=config["ollama"]["keep_alive"],
         seed=SEED,
         # base_url="127.0.0.1:8089"
-        base_url="http://ollama:11434",
+        base_url="http://ollama:11434",   
         # base_url=OLLAMA_HOST
     )
     messages = [SystemMessage(content=prompt)]
@@ -47,7 +47,6 @@ def get_cache_response(
 ) -> tuple[str, str]:
     knn = 1
     cache = Cache()
-
     records = cache.get_embedding_match(
         query=query,
         threshold=threshold,
@@ -149,8 +148,6 @@ def chat_responder_(
     user_utterance: str,
 ) -> tuple[str, str, str, str]:
 
-    # import pdb
-    # pdb.set_trace()
     response, url = get_cache_response(
         user_utterance,
     )

@@ -6,8 +6,8 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-from config import config
-from make_sentence_chunks import chunk_document
+from .config import config
+from .make_sentence_chunks import chunk_document
 
 
 embedding_model = HuggingFaceEmbeddings(
