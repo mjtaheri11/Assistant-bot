@@ -78,7 +78,7 @@ class Retriever(object):
                 docs_scores_sorted = docs_scores_sorted[:k]
             # conf = mean([d[1] for d in docs_scores_sorted])        
             # TODO: appropriate logger
-            sorted_documents = '\n\n'.join([d[0] for d in reversed(docs_scores_sorted)])
+            sorted_documents = '\n\n'.join([d[0] for i, d in enumerate(reversed(docs_scores_sorted))])
         else:
             sorted_documents = "No context fetched"
         return sorted_documents

@@ -21,7 +21,7 @@ RESPONSE_TEMPLATE_FOR_NO_ANSWER = """
     """
 
 CSS_STYLE_FILE = "./src/style.css"
-BASE_URL = "http://185.13.230.222:8686" # "http://172.27.0.6:8686" #
+BASE_URL = "http://172.17.224.24:8686" # "http://172.27.0.6:8686" #
 # with open(CSS_STYLE_FILE) as f:
 #     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 

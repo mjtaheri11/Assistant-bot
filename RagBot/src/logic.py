@@ -22,6 +22,8 @@ torch.cuda.manual_seed_all(SEED)
 random.seed(SEED)  
 
 
+template_for_not_answer = "پاسخ به این سوال در محدوده دانش من نیست"
+
 def get_chat_response(prompt: str) -> str:
     # OLLAMA_HOST = os.getenv('OLLAMA_HOST', 'http://dockerize_assistant-ollama-1:11434')
     # LLM_MODEL = os.getenv('LLM_MODEL', 'gemma2:9b-instruct-fp16')
@@ -128,11 +130,6 @@ def prepare_final_context(query: str) -> str:
         if result["query"].strip() != ""
     )
     
-    context = "\n\n".join(
-        "Q: " + result["query"] + "\n" + "A: " + result["response"]
-        for result in reversed(records)
-        if result["query"].strip() != ""
-    )
     # import pdb
     # pdb.set_trace()
     retriever = Retriever()
@@ -153,8 +150,7 @@ def chat_responder_(
     )
     if response:
         return user_utterance, response, ""
-
-    paraphrased_utterance_dict = utterance_paraphraser(history, user_utterance)
+    paraphrased_utterance_dict = utterance_paraphraser(history, user_utterance)    
     # paraphrased_utterance = paraphrased_utterance_dict["rephrased_question"]
     paraphrased_utterance = paraphrased_utterance_dict
     response, url = get_cache_response(
@@ -164,10 +160,12 @@ def chat_responder_(
         return paraphrased_utterance, response, ""
 
     context = prepare_final_context(paraphrased_utterance)
-    json_response = query_responder(paraphrased_utterance, context, history)
+    response = query_responder(paraphrased_utterance, context, history)
     # json_response = fix_asterisks(json_response)
     # return paraphrased_utterance, json_response["answer"], context
-    return paraphrased_utterance, json_response, context
+    if "محدوده دانش من نیست" in response:
+        response = template_for_not_answer
+    return paraphrased_utterance, response, context
 
 def feedback_(
     query: str,

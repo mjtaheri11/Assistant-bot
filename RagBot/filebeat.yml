@@ -1,5 +1,6 @@
 filebeat.inputs:
-- type: log
+- type: filestream
+  id: my-filestream-id
   enabled: true
   paths:
     - /var/log/HamBot.log  # Only include this specific log file
@@ -8,22 +9,20 @@ filebeat.inputs:
     - '/var/log/alternatives.log$'  # Exclude alternatives.log
     - '/var/log/.*\.log'            # Optionally exclude all other .log files except specified ones
 
-  json.keys_under_root: true  # Moves JSON keys to the top-level
-  json.add_error_key: true    # Adds error key for malformed JSON logs
-  json.message_key: ""        # Disable mapping to 'message' field, so it’s not created
-
+  # Parse JSON logs
+  json.keys_under_root: true
+  json.add_error_key: true
 
 # Disable default modules
 filebeat.config.modules:
   enabled: false
 
 output.elasticsearch:
-  hosts: ["localhost:9200"]
-  pipeline: "json_parser_pipeline"
+  hosts: ["http://elasticsearch:9200"]
 
 setup.kibana:
   host: "http://kibana:8001"
 
-# processors:
-#   - drop_fields:
-#       fields: ["host", "agent", "data_stream", "event", "tags"]
+processors:
+  - drop_fields:
+      fields: ["host", "agent", "data_stream", "event", "tags"]
