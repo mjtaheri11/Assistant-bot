@@ -1,3 +1,4 @@
+import asyncio
 import os
 from typing import Any, List, Mapping, Optional, Dict
 
@@ -39,8 +40,9 @@ class Cache:
 
     def _get_embedding(self, query: str) -> List[float]:
         return self.embedding_model.embed_query(query)
+        
 
-    def _insert_row(
+    async def _insert_row(
         self,
         query: str,
         response: str,
@@ -58,7 +60,7 @@ class Cache:
             "thumb_down": thumb_down,
             "flag": flag,
         }
-        self._vector_store.add_texts(
+        await self._vector_store.add_texts(
             texts=[query],  # The text is the query itself
             metadatas=[metadata],
             embeddings=[embedding],
@@ -66,19 +68,19 @@ class Cache:
         )
         # self._vector_store.persist()
 
-    def _update_row(
+    async def _update_row(
         self,
         query: str,
         mapping: Mapping[str, Any],
     ) -> None:
-        existing_record = self._get_row(query)
+        existing_record = await self._get_row(query)
         if existing_record:
             metadata = existing_record.copy()
             metadata.update(mapping)
             # Remove the 'query' field if present, since it's the ID
             metadata.pop("query", None)
             # Update the record by re-adding it with the updated metadata
-            self._vector_store.add_texts(
+            await self._vector_store.add_texts(
                 texts=[query],
                 metadatas=[metadata],
                 embeddings=[self._get_embedding(query)],
@@ -87,7 +89,7 @@ class Cache:
             # self._vector_store.persist()
         else:
             # If the record doesn't exist, insert it with default values
-            self._insert_row(
+            await self._insert_row(
                 query=query,
                 response=mapping.get("response", ""),
                 url=mapping.get("url", ""),
@@ -96,8 +98,8 @@ class Cache:
                 flag=mapping.get("flag", 0),
             )
 
-    def _get_row(self, query: str) -> Optional[dict[str, Any]]:
-        results = self._vector_store.get(
+    async def _get_row(self, query: str) -> Optional[dict[str, Any]]:
+        results = await self._vector_store.get(
             ids=[query],
             include=["metadatas"],
         )
@@ -105,7 +107,7 @@ class Cache:
             return results["metadatas"][0]
         return None
 
-    def _rerank_score(
+    async def _rerank_score(
         self,
         query: str,
         matches: List[Dict],
@@ -126,14 +128,14 @@ class Cache:
         returned_matches = [matches[0] for matches in docs_scores_sorted]
         return returned_matches
 
-    def get_embedding_match(
+    async def get_embedding_match(
         self,
         query: str,
         threshold: float,
         knn: int,
     ) -> List[dict]:
         embedding = self._get_embedding(query)
-        results = self._vector_store.similarity_search_with_score(query, k=knn)
+        results = await self._vector_store.asimilarity_search_with_score(query, k=knn)
         matches = []
         if len(results) == 1:
             doc, score = results[0]
@@ -147,23 +149,23 @@ class Cache:
                 if score <= threshold:
                     matches.append(doc.metadata)
             if len(matches) > 0:
-                matches = self._rerank_score(query, matches)
+                matches = await self._rerank_score(query, matches)
         return matches
 
-    def _thumb_up_down_incrementor(
+    async def _thumb_up_down_incrementor(
         self,
         query: str,
         response: str,
         url: str,
         field_name: str,
     ) -> None:
-        record = self._get_row(query)
+        record = await self._get_row(query)
         if record:
             new_value = record.get(field_name, 0) + 1
-            self._update_row(query, {field_name: new_value})
+            await self._update_row(query, {field_name: new_value})
         else:
             # Insert a new record with default counts and increment the specific field
-            self._insert_row(
+            await self._insert_row(
                 query=query,
                 response=response,
                 url=url,
@@ -172,31 +174,31 @@ class Cache:
                 flag=1 if field_name == "flag" else 0,
             )
 
-    def increment_thumb_up(self, query: str, response: str, url: str) -> None:
-        self._thumb_up_down_incrementor(
+    async def increment_thumb_up(self, query: str, response: str, url: str) -> None:
+        await self._thumb_up_down_incrementor(
             query,
             response,
             url,
             "thumb_up",
         )
 
-    def increment_thumb_down(self, query: str, response: str, url: str) -> None:
-        self._thumb_up_down_incrementor(
+    async def increment_thumb_down(self, query: str, response: str, url: str) -> None:
+        await self._thumb_up_down_incrementor(
             query,
             response,
             url,
             "thumb_down",
         )
 
-    def increment_flag(self, query: str, response: str, url: str) -> None:
-        self._thumb_up_down_incrementor(
+    async def increment_flag(self, query: str, response: str, url: str) -> None:
+        await self._thumb_up_down_incrementor(
             query,
             response,
             url,
             "flag",
         )
 
-    def filter_documents(self, filters: Dict[str, Any]) -> List[Dict[str, Any]]:
+    async def filter_documents(self, filters: Dict[str, Any]) -> List[Dict[str, Any]]:
         """
         Retrieve documents that match the specified metadata filters.
 
@@ -207,7 +209,7 @@ class Cache:
         Returns:
             List[Dict[str, Any]]: A list of metadata dictionaries for matching documents.
         """
-        results = self._vector_store.get(
+        results = await self._vector_store.get(
             where=filters,
             include=["metadatas"],
         )
@@ -217,7 +219,7 @@ class Cache:
                 matched_docs.append(metadata)
         return matched_docs
 
-    def get_documents_with_metadata_field(
+    async def get_documents_with_metadata_field(
         self, field_name: str
     ) -> List[Dict[str, Any]]:
         """
@@ -241,17 +243,17 @@ class Cache:
             # For other fields, adjust accordingly
             filters = {field_name: {"$ne": None}}
 
-        return self.filter_documents(filters)
+        return await self.filter_documents(filters)
 
-    def delete_document(self, query: str) -> None:
+    async def delete_document(self, query: str) -> None:
         """
         Delete a specific document from the ChromaDB dataset based on its query (ID).
 
         Args:
             query (str): The unique identifier (query) of the document to delete.
         """
-        if self._get_row(query) is not None:
-            self._vector_store.delete(ids=[query])
+        if await self._get_row(query) is not None:
+            await self._vector_store.delete(ids=[query])
         # self._vector_store.persist()
 
 
@@ -273,7 +275,7 @@ class Cache:
 #             "عرض ادب و احترام",
 #             "سلامعلیکم"
 #             ]
-    # lst = [("خیلی ممنون", "خواهش میکنم. اگر سوال دیگری بود در خدمتم. "), 
+    # lst = [("خیلی ممنون", "خواهش میکنم. اگر سوال دیگری بود در خدمتم "), 
     # ("لطف کردی", "خواهش میکنم. اگر سوال دیگری بود در خدمتم. "), 
     # ("زحمت دادم. ", "خواهش میکنم. اگر سوال دیگری بود در خدمتم. "), 
     # ("دمت گرم", "خواهش میکنم. اگر سوال دیگری بود در خدمتم. "), 

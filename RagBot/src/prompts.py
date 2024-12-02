@@ -266,7 +266,7 @@ Your task is to suggest one search engine query in Farsi, based on the user's fo
 
 **Important Guidelines:**
 
-- **Do Not Provide Answers or Explanations:** Do not provide any answers, explanations, interpretations, or additional information. Your sole task is to rephrase the user's question into an optimized search query in Farsi.
+- **Do Not Provide Answers or Explanations:** Do not provide any answers, explanations, interpretations, commentary, or additional information. Your sole task is to rephrase the user's question into an optimized search query in Farsi.
 - **Understand User Intent:** To preserve the authenticity of the user's question, focus on capturing the underlying intent of the user's question.
 - **Use Conversation History Appropriately:** Use the conversation history only to clarify or complete the follow-up question if it is incomplete or ambiguous. Do not introduce information from previous modules if they are not relevant to the current question.
 - **Preserve Original Wording:** Preserve the user's original wording whenever possible, especially verbs and phrases, as they are important for accurate search results.
@@ -366,7 +366,21 @@ Your task is to suggest one search engine query in Farsi, based on the user's fo
 **Optimized google query in Farsi:**
 """
 
+
 # - **Independence of Greeting and General Questions:** Greeting and general questions are not related to previous questions. If the user asks general questions like "What questions can I ask you?" or "What modules can I inquire about?", rephrase them into an appropriate query about the Digital Assistant (دستیار دیجیتال).
+
+
+SQL_CONVERTER = """
+Given the following table schemas and a natural language query, generate the corresponding SQL query.
+
+Table Schemas:
+{schema}
+
+Natural Query:
+{query}
+
+SQL Query:
+"""
 
 
 RAG_USER_PROMPT= """

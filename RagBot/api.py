@@ -1,35 +1,40 @@
-import os
+import argparse
+import asyncio
 import csv
 import json
-import argparse
 import logging
+import os
 import time
-from datetime import datetime
-from typing import List, Tuple, Optional
-
-from fastapi import FastAPI, HTTPException, Request
-from prometheus_client import Counter, Histogram, generate_latest
-from starlette.responses import Response
-from pydantic import BaseModel
-import psycopg2
 import traceback
+from datetime import datetime
+from typing import List, Optional, Tuple
 
+import asyncpg
+from fastapi import FastAPI, HTTPException, Query, Request
+from prometheus_client import Counter, Histogram, generate_latest
+from pydantic import BaseModel
+from starlette.responses import Response
+
+from src.orm import Postgres
 from src.config import config
-from src.logs import simple_logger, non_generative_agent_logger
 from src.logic import (
+    chat_responder_,
+    feedback_,
     prepare_final_context,
     query_responder,
+    sql_responder,
     utterance_paraphraser,
-    feedback_,
-    chat_responder_,
 )
+from src.logs import non_generative_agent_logger, simple_logger
 
 RESPONSE_TEMPLATE_FOR_NO_ANSWER = "در حال حاضر نمی‌توانم به سوال شما پاسخ دهم"
 app = FastAPI(title="Digital Assistant")
 
 # Define Prometheus metrics
 REQUEST_COUNT = Counter("api_http_requests_total", "Total API Requests", ["endpoint"])
-REQUEST_LATENCY = Histogram("api_request_latency_seconds", "Latency of API Requests", ["endpoint"])
+REQUEST_LATENCY = Histogram(
+    "api_request_latency_seconds", "Latency of API Requests", ["endpoint"]
+)
 
 
 # Models for request and response
@@ -41,6 +46,7 @@ REQUEST_LATENCY = Histogram("api_request_latency_seconds", "Latency of API Reque
 
 # CREATE TABLE public.session (
 #     session_id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+#     create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 # );
 
 
@@ -67,6 +73,15 @@ class ChatResponse(BaseModel):
     query: str
 
 
+class SQLRequest(BaseModel):
+    table_schemas: List[str]  # Accept a list of schemas
+    query: str
+
+
+class SQLResponse(BaseModel):
+    response: str
+
+
 class SessionResponse(BaseModel):
     session_id: str
 
@@ -77,137 +92,8 @@ class FeedbackRequest(BaseModel):
     session_id: Optional[str] = None
 
 
-class Postgres:
-    _instance = None
-
-    def __new__(cls, *args, **kwargs):
-        if not cls._instance:
-            cls._instance = super().__new__(cls, *args, **kwargs)
-            cls._instance._initialize()
-        return cls._instance
-
-    def _initialize(self):
-        self.database = config["postgres"]["database"]
-        self.connection_address = config["postgres"]["address"]
-
-    def _execute_query(
-        self,
-        query: str,
-        is_insert: bool = False,
-        insert_values: Optional[Tuple] = None,
-        fetch_results: bool = True,
-    ):
-        try:
-            postgres_connection = psycopg2.connect(
-                    database=self.database,
-                    host=self.connection_address, #172.22.0.4",  #
-                    user="postgres",
-                    password="MySecretPassword123!@#", # add to environment variables``
-                    port="5432",
-                )
-            with postgres_connection:
-                with postgres_connection.cursor() as cursor:
-                    if insert_values is not None:
-                        cursor.execute(query, insert_values)
-                    else:
-                        cursor.execute(query)
-
-                    if fetch_results:
-                        if is_insert:
-                            output = cursor.fetchone()
-                        else:
-                            output = cursor.fetchall()
-                    else:
-                        output = None
-
-        except psycopg2.ProgrammingError as ex:
-            raise ex
-
-        finally:
-            postgres_connection.commit()
-            postgres_connection.close()
-
-        return output
-
-    def exist_session(self, session_id):
-        sql_exist_session_query = (
-            "SELECT session_id FROM session WHERE session_id = %s;"
-        )
-        result = self._execute_query(
-            sql_exist_session_query, fetch_results=True, insert_values=(session_id,)
-        )
-        if len(result):
-            return True
-        return False
-
-    def get_message_fields(self, session_id, message_id):
-        sql_get_message_fileds = (
-            "SELECT user_query, paraphrased_query, bot_response FROM message WHERE message_id = %s AND session_id = %s;"
-        )
-        message_fields = self._execute_query(
-            sql_get_message_fileds,
-            fetch_results=True,
-            insert_values=(message_id, session_id),
-        )
-        if not len(message_fields):
-            return []
-        return message_fields[0]
-
-    def create_session(self):
-        sql_create_session_query = (
-            "INSERT INTO public.session DEFAULT VALUES RETURNING session_id;"
-        )
-        sid = self._execute_query(
-            sql_create_session_query, is_insert=True, fetch_results=True
-        )
-        output = SessionResponse(session_id=sid[0])
-        return output
-
-    def get_history(self, session_id, history_length):
-        sql_history_query = """
-            SELECT user_query, paraphrased_query, bot_response FROM message
-            WHERE session_id = %s
-            ORDER BY create_time DESC
-            LIMIT %s;
-        """
-        selected_history = self._execute_query(
-            sql_history_query,
-            fetch_results=True,
-            insert_values=(session_id, history_length)
-        )
-        history = [
-            (
-                [h[0], h[2]]
-                if len(h[0]) < config["postgres"]["max_user_input_character_length"]
-                else [h[1], h[2]]
-            )
-            for h in reversed(selected_history)
-        ]
-        return history
-
-    def insert_chat_row(
-        self, session_id, user_query, paraphrased_query, bot_response, elapsed_time
-    ):
-        values = (
-            session_id,
-            user_query,
-            paraphrased_query,
-            bot_response,
-            elapsed_time,
-        )
-        sql_insert_query = "INSERT INTO message (session_id, user_query, paraphrased_query, bot_response, elapsed_time) VALUES (%s, %s, %s, %s, %s) RETURNING message_id;"
-        message_id = self._execute_query(
-            sql_insert_query, is_insert=True, insert_values=values, fetch_results=True
-        )
-        return message_id[0]
-
-    def set_feedback(self, message_id, feedback_type):
-        update_query = "UPDATE message SET feedback = %s WHERE message_id = %s RETURNING message_id;"
-        _ = self._execute_query(
-            update_query,
-            fetch_results=True,
-            insert_values=(feedback_type, message_id),
-        )
+class FeedbackResponse(BaseModel):
+    message: str
 
 
 def get_session_id(request: Request, content_request: ChatRequest):
@@ -227,6 +113,7 @@ def validate_query(query):
 async def metrics():
     return Response(generate_latest(), media_type="text/plain")
 
+
 @app.post(
     "/session/create",
     response_model=SessionResponse,
@@ -238,7 +125,7 @@ async def metrics():
 async def create_session():
     try:
         postgres = Postgres()
-        session_id = postgres.create_session()
+        session_id = await postgres.create_session()
         return session_id
     except Exception as e:
         traceback.print_exc()
@@ -266,23 +153,33 @@ async def create_session():
 async def chat_responder(chat_request: ChatRequest, request: Request):
     REQUEST_COUNT.labels(endpoint="/chat").inc()  # Increment request count for /chat
     start_time = time.time()
-    
+
     try:
         postgres = Postgres()
         session_id = get_session_id(request, chat_request)
         validate_query(chat_request.query)
         simple_logger(f"Received chat request", session_id)
-        history = postgres.get_history(session_id, config["postgres"]["history_length"])
+        history = await postgres.get_history(
+            session_id, 1, config["postgres"]["history_length"]
+        )
         if len(chat_request.query.split()) > 60:
-            paraphrased_utterance, response, context = "No valid query", RESPONSE_TEMPLATE_FOR_NO_ANSWER, ""
+            paraphrased_utterance, response, context = (
+                "No valid query",
+                RESPONSE_TEMPLATE_FOR_NO_ANSWER,
+                "",
+            )
         else:
-            paraphrased_utterance, response, context = chat_responder_(
+            paraphrased_utterance, response, context = await chat_responder_(
                 history, chat_request.query
             )
         elapsed_time = time.time() - start_time
         REQUEST_LATENCY.labels(endpoint="/chat").observe(elapsed_time)  # Record latency
-        message_id = postgres.insert_chat_row(
-            session_id, chat_request.query, paraphrased_utterance, response, elapsed_time
+        message_id = await postgres.insert_chat_row(
+            session_id,
+            chat_request.query,
+            paraphrased_utterance,
+            response,
+            elapsed_time,
         )
         non_generative_agent_logger(
             session_id=session_id,
@@ -314,6 +211,95 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
             input_dict={
                 "user_utterance": chat_request.query,
                 "paraphrased_query": "",
+            },
+            output_dict={"response": ""},
+            elapsed_time=elapsed_time,
+        )
+
+        raise HTTPException(status_code=500, detail="Unhandled error, Please report")
+
+
+# Define the endpoint
+@app.post(
+    "/convert/sql",
+    responses={
+        200: {
+            "description": "Successful conversion of natural language query to SQL query.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "sql_query": "SELECT name, salary FROM employees WHERE department = 'Engineering' AND salary > 70000;"
+                    }
+                }
+            },
+        },
+        422: {
+            "description": "Unprocessable entity, e.g., missing or invalid input.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Missing required field 'table_schemas' in the request body."
+                    }
+                }
+            },
+        },
+        404: {
+            "description": "Relevant schema not found in the input.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "No matching schema found for the provided natural query."
+                    }
+                }
+            },
+        },
+        500: {
+            "description": "Internal server error. Unhandled error occurred.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "An unexpected error occurred. Please try again later."
+                    }
+                }
+            },
+        },
+    },
+)
+async def convert_to_sql(request: SQLRequest):
+    start_time = time.time()
+    try:
+        # Extract schemas and query from the request
+        table_schemas = request.table_schemas
+        query = request.query
+
+        # Use OpenAI API to generate SQL query
+        response = sql_responder(query, table_schemas)
+        elapsed_time = time.time() - start_time
+        non_generative_agent_logger(
+            session_id="",
+            agent="SQL converter",
+            message="SQL generated",
+            input_dict={
+                "user_utterance": request.query,
+            },
+            output_dict={"response": response},
+            elapsed_time=elapsed_time,
+        )
+        return SQLResponse(response=response)
+
+    except HTTPException as e:
+        raise e
+
+    except Exception as e:
+        traceback.print_exc()
+        elapsed_time = time.time() - start_time
+        REQUEST_LATENCY.labels(endpoint="/convert").observe(elapsed_time)
+        non_generative_agent_logger(
+            session_id="",
+            agent="SQL converter",
+            message="convert SQL response not generated",
+            input_dict={
+                "user_utterance": request.query,
             },
             output_dict={"response": ""},
             elapsed_time=elapsed_time,
@@ -354,32 +340,34 @@ async def feedback(feedback_request: FeedbackRequest, request: Request):
         session_id = get_session_id(request, feedback_request)
         message_id = feedback_request.message_id
         postgres = Postgres()
-        message_fields = postgres.get_message_fields(session_id, message_id)
-        
+        message_fields = await postgres.get_message_fields(session_id, message_id)
+
         if not len(message_fields):
             raise HTTPException(status_code=404, detail="Message not found")
         else:
             user_query, paraphrased_query, bot_response = message_fields
-            
+
         simple_logger(f"Received feedback request", session_id)
-
-        output = {"message": "Feedback received"}
-
         feedback_(paraphrased_query, bot_response, "", feedback_request.feedback_type)
-        postgres.set_feedback(message_id, feedback_request.feedback_type)
+        await postgres.set_feedback(message_id, feedback_request.feedback_type)
         elapsed_time = time.time() - start_time
-        REQUEST_LATENCY.labels(endpoint="/feedback").observe(elapsed_time)  # Record latency
-        
+        REQUEST_LATENCY.labels(endpoint="/feedback").observe(
+            elapsed_time
+        )  # Record latency
+
         non_generative_agent_logger(
             session_id=session_id,
             agent="feedback",
             message="feedback generated",
-            input_dict={"user_utterance": user_query, "paraphrased_query": paraphrased_query},
+            input_dict={
+                "user_utterance": user_query,
+                "paraphrased_query": paraphrased_query,
+            },
             output_dict={"response": feedback_request.feedback_type},
             elapsed_time=elapsed_time,
         )
-        
-        return output
+
+        return FeedbackResponse(message="Feedback received")
 
     except HTTPException as e:
         raise e
@@ -387,7 +375,6 @@ async def feedback(feedback_request: FeedbackRequest, request: Request):
     except Exception as e:
         traceback.print_exc()
         REQUEST_LATENCY.labels(endpoint="/feedback").observe(elapsed_time)
-        
         non_generative_agent_logger(
             session_id,
             "feedback",
@@ -396,5 +383,4 @@ async def feedback(feedback_request: FeedbackRequest, request: Request):
             {},
             time.time() - start_time,
         )
-
         raise HTTPException(status_code=500, detail="Unhandled error, Please report")

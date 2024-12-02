@@ -1,5 +1,5 @@
 # Use an official Python image as the base image
-FROM assistant-bot:latest
+FROM assistant-bot:dude
 
 # FROM python:3.10-slim
 # RUN apt-get update && apt-get -y install
@@ -14,9 +14,6 @@ WORKDIR /app/RagBot
 
 # RUN pip install -r requirements.txt
 # RUN pip install --no-cache-dir -r requirements.txt
-
-# Install dependencies after cache
-#RUN pip install python-docx==1.1.2
 
 # Copy the rest of the application code
 COPY . /app/RagBot

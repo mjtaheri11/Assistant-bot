@@ -5,6 +5,7 @@ from langchain_community.document_loaders import DirectoryLoader, TextLoader
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+import numpy as np
 
 from .config import config
 from .make_sentence_chunks import chunk_document
