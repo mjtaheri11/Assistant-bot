@@ -1,0 +1,35 @@
+filebeat.inputs:
+- type: filestream
+  id: my-filestream-id
+  enabled: true
+  paths:
+    - /var/log/HamBot.log
+  exclude_files:
+    - '/var/log/dpkg.log$'
+    - '/var/log/alternatives.log$'
+    - '/var/log/.*\.log'
+
+  json.keys_under_root: true
+  json.add_error_key: true
+
+filebeat.config.modules:
+  enabled: false
+
+# Add retry options
+output.elasticsearch:
+  hosts: ["http://elasticsearch:9200"]
+  timeout: 90
+  max_retries: 5
+  backoff.init: 1s
+  backoff.max: 60s
+  
+setup.kibana:
+  host: "kibana:5601"
+  protocol: "http"
+
+setup.template.settings:
+  index.number_of_shards: 1
+
+processors:
+  - drop_fields:
+      fields: ["host", "agent", "data_stream", "event", "tags"]

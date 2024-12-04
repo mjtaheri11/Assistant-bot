@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from statistics import mean
 
@@ -24,7 +25,7 @@ class ModelManager:
     def _initialize(self):
         self.embedding_model = HuggingFaceEmbeddings(
             model_name=config["embedding_model"]["model_name"],
-            model_kwargs={"device": config["embedding_model"]["device"]}
+            model_kwargs={"device": config["embedding_model"]["device"], "trust_remote_code": True}
         )
         self.reranker_model = FlagReranker(
             config["reranker"]["model_name"],
@@ -66,7 +67,7 @@ class Retriever(object):
         ]
 
 
-    def _rerank_documents(self, query, documents, k):
+    async def _rerank_documents(self, query, documents, k):
         scores = self.reranker_model_.compute_score([[query, doc] for doc in documents], normalize=True)
         docs_with_scores = [(documents[i], scores[i]) for i in range(len(documents)) if scores[i] > config["retriever"]["retriever_threshold"]]
         if len(docs_with_scores) > 0:
@@ -78,15 +79,15 @@ class Retriever(object):
                 docs_scores_sorted = docs_scores_sorted[:k]
             # conf = mean([d[1] for d in docs_scores_sorted])        
             # TODO: appropriate logger
-            sorted_documents = '\n\n'.join([d[0] for i, d in enumerate(reversed(docs_scores_sorted))])
+            sorted_documents = '\n\n'.join([d[0] for i, d in enumerate(docs_scores_sorted)])
         else:
             sorted_documents = "No context fetched"
         return sorted_documents
 
-    def retrieve_context(self, query, k=config["retriever"]["retrieved_rank2_documents"]):
+    async def retrieve_context(self, query, k=config["retriever"]["retrieved_rank2_documents"]):
         # TODO: appropriate logger
-        documents = self.retriever_.invoke(query)
+        documents = await self.retriever_.ainvoke(query)
         documents = [doc.page_content for doc in documents]
         conf = None
-        sorted_documents = self._rerank_documents(query, documents, k)
+        sorted_documents = await self._rerank_documents(query, documents, k)
         return sorted_documents
