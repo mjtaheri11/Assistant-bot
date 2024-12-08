@@ -82,7 +82,7 @@ class Postgres:
         output = {"session_id": str(sid[0])}
         return output
 
-    async def get_history(self, session_id, start_index, end_index):
+    async def get_history(self, session_id, page_number, factor):
         sql_history_query = """
             SELECT user_query, paraphrased_query, bot_response FROM message
             WHERE session_id = $1
@@ -90,9 +90,10 @@ class Postgres:
             OFFSET $2
             LIMIT $3;
         """
+        
         # Calculate the number of records to skip and the limit for the query
-        offset = start_index - 1  # start_index is 1-based, so subtract 1 for 0-based offset
-        limit = end_index - start_index + 1  # The total number of records to fetch
+        offset = (page_number - 1) * factor # start_index is 1-based, so subtract 1 for 0-based offset
+        limit = (page_number * factor) # The total number of records to fetch
         
         selected_history = await self._execute_query(
             sql_history_query,

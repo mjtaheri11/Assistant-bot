@@ -25,7 +25,7 @@ class ModelManager:
     def _initialize(self):
         self.embedding_model = HuggingFaceEmbeddings(
             model_name=config["embedding_model"]["model_name"],
-            model_kwargs={"device": config["embedding_model"]["device"], "trust_remote_code": True}
+            model_kwargs={"device": config["embedding_model"]["device"]}
         )
         self.reranker_model = FlagReranker(
             config["reranker"]["model_name"],

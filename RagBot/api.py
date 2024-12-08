@@ -61,36 +61,49 @@ REQUEST_LATENCY = Histogram(
 #     create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 # );
 
-
-class ChatRequest(BaseModel):
-    query: str
-    session_id: Optional[str] = None
-
-
-class ChatResponse(BaseModel):
-    message_id: str
-    response: str
-    query: str
-
-
-class SQLRequest(BaseModel):
-    table_schemas: List[str]  # Accept a list of schemas
-    query: str
-
-
-class SQLResponse(BaseModel):
-    response: str
+# sudo docker exec -it postgres psql -U postgres -d chatbot -c "ALTER TABLE public.message ADD COLUMN is_sql BOOLEAN DEFAULT FALSE;"
 
 
 class SessionResponse(BaseModel):
     session_id: str
 
+class ChatRequest(BaseModel):
+    query: str
+    session_id: Optional[str] = None
+
+class ChatResponse(BaseModel):
+    message_id: str
+    response: str
+    query: str
+    is_sql: bool = False
+
+class SQLRequest(BaseModel):
+    table_schemas: List[str]  # Accept a list of schemas
+    query: str
+
+class SQLResponse(BaseModel):
+    response: str
+
+class HistoryRequest(BaseModel):
+    page_number: int = 1
+    factor: int = 5
+    session_id: str
+
+class HistoryResponse(BaseModel):
+    history: List[List[str]]  # Assuming history is a list of lists of strings
+
+class MakeRequest(BaseModel):
+    message_id: str
+    session_id: str
+    answer: Optional[str]
+
+class MakeResponse(BaseModel):
+    response: Optional[str]
 
 class FeedbackRequest(BaseModel):
     message_id: str
     feedback_type: str
-    session_id: Optional[str] = None
-
+    session_id: Optional[str]
 
 class FeedbackResponse(BaseModel):
     message: str
@@ -103,6 +116,12 @@ def get_session_id(request: Request, content_request: ChatRequest):
         raise HTTPException(status_code=422, detail="No Session-ID")
     return session_id
 
+def get_session_id(request: Request, content_request: ChatRequest):
+    # Try to get the session ID from headers, fall back to request object
+    session_id = request.headers.get("Session-ID") or content_request.session_id
+    if not session_id:
+        raise HTTPException(status_code=422, detail="No Session-ID")
+    return session_id
 
 def validate_query(query):
     if not query.strip():
@@ -129,6 +148,33 @@ async def create_session():
         return session_id
     except Exception as e:
         traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Unhandled error, Please report")
+
+
+@app.post(
+    "/session/history",
+    response_model=HistoryResponse,
+    responses={
+        200: {},
+        500: {"description": "Unhandled error that should be reported"},
+    },
+)
+async def get_history(history_request: HistoryRequest, request: Request):
+    try:
+        postgres = Postgres()
+        session_id = get_session_id(request, history_request)
+        simple_logger(f"Received history request", session_id)
+        history = await postgres.get_history(
+            session_id, history_request.page_number, history_request.factor
+        )
+        return HistoryResponse(history=history)
+        
+    except HTTPException as e:
+        raise e
+
+    except Exception as e:
+        traceback.print_exc()
+        # TODO: add a proper logger to this function
         raise HTTPException(status_code=500, detail="Unhandled error, Please report")
 
 
@@ -218,93 +264,52 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
 
         raise HTTPException(status_code=500, detail="Unhandled error, Please report")
 
-
-# Define the endpoint
+# TODO
 @app.post(
-    "/convert/sql",
+    "/chat/MakeResponse",
+    response_model=ChatResponse,
     responses={
-        200: {
-            "description": "Successful conversion of natural language query to SQL query.",
+        200: {},
+        500: {"description": "Unhandled error that should be reported"},
+        404: {
+            "description": "Session not found",
             "content": {
-                "application/json": {
-                    "example": {
-                        "sql_query": "SELECT name, salary FROM employees WHERE department = 'Engineering' AND salary > 70000;"
-                    }
-                }
+                "application/json": {"example": {"detail": "Session not found"}}
             },
         },
         422: {
-            "description": "Unprocessable entity, e.g., missing or invalid input.",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "detail": "Missing required field 'table_schemas' in the request body."
-                    }
-                }
-            },
-        },
-        404: {
-            "description": "Relevant schema not found in the input.",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "detail": "No matching schema found for the provided natural query."
-                    }
-                }
-            },
-        },
-        500: {
-            "description": "Internal server error. Unhandled error occurred.",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "detail": "An unexpected error occurred. Please try again later."
-                    }
-                }
-            },
+            "description": "Unprocessable entity e.g. no session id, or no query",
+            "content": {"application/json": {"example": {"detail": "Query is empty"}}},
         },
     },
 )
-async def convert_to_sql(request: SQLRequest):
-    start_time = time.time()
+async def make_response(make_request: MakeRequest, request: Request):
     try:
-        # Extract schemas and query from the request
-        table_schemas = request.table_schemas
-        query = request.query
+        postgres = Postgres()
+        message_fields = await postgres.get_message_fields(session_id, message_id)
 
-        # Use OpenAI API to generate SQL query
-        response = sql_responder(query, table_schemas)
-        elapsed_time = time.time() - start_time
-        non_generative_agent_logger(
-            session_id="",
-            agent="SQL converter",
-            message="SQL generated",
-            input_dict={
-                "user_utterance": request.query,
-            },
-            output_dict={"response": response},
-            elapsed_time=elapsed_time,
-        )
-        return SQLResponse(response=response)
+        if not len(message_fields):
+            raise HTTPException(status_code=404, detail="Message not found")
+        else:
+            user_query, paraphrased_query, sql_query = message_fields
 
+        # response = make_response(query, answer)
+        return MakeResponse(response=response)
+    
     except HTTPException as e:
         raise e
 
     except Exception as e:
         traceback.print_exc()
-        elapsed_time = time.time() - start_time
-        REQUEST_LATENCY.labels(endpoint="/convert").observe(elapsed_time)
-        non_generative_agent_logger(
-            session_id="",
-            agent="SQL converter",
-            message="convert SQL response not generated",
-            input_dict={
-                "user_utterance": request.query,
-            },
-            output_dict={"response": ""},
-            elapsed_time=elapsed_time,
-        )
-
+        # REQUEST_LATENCY.labels(endpoint="/MakeResponse").observe(elapsed_time)
+        # non_generative_agent_logger(
+        #     session_id,
+        #     "feedback",
+        #     f"Error in feedback: {str(e)}",
+        #     feedback_request.dict(),
+        #     {},
+        #     time.time() - start_time,
+        # )
         raise HTTPException(status_code=500, detail="Unhandled error, Please report")
 
 
