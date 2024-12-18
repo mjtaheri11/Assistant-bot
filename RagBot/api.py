@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import List, Optional, Tuple
 
 import asyncpg
-from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi import FastAPI, HTTPException, Request, Query
 from prometheus_client import Counter, Histogram, generate_latest
 from pydantic import BaseModel
 from starlette.responses import Response
@@ -37,39 +37,14 @@ REQUEST_LATENCY = Histogram(
 )
 
 
-# Models for request and response
-
-
-# sudo docker exec -it postgres psql -U postgres -d chatbot -c "CREATE TABLE public.session (session_id UUID DEFAULT gen_random_uuid() PRIMARY KEY, history_length INT)"
-
-# CREATE EXTENSION IF NOT EXISTS "pgcrypto";
-
-# CREATE TABLE public.session (
-#     session_id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-#     create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-# );
-
-
-# CREATE TABLE public.message (
-#     message_id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-#     session_id UUID REFERENCES public.session(session_id),
-#     user_query TEXT,
-#     paraphrased_query TEXT,
-#     bot_response TEXT,
-#     feedback TEXT,
-#     elapsed_time TEXT,
-#     create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-# );
-
-# sudo docker exec -it postgres psql -U postgres -d chatbot -c "ALTER TABLE public.message ADD COLUMN is_sql BOOLEAN DEFAULT FALSE;"
-
-
 class SessionResponse(BaseModel):
     session_id: str
+
 
 class ChatRequest(BaseModel):
     query: str
     session_id: Optional[str] = None
+
 
 class ChatResponse(BaseModel):
     message_id: str
@@ -77,33 +52,45 @@ class ChatResponse(BaseModel):
     query: str
     is_sql: bool = False
 
+
 class SQLRequest(BaseModel):
     table_schemas: List[str]  # Accept a list of schemas
     query: str
 
+
 class SQLResponse(BaseModel):
     response: str
 
-class HistoryRequest(BaseModel):
-    page_number: int = 1
-    factor: int = 5
-    session_id: str
-
 class HistoryResponse(BaseModel):
-    history: List[List[str]]  # Assuming history is a list of lists of strings
+    history: List[dict]  # Assuming history is a list of lists of strings
+
+class HistoryRequest(BaseModel):
+    page_index: int = 1
+    page_size: int = 5
+    session_id: str
+    contain_paraphrase: str = False
+
+
+class GetSessionsResponse(BaseModel):
+    response: List[str]  
+
+
 
 class MakeRequest(BaseModel):
     message_id: str
     session_id: str
     answer: Optional[str]
 
+
 class MakeResponse(BaseModel):
     response: Optional[str]
+
 
 class FeedbackRequest(BaseModel):
     message_id: str
     feedback_type: str
     session_id: Optional[str]
+
 
 class FeedbackResponse(BaseModel):
     message: str
@@ -116,12 +103,6 @@ def get_session_id(request: Request, content_request: ChatRequest):
         raise HTTPException(status_code=422, detail="No Session-ID")
     return session_id
 
-def get_session_id(request: Request, content_request: ChatRequest):
-    # Try to get the session ID from headers, fall back to request object
-    session_id = request.headers.get("Session-ID") or content_request.session_id
-    if not session_id:
-        raise HTTPException(status_code=422, detail="No Session-ID")
-    return session_id
 
 def validate_query(query):
     if not query.strip():
@@ -131,6 +112,59 @@ def validate_query(query):
 @app.get("/metrics")
 async def metrics():
     return Response(generate_latest(), media_type="text/plain")
+
+
+@app.get(
+    "/sessions",
+    response_model=GetSessionsResponse,
+    responses={
+        200: {},
+        500: {"description": "Unhandled error that should be reported"},
+    }
+)
+async def get_latest_sessions():
+    try:
+        postgres = Postgres()
+        sessions = await postgres.get_latent_sessions()
+        return GetSessionsResponse(response=sessions)
+    except HTTPException as e:
+        raise e
+    
+    except Exception as e:
+        raise e
+
+
+@app.get(
+    "/chat",
+    response_model=HistoryResponse,
+    responses={
+        200: {},
+        500: {"description": "Unhandled error that should be reported"},
+    },
+)
+async def get_history(
+    request: Request,
+    page_index: int = Query(1, alias="page_index"),  # Default to 1
+    page_size: int = Query(5, alias="page_size"),    # Default to 5
+    session_id: str = Query(..., alias="session_id"), # Required parameter
+    contain_paraphrase: bool = Query(False, alias="contain_paraphrase"), # Default to False
+):
+    try:
+        postgres = Postgres()
+        simple_logger(f"Received history request", session_id)
+        history = await postgres.get_history(
+            session_id, page_index, page_size, contain_paraphrase
+        )
+        
+        return HistoryResponse(history=history)
+
+    except HTTPException as e:
+        raise e
+
+    except Exception as e:
+        traceback.print_exc()
+        # TODO: add a proper logger to this function
+        raise HTTPException(status_code=500, detail="Unhandled error, Please report")
 
 
 @app.post(
@@ -148,33 +182,6 @@ async def create_session():
         return session_id
     except Exception as e:
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail="Unhandled error, Please report")
-
-
-@app.post(
-    "/session/history",
-    response_model=HistoryResponse,
-    responses={
-        200: {},
-        500: {"description": "Unhandled error that should be reported"},
-    },
-)
-async def get_history(history_request: HistoryRequest, request: Request):
-    try:
-        postgres = Postgres()
-        session_id = get_session_id(request, history_request)
-        simple_logger(f"Received history request", session_id)
-        history = await postgres.get_history(
-            session_id, history_request.page_number, history_request.factor
-        )
-        return HistoryResponse(history=history)
-        
-    except HTTPException as e:
-        raise e
-
-    except Exception as e:
-        traceback.print_exc()
-        # TODO: add a proper logger to this function
         raise HTTPException(status_code=500, detail="Unhandled error, Please report")
 
 
@@ -206,7 +213,10 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
         validate_query(chat_request.query)
         simple_logger(f"Received chat request", session_id)
         history = await postgres.get_history(
-            session_id, 1, config["postgres"]["history_length"]
+            session_id,
+            1,
+            config["postgres"]["history_length"],
+            True
         )
         if len(chat_request.query.split()) > 60:
             paraphrased_utterance, response, context = (
@@ -215,8 +225,9 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                 "",
             )
         else:
+            selected_history = [[h["query"], h["response"]] if len(h["query"]) < 60 else [h["paraphrased_query"], h["response"]] for h in history]
             paraphrased_utterance, response, context = await chat_responder_(
-                history, chat_request.query
+                selected_history, chat_request.query
             )
         elapsed_time = time.time() - start_time
         REQUEST_LATENCY.labels(endpoint="/chat").observe(elapsed_time)  # Record latency
@@ -236,7 +247,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                 "paraphrased_query": paraphrased_utterance,
                 "context": context,
             },
-            output_dict={"response": response},
+            output_dict={"response": response, "is_sql": False},
             elapsed_time=elapsed_time,
         )
         return ChatResponse(
@@ -264,10 +275,11 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
 
         raise HTTPException(status_code=500, detail="Unhandled error, Please report")
 
+
 # TODO
 @app.post(
-    "/chat/MakeResponse",
-    response_model=ChatResponse,
+    "/chat/queries/id/response",
+    response_model=MakeResponse,
     responses={
         200: {},
         500: {"description": "Unhandled error that should be reported"},
@@ -295,7 +307,7 @@ async def make_response(make_request: MakeRequest, request: Request):
 
         # response = make_response(query, answer)
         return MakeResponse(response=response)
-    
+
     except HTTPException as e:
         raise e
 

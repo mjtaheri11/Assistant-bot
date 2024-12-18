@@ -28,6 +28,14 @@ input {
     direction: rtl;
 }
 
+[data-testid="element-container"] button {
+    text-align: center;
+    width: 100%;
+    background-color: rgb(240, 242, 246); /* Transparent background for the box */
+    box-sizing: border-box;
+}
+
+
 /* Styling the tipbox rtl content */
 
 div.e10yodom1 {

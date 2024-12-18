@@ -81,7 +81,7 @@ class Retriever(object):
             # TODO: appropriate logger
             sorted_documents = '\n\n'.join([d[0] for i, d in enumerate(docs_scores_sorted)])
         else:
-            sorted_documents = "No context fetched"
+            sorted_documents = ""
         return sorted_documents
 
     async def retrieve_context(self, query, k=config["retriever"]["retrieved_rank2_documents"]):
