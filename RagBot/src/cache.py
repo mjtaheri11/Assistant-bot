@@ -60,7 +60,7 @@ class Cache:
             "thumb_down": thumb_down,
             "flag": flag,
         }
-        await self._vector_store.add_texts(
+        self._vector_store.add_texts(
             texts=[query],  # The text is the query itself
             metadatas=[metadata],
             embeddings=[embedding],
@@ -80,7 +80,7 @@ class Cache:
             # Remove the 'query' field if present, since it's the ID
             metadata.pop("query", None)
             # Update the record by re-adding it with the updated metadata
-            await self._vector_store.add_texts(
+            self._vector_store.add_texts(
                 texts=[query],
                 metadatas=[metadata],
                 embeddings=[self._get_embedding(query)],
@@ -99,7 +99,7 @@ class Cache:
             )
 
     async def _get_row(self, query: str) -> Optional[dict[str, Any]]:
-        results = await self._vector_store.get(
+        results = self._vector_store.get(
             ids=[query],
             include=["metadatas"],
         )
@@ -209,7 +209,7 @@ class Cache:
         Returns:
             List[Dict[str, Any]]: A list of metadata dictionaries for matching documents.
         """
-        results = await self._vector_store.get(
+        results = self._vector_store.get(
             where=filters,
             include=["metadatas"],
         )
@@ -253,14 +253,13 @@ class Cache:
             query (str): The unique identifier (query) of the document to delete.
         """
         if await self._get_row(query) is not None:
-            await self._vector_store.delete(ids=[query])
+            self._vector_store.delete(ids=[query])
         # self._vector_store.persist()
 
 
-
-# if __name__ == "__main__":
+# async def temp():
 #     response =  "سلام. من دستیار دیجیتال نسل 4 هستم. می‌توانم در مورد ماژول‌های دفتر کل و انبار به شما کمک کنم. پرسش خود را بپرسید تا در صورت امکان، پاسخ آن را ارائه دهم."
-#     lst = ["سلام. خوبی؟",
+#     lst_1 = ["سلام. خوبی؟",
 #             "سلام. حالت چطوره",
 #             "سلام خوبی",
 #             "سلام خوبی؟",
@@ -275,29 +274,38 @@ class Cache:
 #             "عرض ادب و احترام",
 #             "سلامعلیکم"
 #             ]
-    # lst = [("خیلی ممنون", "خواهش میکنم. اگر سوال دیگری بود در خدمتم "), 
-    # ("لطف کردی", "خواهش میکنم. اگر سوال دیگری بود در خدمتم. "), 
-    # ("زحمت دادم. ", "خواهش میکنم. اگر سوال دیگری بود در خدمتم. "), 
-    # ("دمت گرم", "خواهش میکنم. اگر سوال دیگری بود در خدمتم. "), 
-    # ("متشکرم", "خواهش میکنم. اگر سوال دیگری بود در خدمتم. "), 
-    # ("خیلی متشکرم", "خواهش میکنم. اگر سوال دیگری بود در خدمتم. "), 
-    # ("متچکرم", "خواهش میکنم. اگر سوال دیگری بود در خدمتم. "), 
-    # ("ممنون از پاسخت", "خواهش میکنم. اگر سوال دیگری بود در خدمتم. "), 
-    # ("متشکر از پاسخ شما", "خواهش میکنم. اگر سوال دیگری بود در خدمتم. "), 
-    # ("ممنونم که جواب دادی", "خواهش میکنم. اگر سوال دیگری بود در خدمتم. "), 
-    # ("جواب خوبی بود. مرسی", "خواهش میکنم. اگر سوال دیگری بود در خدمتم. "), 
-    # ("مرسی", "خواهش میکنم. اگر سوال دیگری بود در خدمتم. "), 
-    # ("مرسی. ممنون", "خواهش میکنم. اگر سوال دیگری بود در خدمتم. "), 
-    # ("مرسی. متشکر", "خواهش میکنم. اگر سوال دیگری بود در خدمتم. "),
-    # ("مرسی تشکر.", "خواهش میکنم. اگر سوال دیگری بود در خدمتم. "),
-    # ("تشکر. ", "خواهش میکنم. اگر سوال دیگری بود در خدمتم. ")
-    # ]
+    
+#     lst_2 = [("خیلی ممنون", "خواهش میکنم. اگر سوال دیگری بود در خدمتم "), 
+#     ("لطف کردی", "خواهش میکنم. اگر سوال دیگری بود در خدمتم. "), 
+#     ("زحمت دادم. ", "خواهش میکنم. اگر سوال دیگری بود در خدمتم. "), 
+#     ("دمت گرم", "خواهش میکنم. اگر سوال دیگری بود در خدمتم. "), 
+#     ("متشکرم", "خواهش میکنم. اگر سوال دیگری بود در خدمتم. "), 
+#     ("خیلی متشکرم", "خواهش میکنم. اگر سوال دیگری بود در خدمتم. "), 
+#     ("متچکرم", "خواهش میکنم. اگر سوال دیگری بود در خدمتم. "), 
+#     ("ممنون از پاسخت", "خواهش میکنم. اگر سوال دیگری بود در خدمتم. "), 
+#     ("متشکر از پاسخ شما", "خواهش میکنم. اگر سوال دیگری بود در خدمتم. "), 
+#     ("ممنونم که جواب دادی", "خواهش میکنم. اگر سوال دیگری بود در خدمتم. "), 
+#     ("جواب خوبی بود. مرسی", "خواهش میکنم. اگر سوال دیگری بود در خدمتم. "), 
+#     ("مرسی", "خواهش میکنم. اگر سوال دیگری بود در خدمتم. "), 
+#     ("مرسی. ممنون", "خواهش میکنم. اگر سوال دیگری بود در خدمتم. "), 
+#     ("مرسی. متشکر", "خواهش میکنم. اگر سوال دیگری بود در خدمتم. "),
+#     ("مرسی تشکر.", "خواهش میکنم. اگر سوال دیگری بود در خدمتم. "),
+#     ("تشکر. ", "خواهش میکنم. اگر سوال دیگری بود در خدمتم. "),
+#     ("ممنونم", "خواهش میکنم. اگر سوال دیگری بود در خدمتم")
+#     ]
 
+#     print("hello")
 
-    # cache = Cache()
-    # for query, response in lst:
-    #     cache.increment_thumb_up(query, response, "")
-     
+#     cache = Cache()
+#     for query in lst_1:
+#         await cache.increment_thumb_up(query, response, "")
+
+#     for query, response in lst_2:
+#         await cache.increment_thumb_up(query, response, "")
+
+        
+# if __name__ == "__main__":
+#     asyncio.run(temp())
             
     
     

@@ -12,7 +12,6 @@ from langchain_community.chat_models import ChatOllama
 from .prompts import (
     RAG_SYSTEM_PROMPT,
     UTTERANCE_PARAPHRASER_PROMPT,
-    SUGGEST_QUESTIONS_FROM_CONTEXT_PROMPT,
     SQL_CONVERTER
 )
 from .retriever import Retriever
@@ -29,7 +28,7 @@ random.seed(SEED)
 
 
 template_for_not_answer = "پاسخ به این سوال در محدوده دانش من نیست"
-
+template_for_not_context = "این سوال خارج از حوزه کاری همکاران سیستم است. لطفا سوال خود را در رابطه با محصولات و خدمات همکاران سیستم مطرح کنید."
 
 async def get_chat_response(prompt: str, model_name: str) -> str:
     # OLLAMA_HOST = os.getenv('OLLAMA_HOST', 'http://dockerize_assistant-ollama-1:11434')
@@ -41,9 +40,11 @@ async def get_chat_response(prompt: str, model_name: str) -> str:
         temperature=config["ollama"]["temperature"],
         keep_alive=config["ollama"]["keep_alive"],
         seed=SEED,
+        # base_url=os.environ.get("API_OLLAMA_HOST")
         # base_url="127.0.0.1:8089"
         base_url="http://ollama:11434",
-        # base_url="http://172.20.0.3:11434"
+        # base_url="http://172.20.0.2:11434"
+        # base_url="http://172.29.0.6:11434"
         # base_url=OLLAMA_HOST
     )
     messages = [SystemMessage(content=prompt)]
@@ -104,7 +105,7 @@ async def query_responder(query: str, context: str, history: str) -> str:
         question=query,
     )
     response = await get_chat_response(prompt, config["ollama"]["model_name"])
-    return response.replace("متن", "دانش")
+    return response
     # cleaned_response = json_cleaning(response)
     # cleaned_response_dict = json_text_cleaning(cleaned_response, "answer")
     # return cleaned_response_dict
@@ -129,8 +130,6 @@ async def prepare_final_context(query: str) -> str:
     retriever = Retriever()
     context = await retriever.retrieve_context(query) + "\n\n" + context
     # TODO: need appropriate context management > context = context[: config["context"]["max_length"]]
-    # if context.strip() == "":
-    #     raise Exception("no context fetched")
     return context
 
 
@@ -161,11 +160,16 @@ async def chat_responder_(
         return paraphrased_utterance, response, ""
 
     context = await prepare_final_context(paraphrased_utterance)
+    if not context:
+        return paraphrased_utterance, template_for_not_answer, "" 
+        
     response = await query_responder(paraphrased_utterance, context, history)
     # json_response = fix_asterisks(json_response)
     # return paraphrased_utterance, json_response["answer"], context
-    if "محدوده دانش من نیست" in response:
+    if "محدوده دانش من " in response:
         response = template_for_not_answer
+    if "خارج از حوزه کاری" in response:
+        response = template_for_not_context
     return paraphrased_utterance, response, context
 
 

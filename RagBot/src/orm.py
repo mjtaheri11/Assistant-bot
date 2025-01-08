@@ -1,9 +1,35 @@
 import asyncpg
 import asyncio
+import os
 from typing import Optional, Tuple
 
 from .config import config
 
+# Models for request and response
+
+
+# sudo docker exec -it postgres psql -U postgres -d chatbot -c "CREATE TABLE public.session (session_id UUID DEFAULT gen_random_uuid() PRIMARY KEY, history_length INT)"
+
+# CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+# CREATE TABLE public.session (
+#     session_id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+#     create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+# );
+
+
+# CREATE TABLE public.message (
+#     message_id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+#     session_id UUID REFERENCES public.session(session_id),
+#     user_query TEXT,
+#     paraphrased_query TEXT,
+#     bot_response TEXT,
+#     feedback TEXT,
+#     elapsed_time TEXT,
+#     create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+# );
+
+# sudo docker exec -it postgres psql -U postgres -d chatbot -c "ALTER TABLE public.message ADD COLUMN is_sql BOOLEAN DEFAULT FALSE;"
 
 class Postgres:
     _instance = None
@@ -17,7 +43,7 @@ class Postgres:
     def _initialize(self):
         self.database = config["postgres"]["database"]
         self.connection_address = config["postgres"]["address"]
-
+        
     async def _execute_query(
         self,
         query: str,
@@ -82,18 +108,18 @@ class Postgres:
         output = {"session_id": str(sid[0])}
         return output
 
-    async def get_history(self, session_id, start_index, end_index):
+    async def get_history(self, session_id, page_index, page_size, with_paraphrase=False):
         sql_history_query = """
-            SELECT user_query, paraphrased_query, bot_response FROM message
+            SELECT user_query, paraphrased_query, bot_response, message_id FROM message
             WHERE session_id = $1
             ORDER BY create_time DESC
             OFFSET $2
             LIMIT $3;
         """
-        # Calculate the number of records to skip and the limit for the query
-        offset = start_index - 1  # start_index is 1-based, so subtract 1 for 0-based offset
-        limit = end_index - start_index + 1  # The total number of records to fetch
         
+        # Calculate the number of records to skip and the limit for the query
+        offset = (page_index - 1) * page_size  # Skip records based on the page number and batch size
+        limit = page_size  # Limit to the batch size for each page
         selected_history = await self._execute_query(
             sql_history_query,
             fetch_results=True,
@@ -101,17 +127,70 @@ class Postgres:
         )
         
         # Process the history results in the desired format
-        history = [
-            (
-                [h[0], h[2]]
-                if len(h[0]) < config["postgres"]["max_user_input_character_length"]
-                else [h[1], h[2]]
-            )
-            for h in reversed(selected_history)
-        ]
-        
+        if with_paraphrase:
+            history = [
+                    {"query": h[0], "response": h[2], "paraphrased_query": h[1], "message_id": h[3]}
+                for h in reversed(selected_history)
+            ]
+        else:
+            history = [
+                    {"query": h[0], "response": h[2], "message_id": h[3]}
+                    for h in reversed(selected_history)
+            ]       
+                
         return history
+    
+    async def get_latest_sessions(
+        self,
+        num_sessions=30, 
+        offset=0, 
+        recent_limit=1000
+    ):
+        sql_latest_unique_sessions_with_paraphrase = """
+            WITH recent_messages AS (
+                SELECT session_id, create_time
+                FROM message
+                ORDER BY create_time DESC
+                LIMIT $3
+            ),
+            distinct_sessions AS (
+                SELECT DISTINCT ON (session_id)
+                    session_id,
+                    create_time
+                FROM recent_messages
+                ORDER BY session_id, create_time DESC
+            )
+            SELECT 
+                ds.session_id,
+                (
+                    SELECT m.paraphrased_query
+                    FROM message m
+                    WHERE m.session_id = ds.session_id
+                    AND m.paraphrased_query IS NOT NULL
+                    ORDER BY m.create_time ASC
+                    LIMIT 1
+                ) AS first_paraphrased_query
+            FROM distinct_sessions ds
+            ORDER BY ds.create_time DESC
+            OFFSET $1
+            LIMIT $2;
+        """
 
+        results = await self._execute_query(
+            sql_latest_unique_sessions_with_paraphrase,
+            fetch_results=True,
+            insert_values=(offset, num_sessions, recent_limit)
+        )
+        
+        # Each row = (session_id, first_paraphrased_query)
+        return [
+            {
+                "session_id": row[0],
+                "paraphrased_query": row[1]
+            }
+            for row in results
+        ]
+    
     async def insert_chat_row(
         self, session_id, user_query, paraphrased_query, bot_response, elapsed_time
     ):
@@ -129,10 +208,13 @@ class Postgres:
         return str(message_id[0])
 
     async def set_feedback(self, message_id, feedback_type):
-        update_query = "UPDATE message SET feedback = $1 WHERE message_id = $2 RETURNING message_id;"
-        await self._execute_query(
+        update_query = "UPDATE message SET feedback = $1 WHERE message_id = $2 AND feedback IS NULL RETURNING message_id;"
+        result = await self._execute_query(
             update_query,
             fetch_results=True,
             insert_values=(feedback_type, message_id),
-        )
+        )        
+        if result: 
+            return True
+        return False
         
