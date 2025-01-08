@@ -132,7 +132,7 @@ reranker:
 retriever:
   retrieved_documents: 40 # initiate_vdb.py
   retrieved_rank2_documents: 8
-  alpha_threshold: 0
+  alpha_threshold: 0.9
   expansion: false
   rerank: true
   chunk_size: 800

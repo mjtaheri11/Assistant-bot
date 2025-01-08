@@ -443,7 +443,7 @@ async def feedback(feedback_request: FeedbackRequest, request: Request):
     endpoint = "/feedback"
     REQUEST_COUNT.labels(endpoint=endpoint).inc()
     start_time = time.time()
-
+    
     try:
         # validate_feedback(feedback_request)
 
@@ -474,7 +474,6 @@ async def feedback(feedback_request: FeedbackRequest, request: Request):
 # def validate_feedback(feedback_request: FeedbackRequest):
 #     if feedback_request.feedback_type not in ["thumb_up", "thumb_down", "flag"]:
 #         raise HTTPException(status_code=422, detail="Invalid feedback")
-
 
 async def fetch_message_fields(session_id, message_id):
     postgres = Postgres()

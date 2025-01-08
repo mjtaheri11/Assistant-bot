@@ -48,7 +48,6 @@ services:
       - OLLAMA_KEEP_ALIVE=${OLLAMA_KEEP_ALIVE}
       # - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES}
 
-
     networks:
       - ollama-docker2
 
