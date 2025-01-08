@@ -72,7 +72,7 @@ class HistoryRequest(BaseModel):
 
 
 class GetSessionsResponse(BaseModel):
-    response: List[str]  
+    response: List[dict]  
 
 
 
@@ -125,7 +125,7 @@ async def metrics():
 async def get_latest_sessions():
     try:
         postgres = Postgres()
-        sessions = await postgres.get_latent_sessions()
+        sessions = await postgres.get_latest_sessions()
         return GetSessionsResponse(response=sessions)
     except HTTPException as e:
         raise e
@@ -328,76 +328,95 @@ async def make_response(make_request: MakeRequest, request: Request):
 @app.post(
     "/feedback",
     responses={
-        200: {
-            "content": {
-                "application/json": {"example": {"message": "Feedback received"}}
-            }
-        },
-        422: {
-            "description": "Unprocessable entity e.g. no session id, or invalid feedback",
-            "content": {"application/json": {"example": {"detail": "No Session-ID"}}},
-        },
-        404: {
-            "description": "No message found with sent message id and session id",
-            "content": {
-                "application/json": {"example": {"detail": "Message not found"}}
-            },
-        },
-        500: {"description": "Unhandled error that should be reported"},
+        200: {"content": {"application/json": {"example": {"message": "Feedback received"}}}},
+        422: {"description": "Invalid feedback", "content": {"application/json": {"example": {"detail": "No Session-ID"}}}},
+        404: {"description": "Message not found", "content": {"application/json": {"example": {"detail": "Message not found"}}}},
+        500: {"description": "Unhandled error"},
     },
 )
 async def feedback(feedback_request: FeedbackRequest, request: Request):
-    REQUEST_COUNT.labels(endpoint="/chat").inc()  # Increment request count for /chat
+    endpoint = "/feedback"
+    REQUEST_COUNT.labels(endpoint=endpoint).inc()
     start_time = time.time()
 
     try:
-        if feedback_request.feedback_type not in ["thumb_up", "thumb_down", "flag"]:
-            raise HTTPException(status_code=422, detail="Invalid feedback")
+        validate_feedback(feedback_request)
 
         session_id = get_session_id(request, feedback_request)
-        message_id = feedback_request.message_id
-        postgres = Postgres()
-        message_fields = await postgres.get_message_fields(session_id, message_id)
+        message_fields = await fetch_message_fields(session_id, feedback_request.message_id)
 
-        if not len(message_fields):
-            raise HTTPException(status_code=404, detail="Message not found")
-        else:
-            user_query, paraphrased_query, bot_response = message_fields
+        log_feedback_request(session_id)
+        result = await process_feedback(feedback_request, message_fields)
 
-        simple_logger(f"Received feedback request", session_id)
-        feedback_(paraphrased_query, bot_response, "", feedback_request.feedback_type)
-        await postgres.set_feedback(message_id, feedback_request.feedback_type)
-        elapsed_time = time.time() - start_time
-        REQUEST_LATENCY.labels(endpoint="/feedback").observe(
-            elapsed_time
-        )  # Record latency
-
-        non_generative_agent_logger(
-            session_id=session_id,
-            agent="feedback",
-            message="feedback generated",
-            input_dict={
-                "user_utterance": user_query,
-                "paraphrased_query": paraphrased_query,
-            },
-            output_dict={"response": feedback_request.feedback_type},
-            elapsed_time=elapsed_time,
-        )
-
-        return FeedbackResponse(message="Feedback received")
+        log_feedback_response(session_id, feedback_request, message_fields, start_time)
+        return result
 
     except HTTPException as e:
         raise e
-
     except Exception as e:
-        traceback.print_exc()
-        REQUEST_LATENCY.labels(endpoint="/feedback").observe(elapsed_time)
-        non_generative_agent_logger(
-            session_id,
-            "feedback",
-            f"Error in feedback: {str(e)}",
-            feedback_request.dict(),
-            {},
-            time.time() - start_time,
-        )
-        raise HTTPException(status_code=500, detail="Unhandled error, Please report")
+        handle_unexpected_error(e, session_id, feedback_request, start_time)
+
+
+def validate_feedback(feedback_request: FeedbackRequest):
+    if feedback_request.feedback_type not in ["thumb_up", "thumb_down", "flag"]:
+        raise HTTPException(status_code=422, detail="Invalid feedback")
+
+
+async def fetch_message_fields(session_id, message_id):
+    postgres = Postgres()
+    message_fields = await postgres.get_message_fields(session_id, message_id)
+
+    if not message_fields:
+        raise HTTPException(status_code=404, detail="Message not found")
+
+    return message_fields
+
+
+async def process_feedback(feedback_request, message_fields):
+    message_id = feedback_request.message_id
+    postgres = Postgres()
+    result = await postgres.set_feedback(message_id, feedback_request.feedback_type)
+
+    if result and feedback_request.feedback_type == "thumb_down":
+        user_query, paraphrased_query, bot_response = message_fields
+        await feedback_(paraphrased_query, bot_response, "", feedback_request.feedback_type)
+        return FeedbackResponse(message="Feedback received")
+    return FeedbackResponse(message="Duplicate feedback")
+
+
+def log_feedback_request(session_id):
+    simple_logger("Received feedback request", session_id)
+
+
+def log_feedback_response(session_id, feedback_request, message_fields, start_time):
+    elapsed_time = time.time() - start_time
+    REQUEST_LATENCY.labels(endpoint="/feedback").observe(elapsed_time)
+
+    user_query, paraphrased_query, _ = message_fields
+    non_generative_agent_logger(
+        session_id=session_id,
+        agent="feedback",
+        message="feedback generated",
+        input_dict={
+            "user_utterance": user_query,
+            "paraphrased_query": paraphrased_query,
+        },
+        output_dict={"response": feedback_request.feedback_type},
+        elapsed_time=elapsed_time,
+    )
+
+
+def handle_unexpected_error(exception, session_id, feedback_request, start_time):
+    elapsed_time = time.time() - start_time
+    REQUEST_LATENCY.labels(endpoint="/feedback").observe(elapsed_time)
+
+    traceback.print_exc()
+    non_generative_agent_logger(
+        session_id,
+        "feedback",
+        f"Error in feedback: {str(exception)}",
+        feedback_request.dict(),
+        {},
+        elapsed_time,
+    )
+    raise HTTPException(status_code=500, detail="Unhandled error, Please report")

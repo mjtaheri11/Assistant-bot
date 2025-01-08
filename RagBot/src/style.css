@@ -21,6 +21,7 @@ input {
     direction: rtl;
 }
 
+
 [data-testid="stMarkdownContainer"]:has(.reference) {
     display: flex;
     flex-direction: row;
@@ -28,16 +29,30 @@ input {
     direction: rtl;
 }
 
-[data-testid="element-container"] button {
+[data-testid="element-container"] [data-testid="baseButton-secondary"] {
     text-align: center;
     width: 100%;
-    background-color: rgb(240, 242, 246); /* Transparent background for the box */
+    /* background-color: rgb(240, 242, 246); /* Transparent background for the box */
+    background: rgba(0, 0, 0, 0);
+    color: rgb(49, 51, 63);
+    inset: 0px;
+    color-scheme: light;
     box-sizing: border-box;
 }
 
 
-/* Styling the tipbox rtl content */
+[data-testid="element-container"] [data-testid="baseButton-primary"] {
+    text-align: center;
+    width: 100%;
+    box-sizing: border-box;
+    background-color: #6CB4EE;
+    border-color: #6CB4EE;
+    border-style: solid;
+}
 
+/* background-color: rgb(240, 242, 246); /* Transparent background for the box */
+
+/* Styling the tipbox rtl content */
 div.e10yodom1 {
     display: flex;
     justify-content: flex-end;
@@ -45,7 +60,7 @@ div.e10yodom1 {
 
 div.stAlert {
     direction: RTL;
-    text-align: start;
+    text-align: start; /* the element becomes fixed when the top of the page hits this point */
 }
 
 /* Styling for columns in order to be scrollable */
@@ -105,3 +120,25 @@ section.main>div {
     font-family: monospace !important;
     font-size: 10px;
 }
+
+[data-testid="stSidebarContent"] [data-testid="baseButton-secondary"] {
+    color: #b37400;
+    background-color: #fffaf0
+}
+
+
+[data-testid="stSidebarContent"] p {
+    direction: "rtl";
+    color: rgb(0, 66, 128);
+    text-align: end;
+}
+
+[data-testid="stSidebarContent"] [data-testid="baseButton-secondary"] {
+    background-color: #6CA4CC11;
+    border: 1px solid #54c5d0;
+    margin: 10px;
+    box-sizing: border-box;
+    border-radius: 3px;
+
+}
+

@@ -92,10 +92,6 @@ def init_session_state():
         st.session_state["query"] = []
     if "suggested_sessions" not in st.session_state:
         st.session_state["suggested_sessions"] = []
-    if "context_reference_url" not in st.session_state:
-        st.session_state["context_reference_url"] = ""
-    if "context" not in st.session_state:
-        st.session_state["context"] = ""
     if "have_clicked_on_feedback" not in st.session_state:
         st.session_state["have_clicked_on_feedback"] = False
     if "first_encounter_with_searchbox" not in st.session_state:
@@ -104,7 +100,5 @@ def init_session_state():
         st.session_state["first_encounter_with_extra_sessions"] = True
     if "do_generate_sessions" not in st.session_state:
         st.session_state["do_generate_sessions"] = False
-    # if "enable_show_logs" not in st.session_state:
-    #     st.session_state["enable_show_logs"] = False
     if "response_is_valid" not in st.session_state:
         st.session_state["response_is_valid"] = ""

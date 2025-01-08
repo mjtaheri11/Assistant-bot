@@ -168,6 +168,8 @@ VectorDB-Eval
 VectorDB-Eval-2
 TempVectorDB
 VectorDB-TEMP
+VectorDB/
+db-cache/
 
 saved_models
 VectorDB-bahar-hanieh

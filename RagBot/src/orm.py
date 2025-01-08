@@ -1,5 +1,6 @@
 import asyncpg
 import asyncio
+import os
 from typing import Optional, Tuple
 
 from .config import config
@@ -42,7 +43,7 @@ class Postgres:
     def _initialize(self):
         self.database = config["postgres"]["database"]
         self.connection_address = config["postgres"]["address"]
-
+        
     async def _execute_query(
         self,
         query: str,
@@ -139,21 +140,57 @@ class Postgres:
                 
         return history
     
-    async def get_latent_sessions(self, num_sessions=30):
-        sql_latent_sessions =  """
-            SELECT session_id FROM session
-            ORDER BY create_time DESC
+    async def get_latest_sessions(
+        self,
+        num_sessions=30, 
+        offset=0, 
+        recent_limit=1000
+    ):
+        sql_latest_unique_sessions_with_paraphrase = """
+            WITH recent_messages AS (
+                SELECT session_id, create_time
+                FROM message
+                ORDER BY create_time DESC
+                LIMIT $3
+            ),
+            distinct_sessions AS (
+                SELECT DISTINCT ON (session_id)
+                    session_id,
+                    create_time
+                FROM recent_messages
+                ORDER BY session_id, create_time DESC
+            )
+            SELECT 
+                ds.session_id,
+                (
+                    SELECT m.paraphrased_query
+                    FROM message m
+                    WHERE m.session_id = ds.session_id
+                    AND m.paraphrased_query IS NOT NULL
+                    ORDER BY m.create_time ASC
+                    LIMIT 1
+                ) AS first_paraphrased_query
+            FROM distinct_sessions ds
+            ORDER BY ds.create_time DESC
             OFFSET $1
             LIMIT $2;
         """
-        selected_sessions = await self._execute_query(
-            sql_latent_sessions,
+
+        results = await self._execute_query(
+            sql_latest_unique_sessions_with_paraphrase,
             fetch_results=True,
-            insert_values=(1, num_sessions)
+            insert_values=(offset, num_sessions, recent_limit)
         )
         
-        return [str(session[0]) for session in selected_sessions]
-        
+        # Each row = (session_id, first_paraphrased_query)
+        return [
+            {
+                "session_id": row[0],
+                "paraphrased_query": row[1]
+            }
+            for row in results
+        ]
+    
     async def insert_chat_row(
         self, session_id, user_query, paraphrased_query, bot_response, elapsed_time
     ):
@@ -171,10 +208,13 @@ class Postgres:
         return str(message_id[0])
 
     async def set_feedback(self, message_id, feedback_type):
-        update_query = "UPDATE message SET feedback = $1 WHERE message_id = $2 RETURNING message_id;"
-        await self._execute_query(
+        update_query = "UPDATE message SET feedback = $1 WHERE message_id = $2 AND feedback IS NULL RETURNING message_id;"
+        result = await self._execute_query(
             update_query,
             fetch_results=True,
             insert_values=(feedback_type, message_id),
-        )
+        )        
+        if result: 
+            return True
+        return False
         

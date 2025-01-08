@@ -14,12 +14,6 @@ from src.retriever import Retriever
 
 
 NUMBER_OF_SUGGESTED_SESSIONS = 30
-RESPONSE_TEMPLATE_FOR_NO_ANSWER = """
-    به سامانه سوال و جواب همکاران سیستم خوش آمدید. 
-    سوال فعلی شما به همکاران سیستم مرتبط نیست. 
-    لطفا سوالاتی را که به همکاران سیستم مرتبط هستند، بپرسید. 
-    با تشکر
-    """
 
 CSS_STYLE_FILE = "./src/style.css"
 BASE_URL = "http://185.13.230.222:8686" # "http://172.27.0.6:8686" #
@@ -90,9 +84,15 @@ def request_previous_sessions(api_url: str = BASE_URL):
     response = requests.get(f"{api_url}/sessions")
     json_response = response.json()
     if response.status_code == 200: 
-        return {"status": "sucess", "response": json_response['response']}
+        paraphrased_query = []
+        sessions = []
+        for response in json_response["response"]:
+            sessions.append(response["session_id"])
+            paraphrased_query.append(response["paraphrased_query"])
+        return {"status": "sucess", "paraphrased_queries": paraphrased_query, "sessions": sessions}
     else:
-        return {"status": "error", "response": ""}
+        raise Exception
+        # return {"status": "error", "response": ""}
     
 
 def send_feedback(message_id: str, feedback_type: str, session_id: str, api_url: str = BASE_URL):
@@ -105,6 +105,11 @@ def send_feedback(message_id: str, feedback_type: str, session_id: str, api_url:
 
     # Send the POST request with the feedback data
     response = requests.post(f"{api_url}/feedback", json=feedback_data, headers={"Session-ID": session_id})
+    json_response = response.json()
+    if response.status_code == 200:
+        return json_response
+    else:
+        return {"message": "error"}
 
 
 def clear_logs():
@@ -138,6 +143,7 @@ def main():
     init_session_state()
 
     clicked_on_sidebar_sessions = False
+    clicked_on_new_session = False
     for i in range(NUMBER_OF_SUGGESTED_SESSIONS):
         if st.session_state.get(f"session_button_{i}"):
             clicked_on_sidebar_sessions = True
@@ -149,10 +155,16 @@ def main():
             else:
                 st.session_state["first_encounter_with_searchbox"] = True
 
+    if st.session_state.get("new_session"):
+        clicked_on_new_session = True
+        st.session_state["first_encounter_with_searchbox"] = True
+        st.session_state["session_id"] = session_create()
+        
     if "session_id" not in st.session_state:
         session_id = session_create()
         st.session_state["session_id"] = session_id
-    number_of_columns = [3, 4, 1, 5, 3]
+
+    number_of_columns = [2, 3, 1, 5, 4]
     _, sessions_column, logging_column, main_column, _ = st.columns(
         number_of_columns,
         gap="small",
@@ -162,8 +174,9 @@ def main():
         st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
     with st.sidebar:
-        st.checkbox("Show Logs", key="enable_show_logs")
-        st.button("Clear Logs", key="clear_logs_button")
+        # st.checkbox("Show Logs", key="enable_show_logs")
+        st.markdown("در این قسمت هم میتوانید همزن خود را سفارش دهید")
+        st.button("سفارش همزن", key="enable_show_logs")
         st.divider()
 
     if st.session_state.get("clear_logs_button", False):
@@ -223,7 +236,16 @@ def main():
                 st.session_state["have_clicked_on_feedback"] = False
                 st.session_state["response_is_valid"] = True
                 progress_bar.progress(value=0)
-
+            
+            elif clicked_on_new_session:
+                st.session_state.user_utterance = []
+                st.session_state.query = []
+                st.session_state.response = []
+                st.session_state.user_input_storage = []
+                st.session_state.message_id = []
+                st.session_state.have_clicked_on_feedback = False
+                st.session_state.response_is_valid = False
+                progress_bar.progress(value=0)
 
             if st.session_state.get("response") and st.session_state.get(
                 "user_utterance",
@@ -274,20 +296,20 @@ def main():
                                 dislike = st.session_state.get("dislike", False)
                                 flag = st.session_state.get("flag", False)
                                 if like:
-                                    send_feedback(
+                                    result = send_feedback(
                                         message_id,
                                         "thumb_up",
                                         st.session_state.get("session_id"),
                                     )
                                 elif dislike:
-                                    send_feedback(
+                                    result = send_feedback(
                                         message_id,
                                         "thumb_down",
                                         st.session_state.get("session_id"),
                                     )
                                 elif flag:
                                     # todo flag is not included in the redis yet!
-                                    send_feedback(
+                                    result = send_feedback(
                                         message_id,
                                         "flag",
                                         st.session_state.get("session_id")
@@ -309,12 +331,20 @@ def main():
                                     elapsed_time=-1,
                                 )  # TODO: The elapsed time is not correct, but I didn't have any other option
                             if st.session_state["have_clicked_on_feedback"]:
-                                *_, text_col = feedback_column_placeholder.columns(
-                                    [1, 1, 1, 5],
-                                    gap="medium",
-                                )
-                                with text_col:
-                                    st.markdown("نظر شما ثبت شد.")
+                                if result["message"] == "Feedback received":
+                                    *_, text_col = feedback_column_placeholder.columns(
+                                        [1, 1, 1, 5],
+                                        gap="medium",
+                                    )
+                                    with text_col:
+                                        st.markdown("نظر شما ثبت شد.")
+                                else:
+                                    *_, text_col = feedback_column_placeholder.columns(
+                                        [1, 1, 1, 5],
+                                        gap="medium",
+                                    )
+                                    with text_col:
+                                        st.markdown("نظر شما قبلا ثبت شده است.")
                             else:
                                 (
                                     thumb_up_col,
@@ -354,18 +384,31 @@ def main():
                 st.success(
                     "این جا هم یه سری از جلسات قبلی شما هست که میتونید ازشون استفاده کنید.",
                 )
-                sessions = request_previous_sessions()['response']
-                for i, session in enumerate(sessions):
-                    st.button(session, key=f"session_button_{i}")
+                st.button("گفتگوی جدید", key="new_session", type="primary")
+                previous_sessions = request_previous_sessions()
+                sessions = previous_sessions["sessions"]
+                paraphrased_queries = previous_sessions["paraphrased_queries"]
+                for i, (paraphrased_query , session) in enumerate(zip(paraphrased_queries, sessions)):
+                    st.button(paraphrased_query, key=f"session_button_{i}")
                     st.session_state[f"session_{i}"] = session
+                    st.session_state[f"suggested_sessions_title_{i}"] = paraphrased_query
                 st.session_state["suggested_sessions"] = sessions
+                st.session_state["suggested_sessions_titles"] = paraphrased_queries
                 st.session_state["first_encounter_with_extra_sessions"] = False
-            else: 
-                sessions = st.session_state["suggested_sessions"]
-                for i, session in (enumerate(sessions)):
-                    st.button(session, key=f"session_button_{i}")
+            else:
+                st.button("جلسه جدید", key="new_session", type="primary")
+                if clicked_on_new_session:
+                    previous_sessions = request_previous_sessions()
+                    sessions = previous_sessions["sessions"]
+                    paraphrased_queries = previous_sessions["paraphrased_queries"]
+                    st.session_state[f"session_title_{i}"] = paraphrased_queries
+                else:
+                    sessions = st.session_state["suggested_sessions"]
+                    paraphrased_queries = st.session_state["suggested_sessions_titles"]
+                for i, (paraphrased_query, session) in enumerate(zip(paraphrased_queries, sessions)):
+                    st.button(paraphrased_query, key=f"session_button_{i}")
                     st.session_state[f"session_{i}"] = session
-
+                    st.session_state[f"suggested_sessions_title_{i}"] = paraphrased_query 
 
     with logging_column:
         if st.session_state["enable_show_logs"]:
@@ -377,6 +420,4 @@ def main():
 
 
 if __name__ == "__main__":
-    # st.markdown(HTML_STYLE_FOR_RTL_INPUT_ELEMENT, unsafe_allow_html=True)
-
     main()
