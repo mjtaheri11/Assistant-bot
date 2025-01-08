@@ -338,12 +338,23 @@ async def feedback(feedback_request: FeedbackRequest, request: Request):
     endpoint = "/feedback"
     REQUEST_COUNT.labels(endpoint=endpoint).inc()
     start_time = time.time()
-
+    
     try:
-        validate_feedback(feedback_request)
+        # validate_feedback(feedback_request)
 
-        session_id = get_session_id(request, feedback_request)
-        message_fields = await fetch_message_fields(session_id, feedback_request.message_id)
+        # session_id = get_session_id(request, feedback_request)
+        print(feedback_request)
+        print(request)
+        session_id = request.headers.get("Session-ID", None)
+        if session_id is None:
+            session_id = feedback_request.session_id
+
+            if session_id is None:
+                raise HTTPException(status_code=422, detail="No Session-ID")
+
+        message_fields = await fetch_message_fields(
+            session_id, feedback_request.message_id
+        )
 
         log_feedback_request(session_id)
         result = await process_feedback(feedback_request, message_fields)
@@ -356,6 +367,10 @@ async def feedback(feedback_request: FeedbackRequest, request: Request):
     except Exception as e:
         handle_unexpected_error(e, session_id, feedback_request, start_time)
 
+
+# def validate_feedback(feedback_request: FeedbackRequest):
+#     if feedback_request.feedback_type not in ["thumb_up", "thumb_down", "flag"]:
+#         raise HTTPException(status_code=422, detail="Invalid feedback")
 
 def validate_feedback(feedback_request: FeedbackRequest):
     if feedback_request.feedback_type not in ["thumb_up", "thumb_down", "flag"]:

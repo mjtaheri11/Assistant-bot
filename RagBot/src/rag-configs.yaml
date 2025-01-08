@@ -48,7 +48,7 @@ cache:
   host: 127.0.0.1
   port: 9200
   knn: 50
-  alpha_threshold: 0.9
+  alpha_threshold: 0.85
   beta_threshold: 0.8
   redis_result_num_documents: 5
   socket_timeout: 10
@@ -121,7 +121,7 @@ reranker:
 retriever:
   retrieved_documents: 40 # initiate_vdb.py
   retrieved_rank2_documents: 8
-  alpha_threshold: 0
+  alpha_threshold: 0.85
   expansion: false
   rerank: true
   chunk_size: 800
