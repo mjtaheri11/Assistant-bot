@@ -429,7 +429,6 @@ def process_single_document(
                 current_chunk["h3"] = text 
                 current_chunk["h4"] = "" 
                 current_chunk["content"] = []
-                
 
             elif heading_level == 4:
                 current_chunk["h4"] = text
@@ -455,17 +454,18 @@ def process_single_document(
             table_chunk["content"].append(compact_table)
             chunks.extend(finalize_chunk(table_chunk, target_chunk_size, max_chunk_size, doc_path, make_partition=False))
 
+
     chunks.extend(finalize_chunk(
         current_chunk, target_chunk_size, max_chunk_size, doc_path
         )
                   )
-
 
     # Prepend header text to each chunk's content if header exists
     if header_text:
         for chunk in chunks:
             # Assuming chunk has a 'content' attribute that is a string
             chunk.page_content = f"{header_text}\n{chunk.page_content}"
+
 
     return chunks
 

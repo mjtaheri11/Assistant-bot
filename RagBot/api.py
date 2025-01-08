@@ -499,7 +499,6 @@ async def process_feedback(feedback_request, message_fields):
         return FeedbackResponse(message="Feedback received")
     return FeedbackResponse(message="Duplicate feedback")
 
-
 def log_feedback_request(session_id):
     simple_logger("Received feedback request", session_id)
 
