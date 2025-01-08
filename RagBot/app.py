@@ -83,7 +83,7 @@ def request_history(session_id, api_url: str = BASE_URL):
 def request_previous_sessions(api_url: str = BASE_URL):
     response = requests.get(f"{api_url}/sessions")
     json_response = response.json()
-    if response.status_code == 200: 
+    if response.status_code == 200:
         paraphrased_query = []
         sessions = []
         for response in json_response["response"]:

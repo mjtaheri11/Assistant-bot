@@ -208,13 +208,15 @@ class Postgres:
         return str(message_id[0])
 
     async def set_feedback(self, message_id, feedback_type):
-        update_query = "UPDATE message SET feedback = $1 WHERE message_id = $2 AND feedback IS NULL RETURNING message_id;"
+        update_query = """
+            UPDATE message 
+            SET feedback = $1 
+            WHERE message_id = $2 AND feedback IS NULL 
+            RETURNING message_id;
+        """
         result = await self._execute_query(
             update_query,
             fetch_results=True,
             insert_values=(feedback_type, message_id),
         )        
-        if result: 
-            return True
-        return False
-        
+        return bool(result)

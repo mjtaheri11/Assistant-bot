@@ -377,11 +377,11 @@ async def process_feedback(feedback_request, message_fields):
     postgres = Postgres()
     result = await postgres.set_feedback(message_id, feedback_request.feedback_type)
 
-    if result and feedback_request.feedback_type == "thumb_down":
-        user_query, paraphrased_query, bot_response = message_fields
-        await feedback_(paraphrased_query, bot_response, "", feedback_request.feedback_type)
-        return FeedbackResponse(message="Feedback received")
-    return FeedbackResponse(message="Duplicate feedback")
+    if result:
+        # user_query, paraphrased_query, bot_response = message_fields
+        # await feedback_(paraphrased_query, bot_response, "", feedback_request.feedback_type)
+        return FeedbackResponse(message="feedback received")
+    return FeedbackResponse(message="duplicate feedback")
 
 
 def log_feedback_request(session_id):

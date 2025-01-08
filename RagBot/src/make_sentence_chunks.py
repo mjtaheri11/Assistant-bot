@@ -309,6 +309,10 @@ def process_single_document(
                 
         current_heading_level = heading_level
     
+    chunks.extend(finalize_chunk(
+        current_chunk, target_chunk_size, max_chunk_size, doc_path
+        )
+                  )
     return chunks
 
 
