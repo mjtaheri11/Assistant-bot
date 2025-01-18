@@ -383,6 +383,7 @@ def process_single_document(
 
     # import pdb
     # pdb.set_trace()
+
     current_heading_level = float("inf") # Initialize current heading level
 
     # Track indices for paragraphs and tables separately
@@ -459,7 +460,7 @@ def process_single_document(
         current_chunk, target_chunk_size, max_chunk_size, doc_path
         )
                   )
-
+    
     # Prepend header text to each chunk's content if header exists
     if header_text:
         for chunk in chunks:
@@ -472,6 +473,7 @@ def process_single_document(
 
 
 def finalize_chunk(chunk, target_chunk_size, max_chunk_size, source_file, make_partition=True):
+
     """
     Finalize a chunk, splitting it if necessary based on sentences and paragraphs, with 2-sentence overlap.
 
@@ -549,12 +551,13 @@ def chunk_document(doc_settings: Dict[object, Dict]) -> List["Document"]:
     #     all_chunks.extend(result)
     #     print(f"Submitting {doc_path} for processing...")
     
-    
+
     with concurrent.futures.ProcessPoolExecutor() as executor:
         # Collect futures for each document
         future_to_doc = {}
         for doc_obj, settings in doc_settings.items():
             doc_path = settings["filename"]
+
             future = executor.submit(
                 process_single_document,
                 doc_obj,
@@ -574,7 +577,7 @@ def chunk_document(doc_settings: Dict[object, Dict]) -> List["Document"]:
             else:
                 all_chunks.extend(result)
                 print(f"Successfully processed: {doc_path}")
-    
+
     return all_chunks
 
 

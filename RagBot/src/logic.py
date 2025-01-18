@@ -128,7 +128,6 @@ async def answer_validator(question: str, context: str, answer: str) -> bool:
     response = await get_chat_response(prompt, config["ollama"]["model_name"])
     return response
 
-
 async def prepare_final_context(query: str, database_index: str) -> str:
     cache = Cache()
     records = await cache.get_embedding_match(
@@ -174,6 +173,7 @@ async def chat_responder_(
         if response:
             return user_utterance, response, ""
         
+
     paraphrased_utterance_dict = await utterance_paraphraser(history, user_utterance, assistant_name=config["database"]["assistant_name"])
     # paraphrased_utterance = paraphrased_utterance_dict["rephrased_question"]
     paraphrased_utterance = paraphrased_utterance_dict
@@ -187,9 +187,9 @@ async def chat_responder_(
 
     context = await prepare_final_context(paraphrased_utterance, database_index)
     if not context:
-        return paraphrased_utterance, template_for_not_answer, "" 
-    
+        return paraphrased_utterance, template_for_not_answer, ""     
     response = await query_responder(paraphrased_utterance, context, history, company_name, assistant_name, answer_type)
+
     
     # json_response = fix_asterisks(json_response)
     # return paraphrased_utterance, json_response["answer"], context
@@ -212,8 +212,6 @@ async def chat_responder_(
             return paraphrased_utterance, response, context
     else:
         return paraphrased_utterance, response, context
-
-
 
 async def feedback_(
     query: str,

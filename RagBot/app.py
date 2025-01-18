@@ -44,6 +44,7 @@ def session_create(api_url: str = BASE_URL):
 
 
 def chat_request(session_id: str, query: str, database_id: str = None, answer_type: str = "concise", does_evaluate: str = False, use_cache: bool = True, api_url: str = BASE_URL):
+
     # Define the request data
     if database_id:
         chat_data = {
@@ -139,6 +140,7 @@ def create_database_api_request(
     params = {
         "company_name": company_name,
         "assistant_name": assistant_name
+
     }
     files = [('files', (file.name, file)) for file in uploaded_files]
 
@@ -346,11 +348,12 @@ def main():
                     label_visibility="collapsed"
                 )
                 st.form_submit_button("ارسال", on_click=form_submit_button, type="primary")
-                
+  
         else:
             if st.session_state["first_encounter_with_searchbox"]:
                 st.info(
                     "سلام، من سامانه دستیار دیجیتال نسل چهارم همکاران سیستم هستم. لطفا سوالتون رو در کادر زیر بپرسید",
+
                 )
                 st.session_state["first_encounter_with_searchbox"] = False
 

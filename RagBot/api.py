@@ -11,8 +11,10 @@ from io import BytesIO
 from typing import List, Optional, Tuple
 
 import asyncpg
+
 from fastapi import (FastAPI, File, Form, HTTPException, Query, Request,
                      UploadFile)
+
 from fastapi.responses import JSONResponse
 from prometheus_client import Counter, Histogram, generate_latest
 from pydantic import BaseModel
@@ -20,6 +22,7 @@ from src.config import config
 from src.initiate_vdb import create_vector_database
 from src.logic import (chat_responder_, feedback_, prepare_final_context,
                        query_responder, sql_responder, utterance_paraphraser)
+
 from src.logs import non_generative_agent_logger, simple_logger
 from src.orm import Postgres
 from starlette.responses import Response
@@ -156,7 +159,7 @@ def find_database_path(database_index: str = None):
         raise Exception("ERROR finding index")
 
     return match_dir, company_name, assistant_name
-        
+
 
 async def preprocess_vector_db_input(files, target_chunk_size, max_chunk_size):
     _settings = {}

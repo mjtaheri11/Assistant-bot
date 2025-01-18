@@ -56,6 +56,7 @@ api:
 
 postgres:
   address: 127.0.0.1  # 192.168.208.2
+
   database: chatbot
   max_user_input_character_length: 200
   history_length: 3
