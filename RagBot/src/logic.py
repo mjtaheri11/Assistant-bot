@@ -12,7 +12,8 @@ from langchain_community.chat_models import ChatOllama
 from .prompts import (
     RAG_SYSTEM_PROMPT,
     UTTERANCE_PARAPHRASER_PROMPT,
-    SQL_CONVERTER
+    SQL_CONVERTER,
+    ANSWER_VALIDATOR_PROMPT
 )
 from .retriever import Retriever
 from .config import config
@@ -28,7 +29,8 @@ random.seed(SEED)
 
 
 template_for_not_answer = "پاسخ به این سوال در محدوده دانش من نیست"
-template_for_not_context = "این سوال خارج از حوزه کاری همکاران سیستم است. لطفا سوال خود را در رابطه با محصولات و خدمات همکاران سیستم مطرح کنید."
+template_for_not_context = """این سوال خارج از حوزه کاری {company_name} است. لطفا سوال خود را در رابطه با محصولات و خدمات {company_name} مطرح کنید."""
+template_for_doubtful_answer = "سوال شما را به خوبی متوجه نشدم. لطفا سوال خود را به صورت دقیق تر بپرسید تا بتوانم بهتر کمک کنم."
 
 async def get_chat_response(prompt: str, model_name: str) -> str:
     # OLLAMA_HOST = os.getenv('OLLAMA_HOST', 'http://dockerize_assistant-ollama-1:11434')
@@ -42,7 +44,8 @@ async def get_chat_response(prompt: str, model_name: str) -> str:
         seed=SEED,
         # base_url=os.environ.get("API_OLLAMA_HOST")
         # base_url="127.0.0.1:8089"
-        base_url="http://ollama:11434",
+        # base_url="http://ollama:11434",
+        base_url="http://172.27.0.5:11434"
         # base_url="http://172.20.0.2:11434"
         # base_url="http://172.29.0.6:11434"
         # base_url=OLLAMA_HOST
@@ -77,7 +80,7 @@ def history_serializer(history: List[tuple[str, str]]) -> str:
     return serialized_history
 
 
-async def utterance_paraphraser(history: List[tuple[str, str]], user_utterance: str) -> str:
+async def utterance_paraphraser(history: List[tuple[str, str]], user_utterance: str, assistant_name: str) -> str:
     # TODO such a messy modification. resolve it as soon as you can
     # serialized_history = "\n".join(["USER: " + user_hist[0] + "\n" + "ASSISTANT" + user_hist[1] for user_hist in history])
     # import pdb
@@ -85,6 +88,7 @@ async def utterance_paraphraser(history: List[tuple[str, str]], user_utterance: 
     serialized_history = history_serializer(history)
     prompt = UTTERANCE_PARAPHRASER_PROMPT.format(
         history=serialized_history,
+        assistant_name=assistant_name,
         question=user_utterance,
     )
     response = await get_chat_response(prompt, config["ollama"]["model_name"])
@@ -96,12 +100,13 @@ async def utterance_paraphraser(history: List[tuple[str, str]], user_utterance: 
     return response
 
 
-async def query_responder(query: str, context: str, history: str) -> str:
+async def query_responder(query: str, context: str, history: str, company_name: str, assistant_name: str) -> str:
     # TODO: Add appropriate logger.
     serialized_history = history_serializer(history)
     prompt = RAG_SYSTEM_PROMPT.format(
         context=context,
-        # history=serialized_history,
+        company_name=company_name,
+        assistant_name=assistant_name,
         question=query,
     )
     response = await get_chat_response(prompt, config["ollama"]["model_name"])
@@ -111,7 +116,20 @@ async def query_responder(query: str, context: str, history: str) -> str:
     # return cleaned_response_dict
 
 
-async def prepare_final_context(query: str) -> str:
+async def answer_validator(question: str, context: str, answer: str) -> bool:
+
+    prompt = ANSWER_VALIDATOR_PROMPT.format(
+        context=context,
+        question=question,
+        answer=answer,
+    )
+    response = await get_chat_response(prompt, config["ollama"]["model_name"])
+    json_response = json_text_cleaning(response)
+    print(json_response)
+    return float(json_response["appropriateness"]) > config["answer_validation"]["threshold"]
+
+
+async def prepare_final_context(query: str, database_index: str) -> str:
     cache = Cache()
     records = await cache.get_embedding_match(
         query,
@@ -128,7 +146,7 @@ async def prepare_final_context(query: str) -> str:
     # import pdb
     # pdb.set_trace()
     retriever = Retriever()
-    context = await retriever.retrieve_context(query) + "\n\n" + context
+    context = await retriever.retrieve_context(query, database_index) + "\n\n" + context
     # TODO: need appropriate context management > context = context[: config["context"]["max_length"]]
     return context
 
@@ -143,6 +161,9 @@ async def sql_responder(query: str, table_schemas: List[str]) -> str:
 async def chat_responder_(
     history: List[tuple[str, str]],
     user_utterance: str,
+    database_index: str = config["database"]["persist_directory"],
+    company_name: str = config["database"]["company_name"],
+    assistant_name: str = config["database"]["assistant_name"],
 ) -> tuple[str, str, str, str]:
 
     response, url = await get_cache_response(
@@ -150,7 +171,7 @@ async def chat_responder_(
     )
     if response:
         return user_utterance, response, ""
-    paraphrased_utterance_dict = await utterance_paraphraser(history, user_utterance)
+    paraphrased_utterance_dict = await utterance_paraphraser(history, user_utterance, assistant_name=config["database"]["assistant_name"])
     # paraphrased_utterance = paraphrased_utterance_dict["rephrased_question"]
     paraphrased_utterance = paraphrased_utterance_dict
     response, url = await get_cache_response(
@@ -159,18 +180,33 @@ async def chat_responder_(
     if response:
         return paraphrased_utterance, response, ""
 
-    context = await prepare_final_context(paraphrased_utterance)
+    context = await prepare_final_context(paraphrased_utterance, database_index)
     if not context:
         return paraphrased_utterance, template_for_not_answer, "" 
         
-    response = await query_responder(paraphrased_utterance, context, history)
+    response = await query_responder(paraphrased_utterance, context, history, company_name, assistant_name)
+    
     # json_response = fix_asterisks(json_response)
     # return paraphrased_utterance, json_response["answer"], context
+    
     if "محدوده دانش من " in response:
-        response = template_for_not_answer
-    if "خارج از حوزه کاری" in response:
-        response = template_for_not_context
-    return paraphrased_utterance, response, context
+        return paraphrased_utterance, template_for_not_answer, context
+
+    elif "خارج از حوزه کاری" in response:
+        response = template_for_not_context.format(company_name=company_name)
+        return paraphrased_utterance, response, context
+        
+    else:
+        response_is_valid = await answer_validator(
+            paraphrased_utterance,
+            context,
+            response,
+        )
+    
+    if response_is_valid:
+        return paraphrased_utterance, response, context
+    else:
+        return paraphrased_utterance, template_for_doubtful_answer, context
 
 
 async def feedback_(

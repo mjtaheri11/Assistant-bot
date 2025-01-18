@@ -23,17 +23,14 @@ from pythonjsonlogger import jsonlogger
 
 #     return logger
 
-def json_text_cleaning(text, key="answer"):
-    if key == "answer":
+def json_text_cleaning(text, key="explanation"):
+    if key == "explanation":
         # match_answer = re.search(rf'"{key}"\s*:\s*"((?:[^"\\]|\\.)*)"\s*(?:,|}})', text, re.DOTALL)
 
         # Adjusted regex to allow for a single closing brace '}'
-        match_answer = re.search(rf'"{key}"\s*:\s*(.*?)(?=,\s*"(?:reasoning|[^"]+)"\s*:|}}$)', text, re.DOTALL)
+        match_answer = re.search(rf'"{key}"\s*:\s*(.*?)(?=,\s*"(?:appropriateness|[^"]+)"\s*:|}}$)', text, re.DOTALL)
         
         
-    elif key == "rephrased_question":
-        match_answer = re.search(rf'"{key}"\s*:\s*(.*?)(?=,\s*"(?:reasoning|[^"]+)"\s*:|}}$)', text, re.DOTALL)
-
     if match_answer:
         answer_value = match_answer.group(1)
         answer_value = answer_value.strip('"')
@@ -50,7 +47,7 @@ def json_text_cleaning(text, key="answer"):
     else:
         answer_value = ""
     
-    match_reasoning = re.search(r'"reasoning"\s*:\s*"((?:[^"\\]|\\.)*)"', text, re.DOTALL)
+    match_reasoning = re.search(r'"appropriateness"\s*:\s*"((?:[^"\\]|\\.)*)"', text, re.DOTALL)
     if match_reasoning:
         reasoning_value = match_reasoning.group(1)
         reasoning_value = reasoning_value.strip('"')
@@ -63,7 +60,7 @@ def json_text_cleaning(text, key="answer"):
     else:
         reasoning_value = ""
     
-    json_output = {key: str(answer_value), "reasoning": str(reasoning_value)}
+    json_output = {key: str(answer_value), "appropriateness": str(reasoning_value)}
     return json_output
 
 
@@ -84,8 +81,8 @@ def init_session_state():
         st.session_state["user_utterance"] = []
     if "response" not in st.session_state:
         st.session_state["response"] = []
-    if "log" not in st.session_state:
-        st.session_state["log"] = []
+    if "create_database" not in st.session_state:
+        st.session_state["database"] = []
     if "urls" not in st.session_state:
         st.session_state["urls"] = []
     if "query" not in st.session_state:
@@ -102,3 +99,11 @@ def init_session_state():
         st.session_state["do_generate_sessions"] = False
     if "response_is_valid" not in st.session_state:
         st.session_state["response_is_valid"] = ""
+    if "databases" not in st.session_state:
+        st.session_state["databases"] = []
+    if "database_id" not in st.session_state:
+        st.session_state["database_id"] = None
+    if "enable_submit_form" not in st.session_state:
+        st.session_state["enable_submit_form"] = False
+    if "form_submitted" not in st.session_state: 
+        st.session_state["form_submitted"] = False

@@ -34,7 +34,6 @@ class ModelManager:
         )
 
 
-
 class Retriever(object):
     _instance = None
 
@@ -44,28 +43,14 @@ class Retriever(object):
             cls._instance._initialize()
         return cls._instance
     
-    def _initialize(self):
+    def _initialize(self): 
         self.config_ = config
         model_manager = ModelManager()
-
         self.embedding_model_ = model_manager.embedding_model
         self.reranker_model_ = model_manager.reranker_model
-
-        self.vectordb_ = Chroma(
-            persist_directory=self.config_["database"][
-                "persist_directory"
-            ],
-            embedding_function=self.embedding_model_,
-        )
-
-        self.retriever_ = self.vectordb_.as_retriever(
-            search_kwargs={"k": config["retriever"]["retrieved_documents"]}
-        )
-
         self.alpha_threshold_ = self.config_["retriever"][
             "alpha_threshold"
         ]
-
 
     async def _rerank_documents(self, query, documents, k):
         scores = self.reranker_model_.compute_score([[query, doc] for doc in documents], normalize=True)
@@ -77,15 +62,26 @@ class Retriever(object):
                 docs_scores_sorted = [elem for i, elem in enumerate(docs_scores_sorted) if i < k+3]
             else:
                 docs_scores_sorted = docs_scores_sorted[:k]
-            # conf = mean([d[1] for d in docs_scores_sorted])        
+            # conf = mean([d[1] for d in docs_scores_sorted])
             # TODO: appropriate logger
             sorted_documents = [d[0] for d in reversed(docs_scores_sorted)]
         else:
             sorted_documents = []
         return sorted_documents
 
-    async def retrieve_context(self, query, k=config["retriever"]["retrieved_rank2_documents"]):
+    async def find_vdb(self, database_index): 
+        vectordb_ = Chroma(
+            persist_directory=database_index,
+            embedding_function=self.embedding_model_,
+        )
+
+        self.retriever_ = vectordb_.as_retriever(
+            search_kwargs={"k": config["retriever"]["retrieved_documents"]}
+        )
+        
+    async def retrieve_context(self, query, database_index, k=config["retriever"]["retrieved_rank2_documents"]):
         # TODO: appropriate logger
+        await self.find_vdb(database_index)
         documents = await self.retriever_.ainvoke(query)
         documents = [doc.page_content for doc in documents]
         sorted_documents = await self._rerank_documents(query, documents, k)

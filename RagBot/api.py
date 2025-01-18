@@ -7,16 +7,16 @@ import os
 import time
 import traceback
 from datetime import datetime
+from io import BytesIO
 from typing import List, Optional, Tuple
 
 import asyncpg
-from fastapi import FastAPI, HTTPException, Request, Query
+from fastapi import FastAPI, File, Form, HTTPException, Query, Request, UploadFile
+from fastapi.responses import JSONResponse
 from prometheus_client import Counter, Histogram, generate_latest
 from pydantic import BaseModel
-from starlette.responses import Response
-
-from src.orm import Postgres
 from src.config import config
+from src.initiate_vdb import create_vector_database
 from src.logic import (
     chat_responder_,
     feedback_,
@@ -26,6 +26,8 @@ from src.logic import (
     utterance_paraphraser,
 )
 from src.logs import non_generative_agent_logger, simple_logger
+from src.orm import Postgres
+from starlette.responses import Response
 
 RESPONSE_TEMPLATE_FOR_NO_ANSWER = "در حال حاضر نمی‌توانم به سوال شما پاسخ دهم"
 app = FastAPI(title="Digital Assistant")
@@ -44,6 +46,7 @@ class SessionResponse(BaseModel):
 class ChatRequest(BaseModel):
     query: str
     session_id: Optional[str] = None
+    database_index: Optional[str] = None
 
 
 class ChatResponse(BaseModel):
@@ -56,13 +59,15 @@ class ChatResponse(BaseModel):
 class SQLRequest(BaseModel):
     table_schemas: List[str]  # Accept a list of schemas
     query: str
-
+    
 
 class SQLResponse(BaseModel):
     response: str
 
+
 class HistoryResponse(BaseModel):
     history: List[dict]  # Assuming history is a list of lists of strings
+
 
 class HistoryRequest(BaseModel):
     page_index: int = 1
@@ -72,8 +77,7 @@ class HistoryRequest(BaseModel):
 
 
 class GetSessionsResponse(BaseModel):
-    response: List[dict]  
-
+    response: List[dict]
 
 
 class MakeRequest(BaseModel):
@@ -94,6 +98,10 @@ class FeedbackRequest(BaseModel):
 
 class FeedbackResponse(BaseModel):
     message: str
+    
+class CreateDatabaseResponse(BaseModel):
+    database_id: str
+    message: str
 
 
 def get_session_id(request: Request, content_request: ChatRequest):
@@ -109,6 +117,43 @@ def validate_query(query):
         raise HTTPException(status_code=422, detail="Query is empty")
 
 
+def find_database_path(database_index: str = None):
+    if database_index == None:
+        match_dir = "../VectorDB"
+        company_name = config["database"]["company_name"]
+        assistant_name = config["database"]["assistant_name"]
+    else:
+        match_dir = ""
+        base_path = "../RaaS_vectorDB"
+        items = os.listdir(base_path)
+        for dir_name in items:
+            parts = dir_name.split(".")
+            if len(parts) >= 3 and parts[0] == database_index:
+                match_dir = os.path.join(base_path, dir_name)
+                company_name = parts[1]
+                assistant_name = parts[2]
+                continue
+    
+    if database_index != None and not match_dir:
+        raise Exception("ERROR finding index")
+
+    return match_dir, company_name, assistant_name
+
+
+async def preprocess_vector_db_input(files, target_chunk_size, max_chunk_size):
+    _settings = {}
+    for file in files:
+        content = await file.read()
+        obj_ = BytesIO(content)
+        _settings[obj_] = {
+            "filename": file.filename,
+            "target_chunk_size": target_chunk_size,
+            "max_chunk_size": max_chunk_size,
+            "sentence_overlap": 1,
+        }
+    return _settings
+
+
 @app.get("/metrics")
 async def metrics():
     return Response(generate_latest(), media_type="text/plain")
@@ -120,7 +165,7 @@ async def metrics():
     responses={
         200: {},
         500: {"description": "Unhandled error that should be reported"},
-    }
+    },
 )
 async def get_latest_sessions():
     try:
@@ -129,7 +174,7 @@ async def get_latest_sessions():
         return GetSessionsResponse(response=sessions)
     except HTTPException as e:
         raise e
-    
+
     except Exception as e:
         raise e
 
@@ -145,9 +190,11 @@ async def get_latest_sessions():
 async def get_history(
     request: Request,
     page_index: int = Query(1, alias="page_index"),  # Default to 1
-    page_size: int = Query(5, alias="page_size"),    # Default to 5
-    session_id: str = Query(..., alias="session_id"), # Required parameter
-    contain_paraphrase: bool = Query(False, alias="contain_paraphrase"), # Default to False
+    page_size: int = Query(5, alias="page_size"),  # Default to 5
+    session_id: str = Query(..., alias="session_id"),  # Required parameter
+    contain_paraphrase: bool = Query(
+        False, alias="contain_paraphrase"
+    ),  # Default to False
 ):
     try:
         postgres = Postgres()
@@ -155,7 +202,7 @@ async def get_history(
         history = await postgres.get_history(
             session_id, page_index, page_size, contain_paraphrase
         )
-        
+
         return HistoryResponse(history=history)
 
     except HTTPException as e:
@@ -213,10 +260,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
         validate_query(chat_request.query)
         simple_logger(f"Received chat request", session_id)
         history = await postgres.get_history(
-            session_id,
-            1,
-            config["postgres"]["history_length"],
-            True
+            session_id, 1, config["postgres"]["history_length"], True
         )
         if len(chat_request.query.split()) > 60:
             paraphrased_utterance, response, context = (
@@ -225,9 +269,23 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                 "",
             )
         else:
-            selected_history = [[h["query"], h["response"]] if len(h["query"]) < 60 else [h["paraphrased_query"], h["response"]] for h in history]
+            matched_index, company_name, assistant_name = find_database_path(
+                chat_request.database_index
+            )
+            selected_history = [
+                (
+                    [h["query"], h["response"]]
+                    if len(h["query"]) < 60
+                    else [h["paraphrased_query"], h["response"]]
+                )
+                for h in history
+            ]
             paraphrased_utterance, response, context = await chat_responder_(
-                selected_history, chat_request.query
+                selected_history,
+                chat_request.query,
+                matched_index,
+                company_name,
+                assistant_name,
             )
         elapsed_time = time.time() - start_time
         REQUEST_LATENCY.labels(endpoint="/chat").observe(elapsed_time)  # Record latency
@@ -326,11 +384,58 @@ async def make_response(make_request: MakeRequest, request: Request):
 
 
 @app.post(
+    "/chat/create/database",
+    response_model=CreateDatabaseResponse,
+    responses={
+        200: {},
+        500: {"description": "Unhandled error that should be reported"},
+        404: {
+            "description": "file not supported",
+            "content": {"application/json": {"example": {"detail": "unhandled error"}}},
+        },
+        422: {
+            "description": "Unprocessable entity e.g. no company name, or no assistant name",
+            "content": {"application/json": {"example": {"detail": "Query is empty"}}},
+        },
+    },
+)
+async def create_database(
+    files: List[UploadFile] = File(...),
+    company_name: str = Query(alias="company_name"),
+    assistant_name: str = Query(alias="assistant_name"),
+    target_chunk_size: int = Query(800, alias="target_chunk_size"),
+    max_chunk_size: int = Query(1200, alias="max_chunk_size"),
+):
+
+    # try:
+    settings = await preprocess_vector_db_input(
+        files, target_chunk_size, max_chunk_size
+    )
+    database_unique_id = create_vector_database(settings, company_name, assistant_name)
+    return CreateDatabaseResponse(
+            database_id=database_unique_id,
+            message="Database Created",
+        )
+
+
+@app.post(
     "/feedback",
     responses={
-        200: {"content": {"application/json": {"example": {"message": "Feedback received"}}}},
-        422: {"description": "Invalid feedback", "content": {"application/json": {"example": {"detail": "No Session-ID"}}}},
-        404: {"description": "Message not found", "content": {"application/json": {"example": {"detail": "Message not found"}}}},
+        200: {
+            "content": {
+                "application/json": {"example": {"message": "Feedback received"}}
+            }
+        },
+        422: {
+            "description": "Invalid feedback",
+            "content": {"application/json": {"example": {"detail": "No Session-ID"}}},
+        },
+        404: {
+            "description": "Message not found",
+            "content": {
+                "application/json": {"example": {"detail": "Message not found"}}
+            },
+        },
         500: {"description": "Unhandled error"},
     },
 )
@@ -343,7 +448,9 @@ async def feedback(feedback_request: FeedbackRequest, request: Request):
         validate_feedback(feedback_request)
 
         session_id = get_session_id(request, feedback_request)
-        message_fields = await fetch_message_fields(session_id, feedback_request.message_id)
+        message_fields = await fetch_message_fields(
+            session_id, feedback_request.message_id
+        )
 
         log_feedback_request(session_id)
         result = await process_feedback(feedback_request, message_fields)
@@ -379,7 +486,9 @@ async def process_feedback(feedback_request, message_fields):
 
     if result and feedback_request.feedback_type == "thumb_down":
         user_query, paraphrased_query, bot_response = message_fields
-        await feedback_(paraphrased_query, bot_response, "", feedback_request.feedback_type)
+        await feedback_(
+            paraphrased_query, bot_response, "", feedback_request.feedback_type
+        )
         return FeedbackResponse(message="Feedback received")
     return FeedbackResponse(message="Duplicate feedback")
 

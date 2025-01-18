@@ -170,6 +170,7 @@ TempVectorDB
 VectorDB-TEMP
 VectorDB/
 db-cache/
+RaaS_vectorDB/
 
 saved_models
 VectorDB-bahar-hanieh

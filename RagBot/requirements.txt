@@ -224,3 +224,4 @@ xxhash==3.4.1
 yarl==1.9.4
 zipp==3.18.1
 psycopg2-binary==2.9.9
+python-multipart==0.0.20

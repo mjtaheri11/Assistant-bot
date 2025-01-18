@@ -139,6 +139,18 @@ section.main>div {
     margin: 10px;
     box-sizing: border-box;
     border-radius: 3px;
-
 }
 
+
+[data-testid="stFileUploaderDropzone"] {
+    background-color: #f0fffe;
+}
+
+
+[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stMarkdownContainer"] p {
+    display: flex;
+    flex-direction: row;
+    text-align: start;
+    direction: rtl;
+    box-sizing: border-box;
+}

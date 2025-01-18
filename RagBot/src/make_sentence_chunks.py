@@ -249,6 +249,7 @@ def format_heading_output(headings: List[Tuple[str, int, str]]) -> str:
 
 
 def process_single_document(
+    doc_obj: object, 
     doc_path: str,
     target_chunk_size: int = config["retriever"]["chunk_size"],
     max_chunk_size: int = config["retriever"]["max_chunk_size"],
@@ -262,9 +263,8 @@ def process_single_document(
     :return: List of Document objects
     """
     chunks = []
-    current_chunk = {"h1": "", "h2": "", "h3": "", "h4": "", "content": []}
-    
-    doc = Document(doc_path)
+    current_chunk = {"h1": "", "h2": "", "h3": "", "h4": "", "content": []}   
+    doc = Document(doc_obj)
     current_heading_level = float("inf") # Initialize current heading level
 
     for index in range(len(doc.paragraphs)):
@@ -309,7 +309,22 @@ def process_single_document(
                 
         current_heading_level = heading_level
     
+    chunks.extend(finalize_chunk(
+        current_chunk, target_chunk_size, max_chunk_size, doc_path
+        )
+                  )
+    
+    current_chunk = {"h1": "", "h2": "", "h3": "", "h4": "", "content": []}   
+    for table in doc.tables:
+        for i, row in enumerate(table.rows):
+            _text = [cell.text for cell in row.cells]
+            text = " ".join(_text)
+            current_chunk["content"].append(text)
+    
+    chunks.extend(finalize_chunk(current_chunk, target_chunk_size, max_chunk_size, doc_path))
+              
     return chunks
+
 
 
 def finalize_chunk(chunk, target_chunk_size, max_chunk_size, source_file):
@@ -357,7 +372,7 @@ def finalize_chunk(chunk, target_chunk_size, max_chunk_size, source_file):
     documents = text_splitter.create_documents([paragraph])
     for i in range(len(documents)):
         documents[i].page_content = headers + documents[i].page_content
-        documents[i].metadata ={"source": source_file}    
+        documents[i].metadata ={"source": source_file if type(source_file) == str else str(source_file)}    
     return documents
 
 
@@ -373,13 +388,21 @@ def chunk_document(doc_settings: Dict[str, Dict[str, int]]) -> List["Document"]:
 
     # A ProcessPoolExecutor sidesteps the GIL for CPU-bound tasks, which can help 
     # since python-docx parsing and chunking can be CPU-intensive on large docs.
+
+
     with concurrent.futures.ProcessPoolExecutor() as executor:
         # Collect futures for each document
         future_to_doc = {}
-        for doc_path, settings in doc_settings.items():
-            print(f"Submitting {doc_path} for processing...")
+        for doc_obj, settings in doc_settings.items():
+            doc_path = settings["filename"]
+            # result = process_single_document(doc_obj , doc_path)
+            # all_chunks.extend(result)
+            
+            # doc_path = settings["filename"]
+            # print(f"Submitting {doc_path} for processing...")
             future = executor.submit(
                 process_single_document,
+                doc_obj,
                 doc_path,
                 settings["target_chunk_size"],
                 settings["max_chunk_size"]
@@ -396,7 +419,7 @@ def chunk_document(doc_settings: Dict[str, Dict[str, int]]) -> List["Document"]:
             else:
                 all_chunks.extend(result)
                 print(f"Successfully processed: {doc_path}")
-
+                
     return all_chunks
 
 
