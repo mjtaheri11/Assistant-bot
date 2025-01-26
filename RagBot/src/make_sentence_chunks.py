@@ -339,6 +339,7 @@ def convert_table_to_json(table) -> str:
 
     return json.dumps(table_data, indent=4, ensure_ascii=False)  # indent for readability
 
+
 def convert_table_to_markdown(table) -> str:
     """Converts a docx table to a standard Markdown table format with headers and separators."""
     markdown_rows = []
@@ -434,7 +435,7 @@ def process_single_document(
             elif heading_level == 4:
                 current_chunk["h4"] = text
                 current_chunk["content"] = []
-                
+
             else:
                 current_chunk["content"].append(text)
                     
@@ -448,6 +449,7 @@ def process_single_document(
             
             # Convert table to compact format and add to content
             compact_table = convert_table_to_json(table)
+
             table_chunk = current_chunk.copy()
             table_chunk["content"] = []
             if len(current_chunk["content"]) > 0:
@@ -456,24 +458,22 @@ def process_single_document(
             chunks.extend(finalize_chunk(table_chunk, target_chunk_size, max_chunk_size, doc_path, make_partition=False))
 
 
+
     chunks.extend(finalize_chunk(
         current_chunk, target_chunk_size, max_chunk_size, doc_path
         )
                   )
-    
     # Prepend header text to each chunk's content if header exists
     if header_text:
         for chunk in chunks:
             # Assuming chunk has a 'content' attribute that is a string
             chunk.page_content = f"{header_text}\n{chunk.page_content}"
 
-
     return chunks
 
 
 
 def finalize_chunk(chunk, target_chunk_size, max_chunk_size, source_file, make_partition=True):
-
     """
     Finalize a chunk, splitting it if necessary based on sentences and paragraphs, with 2-sentence overlap.
 
@@ -524,6 +524,7 @@ def finalize_chunk(chunk, target_chunk_size, max_chunk_size, source_file, make_p
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
             length_function=len,
+            is_separator_regex=r'^(\d+(\.\d+)*)\s+(.*)',
         )
         documents = text_splitter.create_documents([paragraph])
         
@@ -551,13 +552,11 @@ def chunk_document(doc_settings: Dict[object, Dict]) -> List["Document"]:
     #     all_chunks.extend(result)
     #     print(f"Submitting {doc_path} for processing...")
     
-
     with concurrent.futures.ProcessPoolExecutor() as executor:
         # Collect futures for each document
         future_to_doc = {}
         for doc_obj, settings in doc_settings.items():
             doc_path = settings["filename"]
-
             future = executor.submit(
                 process_single_document,
                 doc_obj,
@@ -577,7 +576,6 @@ def chunk_document(doc_settings: Dict[object, Dict]) -> List["Document"]:
             else:
                 all_chunks.extend(result)
                 print(f"Successfully processed: {doc_path}")
-
     return all_chunks
 
 

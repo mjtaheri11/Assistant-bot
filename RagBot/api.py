@@ -15,6 +15,7 @@ import asyncpg
 from fastapi import (FastAPI, File, Form, HTTPException, Query, Request,
                      UploadFile)
 
+
 from fastapi.responses import JSONResponse
 from prometheus_client import Counter, Histogram, generate_latest
 from pydantic import BaseModel
@@ -159,7 +160,7 @@ def find_database_path(database_index: str = None):
         raise Exception("ERROR finding index")
 
     return match_dir, company_name, assistant_name
-
+        
 
 async def preprocess_vector_db_input(files, target_chunk_size, max_chunk_size):
     _settings = {}
