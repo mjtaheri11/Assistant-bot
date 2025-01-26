@@ -263,7 +263,7 @@ def main():
                 )
                 uploaded_files = st.file_uploader(
                     "لطفا داکیومنت های مربوط به شرکت یا سازمان خود را با فرمت های مشخص شده وارد کنید.",
-                    type=["docx"],
+                    type=["docx", "doc"],
                     accept_multiple_files=True,
                     key="uploaded_files",
                     help=None,

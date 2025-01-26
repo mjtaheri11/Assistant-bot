@@ -45,7 +45,7 @@ async def get_chat_response(prompt: str, model_name: str) -> str:
         # base_url=os.environ.get("API_OLLAMA_HOST")
         # base_url="127.0.0.1:8089"
         # base_url="http://ollama:11434",
-        base_url="http://172.27.0.5:11434"
+        base_url="http://172.22.0.4:11434"
         # base_url="http://172.20.0.2:11434"
         # base_url="http://172.29.0.6:11434"
         # base_url=OLLAMA_HOST
@@ -166,11 +166,11 @@ async def chat_responder_(
     assistant_name: str = config["database"]["assistant_name"],
 ) -> tuple[str, str, str, str]:
 
-    response, url = await get_cache_response(
-        user_utterance,
-    )
-    if response:
-        return user_utterance, response, ""
+    # response, url = await get_cache_response(
+    #     user_utterance,
+    # )
+    # if response:
+    #     return user_utterance, response, ""
     paraphrased_utterance_dict = await utterance_paraphraser(history, user_utterance, assistant_name=config["database"]["assistant_name"])
     # paraphrased_utterance = paraphrased_utterance_dict["rephrased_question"]
     paraphrased_utterance = paraphrased_utterance_dict
@@ -196,17 +196,17 @@ async def chat_responder_(
         response = template_for_not_context.format(company_name=company_name)
         return paraphrased_utterance, response, context
         
-    else:
-        response_is_valid = await answer_validator(
-            paraphrased_utterance,
-            context,
-            response,
-        )
+    # else:
+    #     response_is_valid = await answer_validator(
+    #         paraphrased_utterance,
+    #         context,
+    #         response,
+    #     )
     
-    if response_is_valid:
-        return paraphrased_utterance, response, context
-    else:
-        return paraphrased_utterance, template_for_doubtful_answer, context
+    # if response_is_valid:
+    return paraphrased_utterance, response, context
+    # else:
+    #     return paraphrased_utterance, template_for_doubtful_answer, context
 
 
 async def feedback_(

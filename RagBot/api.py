@@ -11,20 +11,15 @@ from io import BytesIO
 from typing import List, Optional, Tuple
 
 import asyncpg
-from fastapi import FastAPI, File, Form, HTTPException, Query, Request, UploadFile
+from fastapi import (FastAPI, File, Form, HTTPException, Query, Request,
+                     UploadFile)
 from fastapi.responses import JSONResponse
 from prometheus_client import Counter, Histogram, generate_latest
 from pydantic import BaseModel
 from src.config import config
 from src.initiate_vdb import create_vector_database
-from src.logic import (
-    chat_responder_,
-    feedback_,
-    prepare_final_context,
-    query_responder,
-    sql_responder,
-    utterance_paraphraser,
-)
+from src.logic import (chat_responder_, feedback_, prepare_final_context,
+                       query_responder, sql_responder, utterance_paraphraser)
 from src.logs import non_generative_agent_logger, simple_logger
 from src.orm import Postgres
 from starlette.responses import Response
@@ -138,13 +133,13 @@ def find_database_path(database_index: str = None):
         raise Exception("ERROR finding index")
 
     return match_dir, company_name, assistant_name
-
+        
 
 async def preprocess_vector_db_input(files, target_chunk_size, max_chunk_size):
     _settings = {}
     for file in files:
         content = await file.read()
-        obj_ = BytesIO(content)
+        obj_ = content
         _settings[obj_] = {
             "filename": file.filename,
             "target_chunk_size": target_chunk_size,
@@ -445,9 +440,16 @@ async def feedback(feedback_request: FeedbackRequest, request: Request):
     start_time = time.time()
 
     try:
-        validate_feedback(feedback_request)
+        # validate_feedback(feedback_request)
 
-        session_id = get_session_id(request, feedback_request)
+        # session_id = get_session_id(request, feedback_request)
+        session_id = req.headers.get("Session-ID", None)
+        if session_id is None:
+            session_id = request.session_id
+
+            if session_id is None:
+                raise HTTPException(status_code=422, detail="No Session-ID")
+
         message_fields = await fetch_message_fields(
             session_id, feedback_request.message_id
         )
@@ -464,9 +466,9 @@ async def feedback(feedback_request: FeedbackRequest, request: Request):
         handle_unexpected_error(e, session_id, feedback_request, start_time)
 
 
-def validate_feedback(feedback_request: FeedbackRequest):
-    if feedback_request.feedback_type not in ["thumb_up", "thumb_down", "flag"]:
-        raise HTTPException(status_code=422, detail="Invalid feedback")
+# def validate_feedback(feedback_request: FeedbackRequest):
+#     if feedback_request.feedback_type not in ["thumb_up", "thumb_down", "flag"]:
+#         raise HTTPException(status_code=422, detail="Invalid feedback")
 
 
 async def fetch_message_fields(session_id, message_id):
