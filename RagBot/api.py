@@ -89,7 +89,7 @@ class MakeResponse(BaseModel):
 class FeedbackRequest(BaseModel):
     message_id: str
     feedback_type: str
-    session_id: Optional[str]
+    session_id: Optional[str] = None  # Add default value
 
 
 class FeedbackResponse(BaseModel):
@@ -338,14 +338,13 @@ async def feedback(feedback_request: FeedbackRequest, request: Request):
     endpoint = "/feedback"
     REQUEST_COUNT.labels(endpoint=endpoint).inc()
     start_time = time.time()
-    
     try:
         # validate_feedback(feedback_request)
 
-        # session_id = get_session_id(request, feedback_request)
-        session_id = request.headers.get("Session-ID", None)
+        session_id = get_session_id(request, feedback_request)
         if session_id is None:
             session_id = feedback_request.session_id
+
 
             if session_id is None:
                 raise HTTPException(status_code=422, detail="No Session-ID")

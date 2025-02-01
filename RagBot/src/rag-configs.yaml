@@ -48,7 +48,7 @@ cache:
   host: 127.0.0.1
   port: 9200
   knn: 50
-  alpha_threshold: 0.9
+  alpha_threshold: 0.88
   beta_threshold: 0.8
   redis_result_num_documents: 5
   socket_timeout: 10
