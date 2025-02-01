@@ -345,6 +345,7 @@ async def feedback(feedback_request: FeedbackRequest, request: Request):
         if session_id is None:
             session_id = feedback_request.session_id
 
+
             if session_id is None:
                 raise HTTPException(status_code=422, detail="No Session-ID")
 
