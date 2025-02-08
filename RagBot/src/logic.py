@@ -173,7 +173,6 @@ async def chat_responder_(
         if response:
             return user_utterance, response, ""
         
-
     paraphrased_utterance_dict = await utterance_paraphraser(history, user_utterance, assistant_name=config["database"]["assistant_name"])
     # paraphrased_utterance = paraphrased_utterance_dict["rephrased_question"]
     paraphrased_utterance = paraphrased_utterance_dict
@@ -189,6 +188,7 @@ async def chat_responder_(
     if not context:
         return paraphrased_utterance, template_for_not_answer, ""     
     response = await query_responder(paraphrased_utterance, context, history, company_name, assistant_name, answer_type)
+
 
     
     # json_response = fix_asterisks(json_response)
@@ -212,7 +212,6 @@ async def chat_responder_(
             return paraphrased_utterance, response, context
     else:
         return paraphrased_utterance, response, context
-
 async def feedback_(
     query: str,
     response: str,

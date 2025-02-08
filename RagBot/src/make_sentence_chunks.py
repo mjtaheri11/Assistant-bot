@@ -339,7 +339,6 @@ def convert_table_to_json(table) -> str:
 
     return json.dumps(table_data, indent=4, ensure_ascii=False)  # indent for readability
 
-
 def convert_table_to_markdown(table) -> str:
     """Converts a docx table to a standard Markdown table format with headers and separators."""
     markdown_rows = []
@@ -449,7 +448,6 @@ def process_single_document(
             
             # Convert table to compact format and add to content
             compact_table = convert_table_to_json(table)
-
             table_chunk = current_chunk.copy()
             table_chunk["content"] = []
             if len(current_chunk["content"]) > 0:
@@ -524,7 +522,6 @@ def finalize_chunk(chunk, target_chunk_size, max_chunk_size, source_file, make_p
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
             length_function=len,
-            is_separator_regex=r'^(\d+(\.\d+)*)\s+(.*)',
         )
         documents = text_splitter.create_documents([paragraph])
         
@@ -551,6 +548,7 @@ def chunk_document(doc_settings: Dict[object, Dict]) -> List["Document"]:
     #     result = process_single_document(doc_obj , doc_path)
     #     all_chunks.extend(result)
     #     print(f"Submitting {doc_path} for processing...")
+    
     
     with concurrent.futures.ProcessPoolExecutor() as executor:
         # Collect futures for each document
