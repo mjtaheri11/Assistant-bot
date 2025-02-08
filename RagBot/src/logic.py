@@ -10,7 +10,9 @@ from langchain.schema import SystemMessage
 from langchain_community.chat_models import ChatOllama
 
 from .prompts import (
-    RAG_SYSTEM_PROMPT,
+    RAG_CONCISE_SYSTEM_PROMPT,
+    RAG_EXPLANATORY_SYSTEM_PROMPT,
+    RAG_NORMAL_SYSTEM_PROMPT,
     UTTERANCE_PARAPHRASER_PROMPT,
     SQL_CONVERTER,
     ANSWER_VALIDATOR_PROMPT
@@ -41,14 +43,8 @@ async def get_chat_response(prompt: str, model_name: str) -> str:
         model=model_name,
         temperature=config["ollama"]["temperature"],
         keep_alive=config["ollama"]["keep_alive"],
+        base_url="http://127.0.0.1:8089",
         seed=SEED,
-        # base_url=os.environ.get("API_OLLAMA_HOST")
-        # base_url="127.0.0.1:8089"
-        # base_url="http://ollama:11434",
-        base_url="http://172.22.0.4:11434"
-        # base_url="http://172.20.0.2:11434"
-        # base_url="http://172.29.0.6:11434"
-        # base_url=OLLAMA_HOST
     )
     messages = [SystemMessage(content=prompt)]
     response = await llm.ainvoke(messages)  # type: ignore[arg-type]
@@ -100,9 +96,17 @@ async def utterance_paraphraser(history: List[tuple[str, str]], user_utterance: 
     return response
 
 
-async def query_responder(query: str, context: str, history: str, company_name: str, assistant_name: str) -> str:
+async def query_responder(query: str, context: str, history: str, company_name: str, assistant_name: str, answer_type: str) -> str:
     # TODO: Add appropriate logger.
+
     serialized_history = history_serializer(history)
+    if answer_type == "concise":
+        RAG_SYSTEM_PROMPT = RAG_CONCISE_SYSTEM_PROMPT
+    elif answer_type == "normal":
+        RAG_SYSTEM_PROMPT = RAG_EXPLANATORY_SYSTEM_PROMPT
+    elif answer_type == "explanatory":
+        RAG_SYSTEM_PROMPT = RAG_EXPLANATORY_SYSTEM_PROMPT
+        
     prompt = RAG_SYSTEM_PROMPT.format(
         context=context,
         company_name=company_name,
@@ -117,16 +121,13 @@ async def query_responder(query: str, context: str, history: str, company_name: 
 
 
 async def answer_validator(question: str, context: str, answer: str) -> bool:
-
     prompt = ANSWER_VALIDATOR_PROMPT.format(
         context=context,
         question=question,
         answer=answer,
     )
     response = await get_chat_response(prompt, config["ollama"]["model_name"])
-    json_response = json_text_cleaning(response)
-    print(json_response)
-    return float(json_response["appropriateness"]) > config["answer_validation"]["threshold"]
+    return response
 
 
 async def prepare_final_context(query: str, database_index: str) -> str:
@@ -143,8 +144,6 @@ async def prepare_final_context(query: str, database_index: str) -> str:
         if result["query"].strip() != ""
     )
 
-    # import pdb
-    # pdb.set_trace()
     retriever = Retriever()
     context = await retriever.retrieve_context(query, database_index) + "\n\n" + context
     # TODO: need appropriate context management > context = context[: config["context"]["max_length"]]
@@ -164,27 +163,34 @@ async def chat_responder_(
     database_index: str = config["database"]["persist_directory"],
     company_name: str = config["database"]["company_name"],
     assistant_name: str = config["database"]["assistant_name"],
+    answer_type: str = config["database"]["answer_type"],
+    does_evaluate: bool = config["database"]["does_evaluate"],
+    use_cache: bool = config["database"]["use_cache"]
 ) -> tuple[str, str, str, str]:
 
-    # response, url = await get_cache_response(
-    #     user_utterance,
-    # )
-    # if response:
-    #     return user_utterance, response, ""
+    if use_cache:
+        response, url = await get_cache_response(
+            user_utterance,
+        )
+        if response:
+            return user_utterance, response, ""
+        
     paraphrased_utterance_dict = await utterance_paraphraser(history, user_utterance, assistant_name=config["database"]["assistant_name"])
     # paraphrased_utterance = paraphrased_utterance_dict["rephrased_question"]
     paraphrased_utterance = paraphrased_utterance_dict
-    response, url = await get_cache_response(
-        paraphrased_utterance,
-    )
-    if response:
-        return paraphrased_utterance, response, ""
+    
+    if use_cache:
+        response, url = await get_cache_response(
+            paraphrased_utterance,
+        )
+        if response:
+            return paraphrased_utterance, response, ""
 
     context = await prepare_final_context(paraphrased_utterance, database_index)
     if not context:
         return paraphrased_utterance, template_for_not_answer, "" 
-        
-    response = await query_responder(paraphrased_utterance, context, history, company_name, assistant_name)
+    
+    response = await query_responder(paraphrased_utterance, context, history, company_name, assistant_name, answer_type)
     
     # json_response = fix_asterisks(json_response)
     # return paraphrased_utterance, json_response["answer"], context
@@ -196,17 +202,18 @@ async def chat_responder_(
         response = template_for_not_context.format(company_name=company_name)
         return paraphrased_utterance, response, context
         
-    # else:
-    #     response_is_valid = await answer_validator(
-    #         paraphrased_utterance,
-    #         context,
-    #         response,
-    #     )
-    
-    # if response_is_valid:
-    return paraphrased_utterance, response, context
-    # else:
-    #     return paraphrased_utterance, template_for_doubtful_answer, context
+    if does_evaluate:
+        response_is_valid = await answer_validator(
+            paraphrased_utterance,
+            context,
+            response,
+        )
+        
+        if response_is_valid:
+            return paraphrased_utterance, response, context
+    else:
+        return paraphrased_utterance, response, context
+
 
 
 async def feedback_(

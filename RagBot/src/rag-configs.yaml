@@ -1,8 +1,11 @@
 # Configurations for vector database
 database:
+  answer_type: concise
   persist_directory: ../VectorDB # initiate_vdb.py # ./VectorDB-bahar-hanieh #./VectorDB
+  does_evaluate: False
   company_name: "همکاران سیستم"
   assistant_name: "digital assistant"
+  use_cache: True
   dbname: my-vdb
   documents:
     ../knowledge_base/new-KB/4thG-Intro.docx:
@@ -56,8 +59,8 @@ cache:
   host: 127.0.0.1
   port: 9200
   knn: 10
-  alpha_threshold: 0.9
-  beta_threshold: 0.8
+  alpha_threshold: 0.1
+  beta_threshold: 0.2
   redis_result_num_documents: 5
   socket_timeout: 10
   index_name: Hamzan

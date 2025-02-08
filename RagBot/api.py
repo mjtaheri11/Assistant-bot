@@ -42,6 +42,9 @@ class ChatRequest(BaseModel):
     query: str
     session_id: Optional[str] = None
     database_index: Optional[str] = None
+    answer_type: Optional[str] = "concise"
+    does_evaluate: Optional[bool] = False
+    use_cache: Optional[bool] = True
 
 
 class ChatResponse(BaseModel):
@@ -281,6 +284,8 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                 matched_index,
                 company_name,
                 assistant_name,
+                chat_request.answer_type,
+                chat_request.use_cache,
             )
         elapsed_time = time.time() - start_time
         REQUEST_LATENCY.labels(endpoint="/chat").observe(elapsed_time)  # Record latency

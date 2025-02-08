@@ -101,6 +101,8 @@ def get_heading_level_from_text(doc: Document, index: int) -> Optional[int]:
     Determine heading level from paragraph numbering pattern,
     considering the context and style.
     """
+    
+    known_styles = ['normal', 'body']
     def is_likely_heading(doc, paragraph):
         text = paragraph.text.strip()
         
@@ -123,8 +125,8 @@ def get_heading_level_from_text(doc: Document, index: int) -> Optional[int]:
             score += 2
 
         # Check for formatting
-        if any(run.bold or run.italic for run in paragraph.runs):
-            score += 1
+        if any(run.bold or run.italic for run in paragraph.runs) and style_lower in known_styles and len(text) < 40:
+            score = 8
                 
         return score
 
@@ -155,11 +157,20 @@ def get_heading_level_from_text(doc: Document, index: int) -> Optional[int]:
                 return level
 
     score = is_likely_heading(doc, doc.paragraphs[index])
+    if score == 8:
+        return 1
     if score >= 4:  # Minimum confidence threshold
         # Additional context validation
-        prev_style = doc.paragraphs[max(0, index - 1)].style.name
-        next_style = doc.paragraphs[min(len(doc.paragraphs)-1, index + 1)].style.name
-        
+        prev_paragraph = doc.paragraphs[max(0, index - 1)]
+        if prev_paragraph.style != None:
+            prev_style = prev_paragraph.style.name
+        else:
+            prev_style = "Normal"
+        next_paragraph = doc.paragraphs[max(0, index + 1)]
+        if next_paragraph.style != None:
+            next_style = next_paragraph.style.name
+        else:
+            next_style = "Normal"
         # If surrounded by normal paragraphs or other headings, more likely to be a heading
         if (('normal' in prev_style.lower() or 'heading' in prev_style.lower()) and
             ('normal' in next_style.lower() or 'heading' in next_style.lower())):
@@ -295,6 +306,39 @@ def format_heading_output(headings: List[Tuple[str, int, str]]) -> str:
     return "\n".join(output)
 
 
+def convert_table_to_csv(table) -> str:
+    """Converts a docx table to CSV format, including cell indices."""
+    csv_rows = []
+    for row_index, row in enumerate(table.rows):
+        row_cells = []
+        for col_index, cell in enumerate(row.cells):
+            cell_text = cell.text.strip().replace('\n', ' ')
+            # Include row and column indices in the cell value
+            indexed_cell = f"[{row_index},{col_index}]: {cell_text}"  # Or any format you prefer
+            row_cells.append(indexed_cell)
+        csv_rows.append(",".join(row_cells))
+    return "\n".join(csv_rows)
+
+import json
+
+def convert_table_to_json(table) -> str:
+    """Converts a docx table to JSON."""
+    table_data = []
+    for row_index, row in enumerate(table.rows):
+        row_data = {}
+        for col_index, cell in enumerate(row.cells):
+            # If you have a header row, use the header text as the key
+            if row_index == 0:  # Header row
+                header_text = cell.text.strip().replace('\n', ' ')
+                row_data["header_" + str(col_index)] = header_text #Temporary key
+            else:
+               header_text = table.rows[0].cells[col_index].text.strip().replace('\n', ' ') if row_index > 0 else "col_" + str(col_index)
+               row_data[header_text] = cell.text.strip().replace('\n', ' ')
+        if row_index > 0:
+            table_data.append(row_data)
+
+    return json.dumps(table_data, indent=4, ensure_ascii=False)  # indent for readability
+
 def convert_table_to_markdown(table) -> str:
     """Converts a docx table to a standard Markdown table format with headers and separators."""
     markdown_rows = []
@@ -403,12 +447,12 @@ def process_single_document(
             table_index += 1
             
             # Convert table to compact format and add to content
-            compact_table = convert_table_to_markdown(table)
+            compact_table = convert_table_to_json(table)
             table_chunk = current_chunk.copy()
             table_chunk["content"] = []
             if len(current_chunk["content"]) > 0:
                 table_chunk["content"].append(current_chunk["content"].pop(-1))
-            table_chunk["content"].append(f"\n[TABLE-START]\n{compact_table}\n[TABLE-END]\n")
+            table_chunk["content"].append(compact_table)
             chunks.extend(finalize_chunk(table_chunk, target_chunk_size, max_chunk_size, doc_path, make_partition=False))
 
     chunks.extend(finalize_chunk(
@@ -472,13 +516,12 @@ def finalize_chunk(chunk, target_chunk_size, max_chunk_size, source_file, make_p
         )
         documents = text_splitter.create_documents([paragraph])
     else:
-        chunk_size = float("inf")
+        chunk_size = 1e+5
         text_splitter = RecursiveCharacterTextSplitter(
             # Set a really small chunk size, just to show.
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
             length_function=len,
-            is_separator_regex=r'^(\d+(\.\d+)*)\s+(.*)',
         )
         documents = text_splitter.create_documents([paragraph])
         
@@ -505,6 +548,7 @@ def chunk_document(doc_settings: Dict[object, Dict]) -> List["Document"]:
     #     result = process_single_document(doc_obj , doc_path)
     #     all_chunks.extend(result)
     #     print(f"Submitting {doc_path} for processing...")
+    
     
     with concurrent.futures.ProcessPoolExecutor() as executor:
         # Collect futures for each document
@@ -633,8 +677,6 @@ if __name__ == "__main__":
             }
         }
     )
-    import pdb
-    pdb.set_trace()
     print(chunks)
 
 

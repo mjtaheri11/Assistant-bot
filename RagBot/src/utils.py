@@ -107,3 +107,9 @@ def init_session_state():
         st.session_state["enable_submit_form"] = False
     if "form_submitted" not in st.session_state: 
         st.session_state["form_submitted"] = False
+    if "answer_type" not in st.session_state:
+        st.session_state["answer_type"] = ""
+    if "does_evaluate" not in st.session_state:
+        st.session_state["does_evaluate"] = ""
+    if "use_cache" not in st.session_state:
+        st.session_state["use_cache"] = False

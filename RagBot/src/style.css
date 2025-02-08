@@ -154,3 +154,30 @@ section.main>div {
     direction: rtl;
     box-sizing: border-box;
 }
+
+[data-baseweb="select"] div{
+    direction: rtl;
+}
+
+[data-testid="stVirtualDropdown"] div {
+    direction: rtl;
+}
+
+
+/* 
+[data-stale="false"] {
+    display: flex;
+    flex-direction: row;
+    text-align: start;
+    direction: rtl;
+    box-sizing: border-box;
+}
+
+
+[data-testid="stTooltipHoverTarget"] {
+    display: flex;
+    flex-direction: row;
+    text-align: start;
+    direction: rtl;
+    box-sizing: border-box;
+} */

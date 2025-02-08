@@ -44,13 +44,16 @@ def session_create(api_url: str = BASE_URL):
         return None
 
 
-def chat_request(session_id: str, query: str, database_id: str = None, api_url: str = BASE_URL):
+def chat_request(session_id: str, query: str, database_id: str = None, answer_type: str = "concise", does_evaluate: str = False, use_cache: bool = True, api_url: str = BASE_URL):
     # Define the request data
     if database_id:
         chat_data = {
             "query": query,
             "session_id": session_id,  # Assume this is generated or fetched from somewhere
-            "database_index": database_id
+            "database_index": database_id,
+            "answer_type": answer_type,
+            "does_evaluate": does_evaluate,
+            "use_cache": use_cache
         }
     else:
         chat_data = {
@@ -132,13 +135,11 @@ def send_feedback(
 
 
 def create_database_api_request(
-    company_name, assistant_name, target_chunk_size, max_chunk_size, uploaded_files
+    company_name, assistant_name, uploaded_files
 ):
     params = {
         "company_name": company_name,
-        "assistant_name": assistant_name,
-        "target_chunk_size": target_chunk_size,
-        "max_chunk_size": max_chunk_size,
+        "assistant_name": assistant_name
     }
     files = [('files', (file.name, file)) for file in uploaded_files]
 
@@ -176,6 +177,21 @@ def feedback_button_clicked():
         or st.session_state.get("dislike", False)
         or st.session_state.get("flag", False)
     )
+
+def find_answer_type(type_: str):
+    if type_.strip() == "خلاصه":
+        return "concise"
+    if type_.strip() == "توضیحی":
+        return "explanatory"
+    if type_.strip() == "عادی":
+        return "normal"    
+        
+
+def boolean_mapper(type_):
+    if type_.strip() == "بله":
+        return True
+    elif type_.strip() == "خیر":
+        return False
 
 
 def main():
@@ -244,11 +260,12 @@ def main():
                     status, message, data = create_database_api_request(
                         st.session_state["temporal_company_name"],
                         st.session_state["temporal_assistant_name"],
-                        st.session_state["temporal_chunk_size"],
-                        st.session_state["temporal_max_chunk_size"],
                         st.session_state["uploaded_files"],
                     )
                     if status == "success":
+                        st.session_state["does_evaluate"] = boolean_mapper(st.session_state.get("temporal_does_evaluate"))
+                        st.session_state["answer_type"] = find_answer_type(st.session_state.get("temporal_answer_type"))
+                        st.session_state["use_cache"] = boolean_mapper(st.session_state["temporal_use_cache"])
                         st.session_state["database_id"] = data["database_id"] 
                         st.info(f"سلام، من سامانه {st.session_state['temporal_assistant_name'].strip()} {st.session_state['temporal_company_name'].strip()} هستم. لطفا سوالتون رو در کادر زیر بپرسید.")
                         st.session_state["enable_submit_form"] = False
@@ -286,34 +303,55 @@ def main():
                     key="temporal_company_name",
                     label_visibility="collapsed",
                 )
-                st.markdown("مقدار تقسیم بندی داکیومنت")
-                st.number_input(
-                    "مقدار تقسیم بندی داکیومنت",
-                    placeholder="مقدار تقسیم بندی داکیومنت oود را وارد کنید",
-                    key="temporal_chunk_size",
-                    step=10,
-                    value=1000,
-                    min_value=500,
-                    max_value=2500,
-                    label_visibility="collapsed",
+                # st.markdown("مقدار تقسیم بندی داکیومنت")
+                # st.number_input(
+                #     "مقدار تقسیم بندی داکیومنت",
+                #     placeholder="کمترین میزان تقسیم بندی سند",
+                #     key="temporal_chunk_size",
+                #     step=10,
+                #     value=1000,
+                #     min_value=500,
+                #     max_value=2500,
+                #     label_visibility="collapsed",
+                # )
+                # st.markdown("بیشترین مقدار تقسیم بندی سند")
+                # st.number_input(
+                #     "بیشترین مقدار تقسیم بندی داکیومنت",
+                #     placeholder="بیشترین میزان تقسیم بندی داکیومنت خود را وارد کنید",
+                #     key="temporal_max_chunk_size",
+                #     step=10,
+                #     value=2000,
+                #     min_value=500,
+                #     max_value=2000,
+                #     label_visibility="collapsed",
+                # )
+                st.markdown("نحوه پاسخ گویی به سوالات کاربر را وارد کنید")
+                st.selectbox(
+                    "نحوه پاسخ گویی به سوالات کاربر را وارد کنید",
+                    ["توضیحی", "عادی", "خلاصه"],
+                    key="temporal_answer_type",
+                    label_visibility="collapsed"
                 )
-                st.markdown("بیشترین مقدار تقسیم بندی داکیومنت")
-                st.number_input(
-                    "بیشترین مقدار تقسیم بندی داکیومنت",
-                    placeholder="بیشترین میزان تقسیم بندی داکیومنت خود را وارد کنید",
-                    key="temporal_max_chunk_size",
-                    step=10,
-                    value=2000,
-                    min_value=500,
-                    max_value=2000,
-                    label_visibility="collapsed",
+                st.markdown("ارزیابی برخط بر روی پاسخ خروجی")
+                st.selectbox(
+                    "ارزیابی برخط بر روی پاسخ خروجی",
+                    ["خیر", "بله"],
+                    key="temporal_does_evaluate",
+                    label_visibility="collapsed"
                 )
-                st.form_submit_button("submit_button", on_click=form_submit_button, type="primary")
+                st.markdown("استفاده از کش سیستم (دستیار دیجیتال نسل 4)")
+                st.selectbox(
+                    "استفاده از کش سیستم (دستیار دیجیتال نسل 4)",
+                    ["خیر", "بله"],
+                    key="temporal_use_cache",
+                    label_visibility="collapsed"
+                )
+                st.form_submit_button("ارسال", on_click=form_submit_button, type="primary")
                 
         else:
             if st.session_state["first_encounter_with_searchbox"]:
                 st.info(
-                    "سلام، من سامانه دستیار دیجیتال نسل چهارم همکاران سیستم هستم. لطفا سوالتون رو در کادر زیر بپرسید.",
+                    "سلام، من سامانه دستیار دیجیتال نسل چهارم همکاران سیستم هستم. لطفا سوالتون رو در کادر زیر بپرسید",
                 )
                 st.session_state["first_encounter_with_searchbox"] = False
 
@@ -336,7 +374,10 @@ def main():
                     chat_response = chat_request(
                         st.session_state.get("session_id"),
                         user_input,
-                        database_id
+                        database_id,
+                        st.session_state["answer_type"],
+                        st.session_state["does_evaluate"],
+                        st.session_state["use_cache"]
                     )
                     message_id, response, query = (
                         chat_response["message_id"],
