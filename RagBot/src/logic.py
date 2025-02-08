@@ -125,12 +125,10 @@ async def prepare_final_context(query: str) -> str:
         if result["query"].strip() != ""
     )
 
-    # import pdb
-    # pdb.set_trace()
     retriever = Retriever()
     context = await retriever.retrieve_context(query) + "\n\n" + context
     # TODO: need appropriate context management > context = context[: config["context"]["max_length"]]
-    return context
+    return context.strip()
 
 
 async def sql_responder(query: str, table_schemas: List[str]) -> str:
