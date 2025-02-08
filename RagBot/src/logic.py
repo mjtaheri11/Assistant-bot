@@ -147,7 +147,7 @@ async def prepare_final_context(query: str, database_index: str) -> str:
     retriever = Retriever()
     context = await retriever.retrieve_context(query, database_index) + "\n\n" + context
     # TODO: need appropriate context management > context = context[: config["context"]["max_length"]]
-    return context
+    return context.strip()
 
 
 async def sql_responder(query: str, table_schemas: List[str]) -> str:
