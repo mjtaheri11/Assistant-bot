@@ -31,6 +31,32 @@ from .config import config
 
 # sudo docker exec -it postgres psql -U postgres -d chatbot -c "ALTER TABLE public.message ADD COLUMN is_sql BOOLEAN DEFAULT FALSE;"
 
+
+# sudo docker exec -it postgres psql -U postgres -d chatbot -c "CREATE TABLE public.databases (
+    #                                                               database_id UUID DEFAULT gen_random_uuid() PRIMARY KEY, 
+    #                                                               company_name TEXT DEFAULT 'همکاران سیستم',
+    #                                                               assistant_name TEXT DEFAULT 'دستیار دیجیتال',
+    #                                                               create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    #                                                           );"
+        
+# sudo docker exec -it postgres psql -U postgres -d chatbot -c "CREATE TABLE public.sessions (
+    #                                                               session_id UUID DEFAULT gen_random_uuid() PRIMARY KEY, 
+    #                                                               database_id UUID REFERENCES public.databases(database_id), 
+    #                                                               response_type VARCHAR(20) DEFAULT 'concise',
+    #                                                               create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    #                                                           );"
+    
+# sudo docker exec -it postgres psql -U postgres -d chatbot -c "CREATE TABLE public.message (
+    #                                                               message_id UUID DEFAULT gen_random_uuid() PRIMARY KEY, 
+    #                                                               session_id UUID REFERENCES public.sessions(session_id), 
+    #                                                               user_query TEXT, 
+    #                                                               paraphrased_query TEXT, 
+    #                                                               bot_response TEXT, 
+    #                                                               feedback TEXT, 
+    #                                                               elapsed_time FLOAT, 
+    #                                                               create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    #                                                           );"
+
 class Postgres:
     _instance = None
 
@@ -97,15 +123,88 @@ class Postgres:
             insert_values=(message_id, session_id),
         )
         return message_fields[0] if message_fields else []
+    
+    async def create_database(self, company_name=None, assistant_name=None):
+        sql_create_database_query = "INSERT INTO public.databases"
+        columns = []
+        values_placeholder = []
+        query_params = []
 
-    async def create_session(self):
-        sql_create_session_query = (
-            "INSERT INTO public.session DEFAULT VALUES RETURNING session_id;"
+        if company_name is not None:
+            columns.append("company_name")
+            values_placeholder.append("$1")
+            query_params.append(company_name)
+
+        if assistant_name and company_name:
+            columns.append("assistant_name")
+            values_placeholder.append("$2")
+            query_params.append(assistant_name)
+        
+        if (assistant_name is not None) and (company_name is None):
+            columns.append("assistant_name")
+            values_placeholder.append("$1")
+            query_params.append(assistant_name)    
+
+        if columns:
+            sql_create_database_query += f" ({', '.join(columns)}) VALUES ({', '.join(values_placeholder)}) RETURNING database_id;"
+            query_params_tuple = tuple(query_params)
+        else:
+            sql_create_database_query += " DEFAULT VALUES RETURNING database_id;"
+            query_params_tuple = None
+
+        db_id = await self._execute_query(
+            sql_create_database_query, insert_values=query_params_tuple, is_insert=True, fetch_results=True
         )
-        sid = await self._execute_query(
-            sql_create_session_query, is_insert=True, fetch_results=True
+        output = {"database_id": str(db_id[0])}
+        return output
+    
+    async def find_database_id(self, session_id):
+        sql_query_find_dbid = "SELECT database_id FROM public.session WHERE session_id = $1"
+        import pdb
+        pdb.set_trace()
+        database_id = await self._execute_query(
+            sql_query_find_dbid,
+            insert_values=(session_id,),
+            is_insert=True,
+            fetch_results=True
         )
-        output = {"session_id": str(sid[0])}
+        output = {"database_id": str(database_id[0])}
+        return output
+
+    async def create_session(self, database_id=None):
+        sql_create_database_query = "INSERT INTO public.session"
+        columns = []
+        values_placeholder = []
+        query_params = []
+
+        if database_id is not None:
+            columns.append("database_id")
+            values_placeholder.append("$1")
+            query_params.append(database_id)
+
+        if columns:
+            sql_create_database_query += f" ({', '.join(columns)}) VALUES ({', '.join(values_placeholder)}) RETURNING session_id;"
+            query_params_tuple = tuple(query_params)
+        else:
+            sql_create_database_query += " DEFAULT VALUES RETURNING session_id;"
+            query_params_tuple = None
+
+        session_id = await self._execute_query(
+            sql_create_database_query, insert_values=query_params_tuple, is_insert=True, fetch_results=True
+        )
+        output = {"session_id": str(session_id[0])}
+        return output
+        
+    async def extract_response_type(self, session_id):
+        sql_extract_response_type = (
+            "select response_type from public.session where session_id=$1"
+        )
+        _response_type = await self._execute_query(
+                            sql_extract_response_type,
+                            fetch_results=True,
+                            insert_values=(session_id)
+                        )
+        output = {"response_type": _response_type}
         return output
 
     async def get_history(self, session_id, page_index, page_size, with_paraphrase=False):
@@ -192,16 +291,17 @@ class Postgres:
         ]
     
     async def insert_chat_row(
-        self, session_id, user_query, paraphrased_query, bot_response, elapsed_time
+        self, session_id, user_query, paraphrased_query, bot_response, response_type, elapsed_time
     ):
         values = (
             session_id,
             user_query,
             paraphrased_query,
             bot_response,
+            response_type,
             elapsed_time,
         )
-        sql_insert_query = "INSERT INTO message (session_id, user_query, paraphrased_query, bot_response, elapsed_time) VALUES ($1, $2, $3, $4, $5) RETURNING message_id;"
+        sql_insert_query = "INSERT INTO message (session_id, user_query, paraphrased_query, bot_response, response_type, elapsed_time) VALUES ($1, $2, $3, $4, $5, $6) RETURNING message_id;"
         message_id = await self._execute_query(
             sql_insert_query, is_insert=True, insert_values=values, fetch_results=True
         )

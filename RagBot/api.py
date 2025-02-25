@@ -38,9 +38,16 @@ REQUEST_LATENCY = Histogram(
 )
 
 
+# sudo docker exec -it postgres psql -U postgres -d chatbot -c "CREATE TABLE public.databases (database_id UUID DEFAULT gen_random_uuid() PRIMARY KEY, create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP);"
+# sudo docker exec -it postgres psql -U postgres -d chatbot -c "CREATE TABLE public.sessions (session_id UUID DEFAULT gen_random_uuid() PRIMARY KEY, database_id UUID REFERENCES public.databases(database_id), create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP);"
+# sudo docker exec -it postgres psql -U postgres -d chatbot -c "CREATE TABLE public.message (message_id UUID DEFAULT gen_random_uuid() PRIMARY KEY, session_id UUID REFERENCES public.sessions(session_id), user_query TEXT, paraphrased_query TEXT, bot_response TEXT, feedback TEXT, elapsed_time FLOAT, create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP);"
+
 class SessionResponse(BaseModel):
     session_id: str
 
+
+class CreateSessionRequest(BaseModel):
+    database_id: Optional[str] = None
 
 class ChatRequest(BaseModel):
     query: str
@@ -48,8 +55,8 @@ class ChatRequest(BaseModel):
     tenant_name: Optional[str] = None
     user_code: Optional[str] = None
     database_index: Optional[str] = None
-    answer_type: Optional[str] = "concise"
     does_evaluate: Optional[bool] = False
+    response_type: Optional[str] = "concise"
     use_cache: Optional[bool] = True
 
 
@@ -108,6 +115,7 @@ class FeedbackRequest(BaseModel):
 class FeedbackResponse(BaseModel):
     message: str
     
+    
 class CreateDatabaseResponse(BaseModel):
     database_id: str
     message: str
@@ -162,7 +170,7 @@ def find_database_path(database_index: str = None):
     return match_dir, company_name, assistant_name
         
 
-async def preprocess_vector_db_input(files, target_chunk_size, max_chunk_size):
+async def preprocess_vector_db_input(files, target_chunk_size, max_chunk_size, company_name, assistant_name):
     _settings = {}
     for file in files:
         content = await file.read()
@@ -173,6 +181,8 @@ async def preprocess_vector_db_input(files, target_chunk_size, max_chunk_size):
             "max_chunk_size": max_chunk_size,
             "sentence_overlap": 1,
         }
+    _settings["company_name"] = company_name
+    _settings["assistant_name"] = assistant_name
     return _settings
 
 
@@ -247,7 +257,7 @@ async def create_session(create_session_request: Optional[CreateSessionRequest] 
     start_time = time.time()
     try:
         postgres = Postgres()  # Assuming Postgres is your DB class
-        session_id = await postgres.create_session()
+        session_id = await postgres.create_session(create_session_request.database_id)
         
         if create_session_request is None:
             tenant_name = ""
@@ -320,9 +330,8 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                 "",
             )
         else:
-            matched_index, company_name, assistant_name = find_database_path(
-                chat_request.database_index
-            )
+            database_id_dict = await postgres.find_database_id(chat_request.session_id)
+            matched_index, company_name, assistant_name = find_database_path(database_id_dict["database_id"])
             selected_history = [
                 (
                     [h["query"], h["response"]]
@@ -337,7 +346,8 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                 matched_index,
                 company_name,
                 assistant_name,
-                chat_request.answer_type,
+                chat_request.response_type,
+                chat_request.does_evaluate,
                 chat_request.use_cache,
             )
         elapsed_time = time.time() - start_time
@@ -347,6 +357,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
             chat_request.query,
             paraphrased_utterance,
             response,
+            chat_request.response_type,
             elapsed_time,
         )
         non_generative_agent_logger(
@@ -464,15 +475,23 @@ async def create_database(
     max_chunk_size: int = Query(1200, alias="max_chunk_size"),
 ):
 
-    # try:
-    settings = await preprocess_vector_db_input(
-        files, target_chunk_size, max_chunk_size
-    )
-    database_unique_id = create_vector_database(settings, company_name, assistant_name)
-    return CreateDatabaseResponse(
-            database_id=database_unique_id,
-            message="Database Created",
+    try:
+        settings = await preprocess_vector_db_input(
+            files, target_chunk_size, max_chunk_size, company_name, assistant_name
         )
+        postgres = Postgres()
+        database_id_dict = await postgres.create_database(company_name, assistant_name)
+        database_id = database_id_dict["database_id"]
+        create_vector_database(settings, database_id)
+        return CreateDatabaseResponse(
+                database_id=database_id,
+                message="Database Created",
+            )
+    except HTTPException as e:
+        raise e
+    
+    except Exception as e:
+        raise e
 
 
 @app.post(

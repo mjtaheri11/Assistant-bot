@@ -19,15 +19,15 @@ embedding_model = HuggingFaceEmbeddings(
 
 def create_vector_database(
     settings: dict,
-    company_name: str,
-    assistant_name: str,
+    database_id: str,
     collection_path: str = "../RaaS_vectorDB",
     ):
     os.makedirs(collection_path, exist_ok=True)
-    database_unique_id = str(uuid.uuid4())
+    company_name = settings.pop("company_name")
+    assistant_name = settings.pop("assistant_name")
     database_path = os.path.join(
         collection_path,
-        database_unique_id
+        database_id
         + "."
         + company_name
         + "."
@@ -45,7 +45,6 @@ def create_vector_database(
         vdb._collection.delete(vdb.get()["ids"])
 
     vdb.add_documents(chunks)
-    return database_unique_id
 
 
 def main(args):

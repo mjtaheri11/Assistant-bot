@@ -1,6 +1,6 @@
 # Configurations for vector database
 database:
-  answer_type: concise
+  response_type: concise
   persist_directory: ../VectorDB # initiate_vdb.py # ./VectorDB-bahar-hanieh #./VectorDB
   does_evaluate: False
   company_name: "همکاران سیستم"

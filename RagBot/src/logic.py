@@ -161,7 +161,7 @@ async def chat_responder_(
     database_index: str = config["database"]["persist_directory"],
     company_name: str = config["database"]["company_name"],
     assistant_name: str = config["database"]["assistant_name"],
-    answer_type: str = config["database"]["answer_type"],
+    response_type: str = config["database"]["response_type"],
     does_evaluate: bool = config["database"]["does_evaluate"],
     use_cache: bool = config["database"]["use_cache"]
 ) -> tuple[str, str, str, str]:
@@ -190,7 +190,6 @@ async def chat_responder_(
     response = await query_responder(paraphrased_utterance, context, history, company_name, assistant_name, answer_type)
 
 
-    
     # json_response = fix_asterisks(json_response)
     # return paraphrased_utterance, json_response["answer"], context
     
