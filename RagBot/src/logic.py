@@ -186,10 +186,17 @@ async def chat_responder_(
 
     context = await prepare_final_context(paraphrased_utterance, database_index)
     if not context:
-        return paraphrased_utterance, template_for_not_answer, ""     
-    response = await query_responder(paraphrased_utterance, context, history, company_name, assistant_name, answer_type)
-
-
+        return paraphrased_utterance, template_for_not_answer, "" 
+    
+    response = await query_responder(
+        paraphrased_utterance,
+        context,
+        history,
+        company_name,
+        assistant_name,
+        response_type
+    )
+    
     # json_response = fix_asterisks(json_response)
     # return paraphrased_utterance, json_response["answer"], context
     

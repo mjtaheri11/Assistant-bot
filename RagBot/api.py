@@ -120,6 +120,9 @@ class CreateDatabaseResponse(BaseModel):
     database_id: str
     message: str
 
+class GetDatabasesResponse(BaseModel):
+    response: List[dict]
+
 
 def get_session_id(request: Request, content_request: ChatRequest):
     # Try to get the session ID from headers, fall back to request object
@@ -209,6 +212,27 @@ async def get_latest_sessions():
 
     except Exception as e:
         raise e
+
+
+@app.get(
+    "/databases",
+    response_model=GetDatabasesResponse,
+    responses={
+        200: {},
+        500: {"description": "Unhandled error that should be reported"},
+    },
+)
+async def get_latest_databases():
+    try:
+        postgres = Postgres()
+        databases = await postgres.get_latest_databases()
+        return GetDatabasesResponse(response=databases)
+
+    except HTTPException as e:
+        raise e 
+
+    except Exception as e:
+        raise e 
 
 
 @app.get(

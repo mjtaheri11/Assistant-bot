@@ -160,8 +160,6 @@ class Postgres:
     
     async def find_database_id(self, session_id):
         sql_query_find_dbid = "SELECT database_id FROM public.session WHERE session_id = $1"
-        import pdb
-        pdb.set_trace()
         database_id = await self._execute_query(
             sql_query_find_dbid,
             insert_values=(session_id,),
@@ -239,6 +237,22 @@ class Postgres:
                 
         return history
     
+    async def get_latest_databases(self, num_databases=30):
+        sql_get_latest_databases = "SELECT database_id, company_name, assistant_name FROM public.databases ORDER BY create_time DESC LIMIT $1"
+        results = await self._execute_query(
+            sql_get_latest_databases,
+            fetch_results=True,
+            insert_values=(num_databases,)
+        )
+        return [
+            {
+                "database_id": str(row[0]),
+                "company_name": row[1],
+                "assistant_name": row[2]
+            }
+            for row in results
+        ]
+    
     async def get_latest_sessions(
         self,
         num_sessions=30, 
@@ -274,7 +288,39 @@ class Postgres:
             OFFSET $1
             LIMIT $2;
         """
-        
+
+#         sql_latest_unique_sessions_with_paraphrase = """            
+#             WITH recent_messages AS (
+#                 SELECT session_id, create_time
+#                 FROM message
+#                 ORDER BY create_time DESC
+#                 LIMIT $3
+#             ),
+#             distinct_sessions AS (
+#                 SELECT DISTINCT ON (session_id)
+#                     session_id,
+#                     create_time
+#                 FROM recent_messages
+#                 ORDER BY session_id, create_time DESC
+#             )
+#             SELECT 
+#                 ds.session_id,
+#                 s.database_id,
+#                 (
+#                     SELECT m.paraphrased_query
+#                     FROM message m
+#                     WHERE m.session_id = ds.session_id
+#                     AND m.paraphrased_query IS NOT NULL
+#                     ORDER BY m.create_time ASC
+#                     LIMIT 1
+#                 ) AS first_paraphrased_query
+#             FROM distinct_sessions ds
+#             JOIN session s ON ds.session_id = s.session_id
+#             ORDER BY ds.create_time DESC
+#             OFFSET $1
+#             LIMIT $2;
+# """
+
         results = await self._execute_query(
             sql_latest_unique_sessions_with_paraphrase,
             fetch_results=True,
