@@ -158,7 +158,7 @@ section.main>div {
 /* Improved CSS for Secondary Buttons in Sidebar Content */
 /* background-color: #e0f7fa; /* Light and fresh background color */
 [data-testid="stSidebarContent"] [data-testid="baseButton-secondary"] {
-    border: 1px solid #b2ebf2; /* Softer, lighter border */
+    border: 1px solid #6CB4EE; /* Softer, lighter border */
     margin: 10px;
     box-sizing: border-box;
     border-radius: 5px; /* Slightly more rounded corners for a softer look */
@@ -170,7 +170,7 @@ section.main>div {
 
 [data-testid="stSidebarContent"] [data-testid="baseButton-secondary"]:hover {
     background-color: #cceeff; /* Slightly darker background on hover for interaction feedback */
-    border-color: #80deea; /* Slightly darker border on hover */
+    border-color: #6CB4EE; /* Slightly darker border on hover */
     box-shadow: 2px 2px 7px rgba(0, 0, 0, 0.1); /* Slightly larger shadow on hover */
 }
 

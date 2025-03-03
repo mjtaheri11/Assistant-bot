@@ -240,6 +240,8 @@ def main():
             session_id_clicked = st.session_state.get(f"session_{i}")
             st.session_state["session_id"] = session_id_clicked
             history = request_history(session_id_clicked, BASE_URL)
+            st.session_state["enable_submit_form"] = False
+            st.session_state["form_submitted"] = False
             if history["history"]:
                 st.session_state["first_encounter_with_searchbox"] = False
             else:
@@ -254,6 +256,8 @@ def main():
             st.session_state["assistant_name"] = st.session_state.get(f"assistant_name_{i}")
             st.session_state["session_id"] = session_create(database_id=database_id_clicked)
             st.session_state["first_encounter_with_searchbox"] = True
+            st.session_state["enable_submit_form"] = False
+            st.session_state["form_submitted"] = False
 
     if st.session_state.get("new_session"):
         st.session_state["first_encounter_with_searchbox"] = True
@@ -271,7 +275,7 @@ def main():
     if st.session_state["form_submitted"]:
         form_submitted = True
 
-    number_of_columns = [3, 5, 2 ,3, 1]
+    number_of_columns = [3, 6, 1 ,3, 1]
     logging_column, main_column, _, sessions_column, _ = st.columns(
         number_of_columns,
         gap="small",
@@ -282,7 +286,8 @@ def main():
 
     with st.sidebar:
         st.markdown("در این قسمت هم میتوانید دستیار خود را سفارش دهید یا از دستیار های قبلی خود استفاده کنید")
-        st.button("&#43;", key="temporal_enable_submit_form", type="primary")
+        # &#43;
+        st.button("ساخت دستیار", key="temporal_enable_submit_form", type="primary")
         suggested_databases_titles = []
         previous_databases = request_previous_databases()
         database_ids = previous_databases["database_ids"]
