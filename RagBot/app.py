@@ -17,8 +17,6 @@ NUMBER_OF_SUGGESTED_SESSIONS = 30
 
 CSS_STYLE_FILE = "./src/style.css"
 BASE_URL = "http://185.13.230.222:8686" # "http://172.27.0.6:8686" #
-# with open(CSS_STYLE_FILE) as f:
-#     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
 def session_create(api_url: str = BASE_URL): 
     """
@@ -31,7 +29,7 @@ def session_create(api_url: str = BASE_URL):
         response = requests.post(f"{api_url}/session/create")
         # Check if the request was successful
         if response.status_code == 200:
-            # Parse the JSON response and extract the session_id
+            # Parse the JSON response and extract the 
             data = response.json()
             session_id = data.get('session_id')
             print(f"Session ID: {session_id}")

@@ -31,8 +31,6 @@ template_for_not_answer = "پاسخ به این سوال در محدوده دا�
 template_for_not_context = "این سوال خارج از حوزه کاری همکاران سیستم است. لطفا سوال خود را در رابطه با محصولات و خدمات همکاران سیستم مطرح کنید."
 
 async def get_chat_response(prompt: str, model_name: str) -> str:
-    # OLLAMA_HOST = os.getenv('OLLAMA_HOST', 'http://dockerize_assistant-ollama-1:11434')
-    # LLM_MODEL = os.getenv('LLM_MODEL', 'gemma2:9b-instruct-fp16')
     print("Character Length of the prompt: ", len(prompt))
     print("words length of the prompt: ", len(prompt.split()))
     llm = ChatOllama(
@@ -40,12 +38,7 @@ async def get_chat_response(prompt: str, model_name: str) -> str:
         temperature=config["ollama"]["temperature"],
         keep_alive=config["ollama"]["keep_alive"],
         seed=SEED,
-        # base_url=os.environ.get("API_OLLAMA_HOST")
-        # base_url="127.0.0.1:8089"
         base_url="http://ollama:11434",
-        # base_url="http://172.20.0.2:11434"
-        # base_url="http://172.29.0.6:11434"
-        # base_url=OLLAMA_HOST
     )
     messages = [SystemMessage(content=prompt)]
     response = await llm.ainvoke(messages)  # type: ignore[arg-type]
