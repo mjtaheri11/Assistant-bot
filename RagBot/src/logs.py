@@ -25,13 +25,15 @@ def get_logger():
 
 
 def non_generative_agent_logger(
-    session_id, agent, message, input_dict, output_dict, elapsed_time
+    session_id, tenant_name, user_code, agent, message, input_dict, output_dict, elapsed_time
 ):
     logger = get_logger()
     logger.info(
         message,
         extra={
             "session_id": session_id,
+            "tenant_name": tenant_name,
+            "user_code": user_code,
             "logtime": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
             "agent": agent,
             "input": input_dict,
