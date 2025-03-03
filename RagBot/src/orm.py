@@ -169,24 +169,35 @@ class Postgres:
         output = {"database_id": str(database_id[0])}
         return output
 
-    async def create_session(self, database_id=None):
+    async def create_session(self, database_id=None, tenant_name="", user_code=""):
         sql_create_database_query = "INSERT INTO public.session"
         columns = []
         values_placeholder = []
         query_params = []
 
-        if database_id is not None:
+        if database_id:
             columns.append("database_id")
             values_placeholder.append("$1")
             query_params.append(database_id)
 
+        if tenant_name:
+            columns.append("tenant_name")
+            values_placeholder.append("$2")
+            query_params.append(tenant_name)
+            
+        if user_code:
+            columns.append("user_code")
+            values_placeholder.append("$3")
+            query_params.append(user_code)
+            
         if columns:
             sql_create_database_query += f" ({', '.join(columns)}) VALUES ({', '.join(values_placeholder)}) RETURNING session_id;"
             query_params_tuple = tuple(query_params)
+        
         else:
             sql_create_database_query += " DEFAULT VALUES RETURNING session_id;"
             query_params_tuple = None
-
+            
         session_id = await self._execute_query(
             sql_create_database_query, insert_values=query_params_tuple, is_insert=True, fetch_results=True
         )

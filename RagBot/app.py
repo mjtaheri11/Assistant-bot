@@ -178,7 +178,7 @@ def clear_logs():
 
 def update_assistant_name():
     st.session_state["assistant_name"] = st.session_state["temporal_assistant_name"]
-    st.session_state["temporal_assitant_name"] = ""
+    st.session_state["temporal_assistant_name"] = ""
 
 
 def update_company_name():
@@ -218,10 +218,6 @@ def boolean_mapper(type_):
     elif type_.strip() == "خیر":
         return False
     
-def update_answer_type():
-    st.session_state["answer_type"] = st.session_state.get("temporal_answer_type")
-    st.session_state["temporal_answer_type"] = ""
-
 def main():
     st.set_page_config(
         page_title="hamzan",
@@ -326,7 +322,6 @@ def main():
                         update_assistant_name()
                         update_company_name()
                         st.session_state["does_evaluate"] = boolean_mapper(st.session_state.get("temporal_does_evaluate"))
-                        st.session_state["answer_type"] = find_answer_type(st.session_state.get("temporal_answer_type"))
                         st.session_state["use_cache"] = boolean_mapper(st.session_state["temporal_use_cache"])
                         st.session_state["database_id"] = data["database_id"] 
                         st.session_state["session_id"] = session_create(database_id=data["database_id"])
@@ -365,13 +360,6 @@ def main():
                     key="temporal_company_name",
                     label_visibility="collapsed",
                 )
-                st.markdown("نحوه پاسخ گویی به سوالات کاربر را وارد کنید")
-                st.selectbox(
-                    "نحوه پاسخ گویی به سوالات کاربر را وارد کنید",
-                    ["توضیحی", "عادی", "خلاصه"],
-                    key="temporal_answer_type",
-                    label_visibility="collapsed"
-                )
                 st.markdown("ارزیابی برخط بر روی پاسخ خروجی")
                 st.selectbox(
                     "ارزیابی برخط بر روی پاسخ خروجی",
@@ -398,12 +386,21 @@ def main():
                 key="temporal_user_input",
                 on_change=clear_text,
             )
+            st.radio(
+                "radio", 
+                options=["خلاصه", "عادی", "توضیحی"],
+                key="temporal_answer_type",
+                label_visibility="collapsed",
+                disabled=False,
+                horizontal=True,
+            )
             progress_bar = st.progress(value=0)
             with st.container():
                 if st.session_state.get("user_input"):
                     user_input = st.session_state["user_input"]
                     database_id = st.session_state["database_id"]
                     st.session_state.user_utterance.append(user_input)
+                    st.session_state["answer_type"] = find_answer_type(st.session_state.get("temporal_answer_type"))
                     simple_logger(
                         f"user said: {user_input}",
                         session_id=st.session_state.get("session_id"),
@@ -423,7 +420,7 @@ def main():
                     if chat_response["status"] == config["chat_responder"]["ok_status"]:
                         response_is_valid = True
 
-                    progress_bar.progress(value=100, text="Done")
+                    progress_bar.progress(value=100, text="تکمیل شد")
                     st.session_state.query.append(query)
                     st.session_state.response.append(response)
                     st.session_state.user_input_storage.append(user_input)

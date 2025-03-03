@@ -110,7 +110,7 @@ def init_session_state():
     if "answer_type" not in st.session_state:
         st.session_state["answer_type"] = "concise"
     if "use_cache" not in st.session_state:
-        st.session_state["use_cache"] = False
+        st.session_state["use_cache"] = True
     if "assistant_name" not in st.session_state:
         st.session_state["assistant_name"] = "دستیار دیجیتال"
     if "company_name" not in st.session_state:

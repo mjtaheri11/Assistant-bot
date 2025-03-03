@@ -43,7 +43,9 @@ async def get_chat_response(prompt: str, model_name: str) -> str:
         keep_alive=config["ollama"]["keep_alive"],
         base_url="http://127.0.0.1:8089",
         seed=SEED,
-        base_url="http://ollama:11434",
+        # base_url="http://ollama:11434",
+        # base_url="http://127.0.0.1:8980"
+        base_url="http://127.0.0.1:8092/ollama"
     )
     messages = [SystemMessage(content=prompt)]
     response = await llm.ainvoke(messages)  # type: ignore[arg-type]

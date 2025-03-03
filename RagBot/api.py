@@ -46,9 +46,6 @@ class SessionResponse(BaseModel):
     session_id: str
 
 
-class CreateSessionRequest(BaseModel):
-    database_id: Optional[str] = None
-
 class ChatRequest(BaseModel):
     query: str
     session_id: Optional[str] = None
@@ -66,11 +63,12 @@ class ChatResponse(BaseModel):
     query: str
     is_sql: bool = False
 
-class CreateSessionRequest(BaseModel):
-    tenant_name: str = ""
-    user_code: str = ""
 
-    
+class CreateSessionRequest(BaseModel):
+    tenant_name: Optional[str] = ""
+    user_code: Optional[str] = ""
+    database_id: Optional[str] = ""
+
 class SQLRequest(BaseModel):
     table_schemas: List[str]  # Accept a list of schemas
     query: str
@@ -151,7 +149,7 @@ def validate_query(query):
 
 
 def find_database_path(database_index: str = None):
-    if database_index == None:
+    if database_index == "None" or database_index == None:
         match_dir = "../VectorDB"
         company_name = config["database"]["company_name"]
         assistant_name = config["database"]["assistant_name"]
@@ -281,14 +279,17 @@ async def create_session(create_session_request: Optional[CreateSessionRequest] 
     start_time = time.time()
     try:
         postgres = Postgres()  # Assuming Postgres is your DB class
-        session_id = await postgres.create_session(create_session_request.database_id)
-        
-        if create_session_request is None:
+        if not create_session_request:
             tenant_name = ""
             user_code = ""
+            database_id = ""
+            session_id = await postgres.create_session()
+
         else:
             tenant_name = create_session_request.tenant_name
             user_code = create_session_request.user_code
+            session_id = await postgres.create_session(create_session_request.database_id, tenant_name, user_code)
+
         elapsed_time = time.time() - start_time
         non_generative_agent_logger(
             session_id=session_id.get("session_id"),
