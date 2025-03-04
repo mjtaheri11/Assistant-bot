@@ -35,8 +35,6 @@ template_for_not_context = """این سوال خارج از حوزه کاری {c
 template_for_doubtful_answer = "سوال شما را به خوبی متوجه نشدم. لطفا سوال خود را به صورت دقیق تر بپرسید تا بتوانم بهتر کمک کنم."
 
 async def get_chat_response(prompt: str, model_name: str) -> str:
-    # OLLAMA_HOST = os.getenv('OLLAMA_HOST', 'http://dockerize_assistant-ollama-1:11434')
-    # LLM_MODEL = os.getenv('LLM_MODEL', 'gemma2:9b-instruct-fp16')
     print("Character Length of the prompt: ", len(prompt))
     print("words length of the prompt: ", len(prompt.split()))
     llm = ChatOllama(
@@ -45,6 +43,7 @@ async def get_chat_response(prompt: str, model_name: str) -> str:
         keep_alive=config["ollama"]["keep_alive"],
         base_url="http://127.0.0.1:8089",
         seed=SEED,
+        base_url="http://ollama:11434",
     )
     messages = [SystemMessage(content=prompt)]
     response = await llm.ainvoke(messages)  # type: ignore[arg-type]

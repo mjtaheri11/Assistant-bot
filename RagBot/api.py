@@ -41,10 +41,15 @@ class SessionResponse(BaseModel):
 class ChatRequest(BaseModel):
     query: str
     session_id: Optional[str] = None
+<<<<<<< HEAD
     database_index: Optional[str] = None
     answer_type: Optional[str] = "concise"
     does_evaluate: Optional[bool] = False
     use_cache: Optional[bool] = True
+=======
+    tenant_name: Optional[str] = None
+    user_code: Optional[str] = None
+>>>>>>> 88930cf (user_code and tenant_name added to the logs of the project (#10))
 
 
 class ChatResponse(BaseModel):
@@ -92,6 +97,8 @@ class FeedbackRequest(BaseModel):
     message_id: str
     feedback_type: str
     session_id: Optional[str] = None  # Add default value
+    tenant_name: Optional[str] = None
+    user_code: Optional[str] = None
 
 
 class FeedbackResponse(BaseModel):
@@ -109,7 +116,20 @@ def get_session_id(request: Request, content_request: ChatRequest):
         raise HTTPException(status_code=422, detail="No Session-ID")
     return session_id
 
+def get_tenant_name(content_request: BaseModel):
+    if hasattr(content_request, "tenant_name"):
+        if content_request.tenant_name: 
+            return content_request.tenant_name
+    return ""
+    
 
+def get_user_code(content_request: BaseModel):
+    if hasattr(content_request, "user_code"):
+        if content_request.user_code: 
+            return content_request.user_code
+    return ""
+
+    
 def validate_query(query):
     if not query.strip():
         raise HTTPException(status_code=422, detail="Query is empty")
@@ -255,6 +275,8 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
     try:
         postgres = Postgres()
         session_id = get_session_id(request, chat_request)
+        user_code = get_user_code(chat_request)
+        tenant_name = get_tenant_name(chat_request)
         validate_query(chat_request.query)
         simple_logger(f"Received chat request", session_id)
         history = await postgres.get_history(
@@ -298,6 +320,8 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
         )
         non_generative_agent_logger(
             session_id=session_id,
+            tenant_name=tenant_name,
+            user_code=user_code,
             agent="chat_responder",
             message="Chat response generated",
             input_dict={
@@ -321,6 +345,8 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
         REQUEST_LATENCY.labels(endpoint="/chat").observe(elapsed_time)
         non_generative_agent_logger(
             session_id=session_id,
+            tenant_name=tenant_name,
+            user_code=user_code,
             agent="chat_responder",
             message="Chat response not generated",
             input_dict={
@@ -445,8 +471,9 @@ async def feedback(feedback_request: FeedbackRequest, request: Request):
     start_time = time.time()
     try:
         # validate_feedback(feedback_request)
-        # session_id = get_session_id(request, feedback_request)
-        session_id = req.headers.get("Session-ID", None)
+
+        tenant_name = get_tenant_name(feedback_request)
+        user_code = get_user_code(feedback_request)
 
         if session_id is None:
             session_id = request.session_id
@@ -462,7 +489,7 @@ async def feedback(feedback_request: FeedbackRequest, request: Request):
         log_feedback_request(session_id)
         result = await process_feedback(feedback_request, message_fields)
 
-        log_feedback_response(session_id, feedback_request, message_fields, start_time)
+        log_feedback_response(session_id, tenant_name, user_code, feedback_request, message_fields, start_time)
         return result
 
     except HTTPException as e:
@@ -509,6 +536,8 @@ def log_feedback_response(session_id, feedback_request, message_fields, start_ti
     user_query, paraphrased_query, _ = message_fields
     non_generative_agent_logger(
         session_id=session_id,
+        tenant_name=tenant_name,
+        user_code=user_code,
         agent="feedback",
         message="feedback generated",
         input_dict={
@@ -527,6 +556,8 @@ def handle_unexpected_error(exception, session_id, feedback_request, start_time)
     traceback.print_exc()
     non_generative_agent_logger(
         session_id,
+        tenant_name,
+        user_code,
         "feedback",
         f"Error in feedback: {str(exception)}",
         feedback_request.dict(),

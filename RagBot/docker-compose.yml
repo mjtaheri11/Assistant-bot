@@ -38,7 +38,7 @@ services:
   ollama:
     image: ollama/ollama:latest
     ports:
-      - 8089:11434
+      - 8980:11434
     volumes:
       - /usr/share/ollama/.ollama/:/root/.ollama
     container_name: ollama
