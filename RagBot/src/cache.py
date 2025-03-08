@@ -258,7 +258,7 @@ class Cache:
 
 
 # async def temp():
-#     response =  "سلام. من دستیار دیجیتال نسل 4 هستم. می‌توانم در مورد ماژول‌های دفتر کل، انبار، گزارش ساز و خزانه داری به شما کمک کنم. پرسش خود را بپرسید تا در صورت امکان، پاسخ آن را ارائه دهم."
+#     response_1 =  "سلام. من دستیار دیجیتال نسل 4 هستم. می‌توانم در مورد ماژول‌های دفتر کل، انبار، فروش، گزارش ساز و خزانه داری به شما کمک کنم. پرسش خود را بپرسید تا در صورت امکان، پاسخ آن را ارائه دهم."
 #     lst_1 = ["سلام. خوبی؟",
 #             "سلام. حالت چطوره",
 #             "سلام خوبی",
@@ -303,10 +303,10 @@ class Cache:
 #     print("hello")
 #     cache = Cache()
 #     for query in lst_1:
-#         await cache.increment_thumb_up(query, response, "")
+#         await cache.increment_thumb_up(query, response_1, "")
 
-#     for query, response in lst_2:
-#         await cache.increment_thumb_up(query, response, "")
+#     for query in lst_2:
+#         await cache.increment_thumb_up(query, response_2, "")
 
         
 # if __name__ == "__main__":
