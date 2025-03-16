@@ -22,7 +22,7 @@ from src.logic import (
     feedback_,
     prepare_final_context,
     query_responder,
-    sql_responder,
+    sql_responder_,
     utterance_paraphraser,
 )
 from src.logs import non_generative_agent_logger, simple_logger
@@ -325,6 +325,53 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
             elapsed_time=elapsed_time,
         )
 
+        raise HTTPException(status_code=500, detail="Unhandled error, Please report")
+
+
+class SQLRequest(BaseModel):
+    query: str
+
+class SQLResponse(BaseModel):
+    response: str
+    module: str
+    
+@app.post(
+    "/sql",
+    response_model=SQLResponse,
+    responses={
+        200: {},
+        500: {"description": "Unhandled error that should be reported"},
+        404: {
+            "description": "Session not found",
+            "content": {
+                "application/json": {"example": {"detail": "Session not found"}}
+            },
+        },
+        422: {
+            "description": "Unprocessable entity e.g. no session id, or no query",
+            "content": {"application/json": {"example": {"detail": "Query is empty"}}},
+        },
+    },
+)
+async def sql_responder(sql_request: SQLRequest, request: Request):
+    REQUEST_COUNT.labels(endpoint="/chat").inc()  # Increment request count for /chat
+    start_time = time.time()
+
+    try:
+        module_detection_response, response = await sql_responder_(
+                sql_request.query
+            )
+        elapsed_time = time.time() - start_time
+        return SQLResponse(
+            response=response, module=module_detection_response
+        )
+
+    except HTTPException as e:
+        raise e
+
+    except Exception as e:
+        traceback.print_exc()
+        elapsed_time = time.time() - start_time
         raise HTTPException(status_code=500, detail="Unhandled error, Please report")
 
 

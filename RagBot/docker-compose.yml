@@ -46,7 +46,7 @@ services:
     restart: always
     environment:
       - OLLAMA_KEEP_ALIVE=${OLLAMA_KEEP_ALIVE}
-      # - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES}
+      - CUDA_VISIBLE_DEVICES=4,5
     networks:
       - ollama-docker2
 

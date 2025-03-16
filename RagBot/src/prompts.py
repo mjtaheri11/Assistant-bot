@@ -462,15 +462,590 @@ Your task is to suggest one search engine query in Farsi, based on the user's fo
 **Optimized google query in Farsi:**
 """
 
-
 SQL_CONVERTER = """
-Given the following table schemas and a natural language query, generate the corresponding SQL query.
+Your task is to convert the natural language query into a corresponding SQL query. Always generate a valid SQL query even if assumptions must be made. 
 
-Table Schemas:
-{schema}
+IMPORTANT: Do NOT translate Persian (Farsi) words to English in the SQL query. Keep all Persian terms exactly as they appear in the original query, especially for names, locations, and specific terminology.
 
-Natural Query:
-{query}
+For each conversion, return a JSON with two keys:
+1. "reasoning": A single concise paragraph explaining your approach to the query and any assumptions made
+2. "sql_query": The corresponding SQL query with no additional explanatory text
 
-SQL Query:
+Business Object: {schema}
+Natural Language Query: {query}
+
+Output Format:
+{{
+  "reasoning": "Your concise one-paragraph reasoning here",
+  "sql_query": "Your SQL query here"
+}}
+
+Important Guidelines:
+- Always produce a valid SQL query - never return null for sql_query
+- If the request is ambiguous, make reasonable assumptions and document them in the reasoning
+- PRESERVE ALL PERSIAN TERMS exactly as they appear in the original query (e.g., 'سیرجان' should remain 'سیرجان', not 'Sirjan')
+- Match Persian terms to their corresponding values in the database without translation
+- If specific columns or tables are unclear, use similar ones from the schema
+- For complex requests with missing information, create a basic query that addresses the core intent
+- If a query seems impossible, create a simplified version that captures the essence of the request
 """
+
+# SQL_CONVERTER = """
+# Your task is to convert the natural language query to its corresponding SQL. 
+
+# For each conversion, return a JSON with two keys:
+# 1. "reasoning": A single concise paragraph explaining your approach to the query
+# 2. "sql_query": The corresponding SQL query with no additional explanatory text
+
+# Business Object: 
+# {schema}
+
+# Natural Language Query:
+# {query}
+
+# Output Format:
+# {{
+#   "reasoning": "Your concise one-paragraph reasoning here",
+#   "sql_query": "Your SQL query here"
+# }}
+
+# If no SQL query can be generated, return:
+# {{
+#   "reasoning": "Explanation of why SQL couldn't be generated",
+#   "sql_query": null
+# }}
+# """
+
+
+
+# Retry
+
+# Claude can make mistakes. Please double-check responses.
+
+# SQL_MODULE_DETECTION = """
+# Your task is to determine whether the question is related to data retrieval from a database related to logistics or a database related to financial.
+
+# The concepts related to each module are provided and your response should be either "logistics" or "Financial"
+
+# **Logistics** 
+# الگوی سند انبار: 
+#       "کد الگو",
+#       "عنوان الگو",
+#       "نوع سند",
+#       "جهت سند",
+#       "نوع خرید",
+#       "نوع تاثیر بر موجودی",
+#       "نوع طرف مقابل",
+
+# انبار:
+#       "کد انبار",
+#       "عنوان انبار",
+#       "عنوان نوع انبار",
+#       "استان",
+      
+# سند انبار:
+#       "شماره سند",
+#       "تاریخ سند",
+#       "شرح سربرگ",
+#       "معین",
+#       "وضعیت",
+#       "دوره مالی",
+#       "فیلد اضافه 1",
+#       "فیلد اضافه 2",
+#       "فیلد اضافه 3",
+#       "فیلد اضافه 4",
+#       "فیلد اضافه 5",
+#       "تامین کننده",
+#       "پیمانکار",
+#       "مرکز هزینه",
+#       "پروژه",
+#       "مشتری",
+#       "موسسه حمل",
+#       "طرف حساب امانی",
+#       "کارمند",
+#       "کارمند فروش",
+#       "شماره سفارش خرید",
+#       "شماره فاکتور خرید",
+#       "تحویل گیرنده",
+#       "شماره کوتاژ",
+#       "شماره برگ سبز",
+#       "شماره سفارش فروش",
+#       "شماره فاکتور خرید",
+#       "مرکز فروش",
+#       "فروشگاه",
+#       "تحویل دهنده",
+#       "شماره برگه باسکول",
+#       "شماره دستور تولید",
+#       "شماره سفارش تولید",
+#       "شماره عملیات تولید",
+#       "شیفت تولید",
+#       "تاریخ تولید",
+#       "شماره بازرسی کیفیت",
+#       "شماره چک لیست",
+#       "شماره آزمایشگاه",
+#       "تایید ارفاقی",
+#       "نتیجه بازرسی",
+#       "شماره COA",
+#       "نام راننده",
+#       "نام خودرو",
+#       "شماره پلاک",
+#       "شماره بارنامه",
+#       "تاریخ بارنامه",
+#       "تلفن راننده",
+      
+# مرکز نگهداری:
+#       "کد مرکز نگهداری",
+#       "عنوان مرکز نگهداری",
+#       "عنوان شعبه",
+#       "استان",
+
+# قلم سند انبار:
+#       "مقدار",
+#       "مقدار به واحد اصلی",
+#       "مقدار به واحد دوم",
+#       "مانده استفاده نشده به واحد اصلی",
+#       "مانده استفاده نشده به واحد دوم",
+#       "شماره ردیف",
+#       "معین",
+#       "فیلد اضافه 1",
+#       "فیلد اضافه 2",
+#       "فیلد اضافه 3",
+#       "فیلد اضافه 4",
+#       "فیلد اضافه 5",
+#       "تامین کننده",
+#       "پیمانکار",
+#       "مرکز هزینه",
+#       "پروژه",
+#       "مشتری",
+#       "موسسه حمل",
+#       "طرف حساب امانی",
+#       "کارمند",
+#       "کارمند فروش",
+#       "شماره سفارش خرید",
+#       "شماره فاکتور خرید",
+#       "تحویل گیرنده",
+#       "شماره کوتاژ",
+#       "شماره برگ سبز",
+#       "ASN NO",
+#       "شماره سفارش فروش",
+#       "شماره فاکتور خرید",
+#       "مرکز فروش",
+#       "فروشگاه",
+#       "تحویل دهنده",
+#       "شماره برگه باسکول",
+#       "شماره دستور تولید",
+#       "شماره سفارش تولید",
+#       "شماره عملیات تولید",
+#       "شیفت تولید",
+#       "تاریخ تولید",
+#       "شماره بازرسی کیفیت",
+#       "شماره چک لیست",
+#       "شماره آزمایشگاه",
+#       "تایید ارفاقی",
+#       "نتیجه بازرسی",
+#       "شماره COA",
+#       "نام راننده",
+#       "نام خودرو",
+#       "شماره پلاک",
+#       "شماره بارنامه",
+#       "تاریخ بارنامه",
+#       "تلفن راننده",
+
+# طبقه حساب کالا:
+#       "کد طبقه حساب کالا",
+#       "عنوان طبقه حساب کالا",
+#       "روش قیمت گذاری",
+
+# قلم قیمت:
+#       "فی",
+#       "مبلغ",
+#       "فی به واحد اصلی",
+#       "مبلغ به واحد اصلی",
+#       "تاریخ",
+#       "نوع قیمت",
+#       "عنوان ارز",
+#       "شماره سند حسابداری",
+      
+# نوع انبار:
+#       "کد نوع انبار",
+#       "عنوان نوع انبار",
+      
+# نوع انبار کالا:
+      
+# واحد سنجش:
+#       "عنوان واحد سنجش",
+#       "بعد",
+
+# واحد فرعی کالا:
+#       "عنوان واحد فرعی کالا",
+#       "ضریب",
+#       "واحد سنجش اصلی",
+
+# کالا:
+#       "کد کالا",
+#       "عنوان کالا",
+#       "واحد سنجش اصلی",
+#       "واحد سنجش دوم",
+#       "طبقه حساب کالا",
+#       "نوع کالا",
+#       "نوع کارکرد کالا",
+      
+# گزارش مبلغی انبار:
+#       "شناسه کالا",
+#       "عنوان کالا",
+#       "کد کالا",
+#       "عنوان انبار",
+#       "کد انبار",
+#       "واحد سنجش اصلی",
+#       "فی",
+#       "موجودی کالا",
+#       "موجودی مبلغی کالا",
+#       "تاریخ آخرین قیمت گذاری",
+
+# **Financial**
+# گردش و مانده حساب ها:
+#       "کد شعبه",
+#       "عنوان شعبه",
+#       "کد گروه حساب",
+#       "عنوان گروه حساب",
+#       "کد حساب کل",
+#       "عنوان حساب کل",
+#       "کد حساب معین",
+#       "عنوان حساب معین",
+#       "کد طرف تجاری",
+#       "عنوان طرف تجاری",
+#       "نقش طرف تجاری",
+#       "کد مرکز هزینه",
+#       "عنوان مرکز هزینه",
+#       "کد پروژه",
+#       "عنوان پروژه",
+#       "کد حوزه قیمت گذاری",
+#       "عنوان حوزه قیمت گذاری",
+#       "کد کالا",
+#       "عنوان کالا",
+#       "کد سایر اشخاص",
+#       "عنوان سایر اشخاص",
+#       "نقش سایر اشخاص",
+#       "کد تفصیل شعبه",
+#       "عنوان تفصیل شعبه",
+#       "کد حساب بانکی",
+#       "عنوان حساب بانکی",
+#       "ارز سند",
+#       "ارز مبنا",
+#       "نوع نرخ ارز",
+#       " گردش بدهکار ارز عملیاتی",
+#       "گردش بستانکار ارز عملیاتی",
+#       "مانده بدهکار ارز عملیاتی",
+#       "مانده بستانکار ارز عملیاتی",
+#       "مانده ارز عملیاتی",
+#       "گردش بدهکار ارز سند",
+#       "گردش بستانکار ارز سند",
+#       "مانده بدهکار ارز سند",
+#       "مانده بستانکار ارز سند",
+#       "مانده ارز سند",
+#       "گردش بدهکار ارز مبنا",
+#       "گردش بستانکار ارز مبنا",
+#       "مانده بدهکار ارز مبنا",
+#       "مانده بستانکار ارز مبنا",
+#       "مانده ارز مبنا",
+#       "گردش بدهکار ارز گزارشگری اول",
+#       "گردش بستانکار ارز گزارشگری اول",
+#       "مانده بدهکار ارز گزارشگری اول",
+#       "مانده بستانکار ارز گزارشگری اول",
+#       "مانده ارز گزارشگری اول",
+#       "گردش بدهکار ارز گزارشگری دوم",
+#       "گردش بستانکار ارز گزارشگری دوم",
+#       "مانده بدهکار ارز گزارشگری دوم",
+#       "مانده بستانکار ارز گزارشگری دوم",
+#       "مانده ارز گزارشگری دوم",
+#       "گردش بدهکار مقدار",
+#       "گردش بستانکار مقدار",
+#       "مانده مقدار",
+      
+# اقلام سند حسابداری:
+#       "کد شعبه",
+#       "عنوان شعبه",
+#       "شماره سند",
+#       "تاریخ سند",
+#       "شماره عطف",
+#       "شماره روزانه",
+#       "شماره فرعی",
+#       "نوع سند",
+#       "وضعیت سند",
+#       "شرح سند",
+#       "صادر کننده",
+#       "بررسی کننده",
+#       "شماره ردیف",
+#       "کد حساب معین",
+#       "عنوان حساب معین",
+#       "کد طرف تجاری",
+#       "عنوان طرف تجاری",
+#       "نقش طرف تجاری",
+#       "کد مرکز هزینه",
+#       "عنوان مرکز هزینه",
+#       "کد پروژه",
+#       "عنوان پروژه",
+#       "کد حوزه قیمت گذاری",
+#       "عنوان حوزه قیمت گذاری",
+#       "کد کالا",
+#       "عنوان کالا",
+#       "کد سایر اشخاص",
+#       "عنوان سایر اشخاص",
+#       "نقش سایر اشخاص",
+#       "کد تفصیل شعبه",
+#       "عنوان تفصیل شعبه",
+#       "کد حساب بانکی",
+#       "عنوان حساب بانکی",
+#       " گردش بدهکار ارز عملیاتی",
+#       "گردش بستانکار ارز عملیاتی",
+#       "ارز سند",
+#       "گردش بدهکار ارز سند",
+#       "گردش بستانکار ارز سند",
+#       "نوع نرخ ارز",
+#       "نرخ تبدیل ارز عملیاتی",
+#       "ارز مبنا",
+#       "گردش بدهکار ارز مبنا",
+#       "گردش بستانکار ارز مبنا",
+#       "نرخ تبدیل ارز مبنا",
+#       "گردش بدهکار ارز گزارشگری اول",
+#       "گردش بستانکار ارز گزارشگری اول",
+#       "نرخ تبدیل ارز گزارشگری اول",
+#       "گردش بدهکار ارز گزارشگری دوم",
+#       "گردش بستانکار ارز گزارشگری دوم",
+#       "نرخ تبدیل ارز گزارشگری دوم",
+#       "شرح قلم سندحسابداری",
+#       "شماره پیگیری",
+#       "تاریخ پیگیری",
+#       "مقدار",
+
+# user question: {user_question}
+
+# Module:
+# """
+
+
+
+# SQL_MODULE_DETECTION = """
+# Your task is to determine whether the user question is related to data retrieval from a database related to either "Logistics" or "Financial" operations.
+
+# To help you decide, I am providing lists of business objects and their respective columns for each module. Please carefully review these lists. 
+
+# For each conversion, return a JSON with two keys:
+# 1. "reasoning": A single concise paragraph explaining your approach to detect the module
+# 2. "detected_module": The corresponding module with no additional explanatory text
+
+# **Logistics Module**
+
+# This module deals with the management of goods, inventory, and related processes. Questions related to warehouses, stock movements, items, and their attributes typically fall under this module.
+
+# **Business Objects and Columns:**
+
+# **الگوی سند انبار (Warehouse Document Pattern):**
+#     "کد الگو", "عنوان الگو", "نوع سند", "جهت سند", "نوع خرید", "نوع تاثیر بر موجودی", "نوع طرف مقابل"
+
+# **انبار (Warehouse):**
+#     "کد انبار", "عنوان انبار", "عنوان نوع انبار", "استان"
+
+# **سند انبار (Warehouse Document):**
+#     "شماره سند", "تاریخ سند", "شرح سربرگ", "معین", "وضعیت", "دوره مالی", "فیلد اضافه 1", "فیلد اضافه 2", "فیلد اضافه 3", "فیلد اضافه 4", "فیلد اضافه 5", "تامین کننده", "پیمانکار", "مرکز هزینه", "پروژه", "مشتری", "موسسه حمل", "طرف حساب امانی", "کارمند", "کارمند فروش", "شماره سفارش خرید", "شماره فاکتور خرید", "تحویل گیرنده", "شماره کوتاژ", "شماره برگ سبز", "شماره سفارش فروش", "شماره فاکتور خرید", "مرکز فروش", "فروشگاه", "تحویل دهنده", "شماره برگه باسکول", "شماره دستور تولید", "شماره سفارش تولید", "شماره عملیات تولید", "شیفت تولید", "تاریخ تولید", "شماره بازرسی کیفیت", "شماره چک لیست", "شماره آزمایشگاه", "تایید ارفاقی", "نتیجه بازرسی", "شماره COA", "نام راننده", "نام خودرو", "شماره پلاک", "شماره بارنامه", "تاریخ بارنامه", "تلفن راننده"
+
+# **مرکز نگهداری (Maintenance Center):**
+#     "کد مرکز نگهداری", "عنوان مرکز نگهداری", "عنوان شعبه", "استان"
+
+# **قلم سند انبار (Warehouse Document Item):**
+#     "مقدار", "مقدار به واحد اصلی", "مقدار به واحد دوم", "مانده استفاده نشده به واحد اصلی", "مانده استفاده نشده به واحد دوم", "شماره ردیف", "معین", "فیلد اضافه 1", "فیلد اضافه 2", "فیلد اضافه 3", "فیلد اضافه 4", "فیلد اضافه 5", "تامین کننده", "پیمانکار", "مرکز هزینه", "پروژه", "مشتری", "موسسه حمل", "طرف حساب امانی", "کارمند", "کارمند فروش", "شماره سفارش خرید", "شماره فاکتور خرید", "تحویل گیرنده", "شماره کوتاژ", "شماره برگ سبز", "ASN NO", "شماره سفارش فروش", "شماره فاکتور خرید", "مرکز فروش", "فروشگاه", "تحویل دهنده", "شماره برگه باسکول", "شماره دستور تولید", "شماره سفارش تولید", "شماره عملیات تولید", "شیفت تولید", "تاریخ تولید", "شماره بازرسی کیفیت", "شماره چک لیست", "شماره آزمایشگاه", "تایید ارفاقی", "نتیجه بازرسی", "شماره COA", "نام راننده", "نام خودرو", "شماره پلاک", "شماره بارنامه", "تاریخ بارنامه", "تلفن راننده"
+
+# **طبقه حساب کالا (Item Account Class):**
+#     "کد طبقه حساب کالا", "عنوان طبقه حساب کالا", "روش قیمت گذاری"
+
+# **قلم قیمت (Price Item):**
+#     "فی", "مبلغ", "فی به واحد اصلی", "مبلغ به واحد اصلی", "تاریخ", "نوع قیمت", "عنوان ارز", "شماره سند حسابداری"
+
+# **نوع انبار (Warehouse Type):**
+#     "کد نوع انبار", "عنوان نوع انبار"
+
+# **نوع انبار کالا (Item Warehouse Type):**
+#     (No columns provided)
+
+# **واحد سنجش (Unit of Measurement):**
+#     "عنوان واحد سنجش", "بعد"
+
+# **واحد فرعی کالا (Sub-Unit of Item):**
+#     "عنوان واحد فرعی کالا", "ضریب", "واحد سنجش اصلی"
+
+# **کالا (Item):**
+#     "کد کالا", "عنوان کالا", "واحد سنجش اصلی", "واحد سنجش دوم", "طبقه حساب کالا", "نوع کالا", "نوع کارکرد کالا"
+
+# **گزارش مبلغی انبار (Warehouse Value Report):**
+#     "شناسه کالا", "عنوان کالا", "کد کالا", "عنوان انبار", "کد انبار", "واحد سنجش اصلی", "فی", "موجودی کالا", "موجودی مبلغی کالا", "تاریخ آخرین قیمت گذاری"
+
+# **Financial Module**
+
+# This module focuses on financial transactions, accounting records, and monetary balances. Questions about account balances, financial documents, and monetary values are typically related to this module.
+
+# **Business Objects and Columns:**
+
+# **گردش و مانده حساب ها (Account Balances and Movements):**
+#     "کد شعبه", "عنوان شعبه", "کد گروه حساب", "عنوان گروه حساب", "کد حساب کل", "عنوان حساب کل", "کد حساب معین", "عنوان حساب معین", "کد طرف تجاری", "عنوان طرف تجاری", "نقش طرف تجاری", "کد مرکز هزینه", "عنوان مرکز هزینه", "کد پروژه", "عنوان پروژه", "کد حوزه قیمت گذاری", "عنوان حوزه قیمت گذاری", "کد کالا", "عنوان کالا", "کد سایر اشخاص", "عنوان سایر اشخاص", "نقش سایر اشخاص", "کد تفصیل شعبه", "عنوان تفصیل شعبه", "کد حساب بانکی", "عنوان حساب بانکی", "ارز سند", "ارز مبنا", "نوع نرخ ارز", " گردش بدهکار ارز عملیاتی", "گردش بستانکار ارز عملیاتی", "مانده بدهکار ارز عملیاتی", "مانده بستانکار ارز عملیاتی", "مانده ارز عملیاتی", "گردش بدهکار ارز سند", "گردش بستانکار ارز سند", "مانده بدهکار ارز سند", "مانده بستانکار ارز سند", "مانده ارز سند", "گردش بدهکار ارز مبنا", "گردش بستانکار ارز مبنا", "مانده بدهکار ارز مبنا", "مانده بستانکار ارز مبنا", "مانده ارز مبنا", "گردش بدهکار ارز گزارشگری اول", "گردش بستانکار ارز گزارشگری اول", "مانده بدهکار ارز گزارشگری اول", "مانده بستانکار ارز گزارشگری اول", "مانده ارز گزارشگری اول", "گردش بدهکار ارز گزارشگری دوم", "گردش بستانکار ارز گزارشگری دوم", "مانده بدهکار ارز گزارشگری دوم", "مانده بستانکار ارز گزارشگری دوم", "مانده ارز گزارشگری دوم", "گردش بدهکار مقدار", "گردش بستانکار مقدار", "مانده مقدار"
+
+# **اقلام سند حسابداری (Accounting Document Items):**
+#     "کد شعبه", "عنوان شعبه", "شماره سند", "تاریخ سند", "شماره عطف", "شماره روزانه", "شماره فرعی", "نوع سند", "وضعیت سند", "شرح سند", "صادر کننده", "بررسی کننده", "شماره ردیف", "کد حساب معین", "عنوان حساب معین", "کد طرف تجاری", "عنوان طرف تجاری", "نقش طرف تجاری", "کد مرکز هزینه", "عنوان مرکز هزینه", "کد پروژه", "عنوان پروژه", "کد حوزه قیمت گذاری", "عنوان حوزه قیمت گذاری", "کد کالا", "عنوان کالا", "کد سایر اشخاص", "عنوان سایر اشخاص", "نقش سایر اشخاص", "کد تفصیل شعبه", "عنوان تفصیل شعبه", "کد حساب بانکی", "عنوان حساب بانکی", " گردش بدهکار ارز عملیاتی", "گردش بستانکار ارز عملیاتی", "ارز سند", "گردش بدهکار ارز سند", "گردش بستانکار ارز سند", "نوع نرخ ارز", "نرخ تبدیل ارز عملیاتی", "ارز مبنا", "گردش بدهکار ارز مبنا", "گردش بستانکار ارز مبنا", "نرخ تبدیل ارز مبنا", "گردش بدهکار ارز گزارشگری اول", "گردش بستانکار ارز گزارشگری اول", "نرخ تبدیل ارز گزارشگری اول", "گردش بدهکار ارز گزارشگری دوم", "گردش بستانکار ارز گزارشگری دوم", "نرخ تبدیل ارز گزارشگری دوم", "شرح قلم سندحسابداری", "شماره پیگیری", "تاریخ پیگیری", "مقدار"
+
+# **Examples:**
+
+# **User Question:** "میزان موجودی کالا با کد 123 در انبار تهران چقدر است؟" (What is the quantity of the item with code 123 in the Tehran warehouse?)
+# **Module:** Logistics
+
+# **User Question:** "مانده حساب معین 1001 در تاریخ 1402/01/01 چقدر است؟" (What is the balance of the specific account 1001 on 2023/03/21?)
+# **Module:** Financial
+
+# **User Question:** "آخرین قیمت خرید برای کالای 'A' چه بوده است؟" (What was the last purchase price for item 'A'?)
+# **Module:** Logistics
+
+# **User Question:** "گردش بدهکار حساب بانکی ملت در ماه گذشته چقدر بوده است؟" (What was the debit turnover of Mellat Bank account in the last month?)
+# **Module:** Financial
+
+# user question: {user_question}
+
+# Output Format:
+# {{
+#   "reasoning": "Your concise one-paragraph reasoning here",
+#   "detected_module": "The detected module is either 'logistics' or 'financial'"
+# }}
+# """
+
+
+SQL_MODULE_DETECTION = """
+Your task is to determine whether the user's question pertains to the 'logistics' or 'financial' module as the first step of a retriever module, which detects the module and then retrieves the corresponding business object. Use the provided concepts (fields and attributes of business objects) for each module to assess the similarity of the question to either logistics or financial domains.
+
+**Logistics Concepts:**
+- الگوی سند انبار: "کد الگو", "عنوان الگو", "نوع سند", "جهت سند", "نوع خرید", "نوع تاثیر بر موجودی", "نوع طرف مقابل"
+- انبار: "کد انبار", "عنوان انبار", "عنوان نوع انبار", "استان"
+- سند انبار: "شماره سند", "تاریخ سند", "شرح سربرگ", "معین", "وضعیت", "دوره مالی", "فیلد اضافه 1", "فیلد اضافه 2", "فیلد اضافه 3", "فیلد اضافه 4", "فیلد اضافه 5", "تامین کننده", "پیمانکار", "مرکز هزینه", "پروژه", "مشتری", "موسسه حمل", "طرف حساب امانی", "کارمند", "کارمند فروش", "شماره سفارش خرید", "شماره فاکتور خرید", "تحویل گیرنده", "شماره کوتاژ", "شماره برگ سبز", "شماره سفارش فروش", "شماره فاکتور خرید", "مرکز فروش", "فروشگاه", "تحویل دهنده", "شماره برگه باسکول", "شماره دستور تولید", "شماره سفارش تولید", "شماره عملیات تولید", "شیفت تولید", "تاریخ تولید", "شماره بازرسی کیفیت", "شماره چک لیست", "شماره آزمایشگاه", "تایید ارفاقی", "نتیجه بازرسی", "شماره COA", "نام راننده", "نام خودرو", "شماره پلاک", "شماره بارنامه", "تاریخ بارنامه", "تلفن راننده"
+- مرکز نگهداری: "کد مرکز نگهداری", "عنوان مرکز نگهداری", "عنوان شعبه", "استان"
+- قلم سند انبار: "مقدار", "مقدار به واحد اصلی", "مقدار به واحد دوم", "مانده استفاده نشده به واحد اصلی", "مانده استفاده نشده به واحد دوم", "شماره ردیف", "معین", "فیلد اضافه 1", "فیلد اضافه 2", "فیلد اضافه 3", "فیلد اضافه 4", "فیلد اضافه 5", "تامین کننده", "پیمانکار", "مرکز هزینه", "پروژه", "مشتری", "موسسه حمل", "طرف حساب امانی", "کارمند", "کارمند فروش", "شماره سفارش خرید", "شماره فاکتور خرید", "تحویل گیرنده", "شماره کوتاژ", "شماره برگ سبز", "ASN NO", "شماره سفارش فروش", "شماره فاکتور خرید", "مرکز فروش", "فروشگاه", "تحویل دهنده", "شماره برگه باسکول", "شماره دستور تولید", "شماره سفارش تولید", "شماره عملیات تولید", "شیفت تولید", "تاریخ تولید", "شماره بازرسی کیفیت", "شماره چک لیست", "شماره آزمایشگاه", "تایید ارفاقی", "نتیجه بازرسی", "شماره COA", "نام راننده", "نام خودرو", "شماره پلاک", "شماره بارنامه", "تاریخ بارنامه", "تلفن راننده"
+- طبقه حساب کالا: "کد طبقه حساب کالا", "عنوان طبقه حساب کالا", "روش قیمت گذاری"
+- قلم قیمت: "فی", "مبلغ", "فی به واحد اصلی", "مبلغ به واحد اصلی", "تاریخ", "نوع قیمت", "عنوان ارز", "شماره سند حسابداری"
+- نوع انبار: "کد نوع انبار", "عنوان نوع انبار"
+- نوع انبار کالا:
+- واحد سنجش: "عنوان واحد سنجش", "بعد"
+- واحد فرعی کالا: "عنوان واحد فرعی کالا", "ضریب", "واحد سنجش اصلی"
+- کالا: "کد کالا", "عنوان کالا", "واحد سنجش اصلی", "واحد سنجش دوم", "طبقه حساب کالا", "نوع کالا", "نوع کارکرد کالا"
+- گزارش مبلغی انبار: "شناسه کالا", "عنوان کالا", "کد کالا", "عنوان انبار", "کد انبار", "واحد سنجش اصلی", "فی", "موجودی کالا", "موجودی مبلغی کالا", "تاریخ آخرین قیمت گذاری"
+
+**Financial Concepts:**
+- گردش و مانده حساب ها: "کد شعبه", "عنوان شعبه", "کد گروه حساب", "عنوان گروه حساب", "کد حساب کل", "عنوان حساب کل", "کد حساب معین", "عنوان حساب معین", "کد طرف تجاری", "عنوان طرف تجاری", "نقش طرف تجاری", "کد مرکز هزینه", "عنوان مرکز هزینه", "کد پروژه", "عنوان پروژه", "کد حوزه قیمت گذاری", "عنوان حوزه قیمت گذاری", "کد کالا", "عنوان کالا", "کد سایر اشخاص", "عنوان سایر اشخاص", "نقش سایر اشخاص", "کد تفصیل شعبه", "عنوان تفصیل شعبه", "کد حساب بانکی", "عنوان حساب بانکی", "ارز سند", "ارز مبنا", "نوع نرخ ارز", "گردش بدهکار ارز عملیاتی", "گردش بستانکار ارز عملیاتی", "مانده بدهکار ارز عملیاتی", "مانده بستانکار ارز عملیاتی", "مانده ارز عملیاتی", "گردش بدهکار ارز سند", "گردش بستانکار ارز سند", "مانده بدهکار ارز سند", "مانده بستانکار ارز سند", "مانده ارز سند", "گردش بدهکار ارز مبنا", "گردش بستانکار ارز مبنا", "مانده بدهکار ارز مبنا", "مانده بستانکار ارز مبنا", "مانده ارز مبنا", "گردش بدهکار ارز گزارشگری اول", "گردش بستانکار ارز گزارشگری اول", "مانده بدهکار ارز گزارشگری اول", "مانده بستانکار ارز گزارشگری اول", "مانده ارز گزارشگری اول", "گردش بدهکار ارز گزارشگری دوم", "گردش بستانکار ارز گزارشگری دوم", "مانده بدهکار ارز گزارشگری دوم", "مانده بستانکار ارز گزارشگری دوم", "مانده ارز گزارشگری دوم", "گردش بدهکار مقدار", "گردش بستانکار مقدار", "مانده مقدار"
+- اقلام سند حسابداری: "کد شعبه", "عنوان شعبه", "شماره سند", "تاریخ سند", "شماره عطف", "شماره روزانه", "شماره فرعی", "نوع سند", "وضعیت سند", "شرح سند", "صادر کننده", "بررسی کننده", "شماره ردیف", "کد حساب معین", "عنوان حساب معین", "کد طرف تجاری", "عنوان طرف تجاری", "نقش طرف تجاری", "کد مرکز هزینه", "عنوان مرکز هزینه", "کد پروژه", "عنوان پروژه", "کد حوزه قیمت گذاری", "عنوان حوزه قیمت گذاری", "کد کالا", "عنوان کالا", "کد سایر اشخاص", "عنوان سایر اشخاص", "نقش سایر اشخاص", "کد تفصیل شعبه", "عنوان تفصیل شعبه", "کد حساب بانکی", "عنوان حساب بانکی", "گردش بدهکار ارز عملیاتی", "گردش بستانکار ارز عملیاتی", "ارز سند", "گردش بدهکار ارز سند", "گردش بستانکار ارز سند", "نوع نرخ ارز", "نرخ تبدیل ارز عملیاتی", "ارز مبنا", "گردش بدهکار ارز مبنا", "گردش بستانکار ارز مبنا", "نرخ تبدیل ارز مبنا", "گردش بدهکار ارز گزارشگری اول", "گردش بستانکار ارز گزارشگری اول", "نرخ تبدیل ارز گزارشگری اول", "گردش بدهکار ارز گزارشگری دوم", "گردش بستانکار ارز گزارشگری دوم", "نرخ تبدیل ارز گزارشگری دوم", "شرح قلم سندحسابداری", "شماره پیگیری", "تاریخ پیگیری", "مقدار"
+
+**Instructions:**
+1. Analyze the user's question and extract key terms or phrases.
+2. Compare these terms against the concepts listed for each module:
+   - Logistics-related terms include those tied to physical goods (e.g., 'کالا', 'مقدار'), warehouses (e.g., 'انبار'), inventory (e.g., 'موجودی'), or logistics documents (e.g., 'سند انبار').
+   - Financial-related terms include those tied to accounts (e.g., 'حساب', 'معین'), transactions (e.g., 'گردش', 'بدهکار', 'بستانکار'), balances (e.g., 'مانده'), currencies (e.g., 'ارز'), or financial documents (e.g., 'سند حسابداری').
+3. Consider the context and primary focus of the question. If terms appear in both modules (e.g., 'شماره سند'), use surrounding words or the question’s intent to disambiguate.
+4. Provide a concise reasoning paragraph explaining your decision, referencing specific terms and their alignment with module concepts.
+
+user question: {user_question}
+
+Output Format:
+{{
+  "reasoning": "Your concise one-paragraph reasoning here",
+  "detected_module": "The detected module is either 'logistics' or 'financial'"
+}}
+"""
+
+
+# SQL_MODULE_DETECTION = """
+# Your task is to determine whether the user's question is related to data retrieval from a LOGISTICS database or a FINANCIAL database.
+
+# # TASK DEFINITION
+# - You will analyze the user's question and determine if it falls under the Logistics or Financial domain
+# - Respond with ONLY ONE word: either "logistics" or "financial" (case-sensitive)
+# - If the question is ambiguous but leans toward one module, choose the one with stronger relevance
+# - If the question could equally apply to both modules, default to "logistics"
+
+# # LOGISTICS MODULE CHARACTERISTICS
+# The Logistics module manages inventory, warehouse operations, goods movement, stock valuation, and physical product flows. Key concepts include:
+
+# 1. INVENTORY MANAGEMENT:
+#    - Stock levels, warehouse locations, inventory transfers
+#    - Product information, SKUs, and item details
+#    - Stock counts, physical inventory, reconciliation
+
+# 2. WAREHOUSE OPERATIONS:
+#    - Receiving goods, putaway processes, picking operations
+#    - Warehouse organization, storage locations, bin management
+#    - Storage capacity, space utilization, warehouse throughput
+
+# 3. DOCUMENT TYPES:
+#    - Purchase receipts, goods receipts, stock transfers
+#    - Inventory adjustments, disposal documents
+#    - Production receipts, consumption documents
+
+# 4. PRODUCT ATTRIBUTES:
+#    - Units of measure, dimensions, weight
+#    - Product categories, classifications
+#    - Storage requirements, shelf life
+
+# 5. KEY LOGISTICS ENTITIES:
+#    - انبار (Warehouse), سند انبار (Warehouse Document), کالا (Product)
+#    - مرکز نگهداری (Storage Center), قلم سند انبار (Warehouse Document Item)
+#    - الگوی سند انبار (Warehouse Document Template), طبقه حساب کالا (Product Account Category)
+
+# # FINANCIAL MODULE CHARACTERISTICS
+# The Financial module manages accounting, financial transactions, general ledger, and monetary flows. Key concepts include:
+
+# 1. ACCOUNTING OPERATIONS:
+#    - General ledger entries, journal entries
+#    - Debits and credits, account balances
+#    - Financial periods, fiscal years
+
+# 2. FINANCIAL REPORTING:
+#    - Balance sheets, income statements
+#    - Trial balances, account reconciliations
+#    - Financial ratios, performance metrics
+
+# 3. MONETARY TRANSACTIONS:
+#    - Payments, receipts, transfers 
+#    - Currency conversion, exchange rates
+#    - Banking operations, cash management
+
+# 4. ACCOUNT STRUCTURES:
+#    - Chart of accounts, account hierarchies
+#    - Cost centers, profit centers
+#    - Projects, departments, business units
+
+# 5. KEY FINANCIAL ENTITIES:
+#    - گردش و مانده حساب ها (Account Transactions and Balances)
+#    - اقلام سند حسابداری (Accounting Document Items)
+#    - حساب معین (Subsidiary Ledger), حساب کل (General Ledger)
+
+# # LINGUISTIC INDICATORS
+# Look for these terms and phrases that strongly indicate which module is being referenced:
+
+# ## LOGISTICS INDICATORS:
+# - Inventory, stock, warehouse, storage, products, goods
+# - Units, quantities, measurements, dimensions
+# - Receipts, transfers, adjustments of physical goods
+# - انبار, کالا, سند انبار, موجودی, مرکز نگهداری, واحد سنجش
+# - Terms like: receive, ship, store, stock, transfer, pick, pack
+
+# ## FINANCIAL INDICATORS:
+# - Accounting, bookkeeping, ledger, journal, transaction
+# - Debits, credits, balances, reconciliation
+# - Financial periods, fiscal years, closing
+# - حساب, سند حسابداری, بدهکار, بستانکار, تراز, دفتر کل
+# - Terms like: record, post, reconcile, balance, account
+
+# # EXAMPLES
+# 1. "حداکثر مصرف پروژه روزانه گریس، تو شعبه شیراز، از ابتدای سال چقدر بوده؟" → logistics
+# 2. "موجودی کل ماکروفر 42 لیتری GPlus مدل A00 در ابتدای خرداد ماه چقدر بوده؟" → logistics
+# 3. "Show me the general ledger entries for account 1100" → financial
+# 4. "تعداد کل اسناد باطل شده مرکز نگهداری سیرجان، در تیر ماه چقدر بوده؟" → financial
+# 5. "کل مقدار ارسال به تولید کالای پنی سیلین از اول بهار چقدر بوده؟" → logistics
+# 6. "تحویل گیرنده "لپ تاپ 17 اینچ ASUS" دیروز از انبار "دارایی های ثابت سیرجان" کی بوده؟" → financial
+
+# user question: {user_question}
+
+# Module:
+# """

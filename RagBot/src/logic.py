@@ -12,13 +12,15 @@ from langchain_community.chat_models import ChatOllama
 from .prompts import (
     RAG_SYSTEM_PROMPT,
     UTTERANCE_PARAPHRASER_PROMPT,
-    SQL_CONVERTER
+    SQL_CONVERTER,
+    SQL_MODULE_DETECTION
 )
 from .retriever import Retriever
 from .config import config
 from .cache import Cache
 from .logs import simple_logger
 from .utils import json_cleaning, json_text_cleaning
+from .business_objects import FINANCIAL_BO, LOGISTICS_BO
 
 SEED = 44
 torch.manual_seed(SEED)
@@ -38,7 +40,8 @@ async def get_chat_response(prompt: str, model_name: str) -> str:
         temperature=config["ollama"]["temperature"],
         keep_alive=config["ollama"]["keep_alive"],
         seed=SEED,
-        base_url="http://ollama:11434",
+        # base_url="http://ollama:11434",
+        base_url="http://127.0.0.1:8980"
     )
     messages = [SystemMessage(content=prompt)]
     response = await llm.ainvoke(messages)  # type: ignore[arg-type]
@@ -124,13 +127,24 @@ async def prepare_final_context(query: str) -> str:
     return context.strip()
 
 
-async def sql_responder(query: str, table_schemas: List[str]) -> str:
-    schema = "\n\n".join(table_schemas)
-    prompt = SQL_CONVERTER.format(schema=schema, query=query)
-    response = await get_chat_response(prompt, config["ollama"]["sql_model_name"])
-    return response
+async def sql_responder_(query: str):
+    module_detection_prompt = SQL_MODULE_DETECTION.format(user_question=query)
+    modul_detection_response_raw = await get_chat_response(module_detection_prompt, config["ollama"]["sql_model_name"])
+    modul_detection_json_response = json_text_cleaning(modul_detection_response_raw, "detected_module")
+    modul_detection_response = modul_detection_json_response["detected_module"]
 
+    if modul_detection_response == "financial":
+        bo_prompt = SQL_CONVERTER.format(schema=FINANCIAL_BO, query=query)
+    else:
+        bo_prompt = SQL_CONVERTER.format(schema=LOGISTICS_BO, query=query)
+    raw_json_response = await get_chat_response(bo_prompt, config["ollama"]["sql_model_name"])
+    json_response = json_text_cleaning(raw_json_response)
+    response = json_response["sql_query"]
+    if not response:
+        response = "در حال حاضر نمیتوانم به این سوال پاسخ دهم"
+    return modul_detection_response, response
 
+    
 async def chat_responder_(
     history: List[tuple[str, str]],
     user_utterance: str,

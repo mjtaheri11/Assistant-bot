@@ -1,60 +1,28 @@
 import json
 import logging
 import logging.handlers
-import uuid
 import re
+import uuid
 from json.decoder import JSONDecodeError
 
 import streamlit as st
 import yaml
 from pythonjsonlogger import jsonlogger
 
-# def init_logger():
-#     logger = logging.getLogger(__name__)
-#     log_file = config_["logging"]["file"]
-#     log_format = "%(asctime)s - %(levelname)s - %(message)s"
-#     file_handler = logging.handlers.RotatingFileHandler(
-#         log_file, maxBytes=100 * 1024 * 1024, backupCount=2, encoding="utf-8"
-#     )
-#     formatter = jsonlogger.JsonFormatter(log_format, timestamp=True)
-#     file_handler.setFormatter(formatter)
-#     logger.addHandler(file_handler)
-#     logger.setLevel(logging.DEBUG)
 
-#     return logger
-
-def json_text_cleaning(text, key="answer"):
-    if key == "answer":
-        # match_answer = re.search(rf'"{key}"\s*:\s*"((?:[^"\\]|\\.)*)"\s*(?:,|}})', text, re.DOTALL)
-
-        # Adjusted regex to allow for a single closing brace '}'
-        match_answer = re.search(rf'"{key}"\s*:\s*(.*?)(?=,\s*"(?:reasoning|[^"]+)"\s*:|}}$)', text, re.DOTALL)
-        
-        
-    elif key == "rephrased_question":
-        match_answer = re.search(rf'"{key}"\s*:\s*(.*?)(?=,\s*"(?:reasoning|[^"]+)"\s*:|}}$)', text, re.DOTALL)
-
-    if match_answer:
-        answer_value = match_answer.group(1)
-        answer_value = answer_value.strip('"')
-        # Unescape any escaped quotes and preserve newlines
-        answer_value = answer_value.replace('\\"', '"').replace('\\n', '\n')
-        # Properly format numbered lists while preserving newlines
-        answer_value = re.sub(r'(\n|^)(\d+)[\.:]?\s*', r'\1\2. ', answer_value)
-        # Replace asterisks used for bullet points with actual bullet points, preserving newlines
-        answer_value = re.sub(r'(\n|^)\s*\*\s*', r'\1• ', answer_value)
-        # Ensure there's a newline before each bullet point (except the first one)
-        answer_value = re.sub(r'([^\n])(\n• )', r'\1\n\n• ', answer_value)
-        # Remove any extra newlines
-        answer_value = re.sub(r'\n{3,}', '\n\n', answer_value)
-    else:
-        answer_value = ""
+def json_text_cleaning(text, answer_key="sql_query"):
+    # Extract reasoning value
+    reasoning_pattern = r'"reasoning"\s*:\s*"((?:[^"\\]|\\.)*)"'
+    match_reasoning = re.search(reasoning_pattern, text, re.DOTALL)
     
-    match_reasoning = re.search(r'"reasoning"\s*:\s*"((?:[^"\\]|\\.)*)"', text, re.DOTALL)
+    # If reasoning is not in quotes, try to match with a different pattern
+    if not match_reasoning:
+        reasoning_pattern = rf'"reasoning"\s*:\s*"?(.*?)"?\s*(?=,\s*"{answer_key}")'
+        match_reasoning = re.search(reasoning_pattern, text, re.DOTALL)
+    
     if match_reasoning:
         reasoning_value = match_reasoning.group(1)
-        reasoning_value = reasoning_value.strip('"')
-        # Unescape any escaped quotes within the value
+        # Unescape any escaped quotes and preserve newlines
         reasoning_value = reasoning_value.replace('\\"', '"').replace('\\n', '\n')
         # Properly format numbered lists
         reasoning_value = re.sub(r'\n(\d+)[\.:]?\s*', r'\n\1. ', reasoning_value)
@@ -63,8 +31,72 @@ def json_text_cleaning(text, key="answer"):
     else:
         reasoning_value = ""
     
-    json_output = {key: str(answer_value), "reasoning": str(reasoning_value)}
+    # Extract sql_query value
+    answer_pattern = rf'"{answer_key}"\s*:\s*"((?:[^"\\]|\\.)*)"'
+    match_answer = re.search(answer_pattern, text, re.DOTALL)
+    
+    # If sql_query is not in quotes, try to match with a different pattern
+    if not match_answer:
+        answer_pattern = rf'"{answer_key}"\s*:\s*"?(.*?)"?\s*(?=\s*[,}}]*)'
+        match_answer = re.search(answer_pattern, text, re.DOTALL)
+    
+    if match_answer:
+        answer_value = match_answer.group(1)
+        # Unescape any escaped quotes and preserve newlines
+        answer_value = answer_value.replace('\\"', '"').replace('\\n', '\n')
+    else:
+        answer_value = ""
+    
+    # Create the output dictionary with both keys
+    json_output = {
+        "reasoning": str(reasoning_value),
+        answer_key: str(answer_value)
+    }
+    
     return json_output
+
+
+# def json_text_cleaning(text, key="answer"):
+#     if key == "answer":
+#         # match_answer = re.search(rf'"{key}"\s*:\s*"((?:[^"\\]|\\.)*)"\s*(?:,|}})', text, re.DOTALL)
+
+#         # Adjusted regex to allow for a single closing brace '}'
+#         match_answer = re.search(rf'"reasoning"\s*:\s*(.*?)(?=,\s*"(?:{key}|[^"]+)"\s*:|}}$)', text, re.DOTALL)        
+        
+#     elif key == "sql_query":
+#         match_answer = re.search(rf'"reasoning"\s*:\s*(.*?)(?=,\s*"(?:{key}|[^"]+)"\s*:|}}$)', text, re.DOTALL)
+
+#     if match_answer:
+#         answer_value = match_answer.group(1)
+#         answer_value = answer_value.strip('"')
+#         # Unescape any escaped quotes and preserve newlines
+#         answer_value = answer_value.replace('\\"', '"').replace('\\n', '\n')
+#         # Properly format numbered lists while preserving newlines
+#         answer_value = re.sub(r'(\n|^)(\d+)[\.:]?\s*', r'\1\2. ', answer_value)
+#         # Replace asterisks used for bullet points with actual bullet points, preserving newlines
+#         answer_value = re.sub(r'(\n|^)\s*\*\s*', r'\1• ', answer_value)
+#         # Ensure there's a newline before each bullet point (except the first one)
+#         answer_value = re.sub(r'([^\n])(\n• )', r'\1\n\n• ', answer_value)
+#         # Remove any extra newlines
+#         answer_value = re.sub(r'\n{3,}', '\n\n', answer_value)
+#     else:
+#         answer_value = ""
+    
+#     match_reasoning = re.search(r'"reasoning"\s*:\s*"((?:[^"\\]|\\.)*)"', text, re.DOTALL)
+#     if match_reasoning:
+#         reasoning_value = match_reasoning.group(1)
+#         reasoning_value = reasoning_value.strip('"')
+#         # Unescape any escaped quotes within the value
+#         reasoning_value = reasoning_value.replace('\\"', '"').replace('\\n', '\n')
+#         # Properly format numbered lists
+#         reasoning_value = re.sub(r'\n(\d+)[\.:]?\s*', r'\n\1. ', reasoning_value)
+#         # Replace asterisks used for bullet points with actual bullet points
+#         reasoning_value = re.sub(r'^\s*\*\s*', '• ', reasoning_value, flags=re.MULTILINE)
+#     else:
+#         reasoning_value = ""
+    
+#     json_output = {key: str(answer_value), "reasoning": str(reasoning_value)}
+#     return json_output
 
 
 def json_cleaning(input_string):    

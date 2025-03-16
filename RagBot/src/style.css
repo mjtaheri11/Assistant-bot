@@ -18,7 +18,7 @@ input {
 [data-testid="stChatMessageContent"] ol,
 [data-testid="stChatMessageContent"] ul{
     text-align: start;
-    direction: rtl;
+    direction: ltr;
 }
 
 

@@ -63,6 +63,22 @@ def chat_request(session_id: str, query: str, api_url: str = BASE_URL):
         return {"status": "error", "query": "", "response": "", "message_id": ""}
 
 
+def sql_request(query: str, api_url: str = BASE_URL):
+    # Define the request data
+    sql_data = {
+        "query": query,
+       }
+
+    response = requests.post(f"{api_url}/sql", json=sql_data) # , timeout=11
+
+    # Handle the different response status codes
+    json_response = response.json()
+    if response.status_code == 200:
+        return {"status": "success", "query": query, "response": json_response["response"], "message_id": ""}
+    else:
+        return {"status": "error", "query": "", "response": "", "message_id": ""}
+
+
 def request_history(session_id, api_url: str = BASE_URL):
     payload = {
         "page_index": 1,
@@ -203,8 +219,8 @@ def main():
                     f"user said: {user_input}",
                     session_id=st.session_state.get("session_id"),
                 )
-                chat_response = chat_request(
-                    st.session_state.get("session_id"), user_input, 
+                chat_response = sql_request(
+                    user_input, 
                 )
                 message_id, response, query = (
                     chat_response["message_id"],

@@ -38,7 +38,7 @@ api:
   port: 8686
 
 postgres:
-  address: postgres # 172.20.0.6 # 192.168.208.2
+  address: 127.0.0.1 # postgres # 172.20.0.6 # 192.168.208.2
   database: chatbot
   max_user_input_character_length: 200
   history_length: 3
@@ -91,7 +91,7 @@ ollama:
   # model_name: qwen2:72b-instruct-q4_K_M
   # model_name: gemma2:9b-instruct-fp16
   # model_name: qwq:32b-preview-q4_K_M
-  sql_model_name: qwen2.5-coder:32b-instruct-q5_K_M
+  sql_model_name: qwen2.5-coder:32b-instruct-q6_K
   model_name: aya-expanse:32b-q4_K_M
   # model_name: llama3.3:70b-instruct-q3_K_M
   # model_name: gemma2:27b-instruct-q8_0
