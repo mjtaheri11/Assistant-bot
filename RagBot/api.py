@@ -258,6 +258,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
         #     tenant_name = tenant_name_user_code_dict["tenant_name"]
         # if not user_code:
         #     user_code = tenant_name_user_code_dict["user_code"]
+
         validate_query(chat_request.query)
         simple_logger(f"Received chat request", session_id)
         history = await postgres.get_history(
