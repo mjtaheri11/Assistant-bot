@@ -41,15 +41,12 @@ class SessionResponse(BaseModel):
 class ChatRequest(BaseModel):
     query: str
     session_id: Optional[str] = None
-<<<<<<< HEAD
+    tenant_name: Optional[str] = None
+    user_code: Optional[str] = None
     database_index: Optional[str] = None
     answer_type: Optional[str] = "concise"
     does_evaluate: Optional[bool] = False
     use_cache: Optional[bool] = True
-=======
-    tenant_name: Optional[str] = None
-    user_code: Optional[str] = None
->>>>>>> 88930cf (user_code and tenant_name added to the logs of the project (#10))
 
 
 class ChatResponse(BaseModel):
@@ -58,11 +55,14 @@ class ChatResponse(BaseModel):
     query: str
     is_sql: bool = False
 
+class CreateSessionRequest(BaseModel):
+    tenant_name: str = ""
+    user_code: str = ""
 
+    
 class SQLRequest(BaseModel):
     table_schemas: List[str]  # Accept a list of schemas
     query: str
-    
 
 class SQLResponse(BaseModel):
     response: str
@@ -231,7 +231,6 @@ async def get_history(
         # TODO: add a proper logger to this function
         raise HTTPException(status_code=500, detail="Unhandled error, Please report")
 
-
 @app.post(
     "/session/create",
     response_model=SessionResponse,
@@ -240,10 +239,32 @@ async def get_history(
         500: {"description": "Unhandled error that should be reported"},
     },
 )
-async def create_session():
+async def create_session(create_session_request: Optional[CreateSessionRequest] = None):
+    start_time = time.time()
     try:
-        postgres = Postgres()
+        postgres = Postgres()  # Assuming Postgres is your DB class
         session_id = await postgres.create_session()
+        
+        if create_session_request is None:
+            tenant_name = ""
+            user_code = ""
+        else:
+            tenant_name = create_session_request.tenant_name
+            user_code = create_session_request.user_code
+        elapsed_time = time.time() - start_time
+        non_generative_agent_logger(
+            session_id=session_id.get("session_id"),
+            tenant_name=tenant_name,
+            user_code=user_code,
+            agent="session_creator",
+            message="session created",
+            input_dict={
+                "tenant_name": tenant_name,
+                "user_code": user_code,
+            },
+            output_dict={"response": session_id.get("session_id")},
+            elapsed_time=elapsed_time,
+        )
         return session_id
     except Exception as e:
         traceback.print_exc()
@@ -277,6 +298,12 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
         session_id = get_session_id(request, chat_request)
         user_code = get_user_code(chat_request)
         tenant_name = get_tenant_name(chat_request)
+        # if not tenant_name:
+        #     tenant_name_user_code_dict = postgres.get_tenant_name(session_id)
+        #     tenant_name = tenant_name_user_code_dict["tenant_name"]
+        # if not user_code:
+        #     user_code = tenant_name_user_code_dict["user_code"]
+
         validate_query(chat_request.query)
         simple_logger(f"Received chat request", session_id)
         history = await postgres.get_history(
@@ -529,7 +556,7 @@ def log_feedback_request(session_id):
     simple_logger("Received feedback request", session_id)
 
 
-def log_feedback_response(session_id, feedback_request, message_fields, start_time):
+def log_feedback_response(session_id, tenant_name, user_code, feedback_request, message_fields, start_time):
     elapsed_time = time.time() - start_time
     REQUEST_LATENCY.labels(endpoint="/feedback").observe(elapsed_time)
 
@@ -549,7 +576,7 @@ def log_feedback_response(session_id, feedback_request, message_fields, start_ti
     )
 
 
-def handle_unexpected_error(exception, session_id, feedback_request, start_time):
+def handle_unexpected_error(exception, tenant_name, user_code, session_id, feedback_request, start_time):
     elapsed_time = time.time() - start_time
     REQUEST_LATENCY.labels(endpoint="/feedback").observe(elapsed_time)
 

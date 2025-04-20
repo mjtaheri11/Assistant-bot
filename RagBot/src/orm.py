@@ -175,7 +175,7 @@ class Postgres:
             OFFSET $1
             LIMIT $2;
         """
-
+        
         results = await self._execute_query(
             sql_latest_unique_sessions_with_paraphrase,
             fetch_results=True,
@@ -220,3 +220,17 @@ class Postgres:
             insert_values=(feedback_type, message_id),
         )        
         return bool(result)
+
+    async def get_user_code_tenant_name(self, session_id):
+        sql_get_user_code = "SELECT user_code, tenant_name FROM public.session where session_id = $1"
+        result = await self._execute_query(
+            update_query,
+            fetch_results=True,
+            insert_values=(feedback_type, message_id),
+        )
+        user_code, tenant_name = (result[0] if result[0] != None else "", result[1] if result[1] != None else "")
+        {"user_code": str(user_code), "tenant_name": str(tenant_name)}
+        import pdb
+        pdb.set_trace()
+        return 
+        
