@@ -45,7 +45,7 @@ async def get_chat_response(prompt: str, model_name: str) -> str:
         seed=SEED,
         # base_url="http://ollama:11434",
         # base_url="http://127.0.0.1:8980"
-        base_url="http://127.0.0.1:8092/ollama"
+        base_url="http://185.13.230.222:8092/ollama"
     )
     messages = [SystemMessage(content=prompt)]
     response = await llm.ainvoke(messages)  # type: ignore[arg-type]

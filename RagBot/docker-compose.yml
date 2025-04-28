@@ -11,10 +11,11 @@ services:
       - ../VectorDB:/app/VectorDB
       - ../db-cache:/app/db-cache
       - ../saved_models:/app/saved_models
+      - ../RaaS_vectorDB:/app/RaaS_vectorDB
       - log_data:/var/log  # Shared volume for log files
     environment:
       - OLLAMA_HOST=${API_OLLAMA_HOST}
-      # - CUDA_VISIBLE_DEVICES=0
+      - CUDA_VISIBLE_DEVICES=3
 
     restart: always
     user: root
