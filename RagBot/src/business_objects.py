@@ -1218,7 +1218,108 @@
 # """
 
 LOGISTICS_BO = """
-    Voucher Specification:
+    partaccountcategory:
+    - Title: طبقه حساب کالا
+    - Attributes (all Str):
+      - code: کد طبقه حساب کالا
+      - title: عنوان طبقه حساب کالا
+      - pricing_method: روش قیمت گذاری
+    - Relations: None
+    
+    units:
+    - Title: واحد سنجش
+    - Attributes:
+      - Str: title: عنوان واحد سنجش
+      - Int64: dimension: بعد
+    - Relations: None
+
+    storeinventory:
+    - Title: گزارش مبلغی انبار
+    - Parameters:
+      - logistics_storeinventory_p1 (Int64): انبار
+      - logistics_storeinventory_p2 (Date): تا تاریخ
+    - Attributes:
+      - Int64:
+        - part_id: شناسه کالا
+        - remaining: موجودی کالا
+      - Dec:
+        - fee: فی
+        - total_amount: موجودی مبلغی کالا
+      - Date:
+        - last_pricing_date: تاریخ آخرین قیمت گذاری
+      - All other attributes are Str:
+        - part_title: عنوان کالا
+        - part_code: کد کالا
+        - store_title: عنوان انبار
+        - store_code: کد انبار
+        - unit_title: واحد سنجش اصلی
+    - Relations: None
+
+    invitemprice:
+    - Title: قلم قیمت
+    - Parameters:
+      - logistics_invitemprice_p1 (Int64): حوزه قیمت‌گذاری
+    - Attributes:
+      - Dec Type:
+        - fee: فی
+        - price: مبلغ
+        - major_fee: فی به واحد اصلی
+        - major_price: مبلغ به واحد اصلی
+      - Date Type:
+        - date: تاریخ
+      - All other attributes are Str:
+        - price_type: نوع قیمت
+        - currency_title: عنوان ارز
+        - acc_voucher_number: شماره سند حسابداری
+    - Relations:
+      - invvoucheritem: قلم سند انبار (foreign key inventory_voucher_item_id to invvoucheritem.id)
+
+    plants:
+    - Title: مرکز نگهداری
+    - Attributes (all Str):
+      - code: کد مرکز نگهداری
+      - title: عنوان مرکز نگهداری
+      - branch_title: عنوان شعبه
+      - state: وضعیت
+    - Relations: None
+
+    storagetype:
+    - Title: نوع انبار
+    - Attributes (all Str):
+      - code: کد نوع انبار
+      - title: عنوان نوع انبار
+    - Relations: None
+    
+    parts:
+    - Title: کالا
+    - Attributes (all Str):
+      - code: کد کالا
+      - title: عنوان کالا
+      - major_unit_title: واحد سنجش اصلی
+      - secondary_unit_title: واحد سنجش دوم
+      - part_account_category_title: طبقه حساب کالا
+      - part_type: نوع کالا
+      - part_usage: نوع کارکرد کالا (موجود، قابل فروش و ...)
+    - Relations:
+      - partaltunit: واحد فرعی کالا (foreign key id to partaltunit.part_id)
+      - storagetype: نوع انبار کالا (foreign key id to partstoragetype.part_id)
+
+    partstoragetype:
+    - Title: نوع انبار کالا
+    - Attributes: None
+    - Relations:
+      - storagetype: نوع انبار (foreign key storage_type_id to storagetype.id)
+
+    partaltunit:
+    - Title: واحد فرعی کالا
+    - Attributes:
+      - Str:
+        - title: عنوان واحد فرعی کالا
+        - major_unit_title: واحد سنجش اصلی
+      - Float64: coeff: ضریب
+    - Relations: None
+    
+    voucherspecification:
     - Title: الگوی سند انبار
     - Attributes (all Str):
       - code: کد الگو
@@ -1230,17 +1331,79 @@ LOGISTICS_BO = """
       - counter_part_type: نوع طرف مقابل
     - Relations: None
 
-    Store:
+    store:
     - Title: انبار
     - Attributes (all Str):
       - code: کد انبار
       - title: عنوان انبار
       - storage_type_title: عنوان نوع انبار
-      - state: استان
+      - state: وضعیت
     - Relations:
       - plants: مرکز نگهداری (foreign key plant_id to plants.id)
 
-    Inventory Voucher:
+    
+    invvoucheritem:
+    - Title: قلم سند انبار
+    - Attributes:
+      - Dec Type:
+        - quantity: مقدار
+        - major_quantity: مقدار به واحد اصلی
+        - second_unit_quantity: مقدار به واحد دوم
+        - remained_major_quantity: مانده استفاده نشده به واحد اصلی
+        - remained_second_unit_quantity: مانده استفاده نشده به واحد دوم
+      - Date Type:
+        - waybill_date: تاریخ بارنامه
+      - All other attributes are Str:
+        - row_number: شماره ردیف
+        - sl_title: معین
+        - extra_field1: فیلد اضافه 1
+        - extra_field2: فیلد اضافه 2
+        - extra_field3: فیلد اضافه 3
+        - extra_field4: فیلد اضافه 4
+        - extra_field5: فیلد اضافه 5
+        - supplier_title: تامین کننده
+        - contractor_title: پیمانکار
+        - cost_center_title: مرکز هزینه
+        - project_title: پروژه
+        - customer_title: مشتری
+        - carrier_title: موسسه حمل
+        - consignment_party_title: طرف حساب امانی
+        - employee_title: کارمند
+        - sales_person_title: کارمند فروش
+        - purchase_order_no: شماره سفارش خرید
+        - purchase_invoice_no: شماره فاکتور خرید
+        - deliver_to: تحویل گیرنده
+        - cottage_no: شماره کوتاژ
+        - customs_green_sheet: شماره برگ سبز
+        - asn_no: ASN NO
+        - sales_order_no: شماره سفارش فروش
+        - sales_invoice_no: شماره فاکتور خرید
+        - sale_organization: مرکز فروش
+        - shopping_store: فروشگاه
+        - delivery_person: تحویل دهنده
+        - weighbridge_no: شماره برگه باسکول
+        - production_order_no: شماره دستور تولید
+        - production_plan_no: شماره سفارش تولید
+        - production_operation_no: شماره عملیات تولید
+        - production_shift: شیفت تولید
+        - production_date: تاریخ تولید
+        - qc_inspection_no: شماره بازرسی کیفیت
+        - qc_check_list_no: شماره چک لیست
+        - qc_lab_no: شماره آزمایشگاه
+        - conditional_approval: تایید ارفاقی
+        - inspection_result: نتیجه بازرسی
+        - coa_no: شماره COA
+        - transporter_name: نام راننده
+        - vehicle_no: نام خودرو
+        - license_plate_no: شماره پلاک
+        - waybill_no: شماره بارنامه
+        - transporter_phone_no: تلفن راننده
+    - Relations:
+      - invvoucher: سند انبار (foreign key inventory_voucher_id to invvoucher.id)
+      - parts: کالا (foreign key part_id to parts.id)
+      - units: واحد سنجش (foreign key unit_id to units.id)
+
+    invvoucher:
     - Title: سند انبار
     - Parameters:
       - logistics_invvoucher_p1 (Date): از تاریخ سند انبار
@@ -1298,171 +1461,8 @@ LOGISTICS_BO = """
         - waybill_no: شماره بارنامه
         - transporter_phone_no: تلفن راننده
     - Relations:
-      - ivs: voucher specification (foreign key voucher_specification_id to voucherspecification.id)
-      - store: store (foreign key store_id to store.id)
-      - counterstore: store (foreign key counter_part_store_id to store.id)
-
-    Part Account Category:
-    - Title: طبقه حساب کالا
-    - Attributes (all Str):
-      - code: کد طبقه حساب کالا
-      - title: عنوان طبقه حساب کالا
-      - pricing_method: روش قیمت گذاری
-    - Relations: None
-
-    Inventory Voucher Item:
-    - Title: قلم سند انبار
-    - Attributes:
-      - Dec Type:
-        - quantity: مقدار
-        - major_quantity: مقدار به واحد اصلی
-        - second_unit_quantity: مقدار به واحد دوم
-        - remained_major_quantity: مانده استفاده نشده به واحد اصلی
-        - remained_second_unit_quantity: مانده استفاده نشده به واحد دوم
-      - Date Type:
-        - waybill_date: تاریخ بارنامه
-      - All other attributes are Str:
-        - row_number: شماره ردیف
-        - sl_title: معین
-        - extra_field1: فیلد اضافه 1
-        - extra_field2: فیلد اضافه 2
-        - extra_field3: فیلد اضافه 3
-        - extra_field4: فیلد اضافه 4
-        - extra_field5: فیلد اضافه 5
-        - supplier_title: تامین کننده
-        - contractor_title: پیمانکار
-        - cost_center_title: مرکز هزینه
-        - project_title: پروژه
-        - customer_title: مشتری
-        - carrier_title: موسسه حمل
-        - consignment_party_title: طرف حساب امانی
-        - employee_title: کارمند
-        - sales_person_title: کارمند فروش
-        - purchase_order_no: شماره سفارش خرید
-        - purchase_invoice_no: شماره فاکتور خرید
-        - deliver_to: تحویل گیرنده
-        - cottage_no: شماره کوتاژ
-        - customs_green_sheet: شماره برگ سبز
-        - asn_no: ASN NO
-        - sales_order_no: شماره سفارش فروش
-        - sales_invoice_no: شماره فاکتور خرید
-        - sale_organization: مرکز فروش
-        - shopping_store: فروشگاه
-        - delivery_person: تحویل دهنده
-        - weighbridge_no: شماره برگه باسکول
-        - production_order_no: شماره دستور تولید
-        - production_plan_no: شماره سفارش تولید
-        - production_operation_no: شماره عملیات تولید
-        - production_shift: شیفت تولید
-        - production_date: تاریخ تولید
-        - qc_inspection_no: شماره بازرسی کیفیت
-        - qc_check_list_no: شماره چک لیست
-        - qc_lab_no: شماره آزمایشگاه
-        - conditional_approval: تایید ارفاقی
-        - inspection_result: نتیجه بازرسی
-        - coa_no: شماره COA
-        - transporter_name: نام راننده
-        - vehicle_no: نام خودرو
-        - license_plate_no: شماره پلاک
-        - waybill_no: شماره بارنامه
-        - transporter_phone_no: تلفن راننده
-    - Relations:
-      - iv: inventory voucher (foreign key inventory_voucher_id to invvoucher.id)
-      - part: parts (foreign key part_id to parts.id)
-      - unit: units (foreign key unit_id to units.id)
-
-    Item Price:
-    - Title: قلم قیمت
-    - Parameters:
-      - logistics_invitemprice_p1 (Int64): حوزه قیمت‌گذاری
-    - Attributes:
-      - Dec Type:
-        - fee: فی
-        - price: مبلغ
-        - major_fee: فی به واحد اصلی
-        - major_price: مبلغ به واحد اصلی
-      - Date Type:
-        - date: تاریخ
-      - All other attributes are Str:
-        - price_type: نوع قیمت
-        - currency_title: عنوان ارز
-        - acc_voucher_number: شماره سند حسابداری
-    - Relations:
-      - ivi: inventory voucher item (foreign key inventory_voucher_item_id to invvoucheritem.id)
-
-    Plants:
-    - Title: مرکز نگهداری
-    - Attributes (all Str):
-      - code: کد مرکز نگهداری
-      - title: عنوان مرکز نگهداری
-      - branch_title: عنوان شعبه
-      - state: استان
-    - Relations: None
-
-    Storage Type:
-    - Title: نوع انبار
-    - Attributes (all Str):
-      - code: کد نوع انبار
-      - title: عنوان نوع انبار
-    - Relations: None
-
-    Part Storage Type:
-    - Title: نوع انبار کالا
-    - Attributes: None
-    - Relations:
-      - storagetype: نوع انبار (foreign key storage_type_id to storagetype.id)
-
-    Units:
-    - Title: واحد سنجش
-    - Attributes:
-      - Str: title: عنوان واحد سنجش
-      - Int64: dimension: بعد
-    - Relations: None
-
-    Part Alternative Unit:
-    - Title: واحد فرعی کالا
-    - Attributes:
-      - Str:
-        - title: عنوان واحد فرعی کالا
-        - major_unit_title: واحد سنجش اصلی
-      - Float64: coeff: ضریب
-    - Relations: None
-
-    Parts:
-    - Title: کالا
-    - Attributes (all Str):
-      - code: کد کالا
-      - title: عنوان کالا
-      - major_unit_title: واحد سنجش اصلی
-      - secondary_unit_title: واحد سنجش دوم
-      - part_account_category_title: طبقه حساب کالا
-      - part_type: نوع کالا
-      - part_usage: نوع کارکرد کالا
-    - Relations:
-      - altunit: واحد فرعی کالا (foreign key id to partaltunit.part_id)
-      - storagetype: نوع انبار کالا (foreign key id to partstoragetype.part_id)
-
-    Store Inventory:
-    - Title: گزارش مبلغی انبار
-    - Parameters:
-      - logistics_storeinventory_p1 (Int64): انبار
-      - logistics_storeinventory_p2 (Date): تا تاریخ
-    - Attributes:
-      - Int64:
-        - part_id: شناسه کالا
-        - remaining: موجودی کالا
-      - Dec:
-        - fee: فی
-        - total_amount: موجودی مبلغی کالا
-      - Date:
-        - last_pricing_date: تاریخ آخرین قیمت گذاری
-      - All other attributes are Str:
-        - part_title: عنوان کالا
-        - part_code: کد کالا
-        - store_title: عنوان انبار
-        - store_code: کد انبار
-        - unit_title: واحد سنجش اصلی
-    - Relations: None
+      - voucherspecification: الگوی سند انبار (foreign key voucher_specification_id to voucherspecification.id)
+      - store: انبار (foreign key store_id to store.id)
     """
 
 

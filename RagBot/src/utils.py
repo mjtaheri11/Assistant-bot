@@ -10,7 +10,7 @@ import yaml
 from pythonjsonlogger import jsonlogger
 
 
-def json_text_cleaning(text, answer_key="sql_query"):
+def json_text_cleaning(text, answer_key="query"):
     # Extract reasoning value
     reasoning_pattern = r'"reasoning"\s*:\s*"((?:[^"\\]|\\.)*)"'
     match_reasoning = re.search(reasoning_pattern, text, re.DOTALL)
@@ -100,10 +100,23 @@ def json_text_cleaning(text, answer_key="sql_query"):
 
 
 def json_cleaning(input_string):    
-    cleaned_string = input_string.replace("json", "").replace("```", "").strip() #.replace("\n\n", "\n").strip()
+    cleaned_string = re.sub(r'<think>.*?</think>', '', input_string, flags=re.DOTALL)
     # cleaned_string = re.sub(r'\n+', '\n', cleaned_string)
+    cleaned_string = cleaned_string.replace("json", "").replace("```", "").strip() #.replace("\n\n", "\n").strip()
     return cleaned_string
 
+def remove_think_tags(text):
+    start_tag = "<think>"
+    end_tag = "</think>"
+    
+    # Find start and end indices
+    start_idx = text.find(start_tag)
+    end_idx = text.find(end_tag) + len(end_tag)
+    
+    # If both tags are found, remove the content between them including tags
+    if start_idx != -1 and end_idx != -1:
+        return text[:start_idx] + text[end_idx:]
+    return text
 
 def init_session_state():
     if "message_id" not in st.session_state:

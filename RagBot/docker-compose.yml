@@ -47,6 +47,7 @@ services:
     environment:
       - OLLAMA_KEEP_ALIVE=${OLLAMA_KEEP_ALIVE}
       - CUDA_VISIBLE_DEVICES=4,5
+      - OLLAMA_CONTEXT_LENGTH=8192
     networks:
       - ollama-docker2
 
@@ -58,10 +59,10 @@ services:
               count: all
               capabilities: [gpu]
     runtime: nvidia
-
-  postgres:
-    image: postgres:latest
-    container_name: postgres
+    
+  postgres_new:
+    image: postgres:16
+    container_name: postgres_new
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -73,7 +74,7 @@ services:
     restart: always
     user: root
     ports:
-      - "5432:5432"
+      - "5433:5432"
 
   pgadmin:
     image: dpage/pgadmin4:latest
@@ -176,7 +177,7 @@ services:
     networks:
       - ollama-docker2
     depends_on:
-      - postgres
+      - postgres_new
     volumes:
       - grafana_data:/var/lib/grafana
     user: root

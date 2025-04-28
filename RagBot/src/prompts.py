@@ -462,33 +462,311 @@ Your task is to suggest one search engine query in Farsi, based on the user's fo
 **Optimized google query in Farsi:**
 """
 
+# SQL_CONVERTER = """
+# Your task is to convert the natural language query into a corresponding SQL query. Always generate a valid SQL query even if assumptions must be made. 
+
+# IMPORTANT: Do NOT translate Persian (Farsi) words to English in the SQL query. Keep all Persian terms exactly as they appear in the original query, especially for names, locations, and specific terminology.
+
+# For each conversion, return a JSON with two keys:
+# 1. "reasoning": A single concise paragraph explaining your approach to the query and any assumptions made
+# 2. "query": The corresponding SQL query with no additional explanatory text
+
+# Business Object: {schema}
+# Natural Language Query: {query}
+
+# Output Format:
+# {{
+#   "reasoning": "Your concise one-paragraph reasoning here",
+#   "query": "Your SQL query here"
+# }}
+
+
+# **Examples:**
+
+# 1. **User Utterance:** وضعیت انبار محصول اصفهان چیه؟
+#    reasoning: "The user inquires about the warehouse status of "محصول اصفهان". The relevant business object is the Store, containing the status of the warehouse, and "محصول اصفهان" is the name of the warehouse. Thus, this should be identified as the probable title."
+#    query: SELECT state FROM store WHERE title LIKE ‘%محصول اصفهان%’
+
+
+# Important Guidelines:
+# - Always produce a valid SQL query - never return null for sql_query
+# - If the request is ambiguous, make reasonable assumptions and document them in the reasoning
+# - PRESERVE ALL PERSIAN TERMS exactly as they appear in the original query (e.g., 'سیرجان' should remain 'سیرجان', not 'Sirjan')
+# - Match Persian terms to their corresponding values in the database without translation
+# - If specific columns or tables are unclear, use similar ones from the schema
+# - For complex requests with missing information, create a basic query that addresses the core intent
+# - If a query seems impossible, create a simplified version that captures the essence of the request
+# """
+
+
+# SQL_CONVERTER = """
+# # SQL Query Generation From Natural Language
+
+# Your task is to convert natural language queries into corresponding SQL queries based on the provided Business Object schema. Always generate a valid SQL query, even if assumptions must be made.
+
+# ## Schema Relationships Understanding
+
+# **Critical Distinction and Relationships:**
+
+# * `کالا` (Parts) primarily maps to the `parts` table
+# * `انبار` (Warehouse/Store) primarily maps to the `store` table
+# * **Most importantly:** Understand the relationships between these and other tables:
+#   * `storeinventory` connects parts to stores with inventory quantities
+#   * `invvoucheritem` contains individual line items relating to inventory transactions
+#   * `invvoucher` contains header information for inventory transactions
+#   * Always identify which tables need to be joined to satisfy multi-entity queries
+
+# ## Cross-Schema Query Guidelines
+
+# 1. **Identify all entities mentioned in the query** (parts, warehouses, transactions, etc.)
+# 2. **Map each entity to its corresponding table** using the schema Titles
+# 3. **Determine required relationships** between entities by examining foreign keys and relationship tables
+# 4. **Build appropriate JOIN statements** to connect the relevant tables
+# 5. **Select relevant columns** from each joined table to address the query
+
+# ## Terminology Preservation
+
+# * **NEVER translate Persian (Farsi) words** to English in the SQL query
+# * Keep all Persian terms exactly as they appear in the original query
+# * This applies to names, locations, and specific terminology (e.g., 'کالا', 'انبار', 'اصفهان')
+
+# ## Response Format
+
+# For each conversion, return a JSON with two keys:
+
+# 1. **"reasoning":** A concise explanation that:
+#    * Identifies all entities in the query and their corresponding tables
+#    * Explains which tables need to be joined and why
+#    * Details the relationships between these tables
+#    * Lists any assumptions made
+
+# 2. **"query":** The corresponding SQL query with no additional explanatory text
+
+# ## Business Object:
+
+# {schema}
+
+# ## Natural Language Query: {query}
+
+# ## Examples:
+
+# ### Example 1: Simple Store Query
+
+# **User Utterance:** وضعیت انبار محصول اصفهان چیه؟ (What is the status of the Esfahan product warehouse?)
+
+# ```json
+# {{"reasoning": "The user asks about the status ('وضعیت') of a warehouse ('انبار') named 'محصول اصفهان'. The keyword 'انبار' maps to the `store` table (Title: انبار). This is a simple query requiring only the store table, as no relationships with other entities are needed. I will query the `state` column from the `store` table, filtering by the `title` likely containing 'محصول اصفهان'.",
+#   "query": "SELECT state FROM store WHERE title LIKE '%محصول اصفهان%'"}}
+# ```
+
+# ### Example 2: Simple Parts Query
+
+# **User Utterance:** کد کالای 'پیچ متری' چیه؟ (What is the part code for 'meter screw'?)
+
+# ```json
+# {{"reasoning": "The user asks for the code ('کد') of a part ('کالا') named 'پیچ متری'. The keyword 'کالا' maps to the `parts` table (Title: کالا). This query only requires information from the parts table with no relationships to other entities. I will query the `code` column from the `parts` table, filtering by the `title` equal to 'پیچ متری'.",
+#   "query": "SELECT code FROM parts WHERE title = 'پیچ متری'"}}
+# ```
+
+# ### Example 3: Multi-Entity Query with Relationship
+
+# **User Utterance:** موجودی کالای 'درب قوطی' در انبار 'مواد اولیه' چقدره؟ (What is the inventory quantity of 'can lid' part in the 'raw materials' warehouse?)
+
+# ```json
+# {{"reasoning": "This query involves two entities: a part ('کالا' - 'درب قوطی') and a warehouse ('انبار' - 'مواد اولیه'). The relationship between these entities exists in the `storeinventory` table which links parts and stores with their inventory quantities. I will query the `remaining` column from `storeinventory`, filtering by both `part_title` and `store_title`.",
+#   "query": "SELECT remaining FROM storeinventory WHERE part_title = 'درب قوطی' AND store_title = 'مواد اولیه'"}}
+# ```
+
+# ### Example 4: Complex Multi-Table Join
+
+# **User Utterance:** لیست تمام تراکنش‌های انبار 'مرکزی' برای کالای 'فیلتر روغن' در ماه گذشته (List all transactions for 'oil filter' part in 'central' warehouse from last month)
+
+# ```json
+# {{"reasoning": "This query involves multiple entities and relationships: transactions, a specific warehouse ('انبار' - 'مرکزی'), and a specific part ('کالا' - 'فیلتر روغن'). I need to join several tables: `invvoucher` for transaction headers, `invvoucheritem` for transaction line items, `parts` for part details, and `store` for warehouse details. The relationships are: invvoucher.id → invvoucheritem.invvoucher_id, invvoucheritem.part_id → parts.id, and invvoucher.store_id → store.id.",
+#   "query": "SELECT iv.voucher_no, iv.voucher_date, ivi.quantity, ivi.price FROM invvoucher iv JOIN invvoucheritem ivi ON iv.id = ivi.invvoucher_id JOIN parts p ON ivi.part_id = p.id JOIN store s ON iv.store_id = s.id WHERE p.title = 'فیلتر روغن'  AND s.title = 'مرکزی' AND iv.voucher_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH)"}}
+# ```
+
+# ### Example 5: Aggregate Query Across Multiple Tables
+
+# **User Utterance:** مجموع ارزش موجودی تمام کالاها در انبار 'قطعات یدکی' (Total value of all parts inventory in 'spare parts' warehouse)
+
+# ```json
+# {{
+#   "reasoning": "This query requires aggregation across multiple entities: calculating the total value of inventory, which involves parts ('کالا') and a specific warehouse ('انبار' - 'قطعات یدکی'). I need to use the `storeinventory` table which connects parts and warehouses and contains both quantity and price information. I'll sum the product of remaining quantity and price for all parts in the specific warehouse.",
+#   "query": "SELECT SUM(remaining * price) AS total_value 
+# FROM storeinventory 
+# WHERE store_title = 'قطعات یدکی'"
+# }}
+# ```
+
+# ## Important Guidelines:
+
+# - Always produce a valid SQL query - never return null for sql_query.
+# - For each query, identify ALL entities mentioned and their corresponding tables.
+# - ALWAYS consider relationships between tables when entities from different domains are involved.
+# - **PRESERVE ALL PERSIAN TERMS** exactly as they appear in the original query.
+# - Use appropriate JOIN operations when query spans multiple related tables.
+# - If specific columns or tables are unclear, use the most semantically similar ones from the schema provided.
+# - If a query seems impossible, create a simplified version capturing the essence.
+# """
+
+# best prompt sql
+# SQL_CONVERTER = SQL_CONVERTER = """
+# You are an agent that converts Natural Language questions in Persian (Farsi) to related SQL queries based on the provided schemas. You should always return a SQL query as the final answer without any explanation.
+
+# ## Schema Relationships Understanding
+
+# **Critical Distinction and Relationships:**
+
+# * **Most importantly:** Understand the relationships between these and other tables:
+#     * Consider that relationships between schemas are provided within explicitly. If the query needs multiple business objects, do not hesitate to that.  
+    
+# ## Cross-Schema Query Guidelines
+
+# 1. **Identify all entities mentioned in the query** 
+# 2. **Map each entity to its corresponding tables** using the schema Titles and relationships
+# 3. **Determine required relationships** between entities by examining foreign keys and relationship tables
+# 4. **if it is necessary, build appropriate JOIN statements** to connect the relevant tables 
+# 5. **Select relevant columns** from each query table to address the query
+
+
+# ## SQL Generation Guidelines
+
+# * To maintain optimization, it is advisable to use **JOINs** on the **appropriate keys** instead of **subqueries**.
+# * Always employ standard SQL syntax
+
+# ## Terminology Preservation
+
+# * **NEVER translate Persian (Farsi) parameters words** to English in the SQL query
+# * This applies to names, locations, and specific terminology. 
+# * Persian (Farsi) is the language users ask questions in. Thus, you should usually maintain words in Persian while filtering. 
+# * Verbs should not be regarded as names or parameters; they serve only to clarify the question.
+
+# ## Business Object:
+
+# {schema}
+
+# ## Natural Language Query: {query}
+
+# ## Examples:
+
+# ### Example 1: Simple Store Query
+
+# **User Utterance:** وضعیت انبار محصول اصفهان چیه؟ (What is the status of the Esfahan product warehouse?)
+# => 
+# SQL query: SELECT state FROM store WHERE title LIKE '%محصول اصفهان%'
+
+# ### Example 1: Simple Store Query
+
+# **User Utterance:** الگوهای تحویل دارایی ثابت، چه نوع طرف مقابل هایی دارن؟ 
+# => 
+# SELECT counter_part_type FROM voucherspecification WHERE voucher_type = 'تحویل دارایی ثابت';
+
+# **REMEMBER:**
+# - Queries containing **JOINs** should always be connected using the **appropriate keys** in the business objects. 
+# - You should and **ALWAYS** return a SQL query as the final answer without any explanation.
+# """
+
+
 SQL_CONVERTER = """
-Your task is to convert the natural language query into a corresponding SQL query. Always generate a valid SQL query even if assumptions must be made. 
+# SQL Query Generator
 
-IMPORTANT: Do NOT translate Persian (Farsi) words to English in the SQL query. Keep all Persian terms exactly as they appear in the original query, especially for names, locations, and specific terminology.
+## OUTPUT REQUIREMENTS [CRITICAL]
+- GENERATE ONLY THE RAW SQL QUERY AS OUTPUT
+- NO EXPLANATIONS, COMMENTS, NOTES, OR INTRODUCTIONS BEFORE OR AFTER THE QUERY
+- DO NOT INCLUDE ANY TEXT THAT IS NOT PART OF THE SQL QUERY ITSELF
+- DO NOT WRAP THE QUERY IN MARKDOWN CODE BLOCKS OR QUOTES
+- THE FIRST CHARACTER OF YOUR RESPONSE MUST BE "SELECT", "WITH", or another SQL keyword
 
-For each conversion, return a JSON with two keys:
-1. "reasoning": A single concise paragraph explaining your approach to the query and any assumptions made
-2. "sql_query": The corresponding SQL query with no additional explanatory text
+## Persian/Farsi Text Handling [CRITICAL]
+- ALWAYS use LIKE operators with wildcards ('%term%') for Persian/Farsi text matching
+- NEVER translate Persian/Farsi words to English in the query
+- For text comparisons, follow this priority order:
+  1. Use LIKE '%فارسی_term%' instead of exact matches
+  2. If multiple Persian terms, combine with AND/OR and LIKE operators
+  3. Apply appropriate case insensitivity if needed
 
-Business Object: {schema}
-Natural Language Query: {query}
+## Query Construction Protocol
+1. Parse the Persian query to identify entities, conditions, and relationships
+2. Map to appropriate tables in the schema
+3. Build JOINs using correct relationship keys
+4. Select required columns precisely based on parsed Persian query
+5. Apply LIKE operators for all Persian text conditions
 
-Output Format:
-{{
-  "reasoning": "Your concise one-paragraph reasoning here",
-  "sql_query": "Your SQL query here"
-}}
+## Optimization Rules
+- Prefer JOINs over subqueries
+- Use appropriate indexes in JOIN conditions
+- Apply standard SQL functions as needed
+- Structure complex WHERE clauses efficiently with proper parentheses
+- Use table aliases for clarity in multi-table queries
+- Do not use variables, parameters, or placeholders in the SQL query. All values must be either literals or computed using SQL expressions
 
-Important Guidelines:
-- Always produce a valid SQL query - never return null for sql_query
-- If the request is ambiguous, make reasonable assumptions and document them in the reasoning
-- PRESERVE ALL PERSIAN TERMS exactly as they appear in the original query (e.g., 'سیرجان' should remain 'سیرجان', not 'Sirjan')
-- Match Persian terms to their corresponding values in the database without translation
-- If specific columns or tables are unclear, use similar ones from the schema
-- For complex requests with missing information, create a basic query that addresses the core intent
-- If a query seems impossible, create a simplified version that captures the essence of the request
+## Business Object:
+{schema}
+
+## Natural Language Query: {query}
+
+## FINAL VERIFICATION (INTERNAL ONLY)
+Before submitting your response:
+1. Confirm your output contains ONLY a valid SQL query
+2. Verify NO explanatory text appears before or after the SQL
+3. Check that you've used LIKE with wildcards for Persian text matching
+4. Ensure all required JOINs are properly constructed
+5. Confirm the query addresses the Persian language request completely
+
+REMEMBER: OUTPUT NOTHING EXCEPT THE RAW SQL QUERY
 """
+
+# SQL_CONVERTER = """
+# Your task is to convert the natural language query into a corresponding SQL query based on the provided Business Object schema. Always generate a valid SQL query, even if assumptions must be made.
+
+# **CRITICAL DISTINCTION: 'کالا' (Part) vs. 'انبار' (Warehouse/Store)**
+# * Pay **strict attention** to differentiate between 'کالا' (referring to items/parts) and 'انبار' (referring to warehouses/stores).
+# * **Map 'کالا' related queries primarily to the `parts` table.** (Schema Title: `parts: - Title: کالا`)
+# * **Map 'انبار' related queries primarily to the `store` table.** (Schema Title: `store: - Title: انبار`)
+# * For queries involving **inventory** (موجودی) of a specific part in a specific warehouse, you might need to use tables like `storeinventory` or join `invvoucheritem`, `invvoucher`, `parts`, and `store`. Check the schema carefully for the best fit.
+# * **Always consult the `Title:` field** within the schema for each table to confirm the correct mapping.
+
+# IMPORTANT: Do NOT translate Persian (Farsi) words to English in the SQL query. Keep all Persian terms exactly as they appear in the original query, especially for names, locations, and specific terminology (e.g., 'کالا', 'انبار', 'اصفهان').
+
+# For each conversion, return a JSON with two keys:
+# 1. "reasoning": A single concise paragraph explaining your approach, specifically stating *which primary table(s)* (`parts`, `store`, etc.) were chosen based on the keywords ('کالا', 'انبار', etc.) in the query, and detailing any assumptions made.
+# 2. "query": The corresponding SQL query with no additional explanatory text.
+
+# Business Object: 
+# {schema}
+
+# Natural Language Query: {query}
+
+# **Examples:**
+
+# 1.  **User Utterance:** وضعیت انبار محصول اصفهان چیه؟ (What is the status of the Esfahan product warehouse?)
+#     {{
+#       "reasoning": "The user asks about the status ('وضعیت') of a warehouse ('انبار') named 'محصول اصفهان'. The keyword 'انبار' maps to the `store` table (Title: انبار). Therefore, I will query the `state` column from the `store` table, filtering by the `title` likely containing 'محصول اصفهان'.",
+#       "query": "SELECT state FROM store WHERE title LIKE '%محصول اصفهان%'"
+#     }}
+
+# 2.  **User Utterance:** کد کالای 'پیچ متری' چیه؟ (What is the part code for 'meter screw'?)
+#     {{
+#       "reasoning": "The user asks for the code ('کد') of a part ('کالا') named 'پیچ متری'. The keyword 'کالا' maps to the `parts` table (Title: کالا). Therefore, I will query the `code` column from the `parts` table, filtering by the `title` equal to 'پیچ متری'.",
+#       "query": "SELECT code FROM parts WHERE title = 'پیچ متری'"
+#     }}
+    
+# 3.  **User Utterance:** موجودی کالای 'درب قوطی' در انبار 'مواد اولیه' چقدره؟ (What is the inventory quantity of 'can lid' part in the 'raw materials' warehouse?)
+#     {{
+#       "reasoning": "The user asks for the inventory quantity ('موجودی') of a specific part ('کالا' - 'درب قوطی') within a specific warehouse ('انبار' - 'مواد اولیه'). This requires inventory information linking parts and stores. The `storeinventory` table (Title: گزارش مبلغی انبار) seems most appropriate as it contains `part_title`, `store_title`, and `remaining` (quantity). I will query the `remaining` column from `storeinventory`, filtering by `part_title` and `store_title`.",
+#       "query": "SELECT remaining FROM storeinventory WHERE part_title = 'درب قوطی' AND store_title = 'مواد اولیه'"
+#     }}
+
+# **Important Guidelines:**
+# - Always produce a valid SQL query - never return null for sql_query.
+# - If the request is ambiguous, make reasonable assumptions and document them clearly in the reasoning, especially regarding table choices.
+# - **PRESERVE ALL PERSIAN TERMS** exactly as they appear in the original query (e.g., 'سیرجان' remains 'سیرجان'). Match Persian terms to corresponding database values without translation.
+# - Refer explicitly to the schema (`parts`, `store`, `storeinventory`, etc.) when determining the target table based on keywords like 'کالا' and 'انبار'.
+# - If specific columns or tables are unclear, use the most semantically similar ones from the schema provided.
+# - For complex requests with missing information, create a basic query that addresses the core intent. If a query seems impossible, create a simplified version capturing the essence.
+# """
+
 
 # SQL_CONVERTER = """
 # Your task is to convert the natural language query to its corresponding SQL. 
