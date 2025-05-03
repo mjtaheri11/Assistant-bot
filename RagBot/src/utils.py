@@ -102,8 +102,8 @@ def json_text_cleaning(text, answer_key="query"):
 def json_cleaning(input_string):    
     cleaned_string = re.sub(r'<think>.*?</think>', '', input_string, flags=re.DOTALL)
     # cleaned_string = re.sub(r'\n+', '\n', cleaned_string)
-    cleaned_string = cleaned_string.replace("json", "").replace("```", "").strip() #.replace("\n\n", "\n").strip()
-    return cleaned_string
+    final_cleaned_response = cleaned_string.replace("sql", "").replace("```", "").strip() #.replace("\n\n", "\n").strip()
+    return final_cleaned_response
 
 def remove_think_tags(text):
     start_tag = "<think>"

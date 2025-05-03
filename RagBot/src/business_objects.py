@@ -1223,7 +1223,7 @@ LOGISTICS_BO = """
     - Attributes (all Str):
       - code: کد طبقه حساب کالا
       - title: عنوان طبقه حساب کالا
-      - pricing_method: روش قیمت گذاری
+      - pricing_method: روش قیمت گذاری [ENUM: "میانگین", "شناسایی ویژه", "فایفو"]
     - Relations: None
     
     units:
@@ -1268,7 +1268,7 @@ LOGISTICS_BO = """
       - Date Type:
         - date: تاریخ
       - All other attributes are Str:
-        - price_type: نوع قیمت
+        - price_type: نوع قیمت [ENUM: "براوردی", "واقعی", "براوردی به واقعی", "اصلاح بها", "تعدیل"]
         - currency_title: عنوان ارز
         - acc_voucher_number: شماره سند حسابداری
     - Relations:
@@ -1280,7 +1280,7 @@ LOGISTICS_BO = """
       - code: کد مرکز نگهداری
       - title: عنوان مرکز نگهداری
       - branch_title: عنوان شعبه
-      - state: وضعیت
+      - state: وضعیت [ENUM: "فعال", "غیرفعال"]
     - Relations: None
 
     storagetype:
@@ -1326,8 +1326,8 @@ LOGISTICS_BO = """
       - title: عنوان الگو
       - voucher_type: نوع سند
       - direction: جهت سند
-      - purchase_type: نوع خرید
-      - type_of_effect: نوع تاثیر بر موجودی
+      - purchase_type: نوع خرید [ENUM: "داخلی", "خارجی"]
+      - type_of_effect: نوع تاثیر بر موجودی [ENUM: "ضایعات", "موقت", "دائم"]
       - counter_part_type: نوع طرف مقابل
     - Relations: None
 
@@ -1337,7 +1337,7 @@ LOGISTICS_BO = """
       - code: کد انبار
       - title: عنوان انبار
       - storage_type_title: عنوان نوع انبار
-      - state: وضعیت
+      - state: وضعیت [ENUM: "غیر فعال", "فعال", "ثبت اولیه"]
     - Relations:
       - plants: مرکز نگهداری (foreign key plant_id to plants.id)
 
@@ -1417,7 +1417,7 @@ LOGISTICS_BO = """
         - number: شماره سند
         - description: شرح سربرگ
         - sl_title: معین
-        - state: وضعیت
+        - state: وضعیت [ENUM: 'ثبت شده', 'باطل شده', 'تایید شده']
         - fy_title: دوره مالی
         - extra_field1: فیلد اضافه 1
         - extra_field2: فیلد اضافه 2

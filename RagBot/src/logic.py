@@ -140,7 +140,7 @@ async def sql_responder_(query: str):
         bo_prompt = SQL_CONVERTER.format(schema=FINANCIAL_BO, query=query)
     else:
         bo_prompt = SQL_CONVERTER.format(schema=LOGISTICS_BO, query=query)
-    raw_json_response = await get_chat_response(bo_prompt, config["ollama"]["sql_model_name"], config["ollama"]["sql_model_port"], num_ctx=4096)
+    raw_json_response = await get_chat_response(bo_prompt, config["ollama"]["sql_model_name"], config["ollama"]["sql_model_port"], num_ctx=8192)
     response = json_cleaning(raw_json_response)
     print(raw_json_response)
     # json_response = json_text_cleaning(raw_json_response)

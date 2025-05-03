@@ -668,15 +668,79 @@ Your task is to suggest one search engine query in Farsi, based on the user's fo
 # """
 
 
+# SQL_CONVERTER = """
+# # SQL Query Generator
+
+# ## OUTPUT REQUIREMENTS [CRITICAL]
+# - GENERATE ONLY THE RAW SQL QUERY AS OUTPUT
+# - NO EXPLANATIONS, COMMENTS, NOTES, OR INTRODUCTIONS BEFORE OR AFTER THE QUERY
+# - DO NOT INCLUDE ANY TEXT THAT IS NOT PART OF THE SQL QUERY ITSELF
+# - DO NOT WRAP THE QUERY IN MARKDOWN CODE BLOCKS OR QUOTES
+# - THE FIRST CHARACTER OF YOUR RESPONSE MUST BE "SELECT", "WITH", or another SQL keyword
+
+# ## Persian/Farsi Text Handling [CRITICAL]
+# - ALWAYS use LIKE operators with wildcards ('%term%') for Persian/Farsi text matching
+# - NEVER translate Persian/Farsi words to English in the query
+# - For text comparisons, follow this priority order:
+#   1. Use LIKE '%فارسی_term%' instead of exact matches
+#   2. If multiple Persian terms, combine with AND/OR and LIKE operators
+#   3. Apply appropriate case insensitivity if needed
+
+# ## Query Construction Protocol
+# 1. Parse the Persian query to identify entities, conditions, and relationships
+# 2. Map to appropriate tables in the schema
+# 3. Build JOINs using correct relationship keys
+# 4. Select required columns precisely based on parsed Persian Query
+# 5. Ensure to use all the required columns
+# 6. Apply LIKE operators for all Persian text conditions
+
+# ## Optimization Rules
+# - Prefer JOINs over subqueries
+# - Use appropriate indexes in JOIN conditions
+# - Apply standard SQL functions as needed
+# - Structure complex WHERE clauses efficiently with proper parentheses
+# - Use table aliases for clarity in multi-table queries
+# - Do not use variables, parameters, or placeholders in the SQL query. All values must be either literals or computed using SQL expressions
+
+
+# ### Example 1: Complex query 
+
+# **User Utterance:** کد آخرین سند رسید خرید داخلی به انبار "مواد اولیه تولید" چیه؟
+# =>  
+# SELECT number FROM voucher JOIN store ON invvoucher.store_id = store.id JOIN voucherspecification ON voucherspecification.id = invvoucher.voucher_specification_id WHERE store.title LIKE ‘%مواد اولیه تولید%’ AND voucher_Specification.title LIKE ‘%رسید خرید%‘ AND Inv_Voucher.STATE IN (‘تایید شده’ ,’ثبت شده’);
+
+
+# ## Business Object:
+# {schema}
+
+# ## Natural Language Query: {query}
+
+# ## FINAL VERIFICATION (INTERNAL ONLY)
+# Before submitting your response:
+# 1. Confirm your output contains ONLY a valid SQL query
+# 2. Verify NO explanatory text appears before or after the SQL
+# 3. Check that you've used LIKE with wildcards for Persian text matching
+# 4. Ensure all required JOINs are properly constructed
+# 5. Confirm the query addresses the Persian language request completely
+
+# **IMPORTANT:** **The Persian calendar year begins in late March 2025 and ends in March 2026. Therefore, dates should consider this timeframe.**
+
+# **REMEMBER:** **OUTPUT NOTHING EXCEPT THE RAW SQL QUERY.**
+# """
+
+
+# 6. Avoid using Persian verbs in wildcards. Verbs, either formal or informal in Persian/Farsi, should be interpreted to better find columns
+
+
 SQL_CONVERTER = """
 # SQL Query Generator
 
 ## OUTPUT REQUIREMENTS [CRITICAL]
-- GENERATE ONLY THE RAW SQL QUERY AS OUTPUT
-- NO EXPLANATIONS, COMMENTS, NOTES, OR INTRODUCTIONS BEFORE OR AFTER THE QUERY
-- DO NOT INCLUDE ANY TEXT THAT IS NOT PART OF THE SQL QUERY ITSELF
-- DO NOT WRAP THE QUERY IN MARKDOWN CODE BLOCKS OR QUOTES
-- THE FIRST CHARACTER OF YOUR RESPONSE MUST BE "SELECT", "WITH", or another SQL keyword
+- GENERATE ONLY THE RAW SQL QUERY AS YOUR FINAL OUTPUT
+- FIRST USE A THINKING PROCESS (INTERNALLY) TO PLAN YOUR QUERY
+- AFTER THINKING, PROVIDE ONLY THE FINAL SQL WITHOUT ANY EXPLANATION, NOTES, etc.
+- YOUR FINAL SUBMISSION MUST CONTAIN ONLY THE RAW SQL QUERY WITH NO FORMATTING, COMMENTS OR EXPLANATIONS
+- NEVER INCLUDE CODE BLOCKS, QUOTES OR MARKDOWN IN THE FINAL SQL OUTPUT
 
 ## Persian/Farsi Text Handling [CRITICAL]
 - ALWAYS use LIKE operators with wildcards ('%term%') for Persian/Farsi text matching
@@ -685,36 +749,84 @@ SQL_CONVERTER = """
   1. Use LIKE '%فارسی_term%' instead of exact matches
   2. If multiple Persian terms, combine with AND/OR and LIKE operators
   3. Apply appropriate case insensitivity if needed
+  4. When it comes to using likes, try to use them minimally without mentioning field name titles (example, LIKE '%انبار مواد اولیه تولید%'; => LIKE '%مواد اولیه تولید%'; OR LIKE '%مرکز نگهداری سیرجان%'; => LIKE '%سیرجان%';) 
+  5. Informal question words in Persian/Farsi should precisely transfer to the proper meaning to identify columns effectively. (چقدره => چه مقدار است، چیه => چیست، etc.)
+  
+## Anti-Hallucination Protocol [CRITICAL]
+1. VERIFY ALL COLUMN NAMES against the provided schema before using them
+2. **NEVER EVER** INVENT OR ASSUME column names that aren't explicitly listed in the schema
+3. ONLY JOIN tables where explicit foreign key relationships exist in the schema 
+4. EXPLICITLY CHECK that joined columns have matching data types
+5. DO NOT reference tables or columns that don't exist in the schema
 
-## Query Construction Protocol
-1. Parse the Persian query to identify entities, conditions, and relationships
-2. Map to appropriate tables in the schema
-3. Build JOINs using correct relationship keys
-4. Select required columns precisely based on parsed Persian query
-5. Apply LIKE operators for all Persian text conditions
+## Query Construction Steps
+1. Carefully analyze the Persian query to identify entities, conditions, and relationships
+2. Map these entities ONLY to tables and columns that exist in the schema
+3. For each required join:
+   a. Identify the explicit foreign key in the schema (EXPLICITLY MENTIONED eg. store_id, voucher_specification_id, and etc.)
+   b. Verify both join columns exist
+   c. Use the correct join condition
+4. Select ONLY columns that:
+   a. Directly answer the query
+   b. Exist in the schema
+   c. Are accessible through proper joins
+5. Apply the Persian text handling rules for all text conditions
 
 ## Optimization Rules
-- Prefer JOINs over subqueries
-- Use appropriate indexes in JOIN conditions
-- Apply standard SQL functions as needed
-- Structure complex WHERE clauses efficiently with proper parentheses
-- Use table aliases for clarity in multi-table queries
-- Do not use variables, parameters, or placeholders in the SQL query. All values must be either literals or computed using SQL expressions
+- Use table aliases consistently throughout the query
+- Structure complex WHERE clauses with proper parentheses
+- All values must be literals or computed with SQL expressions (no variables)
+- Avoid SELECT * - always specify required column names
+
+
+## Examples
+
+### Example 1: 
+**Persian Question:** حداکثر مصرف پروژه روزانه گریس، تو شعبه شیراز، از ابتدای سال چقدر بوده؟
+**English Translation:** What was the maximum daily project consumption of grease in the Shiraz branch since the beginning of the year?
+
+**Query Analysis (Internal Only):**
+- Entity: گریس (grease) → maps to parts.title
+- Condition: مصرف پروژه (project consumption) → maps to voucherspecification.title
+- Condition: از ابتدای سال (since beginning of year) → filter on invvoucher.date >= '2024-03-21'
+- Condition: شعبه شیراز (Shiraz branch) → would normally filter on branch table, but not shown in this example
+- Required calculation: حداکثر (maximum) → use MIN() function on aggregated quantities
+
+**The raw resulting SQL as expected:**
+SELECT Min(A.major_quantity) FROM (
+  SELECT SUM(invvoucheritem.major_quantity), invvoucher.date 
+  FROM invvoucheritem 
+  JOIN invvoucher ON invvoucher.id = invvoucheritem.inventory_voucher_id 
+  JOIN voucherspecification ON voucherspecification.id = invvoucher.voucher_specification_id 
+  JOIN parts ON parts.id = invvoucheritem.part_id 
+  WHERE invvoucher.date >= '2024-03-21' 
+    AND parts.title LIKE '%گریس%' 
+    AND voucherspecification.voucher_type LIKE '%مصرف%' 
+    AND voucherspecification.title LIKE '%مصرف پروژه%' 
+    AND (invvoucher.state LIKE '%تایید شده%' OR invvoucher.state LIKE '%ثبت شده%')
+  GROUP BY invvoucher.date
+) AS A;
 
 ## Business Object:
 {schema}
 
 ## Natural Language Query: {query}
 
-## FINAL VERIFICATION (INTERNAL ONLY)
-Before submitting your response:
-1. Confirm your output contains ONLY a valid SQL query
-2. Verify NO explanatory text appears before or after the SQL
-3. Check that you've used LIKE with wildcards for Persian text matching
-4. Ensure all required JOINs are properly constructed
-5. Confirm the query addresses the Persian language request completely
+## VERIFICATION CHECKLIST (INTERNAL ONLY)
+Before submitting your final SQL:
+1. Have you verified each column name against the schema?
+2. Are all joins based on explicit foreign keys in the schema?
+3. Have you used LIKE **PROPERLY** with wildcards for all Persian text?
+4. Does each table alias reference an actual table?
+5. Have you confirmed there are no invented or assumed columns?
 
-REMEMBER: OUTPUT NOTHING EXCEPT THE RAW SQL QUERY
+**IMPORTANT:** **The Persian calendar year begins in late March 2025 and ends in March 2026. Therefore, dates should consider this timeframe.**
+
+**NOTE:** **For keywords such as "امروز," always use GETDATE() without enclosing in quotes. THUS, NEVER MAKE SOMETHING NOT EXPLICITLY MENTIONED IN THE QUESTION **
+
+**REMEMBER:**
+-  YOUR FINAL SUBMISSION MUST INCLUDE **ONLY** THE RAW SQL QUERY WITHOUT ANY NOTES, COMMENTS, OR EXPLANATION
+- **CRITICAL:** Making assumptions about database structure is strictly forbidden and will lead to errors. NEVER MAKE UP FOREIGN KEYS OR COLUMN NAME
 """
 
 # SQL_CONVERTER = """
