@@ -98,6 +98,10 @@ def json_text_cleaning(text, answer_key="query"):
 #     json_output = {key: str(answer_value), "reasoning": str(reasoning_value)}
 #     return json_output
 
+def json_cleaning_1(input_string):
+    input_string.replace("\n", "").strip()
+    json_input = json.loads(input_string)
+    return json_input["user_standalone_input"]
 
 def json_cleaning(input_string):    
     cleaned_string = re.sub(r'<think>.*?</think>', '', input_string, flags=re.DOTALL)
@@ -118,6 +122,38 @@ def remove_think_tags(text):
         return text[:start_idx] + text[end_idx:]
     return text
 
+def json_string_to_dict(json_str):
+    """
+    Convert a JSON-like string into a Python dictionary.
+    
+    Args:
+        json_str (str): A string containing JSON-like content.
+        
+    Returns:
+        dict: The parsed dictionary from the JSON string.
+        
+    Raises:
+        ValueError: If the input is not a string, is empty, or is invalid JSON.
+    """
+    # Validate input
+    if not isinstance(json_str, str):
+        raise ValueError("Input must be a string")
+    if not json_str.strip():
+        raise ValueError("Input string cannot be empty")
+    
+    # Remove code block markers if present
+    cleaned_str = json_str.strip()
+    if cleaned_str.startswith("```json"):
+        cleaned_str = cleaned_str.replace("```json", "").replace("```", "").strip()
+    
+    try:
+        # Parse JSON string into dictionary
+        result = json.loads(cleaned_str)
+        return result
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Invalid JSON format: {str(e)}")
+    
+    
 def init_session_state():
     if "message_id" not in st.session_state:
         st.session_state["message_id"] = []
@@ -147,3 +183,15 @@ def init_session_state():
         st.session_state["do_generate_sessions"] = False
     if "response_is_valid" not in st.session_state:
         st.session_state["response_is_valid"] = ""
+    if "do_suggest_modules" not in st.session_state:
+        st.session_state["do_suggest_modules"] = False
+    if "on_click_response" not in st.session_state:
+        st.session_state["on_click_response"] = False
+    if "suggested_modules" not in st.session_state:
+        st.session_state["suggested_modules"] = []
+    if "on_click_user_input" not in st.session_state:
+        st.session_state["on_click_user_input"] = False
+    if "sql_response_type" not in st.session_state: # TODO only for MAY demo. => should be removed 
+        st.session_state["sql_response_type"] = []
+    if "temporary_response" not in st.session_state:
+        st.session_state["temporary_response"] = ""

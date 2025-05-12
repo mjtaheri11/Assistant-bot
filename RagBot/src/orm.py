@@ -110,7 +110,7 @@ class Postgres:
 
     async def get_history(self, session_id, page_index, page_size, with_paraphrase=False):
         sql_history_query = """
-            SELECT user_query, paraphrased_query, bot_response, message_id FROM message
+            SELECT user_query, paraphrased_query, bot_response, message_id, is_sql FROM message
             WHERE session_id = $1
             ORDER BY create_time DESC
             OFFSET $2
@@ -129,12 +129,12 @@ class Postgres:
         # Process the history results in the desired format
         if with_paraphrase:
             history = [
-                    {"query": h[0], "response": h[2], "paraphrased_query": h[1], "message_id": h[3]}
+                    {"query": h[0], "response": h[2], "paraphrased_query": h[1], "message_id": h[3], "is_sql": h[4]}
                 for h in reversed(selected_history)
             ]
         else:
             history = [
-                    {"query": h[0], "response": h[2], "message_id": h[3]}
+                    {"query": h[0], "response": h[2], "message_id": h[3], "is_sql": h[4]}
                     for h in reversed(selected_history)
             ]       
                 
@@ -207,6 +207,21 @@ class Postgres:
         )
         return str(message_id[0])
 
+    async def update_on_click_chat_row(
+        self, message_id, bot_response, elapsed_time
+    ):
+        values = (
+            bot_response,
+            elapsed_time,
+            message_id, 
+        )
+        sql_insert_query = "UPDATE message SET bot_response = $1, elapsed_time = $2 WHERE message_id = $3;" 
+        message_id = await self._execute_query(
+            sql_insert_query, is_insert=True, insert_values=values, fetch_results=True
+        )
+        return True
+
+
     async def set_feedback(self, message_id, feedback_type):
         update_query = """
             UPDATE message 
@@ -230,7 +245,15 @@ class Postgres:
         )
         user_code, tenant_name = (result[0] if result[0] != None else "", result[1] if result[1] != None else "")
         {"user_code": str(user_code), "tenant_name": str(tenant_name)}
-        import pdb
-        pdb.set_trace()
+        return 
+        
+    async def insert_message_choices(self, message_id: str, *choices) -> None: 
+        for choice in choices:
+            insert_message_choice_query = "INSERT INTO message_choices (message_id, choice_value) VALUES ($1, $2) RETURNING choice_id;"
+            result = await self._execute_query(
+                insert_message_choice_query,
+                fetch_results=True,
+                insert_values=(message_id, choice),
+            )                    
         return 
         

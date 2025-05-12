@@ -1225,13 +1225,15 @@ LOGISTICS_BO = """
       - title: عنوان طبقه حساب کالا
       - pricing_method: روش قیمت گذاری [ENUM: "میانگین", "شناسایی ویژه", "فایفو"]
     - Relations: None
-    
+
+
     units:
     - Title: واحد سنجش
     - Attributes:
       - Str: title: عنوان واحد سنجش
       - Int64: dimension: بعد
     - Relations: None
+
 
     storeinventory:
     - Title: گزارش مبلغی انبار
@@ -1255,12 +1257,13 @@ LOGISTICS_BO = """
         - unit_title: واحد سنجش اصلی
     - Relations: None
 
+
     invitemprice:
     - Title: قلم قیمت
     - Parameters:
       - logistics_invitemprice_p1 (Int64): حوزه قیمت‌گذاری
     - Attributes:
-      - Dec Type:
+      - Decimal type:
         - fee: فی
         - price: مبلغ
         - major_fee: فی به واحد اصلی
@@ -1274,6 +1277,7 @@ LOGISTICS_BO = """
     - Relations:
       - invvoucheritem: قلم سند انبار (foreign key inventory_voucher_item_id to invvoucheritem.id)
 
+
     plants:
     - Title: مرکز نگهداری
     - Attributes (all Str):
@@ -1283,13 +1287,15 @@ LOGISTICS_BO = """
       - state: وضعیت [ENUM: "فعال", "غیرفعال"]
     - Relations: None
 
+
     storagetype:
     - Title: نوع انبار
     - Attributes (all Str):
       - code: کد نوع انبار
       - title: عنوان نوع انبار
     - Relations: None
-    
+
+
     parts:
     - Title: کالا
     - Attributes (all Str):
@@ -1304,11 +1310,13 @@ LOGISTICS_BO = """
       - partaltunit: واحد فرعی کالا (foreign key id to partaltunit.part_id)
       - storagetype: نوع انبار کالا (foreign key id to partstoragetype.part_id)
 
+
     partstoragetype:
     - Title: نوع انبار کالا
     - Attributes: None
     - Relations:
       - storagetype: نوع انبار (foreign key storage_type_id to storagetype.id)
+
 
     partaltunit:
     - Title: واحد فرعی کالا
@@ -1319,17 +1327,19 @@ LOGISTICS_BO = """
       - Float64: coeff: ضریب
     - Relations: None
     
+
     voucherspecification:
     - Title: الگوی سند انبار
     - Attributes (all Str):
       - code: کد الگو
       - title: عنوان الگو
-      - voucher_type: نوع سند
-      - direction: جهت سند
+      - voucher_type: نوع سند (Examples: "مصرف", "تحویل دارایی ثابت", "انتقال بین انبار", "خرید", "ضایعات", "امانی ", ...)
+      - direction: جهت سند [ENUM: "ورودی", "خروجی"]
       - purchase_type: نوع خرید [ENUM: "داخلی", "خارجی"]
       - type_of_effect: نوع تاثیر بر موجودی [ENUM: "ضایعات", "موقت", "دائم"]
       - counter_part_type: نوع طرف مقابل
     - Relations: None
+
 
     store:
     - Title: انبار
@@ -1345,7 +1355,7 @@ LOGISTICS_BO = """
     invvoucheritem:
     - Title: قلم سند انبار
     - Attributes:
-      - Dec Type:
+      - Decimal type:
         - quantity: مقدار
         - major_quantity: مقدار به واحد اصلی
         - second_unit_quantity: مقدار به واحد دوم
@@ -1402,6 +1412,7 @@ LOGISTICS_BO = """
       - invvoucher: سند انبار (foreign key inventory_voucher_id to invvoucher.id)
       - parts: کالا (foreign key part_id to parts.id)
       - units: واحد سنجش (foreign key unit_id to units.id)
+
 
     invvoucher:
     - Title: سند انبار
@@ -1466,80 +1477,76 @@ LOGISTICS_BO = """
     """
 
 
+    # voucherssummary:
+    # - Title: گردش و مانده حساب ها
+    # - Parameters:
+    #   - financial_voucherssummary_p1 (Int64): دفتر
+    #   - financial_voucherssummary_p3 (Int64Array): نوع سند
+    #   - financial_voucherssummary_p4 (Int64Array): وضعیت سند
+    #   - financial_voucherssummary_p5 (Date): تاریخ شروع
+    #   - financial_voucherssummary_p6 (Date): تاریخ پایان
+    #   - financial_voucherssummary_p7 (Int64Array): نوع حساب
+    #   - financial_voucherssummary_p8 (Bool): وضعیت معین
+    # - Attributes:1
+    #   - Dec Type:
+    #     - debit: گردش بدهکار ارز عملیاتی
+    #     - credit: گردش بستانکار ارز عملیاتی
+    #     - currency_debit: گردش بدهکار ارز سند
+    #     - currency_credit: گردش بستانکار ارز سند
+    #     - remaining_currency_debit: مانده بدهکار ارز سند
+    #     - remaining_currency_credit: مانده بستانکار ارز سند
+    #     - remaining_currency: مانده ارز سند
+    #     - base_currency_debit: گردش بدهکار ارز مبنا
+    #     - base_currency_credit: گردش بستانکار ارز مبنا
+    #     - remaining_base_currency_debit: مانده بدهکار ارز مبنا
+    #     - remaining_base_currency_credit: مانده بستانکار ارز مبنا
+    #     - remaining_base_currency: مانده ارز مبنا
+    #     - first_reporting_currency_debit: گردش بدهکار ارز گزارشگری اول
+    #     - first_reporting_currency_credit: گردش بستانکار ارز گزارشگری اول
+    #     - remaining_first_reporting_currency_debit: مانده بدهکار ارز گزارشگری اول
+    #     - remaining_first_reporting_currency_credit: مانده بستانکار ارز گزارشگری اول
+    #     - remaining_first_reporting_currency: مانده ارز گزارشگری اول
+    #     - second_reporting_currency_debit: گردش بدهکار ارز گزارشگری دوم
+    #     - second_reporting_currency_credit: گردش بستانکار ارز گزارشگری دوم
+    #     - remaining_second_reporting_currency_debit: مانده بدهکار ارز گزارشگری دوم
+    #     - remaining_second_reporting_currency_credit: مانده بستانکار ارز گزارشگری دوم
+    #     - remaining_second_reporting_currency: مانده ارز گزارشگری دوم
+    #     - quantity_credit: گردش بستانکار مقدار
+    #     - quantity_remaining: مانده مقدار
+    #   - All other attributes are Str:
+    #     - header_branch_code: کد شعبه
+    #     - header_branch_title: عنوان شعبه
+    #     - account_group_code: کد گروه حساب
+    #     - account_group_title: عنوان گروه حساب
+    #     - gl_code: کد حساب کل
+    #     - gl_title: عنوان حساب کل
+    #     - sl_code: کد حساب معین
+    #     - sl_title: عنوان حساب معین
+    #     - business_party_dl_code: کد طرف تجاری
+    #     - business_party_dl_title: عنوان طرف تجاری
+    #     - business_party_role: نقش طرف تجاری
+    #     - cost_center_dl_code: کد مرکز هزینه
+    #     - cost_center_dl_title: عنوان مرکز هزینه
+    #     - project_dl_code: کد پروژه
+    #     - project_dl_title: عنوان پروژه
+    #     - pricing_area_dl_code: کد حوزه قیمت گذاری
+    #     - pricing_area_dl_title: عنوان حوزه قیمت گذاری
+    #     - part_dl_code: کد کالا
+    #     - part_dl_title: عنوان کالا
+    #     - other_party_dl_code: کد سایر اشخاص
+    #     - other_party_dl_title: عنوان سایر اشخاص
+    #     - other_party_role: نقش سایر اشخاص
+    #     - branch_dl_code: کد تفصیل شعبه
+    #     - branch_dl_title: عنوان تفصیل شعبه
+    #     - bank_account_dl_code: کد حساب بانکی
+    #     - bank_account_dl_title: عنوان حساب بانکی
+    #     - voucher_currency_title: ارز سند
+    #     - currency_rate_type_title: نوع نرخ ارز
+    #     - quantity_debit: گردش بدهکار مقدار
+    # - Relations: None
+    
 FINANCIAL_BO = """
-    Vouchers Summary:
-    - Title: گردش و مانده حساب ها
-    - Parameters:
-      - financial_voucherssummary_p1 (Int64): دفتر
-      - financial_voucherssummary_p3 (Int64Array): نوع سند
-      - financial_voucherssummary_p4 (Int64Array): وضعیت سند
-      - financial_voucherssummary_p5 (Date): تاریخ شروع
-      - financial_voucherssummary_p6 (Date): تاریخ پایان
-      - financial_voucherssummary_p7 (Int64Array): نوع حساب
-      - financial_voucherssummary_p8 (Bool): وضعیت معین
-    - Attributes:
-      - Dec Type:
-        - debit: گردش بدهکار ارز عملیاتی
-        - credit: گردش بستانکار ارز عملیاتی
-        - remaining_debit: مانده بدهکار ارز عملیاتی
-        - remaining_credit: مانده بستانکار ارز عملیاتی
-        - remaining: مانده ارز عملیاتی
-        - currency_debit: گردش بدهکار ارز سند
-        - currency_credit: گردش بستانکار ارز سند
-        - remaining_currency_debit: مانده بدهکار ارز سند
-        - remaining_currency_credit: مانده بستانکار ارز سند
-        - remaining_currency: مانده ارز سند
-        - base_currency_debit: گردش بدهکار ارز مبنا
-        - base_currency_credit: گردش بستانکار ارز مبنا
-        - remaining_base_currency_debit: مانده بدهکار ارز مبنا
-        - remaining_base_currency_credit: مانده بستانکار ارز مبنا
-        - remaining_base_currency: مانده ارز مبنا
-        - first_reporting_currency_debit: گردش بدهکار ارز گزارشگری اول
-        - first_reporting_currency_credit: گردش بستانکار ارز گزارشگری اول
-        - remaining_first_reporting_currency_debit: مانده بدهکار ارز گزارشگری اول
-        - remaining_first_reporting_currency_credit: مانده بستانکار ارز گزارشگری اول
-        - remaining_first_reporting_currency: مانده ارز گزارشگری اول
-        - second_reporting_currency_debit: گردش بدهکار ارز گزارشگری دوم
-        - second_reporting_currency_credit: گردش بستانکار ارز گزارشگری دوم
-        - remaining_second_reporting_currency_debit: مانده بدهکار ارز گزارشگری دوم
-        - remaining_second_reporting_currency_credit: مانده بستانکار ارز گزارشگری دوم
-        - remaining_second_reporting_currency: مانده ارز گزارشگری دوم
-        - quantity_credit: گردش بستانکار مقدار
-        - quantity_remaining: مانده مقدار
-      - All other attributes are Str:
-        - header_branch_code: کد شعبه
-        - header_branch_title: عنوان شعبه
-        - account_group_code: کد گروه حساب
-        - account_group_title: عنوان گروه حساب
-        - gl_code: کد حساب کل
-        - gl_title: عنوان حساب کل
-        - sl_code: کد حساب معین
-        - sl_title: عنوان حساب معین
-        - business_party_dl_code: کد طرف تجاری
-        - business_party_dl_title: عنوان طرف تجاری
-        - business_party_role: نقش طرف تجاری
-        - cost_center_dl_code: کد مرکز هزینه
-        - cost_center_dl_title: عنوان مرکز هزینه
-        - project_dl_code: کد پروژه
-        - project_dl_title: عنوان پروژه
-        - pricing_area_dl_code: کد حوزه قیمت گذاری
-        - pricing_area_dl_title: عنوان حوزه قیمت گذاری
-        - part_dl_code: کد کالا
-        - part_dl_title: عنوان کالا
-        - other_party_dl_code: کد سایر اشخاص
-        - other_party_dl_title: عنوان سایر اشخاص
-        - other_party_role: نقش سایر اشخاص
-        - branch_dl_code: کد تفصیل شعبه
-        - branch_dl_title: عنوان تفصیل شعبه
-        - bank_account_dl_code: کد حساب بانکی
-        - bank_account_dl_title: عنوان حساب بانکی
-        - voucher_currency_title: ارز سند
-        - base_currency_title: ارز مبنا
-        - currency_rate_type_title: نوع نرخ ارز
-        - quantity_debit: گردش بدهکار مقدار
-    - Relations: None
-
-    Vouchers:
+    vouchers:
     - Title: اقلام سند حسابداری
     - Parameters:
       - financial_vouchers_p1 (Int64): دفتر

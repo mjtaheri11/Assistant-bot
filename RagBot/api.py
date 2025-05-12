@@ -24,10 +24,13 @@ from src.logic import (
     query_responder,
     sql_responder_,
     utterance_paraphraser,
+    module_proposer,
+    router_SQL_QA,
 )
 from src.logs import non_generative_agent_logger, simple_logger
 
 RESPONSE_TEMPLATE_FOR_NO_ANSWER = "در حال حاضر نمی‌توانم به سوال شما پاسخ دهم"
+MODULE_CLARIFICATION_RESPONSE_TEMPLATE = "لطفا ماژول مدنظر سوال خود را انتخاب کنید"
 app = FastAPI(title="Digital Assistant")
 
 # Define Prometheus metrics
@@ -46,6 +49,7 @@ class ChatRequest(BaseModel):
     session_id: Optional[str] = None
     tenant_name: Optional[str] = None
     user_code: Optional[str] = None
+    on_click: Optional[bool] = False
 
 
 class ChatResponse(BaseModel):
@@ -53,21 +57,18 @@ class ChatResponse(BaseModel):
     response: str
     query: str
     is_sql: bool = False
+    do_suggest: bool = False
+    choices: List[str] = []
+    
 
 class CreateSessionRequest(BaseModel):
     tenant_name: str = ""
     user_code: str = ""
-
     
-class SQLRequest(BaseModel):
-    table_schemas: List[str]  # Accept a list of schemas
-    query: str
-
-class SQLResponse(BaseModel):
-    response: str
 
 class HistoryResponse(BaseModel):
     history: List[dict]  # Assuming history is a list of lists of strings
+    
 
 class HistoryRequest(BaseModel):
     page_index: int = 1
@@ -78,7 +79,6 @@ class HistoryRequest(BaseModel):
 
 class GetSessionsResponse(BaseModel):
     response: List[dict]  
-
 
 
 class MakeRequest(BaseModel):
@@ -247,25 +247,25 @@ async def create_session(create_session_request: Optional[CreateSessionRequest] 
 async def chat_responder(chat_request: ChatRequest, request: Request):
     REQUEST_COUNT.labels(endpoint="/chat").inc()  # Increment request count for /chat
     start_time = time.time()
-
+    is_sql = False
+    context = ""
+    agent = "chat_responder"
+    message = "Chat response generated"
+    choices = []
+    user_code = get_user_code(chat_request)
+    tenant_name = get_tenant_name(chat_request)
+    do_suggest = False
+     
     try:
         postgres = Postgres()
         session_id = get_session_id(request, chat_request)
-        user_code = get_user_code(chat_request)
-        tenant_name = get_tenant_name(chat_request)
-        # if not tenant_name:
-        #     tenant_name_user_code_dict = postgres.get_tenant_name(session_id)
-        #     tenant_name = tenant_name_user_code_dict["tenant_name"]
-        # if not user_code:
-        #     user_code = tenant_name_user_code_dict["user_code"]
         validate_query(chat_request.query)
-        simple_logger(f"Received chat request", session_id)
         history = await postgres.get_history(
             session_id,
             1,
             config["postgres"]["history_length"],
             True
-        )
+        )        
         if len(chat_request.query.split()) > 60:
             paraphrased_utterance, response, context = (
                 "No valid query",
@@ -274,34 +274,74 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
             )
         else:
             selected_history = [[h["query"], h["response"]] if len(h["query"]) < 60 else [h["paraphrased_query"], h["response"]] for h in history]
-            paraphrased_utterance, response, context = await chat_responder_(
-                selected_history, chat_request.query
-            )
-        elapsed_time = time.time() - start_time
-        REQUEST_LATENCY.labels(endpoint="/chat").observe(elapsed_time)  # Record latency
-        message_id = await postgres.insert_chat_row(
-            session_id,
-            chat_request.query,
-            paraphrased_utterance,
-            response,
-            elapsed_time,
-        )
+            if chat_request.on_click:
+                is_sql = True
+                agent = "sql_responder"
+                paraphrased_utterance, message_id = history[-1]["paraphrased_query"], str(history[-1]["message_id"]) # TODO: in the near future, this should be changed to paraphrased_query 
+                detected_module = chat_request.query
+                response = await sql_responder_(
+                    paraphrased_utterance,
+                    detected_module
+                )
+                message = "table response generated"
+                elapsed_time = time.time() - start_time
+                _ = await postgres.update_on_click_chat_row(message_id, response, elapsed_time)            
+            else:
+                paraphrased_utterance, response, context = await chat_responder_(
+                    selected_history, chat_request.query
+                )
+                if not response:
+                    response = MODULE_CLARIFICATION_RESPONSE_TEMPLATE
+                    elapsed_time = time.time() - start_time
+                    message_id = await postgres.insert_chat_row(
+                        session_id,
+                        chat_request.query,
+                        paraphrased_utterance,
+                        "",
+                        elapsed_time,
+                    )
+                    response = MODULE_CLARIFICATION_RESPONSE_TEMPLATE
+                    do_suggest = True
+                    agent = "module_clarification"
+                    message = "modules proposed"
+                    choices = await module_proposer()
+                else:
+                    elapsed_time = time.time() - start_time
+                    REQUEST_LATENCY.labels(endpoint="/chat").observe(elapsed_time)  # Record latency
+                    message_id = await postgres.insert_chat_row(
+                        session_id,
+                        chat_request.query,
+                        paraphrased_utterance,
+                        response,
+                        elapsed_time,
+                    )
+                    
         non_generative_agent_logger(
             session_id=session_id,
             tenant_name=tenant_name,
             user_code=user_code,
-            agent="chat_responder",
-            message="Chat response generated",
+            agent=agent,
+            message=message,
             input_dict={
                 "user_utterance": chat_request.query,
                 "paraphrased_query": paraphrased_utterance,
                 "context": context,
             },
-            output_dict={"response": response, "is_sql": False},
+            output_dict={
+                "response": response,
+                "is_sql": is_sql,
+                "do_suggest": do_suggest,
+                "choices": choices
+            },
             elapsed_time=elapsed_time,
         )
         return ChatResponse(
-            response=response, message_id=message_id, query=paraphrased_utterance
+            response=response, 
+            message_id=message_id, 
+            query=paraphrased_utterance, 
+            is_sql=is_sql,
+            choices=choices,
+            do_suggest=do_suggest
         )
 
     except HTTPException as e:
@@ -316,12 +356,15 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
             tenant_name=tenant_name,
             user_code=user_code,
             agent="chat_responder",
-            message="Chat response not generated",
+            message="exception happened",
             input_dict={
                 "user_utterance": chat_request.query,
                 "paraphrased_query": "",
             },
-            output_dict={"response": ""},
+            output_dict={
+                "response": "",
+                "do_suggest": do_suggest,
+                "choices": choices},
             elapsed_time=elapsed_time,
         )
 
@@ -329,14 +372,19 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
 
 
 class SQLRequest(BaseModel):
+    session_id: str = ""
     query: str
+    on_click: Optional[bool] = False
 
 class SQLResponse(BaseModel):
     response: str
-    module: str
+    do_suggest: bool = False
+    choices: List[str] = []
+    message_id: str
+    
     
 @app.post(
-    "/sql",
+    "/chat/sql",
     response_model=SQLResponse,
     responses={
         200: {},
@@ -358,12 +406,42 @@ async def sql_responder(sql_request: SQLRequest, request: Request):
     start_time = time.time()
 
     try:
-        module_detection_response, response = await sql_responder_(
-                sql_request.query
+        postgres = Postgres()
+        session_id = get_session_id(request, sql_request)
+        if sql_request.on_click:
+            history = await postgres.get_history(
+                session_id,
+                1,
+                1,
+                True
             )
-        elapsed_time = time.time() - start_time
+            user_question, message_id = history[0]["query"], str(history[0]["message_id"]) # TODO: in the near future, this should be changed to paraphrased_query 
+            detected_module = sql_request.query
+            response = await sql_responder_(
+                user_question,
+                detected_module
+            )
+            elapsed_time = time.time() - start_time
+            await postgres.update_on_click_chat_row(message_id, response, elapsed_time)            
+            choices = []
+        else:
+            elapsed_time = time.time() - start_time
+            message_id = await postgres.insert_chat_row(
+                session_id,
+                sql_request.query,
+                sql_request.query,
+                "",
+                elapsed_time,
+            )
+            response = ""
+            do_suggest = True
+            choices = await module_proposer()
+
         return SQLResponse(
-            response=response, module=module_detection_response
+            response=response,
+            do_suggest=False,
+            choices=choices,
+            message_id=message_id
         )
 
     except HTTPException as e:
@@ -374,6 +452,54 @@ async def sql_responder(sql_request: SQLRequest, request: Request):
         elapsed_time = time.time() - start_time
         raise HTTPException(status_code=500, detail="Unhandled error, Please report")
 
+
+class ModuleRequest(BaseModel):
+    query: str
+    
+
+class ModuleResponse(BaseModel):
+    response: str = ""
+    
+    
+@app.post(
+    "/chat/module",
+    response_model=ModuleResponse,
+    responses={
+        200: {},
+        500: {"description": "Unhandled error that should be reported"},
+        404: {
+            "description": "Session not found",
+            "content": {
+                "application/json": {"example": {"detail": "Session not found"}}
+            },
+        },
+        422: {
+            "description": "Unprocessable entity e.g. no session id, or no query",
+            "content": {"application/json": {"example": {"detail": "Query is empty"}}},
+        },
+    }, 
+)
+async def detect_module(module_request: ModuleRequest, request: Request):
+    try:
+        context = await prepare_final_context(module_request.query)
+        response = await router_SQL_QA(module_request.query, context)
+        return ModuleResponse(response=response)
+
+    except HTTPException as e:
+        raise e
+
+    except Exception as e:
+        traceback.print_exc()
+        # REQUEST_LATENCY.labels(endpoint="/MakeResponse").observe(elapsed_time)
+        # non_generative_agent_logger(
+        #     session_id,
+        #     "feedback",
+        #     f"Error in feedback: {str(e)}",
+        #     feedback_request.dict(),
+        #     {},
+        #     time.time() - start_time,
+        # )
+        raise HTTPException(status_code=500, detail="Unhandled error, Please report")
 
 # TODO
 @app.post(

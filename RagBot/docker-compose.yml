@@ -3,7 +3,7 @@ version: '3.8'
 services:
   api:
     build: .
-    image: assistant-bot:dude
+    image: assistant-bot:dude_6
     container_name: assistant-bot-container
     ports:
       - "8686:8687"
@@ -14,7 +14,7 @@ services:
       - log_data:/var/log  # Shared volume for log files
     environment:
       - OLLAMA_HOST=${API_OLLAMA_HOST}
-      # - CUDA_VISIBLE_DEVICES=0
+      - CUDA_VISIBLE_DEVICES=2
 
     restart: always
     user: root
@@ -46,7 +46,7 @@ services:
     restart: always
     environment:
       - OLLAMA_KEEP_ALIVE=${OLLAMA_KEEP_ALIVE}
-      - CUDA_VISIBLE_DEVICES=4,5
+      - CUDA_VISIBLE_DEVICES=1,2
       - OLLAMA_CONTEXT_LENGTH=8192
     networks:
       - ollama-docker2

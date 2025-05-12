@@ -13,14 +13,17 @@ from .prompts import (
     RAG_SYSTEM_PROMPT,
     UTTERANCE_PARAPHRASER_PROMPT,
     SQL_CONVERTER,
-    SQL_MODULE_DETECTION
+    SQL_CONVERTER_1,
+    QUERY_ROUTER,
 )
 from .retriever import Retriever
 from .config import config
 from .cache import Cache
 from .logs import simple_logger
-from .utils import json_cleaning, json_text_cleaning
+from .utils import json_cleaning, json_text_cleaning, json_cleaning_1, json_string_to_dict
 from .business_objects import FINANCIAL_BO, LOGISTICS_BO
+from langchain.chat_models import ChatOpenAI
+
 
 SEED = 44
 torch.manual_seed(SEED)
@@ -32,20 +35,35 @@ random.seed(SEED)
 template_for_not_answer = "پاسخ به این سوال در محدوده دانش من نیست"
 template_for_not_context = "این سوال خارج از حوزه کاری همکاران سیستم است. لطفا سوال خود را در رابطه با محصولات و خدمات همکاران سیستم مطرح کنید."
 
-async def get_chat_response(prompt: str, model_name: str, port_number: str = "11436", num_ctx: int = 2048) -> str:
-    print("Character Length of the prompt: ", len(prompt))
-    print("words length of the prompt: ", len(prompt.split()))
-    llm = ChatOllama(
-        model=model_name,
-        temperature=0,
-        keep_alive=config["ollama"]["keep_alive"],
-        seed=SEED,
-        # base_url="http://ollama:11434",
-        base_url=f"http://127.0.0.1:{port_number}", 
-        num_ctx=num_ctx
-    )
+async def get_chat_response(prompt: str, answer_type: str) -> str:
+    print("Character Length of the prompt: ", len(prompt)) # TODO print should be replaced with a proper log
+    print("words length of the prompt: ", len(prompt.split())) # TODO print should be replaced with a proper log
+    if answer_type == "qa":
+        model_name = config["ollama"]["qa_model_name"]
+        base_url = f"http://185.13.230.222:{str(config['ollama']['qa_model_port'])}/v1"
+        num_ctx = config['ollama']['qa_model_num_ctx']
+        llm = ChatOpenAI(
+            openai_api_base=base_url,
+            openai_api_key="EMPTY",
+            model_name="/models/aya-expanse-32b-gptq-4bit"
+        ) 
+    else:
+        model_name = config["ollama"]["sql_model_name"]
+        # base_url = f"http://ollama:{config['ollama']['sql_model_port']}"
+        base_url = "http://localhost:8980"
+        num_ctx = config['ollama']['sql_model_num_ctx']
+        llm = ChatOllama(
+            model=model_name,
+            temperature=0,
+            keep_alive=config["ollama"]["keep_alive"],
+            seed=SEED,
+            # base_url="http://ollama:11434",
+            base_url=base_url, 
+            num_ctx=num_ctx
+        )
+
     messages = [SystemMessage(content=prompt)]
-    response = await llm.ainvoke(messages)  # type: ignore[arg-type]
+    response = await llm.ainvoke(messages)  
     return response.content
 
 
@@ -84,7 +102,11 @@ async def utterance_paraphraser(history: List[tuple[str, str]], user_utterance: 
         history=serialized_history,
         question=user_utterance,
     )
-    response = await get_chat_response(prompt, config["ollama"]["model_name"])
+    response = await get_chat_response(prompt, answer_type="sql")
+    response = json_cleaning(response)
+    # import pdb
+    # pdb.set_trace()
+    # response_ = json_cleaning_1(response)
     # import pdb
     # pdb.set_trace()
     # paraphrased_query = json_cleaning(response)
@@ -95,13 +117,14 @@ async def utterance_paraphraser(history: List[tuple[str, str]], user_utterance: 
 
 async def query_responder(query: str, context: str, history: str) -> str:
     # TODO: Add appropriate logger.
+    
     serialized_history = history_serializer(history)
     prompt = RAG_SYSTEM_PROMPT.format(
         context=context,
         # history=serialized_history,
         question=query,
     )
-    response = await get_chat_response(prompt, config["ollama"]["model_name"])
+    response = await get_chat_response(prompt, answer_type="qa")
     return response
     # cleaned_response = json_cleaning(response)
     # cleaned_response_dict = json_text_cleaning(cleaned_response, "answer")
@@ -127,28 +150,33 @@ async def prepare_final_context(query: str) -> str:
     # TODO: need appropriate context management > context = context[: config["context"]["max_length"]]
     return context.strip()
 
+async def module_proposer():
+    return ["انبار", "مالی"]
 
-async def sql_responder_(query: str):
-    # module_detection_prompt = SQL_MODULE_DETECTION.format(user_question=query)
-    # modul_detection_response_raw = await get_chat_response(module_detection_prompt, config["ollama"]["model_name"])
-    # modul_detection_json_response = json_text_cleaning(modul_detection_response_raw, "detected_module")
-    # modul_detection_response = modul_detection_json_response["detected_module"]
-    modul_detection_response = "logistics"
-    print(modul_detection_response)
 
-    if modul_detection_response == "financial":
+async def sql_responder_(query: str, detected_module: str = ""):
+    if detected_module.strip() == "مالی":
         bo_prompt = SQL_CONVERTER.format(schema=FINANCIAL_BO, query=query)
     else:
         bo_prompt = SQL_CONVERTER.format(schema=LOGISTICS_BO, query=query)
-    raw_json_response = await get_chat_response(bo_prompt, config["ollama"]["sql_model_name"], config["ollama"]["sql_model_port"], num_ctx=8192)
+    raw_json_response = await get_chat_response(bo_prompt, answer_type="sql")
     response = json_cleaning(raw_json_response)
-    print(raw_json_response)
+    
+    # response_dict = json_cleaning(raw_json_response)
+    # response = response_dict["sql"]
     # json_response = json_text_cleaning(raw_json_response)
     # response = json_response["query"]
     if not response:
         response = "در حال حاضر نمیتوانم به این سوال پاسخ دهم"
-    return modul_detection_response, response
-
+    return response
+    
+    
+async def router_SQL_QA(query: str, context: str):
+    prompt = QUERY_ROUTER.format(query=query, context=context)
+    raw_response = await get_chat_response(prompt, answer_type="sql")
+    response = json_cleaning(raw_response)
+    return response
+    
     
 async def chat_responder_(
     history: List[tuple[str, str]],
@@ -171,7 +199,11 @@ async def chat_responder_(
 
     context = await prepare_final_context(paraphrased_utterance)
     if not context:
-        return paraphrased_utterance, template_for_not_answer, "" 
+        return paraphrased_utterance, "", ""
+
+    route_response = await router_SQL_QA(paraphrased_utterance, context)
+    if route_response == "DATABASE":
+        return paraphrased_utterance, "", ""
         
     response = await query_responder(paraphrased_utterance, context, history)
     # json_response = fix_asterisks(json_response)

@@ -181,3 +181,6 @@ RagBot/ragbot/VectorDB.zip
 RagBot/pgadmin.tar
 
 RagBot/mydata
+
+# documents 
+knowledge_base/qa-questions
