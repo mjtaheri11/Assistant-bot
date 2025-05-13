@@ -121,19 +121,13 @@ section.main>div {
     font-size: 10px;
 }
 
-[data-testid="stSidebarContent"] [data-testid="baseButton-secondary"] {
-    color: #b37400;
-    background-color: #fffaf0
-}
-
 
 [data-testid="stSidebarContent"] p {
     direction: "rtl";
-    color: rgb(0, 66, 128);
     text-align: end;
 }
 
-[data-testid="stSidebarContent"] [data-testid="baseButton-secondary"] {
+/* [data-testid="stSidebarContent"] [data-testid="baseButton-secondary"] {
     background-color: #6CA4CC11;
     border: 1px solid #54c5d0;
     margin: 10px;
@@ -144,6 +138,55 @@ section.main>div {
 
 [data-testid="stFileUploaderDropzone"] {
     background-color: #f0fffe;
+} */
+
+
+/* Improved CSS for primary Buttons in Sidebar Content */
+[data-testid="stSidebarContent"] [data-testid="baseButton-primary"] {
+    background-color: #f39c12 ; /* Light and fresh background color */
+    border: 1px solid #f39c12 ; /* Softer, lighter border */
+    margin: 10px;
+    box-sizing: border-box;
+    border-radius: 5px; /* Slightly more rounded corners for a softer look */
+    padding: 8px 16px; /* Add some padding for better spacing */
+    color: #ffff; /* Darker text for better readability */
+    font-size: 20px;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.05); /* Subtle shadow for depth */
+    transition: background-color 0.3s ease; /* Smooth background color transition for hover effect */
+}
+
+/* Improved CSS for Secondary Buttons in Sidebar Content */
+/* background-color: #e0f7fa; /* Light and fresh background color */
+[data-testid="stSidebarContent"] [data-testid="baseButton-secondary"] {
+    border: 1px solid #6CB4EE; /* Softer, lighter border */
+    margin: 10px;
+    box-sizing: border-box;
+    border-radius: 5px; /* Slightly more rounded corners for a softer look */
+    padding: 8px 16px; /* Add some padding for better spacing */
+    color: #333; /* Darker text for better readability */
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.05); /* Subtle shadow for depth */
+    transition: background-color 0.3s ease; /* Smooth background color transition for hover effect */
+}
+
+[data-testid="stSidebarContent"] [data-testid="baseButton-secondary"]:hover {
+    background-color: #cceeff; /* Slightly darker background on hover for interaction feedback */
+    border-color: #6CB4EE; /* Slightly darker border on hover */
+    box-shadow: 2px 2px 7px rgba(0, 0, 0, 0.1); /* Slightly larger shadow on hover */
+}
+
+[data-testid="stFileUploaderDropzone"] {
+    background-color: #f8fafc; /* Very light grey, softer than pure white */
+    border: 2px dashed #d0d7de; /* Dashed border to indicate it's a drop zone */
+    border-radius: 5px; /* Rounded corners to match buttons */
+    padding: 25px; /* Increased padding for a more spacious drop zone */
+    text-align: center; /* Center align any text inside */
+    color: #555; /* Slightly darker text color */
+}
+
+/* Optional: Style for when you hover over the Dropzone */
+[data-testid="stFileUploaderDropzone"]:hover {
+    background-color: #f0f2f5; /* Slightly darker background on hover */
+    border-color: #a6b1ba; /* Slightly darker border on hover */
 }
 
 
@@ -162,6 +205,15 @@ section.main>div {
 [data-testid="stVirtualDropdown"] div {
     direction: rtl;
 }
+
+[data-testid="stVerticalBlock"] [data-testid="stRadio"] {
+    display: flex;
+    flex-direction: row;
+    text-align: start;
+    direction: rtl;
+    box-sizing: border-box;
+}
+
 
 
 /* 

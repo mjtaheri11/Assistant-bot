@@ -53,11 +53,11 @@ def convert_doc_bytes_to_docx(doc_bytes: bytes) -> bytes:
 
 def load_document(file_path, **kwargs) -> DocxDocument:
     """Load a DOC or DOCX file into a python-docx Document object."""
-    doc_obj = kwargs["doc_obj"] if "doc_obj" in kwargs else file_path
+    file_path = kwargs["doc_obj"] if "doc_obj" in kwargs else file_path
     if file_path.lower().endswith('.doc'):
         docx_path = convert_doc_bytes_to_docx(doc_obj)
         return Document(BytesIO(docx_path))
-    return Document(BytesIO(doc_obj))
+    return Document(file_path)
 
 
 def is_excluded_format(text: str) -> bool:
@@ -383,6 +383,7 @@ def process_single_document(
 
     # import pdb
     # pdb.set_trace()
+
     current_heading_level = float("inf") # Initialize current heading level
 
     # Track indices for paragraphs and tables separately
@@ -429,12 +430,11 @@ def process_single_document(
                 current_chunk["h3"] = text 
                 current_chunk["h4"] = "" 
                 current_chunk["content"] = []
-                
 
             elif heading_level == 4:
                 current_chunk["h4"] = text
                 current_chunk["content"] = []
-                
+
             else:
                 current_chunk["content"].append(text)
                     
@@ -455,12 +455,12 @@ def process_single_document(
             table_chunk["content"].append(compact_table)
             chunks.extend(finalize_chunk(table_chunk, target_chunk_size, max_chunk_size, doc_path, make_partition=False))
 
+
+
     chunks.extend(finalize_chunk(
         current_chunk, target_chunk_size, max_chunk_size, doc_path
         )
                   )
-
-
     # Prepend header text to each chunk's content if header exists
     if header_text:
         for chunk in chunks:
@@ -544,9 +544,11 @@ def chunk_document(doc_settings: Dict[object, Dict]) -> List["Document"]:
     # since python-docx parsing and chunking can be CPU-intensive on large docs.
 
     # for doc_obj, settings in doc_settings.items():
-    #     doc_path = settings["filename"]
+    #     doc_path = settings["file_name"]
     #     result = process_single_document(doc_obj , doc_path)
     #     all_chunks.extend(result)
+    #     import pdb
+    #     pdb.set_trace()
     #     print(f"Submitting {doc_path} for processing...")
     
     
@@ -554,7 +556,7 @@ def chunk_document(doc_settings: Dict[object, Dict]) -> List["Document"]:
         # Collect futures for each document
         future_to_doc = {}
         for doc_obj, settings in doc_settings.items():
-            doc_path = settings["filename"]
+            doc_path = settings["file_name"]
             future = executor.submit(
                 process_single_document,
                 doc_obj,
@@ -574,7 +576,6 @@ def chunk_document(doc_settings: Dict[object, Dict]) -> List["Document"]:
             else:
                 all_chunks.extend(result)
                 print(f"Successfully processed: {doc_path}")
-    
     return all_chunks
 
 
@@ -666,27 +667,27 @@ def chunk_document(doc_settings: Dict[object, Dict]) -> List["Document"]:
 #     return finalized_chunks
 
 
-if __name__ == "__main__":
-    chunks = chunk_document(
-        {
-            "/home/user01/mj-workspace/Assistant-bot/knowledge_base/aaza.doc": {
-                "filename": "/home/user01/mj-workspace/Assistant-bot/knowledge_base/aaza.doc",
-                "target_chunk_size": 800,
-                "max_chunk_size": 1200,
-                "sentence_overlap": 1,
-            }
-        }
-    )
-    print(chunks)
+# if __name__ == "__main__":
+#     chunks = chunk_document(
+#         {
+#             "/home/user01/mj-workspace/Assistant-bot/knowledge_base/aaza.doc": {
+#                 "filename": "/home/user01/mj-workspace/Assistant-bot/knowledge_base/aaza.doc",
+#                 "target_chunk_size": 800,
+#                 "max_chunk_size": 1200,
+#                 "sentence_overlap": 1,
+#             }
+#         }
+#     )
+#     print(chunks)
 
 
 # Example usage
 # if __name__ == "__main__":
-    # # Replace with your document path
-    # docx_path = "/home/user01/mj-workspace/Assistant-bot/knowledge_base/new-KB/Usermanual-v3.docx"
-    # try:
-    #     headings = extract_potential_headings(docx_path)
-    #     print_results(headings)
-    # except Exception as e:
-    #     print(f"Error processing document: {str(e)}")
+#     # Replace with your document path
+#     docx_path = "/home/user01/mj-workspace/Assistant-bot/knowledge_base/new-KB/Usermanual-v3.docx"
+#     try:
+#         headings = extract_potential_headings(docx_path)
+#         print_results(headings)
+#     except Exception as e:
+#         print(f"Error processing document: {str(e)}")
         

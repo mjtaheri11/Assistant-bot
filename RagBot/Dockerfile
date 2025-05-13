@@ -1,5 +1,5 @@
 # Use an official Python image as the base image
-FROM assistant-bot:dude
+FROM assistant-bot:dudedude
 
 # FROM python:3.10-slim
 # RUN apt-get update && apt-get -y install

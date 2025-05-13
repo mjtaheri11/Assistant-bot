@@ -81,14 +81,14 @@ def init_session_state():
         st.session_state["user_utterance"] = []
     if "response" not in st.session_state:
         st.session_state["response"] = []
-    if "create_database" not in st.session_state:
-        st.session_state["database"] = []
     if "urls" not in st.session_state:
         st.session_state["urls"] = []
     if "query" not in st.session_state:
         st.session_state["query"] = []
     if "suggested_sessions" not in st.session_state:
         st.session_state["suggested_sessions"] = []
+    if "suggested_databases" not in st.session_state:
+        st.session_state["suggested_databases"] = []
     if "have_clicked_on_feedback" not in st.session_state:
         st.session_state["have_clicked_on_feedback"] = False
     if "first_encounter_with_searchbox" not in st.session_state:
@@ -103,13 +103,19 @@ def init_session_state():
         st.session_state["databases"] = []
     if "database_id" not in st.session_state:
         st.session_state["database_id"] = None
-    if "enable_submit_form" not in st.session_state:
-        st.session_state["enable_submit_form"] = False
+    # if "enable_submit_form" not in st.session_state:
+    #     st.session_state["enable_submit_form"] = False
     if "form_submitted" not in st.session_state: 
         st.session_state["form_submitted"] = False
     if "answer_type" not in st.session_state:
-        st.session_state["answer_type"] = ""
-    if "does_evaluate" not in st.session_state:
-        st.session_state["does_evaluate"] = ""
+        st.session_state["answer_type"] = "concise"
     if "use_cache" not in st.session_state:
-        st.session_state["use_cache"] = False
+        st.session_state["use_cache"] = True
+    if "assistant_name" not in st.session_state:
+        st.session_state["assistant_name"] = "دستیار دیجیتال"
+    if "company_name" not in st.session_state:
+        st.session_state["company_name"] = "همکاران سیستم"
+    if "does_evaluate" not in st.session_state:
+        st.session_state["does_evaluate"] = False 
+    if "enable_submit_form" not in st.session_state:
+        st.session_state["enable_submit_form"] = False 

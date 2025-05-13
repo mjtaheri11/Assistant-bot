@@ -31,6 +31,32 @@ from .config import config
 
 # sudo docker exec -it postgres psql -U postgres -d chatbot -c "ALTER TABLE public.message ADD COLUMN is_sql BOOLEAN DEFAULT FALSE;"
 
+
+# sudo docker exec -it postgres psql -U postgres -d chatbot -c "CREATE TABLE public.databases (
+    #                                                               database_id UUID DEFAULT gen_random_uuid() PRIMARY KEY, 
+    #                                                               company_name TEXT DEFAULT 'همکاران سیستم',
+    #                                                               assistant_name TEXT DEFAULT 'دستیار دیجیتال',
+    #                                                               create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    #                                                           );"
+        
+# sudo docker exec -it postgres psql -U postgres -d chatbot -c "CREATE TABLE public.sessions (
+    #                                                               session_id UUID DEFAULT gen_random_uuid() PRIMARY KEY, 
+    #                                                               database_id UUID REFERENCES public.databases(database_id), 
+    #                                                               response_type VARCHAR(20) DEFAULT 'concise',
+    #                                                               create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    #                                                           );"
+    
+# sudo docker exec -it postgres psql -U postgres -d chatbot -c "CREATE TABLE public.message (
+    #                                                               message_id UUID DEFAULT gen_random_uuid() PRIMARY KEY, 
+    #                                                               session_id UUID REFERENCES public.sessions(session_id), 
+    #                                                               user_query TEXT, 
+    #                                                               paraphrased_query TEXT, 
+    #                                                               bot_response TEXT, 
+    #                                                               feedback TEXT, 
+    #                                                               elapsed_time FLOAT, 
+    #                                                               create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    #                                                           );"
+
 class Postgres:
     _instance = None
 
@@ -97,15 +123,97 @@ class Postgres:
             insert_values=(message_id, session_id),
         )
         return message_fields[0] if message_fields else []
+    
+    async def create_database(self, company_name=None, assistant_name=None):
+        sql_create_database_query = "INSERT INTO public.databases"
+        columns = []
+        values_placeholder = []
+        query_params = []
 
-    async def create_session(self):
-        sql_create_session_query = (
-            "INSERT INTO public.session DEFAULT VALUES RETURNING session_id;"
+        if company_name is not None:
+            columns.append("company_name")
+            values_placeholder.append("$1")
+            query_params.append(company_name)
+
+        if assistant_name and company_name:
+            columns.append("assistant_name")
+            values_placeholder.append("$2")
+            query_params.append(assistant_name)
+        
+        if (assistant_name is not None) and (company_name is None):
+            columns.append("assistant_name")
+            values_placeholder.append("$1")
+            query_params.append(assistant_name)    
+
+        if columns:
+            sql_create_database_query += f" ({', '.join(columns)}) VALUES ({', '.join(values_placeholder)}) RETURNING database_id;"
+            query_params_tuple = tuple(query_params)
+        else:
+            sql_create_database_query += " DEFAULT VALUES RETURNING database_id;"
+            query_params_tuple = None
+
+        db_id = await self._execute_query(
+            sql_create_database_query, insert_values=query_params_tuple, is_insert=True, fetch_results=True
         )
-        sid = await self._execute_query(
-            sql_create_session_query, is_insert=True, fetch_results=True
+        output = {"database_id": str(db_id[0])}
+        return output
+    
+    async def find_database_id(self, session_id):
+        sql_query_find_dbid = "SELECT database_id FROM public.session WHERE session_id = $1"
+        database_id = await self._execute_query(
+            sql_query_find_dbid,
+            insert_values=(session_id,),
+            is_insert=True,
+            fetch_results=True
         )
-        output = {"session_id": str(sid[0])}
+        output = {"database_id": str(database_id[0])}
+        return output
+
+    async def create_session(self, database_id=None, tenant_name="", user_code=""):
+        sql_create_database_query = "INSERT INTO public.session"
+        columns = []
+        values_placeholder = []
+        query_params = []
+
+        if database_id:
+            columns.append("database_id")
+            values_placeholder.append("$1")
+            query_params.append(database_id)
+
+        if tenant_name:
+            columns.append("tenant_name")
+            values_placeholder.append("$2")
+            query_params.append(tenant_name)
+            
+        if user_code:
+            columns.append("user_code")
+            values_placeholder.append("$3")
+            query_params.append(user_code)
+            
+        if columns:
+            sql_create_database_query += f" ({', '.join(columns)}) VALUES ({', '.join(values_placeholder)}) RETURNING session_id;"
+            query_params_tuple = tuple(query_params)
+        
+        else:
+            sql_create_database_query += " DEFAULT VALUES RETURNING session_id;"
+            query_params_tuple = None
+            
+        session_id = await self._execute_query(
+            sql_create_database_query, insert_values=query_params_tuple, is_insert=True, fetch_results=True
+        )
+        output = {"session_id": str(session_id[0])}
+        return output
+        
+    async def extract_response_type(self, session_id):
+        sql_extract_response_type = (
+            "select response_type from public.session where session_id=$1"
+        )
+        _response_type = await self._execute_query(
+                            sql_extract_response_type,
+                            fetch_results=True,
+                            insert_values=(session_id)
+                        )
+        output = {"response_type": _response_type}
         return output
 
     async def get_history(self, session_id, page_index, page_size, with_paraphrase=False):
@@ -139,6 +247,22 @@ class Postgres:
             ]       
                 
         return history
+    
+    async def get_latest_databases(self, num_databases=30):
+        sql_get_latest_databases = "SELECT database_id, company_name, assistant_name FROM public.databases ORDER BY create_time DESC LIMIT $1"
+        results = await self._execute_query(
+            sql_get_latest_databases,
+            fetch_results=True,
+            insert_values=(num_databases,)
+        )
+        return [
+            {
+                "database_id": str(row[0]),
+                "company_name": row[1],
+                "assistant_name": row[2]
+            }
+            for row in results
+        ]
     
     async def get_latest_sessions(
         self,
@@ -176,6 +300,38 @@ class Postgres:
             LIMIT $2;
         """
 
+#         sql_latest_unique_sessions_with_paraphrase = """            
+#             WITH recent_messages AS (
+#                 SELECT session_id, create_time
+#                 FROM message
+#                 ORDER BY create_time DESC
+#                 LIMIT $3
+#             ),
+#             distinct_sessions AS (
+#                 SELECT DISTINCT ON (session_id)
+#                     session_id,
+#                     create_time
+#                 FROM recent_messages
+#                 ORDER BY session_id, create_time DESC
+#             )
+#             SELECT 
+#                 ds.session_id,
+#                 s.database_id,
+#                 (
+#                     SELECT m.paraphrased_query
+#                     FROM message m
+#                     WHERE m.session_id = ds.session_id
+#                     AND m.paraphrased_query IS NOT NULL
+#                     ORDER BY m.create_time ASC
+#                     LIMIT 1
+#                 ) AS first_paraphrased_query
+#             FROM distinct_sessions ds
+#             JOIN session s ON ds.session_id = s.session_id
+#             ORDER BY ds.create_time DESC
+#             OFFSET $1
+#             LIMIT $2;
+# """
+
         results = await self._execute_query(
             sql_latest_unique_sessions_with_paraphrase,
             fetch_results=True,
@@ -192,29 +348,44 @@ class Postgres:
         ]
     
     async def insert_chat_row(
-        self, session_id, user_query, paraphrased_query, bot_response, elapsed_time
+        self, session_id, user_query, paraphrased_query, bot_response, response_type, elapsed_time
     ):
         values = (
             session_id,
             user_query,
             paraphrased_query,
             bot_response,
+            response_type,
             elapsed_time,
         )
-        sql_insert_query = "INSERT INTO message (session_id, user_query, paraphrased_query, bot_response, elapsed_time) VALUES ($1, $2, $3, $4, $5) RETURNING message_id;"
+        sql_insert_query = "INSERT INTO message (session_id, user_query, paraphrased_query, bot_response, response_type, elapsed_time) VALUES ($1, $2, $3, $4, $5, $6) RETURNING message_id;"
         message_id = await self._execute_query(
             sql_insert_query, is_insert=True, insert_values=values, fetch_results=True
         )
         return str(message_id[0])
 
     async def set_feedback(self, message_id, feedback_type):
-        update_query = "UPDATE message SET feedback = $1 WHERE message_id = $2 AND feedback IS NULL RETURNING message_id;"
+        update_query = """
+            UPDATE message 
+            SET feedback = $1 
+            WHERE message_id = $2 AND feedback IS NULL 
+            RETURNING message_id;
+        """
         result = await self._execute_query(
             update_query,
             fetch_results=True,
             insert_values=(feedback_type, message_id),
         )        
-        if result: 
-            return True
-        return False
+        return bool(result)
+
+    async def get_user_code_tenant_name(self, session_id):
+        sql_get_user_code = "SELECT user_code, tenant_name FROM public.session where session_id = $1"
+        result = await self._execute_query(
+            update_query,
+            fetch_results=True,
+            insert_values=(feedback_type, message_id),
+        )
+        user_code, tenant_name = (result[0] if result[0] != None else "", result[1] if result[1] != None else "")
+        {"user_code": str(user_code), "tenant_name": str(tenant_name)}
+        return 
         

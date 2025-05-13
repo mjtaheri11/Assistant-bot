@@ -11,10 +11,11 @@ services:
       - ../VectorDB:/app/VectorDB
       - ../db-cache:/app/db-cache
       - ../saved_models:/app/saved_models
+      - ../RaaS_vectorDB:/app/RaaS_vectorDB
       - log_data:/var/log  # Shared volume for log files
     environment:
       - OLLAMA_HOST=${API_OLLAMA_HOST}
-        # - CUDA_VISIBLE_DEVICES=0
+      - CUDA_VISIBLE_DEVICES=2
 
     restart: always
     user: root
@@ -38,7 +39,7 @@ services:
   ollama:
     image: ollama/ollama:latest
     ports:
-      - 8089:11434
+      - 8980:11434
     volumes:
       - /usr/share/ollama/.ollama/:/root/.ollama
     container_name: ollama
@@ -46,7 +47,8 @@ services:
     restart: always
     environment:
       - OLLAMA_KEEP_ALIVE=${OLLAMA_KEEP_ALIVE}
-        # - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES}
+      # - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES}
+
     networks:
       - ollama-docker2
 
@@ -60,7 +62,7 @@ services:
     runtime: nvidia
 
   postgres:
-    image: postgres:latest
+    image: postgres:16
     container_name: postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER}

@@ -8,6 +8,7 @@ import torch
 import numpy as np
 from langchain.schema import SystemMessage
 from langchain_community.chat_models import ChatOllama
+from langchain.chat_models import ChatOpenAI
 
 from .prompts import (
     RAG_CONCISE_SYSTEM_PROMPT,
@@ -35,17 +36,13 @@ template_for_not_context = """این سوال خارج از حوزه کاری {c
 template_for_doubtful_answer = "سوال شما را به خوبی متوجه نشدم. لطفا سوال خود را به صورت دقیق تر بپرسید تا بتوانم بهتر کمک کنم."
 
 async def get_chat_response(prompt: str, model_name: str) -> str:
-    # OLLAMA_HOST = os.getenv('OLLAMA_HOST', 'http://dockerize_assistant-ollama-1:11434')
-    # LLM_MODEL = os.getenv('LLM_MODEL', 'gemma2:9b-instruct-fp16')
     print("Character Length of the prompt: ", len(prompt))
     print("words length of the prompt: ", len(prompt.split()))
-    llm = ChatOllama(
-        model=model_name,
-        temperature=config["ollama"]["temperature"],
-        keep_alive=config["ollama"]["keep_alive"],
-        base_url="http://127.0.0.1:8089",
-        seed=SEED,
-    )
+    llm = ChatOpenAI(
+        openai_api_base="http://185.13.230.222:8001/v1",
+        openai_api_key="EMPTY",
+        model_name="/models/aya-expanse-32b-gptq-4bit"
+        )
     messages = [SystemMessage(content=prompt)]
     response = await llm.ainvoke(messages)  # type: ignore[arg-type]
     return response.content
@@ -129,7 +126,6 @@ async def answer_validator(question: str, context: str, answer: str) -> bool:
     response = await get_chat_response(prompt, config["ollama"]["model_name"])
     return response
 
-
 async def prepare_final_context(query: str, database_index: str) -> str:
     cache = Cache()
     records = await cache.get_embedding_match(
@@ -147,7 +143,7 @@ async def prepare_final_context(query: str, database_index: str) -> str:
     retriever = Retriever()
     context = await retriever.retrieve_context(query, database_index) + "\n\n" + context
     # TODO: need appropriate context management > context = context[: config["context"]["max_length"]]
-    return context
+    return context.strip()
 
 
 async def sql_responder(query: str, table_schemas: List[str]) -> str:
@@ -163,7 +159,7 @@ async def chat_responder_(
     database_index: str = config["database"]["persist_directory"],
     company_name: str = config["database"]["company_name"],
     assistant_name: str = config["database"]["assistant_name"],
-    answer_type: str = config["database"]["answer_type"],
+    response_type: str = config["database"]["response_type"],
     does_evaluate: bool = config["database"]["does_evaluate"],
     use_cache: bool = config["database"]["use_cache"]
 ) -> tuple[str, str, str, str]:
@@ -190,7 +186,14 @@ async def chat_responder_(
     if not context:
         return paraphrased_utterance, template_for_not_answer, "" 
     
-    response = await query_responder(paraphrased_utterance, context, history, company_name, assistant_name, answer_type)
+    response = await query_responder(
+        paraphrased_utterance,
+        context,
+        history,
+        company_name,
+        assistant_name,
+        response_type
+    )
     
     # json_response = fix_asterisks(json_response)
     # return paraphrased_utterance, json_response["answer"], context
@@ -213,9 +216,6 @@ async def chat_responder_(
             return paraphrased_utterance, response, context
     else:
         return paraphrased_utterance, response, context
-
-
-
 async def feedback_(
     query: str,
     response: str,

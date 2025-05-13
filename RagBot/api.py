@@ -11,8 +11,11 @@ from io import BytesIO
 from typing import List, Optional, Tuple
 
 import asyncpg
+
 from fastapi import (FastAPI, File, Form, HTTPException, Query, Request,
                      UploadFile)
+
+
 from fastapi.responses import JSONResponse
 from prometheus_client import Counter, Histogram, generate_latest
 from pydantic import BaseModel
@@ -20,6 +23,7 @@ from src.config import config
 from src.initiate_vdb import create_vector_database
 from src.logic import (chat_responder_, feedback_, prepare_final_context,
                        query_responder, sql_responder, utterance_paraphraser)
+
 from src.logs import non_generative_agent_logger, simple_logger
 from src.orm import Postgres
 from starlette.responses import Response
@@ -34,6 +38,10 @@ REQUEST_LATENCY = Histogram(
 )
 
 
+# sudo docker exec -it postgres psql -U postgres -d chatbot -c "CREATE TABLE public.databases (database_id UUID DEFAULT gen_random_uuid() PRIMARY KEY, create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP);"
+# sudo docker exec -it postgres psql -U postgres -d chatbot -c "CREATE TABLE public.sessions (session_id UUID DEFAULT gen_random_uuid() PRIMARY KEY, database_id UUID REFERENCES public.databases(database_id), create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP);"
+# sudo docker exec -it postgres psql -U postgres -d chatbot -c "CREATE TABLE public.message (message_id UUID DEFAULT gen_random_uuid() PRIMARY KEY, session_id UUID REFERENCES public.sessions(session_id), user_query TEXT, paraphrased_query TEXT, bot_response TEXT, feedback TEXT, elapsed_time FLOAT, create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP);"
+
 class SessionResponse(BaseModel):
     session_id: str
 
@@ -41,9 +49,11 @@ class SessionResponse(BaseModel):
 class ChatRequest(BaseModel):
     query: str
     session_id: Optional[str] = None
+    tenant_name: Optional[str] = None
+    user_code: Optional[str] = None
     database_index: Optional[str] = None
-    answer_type: Optional[str] = "concise"
     does_evaluate: Optional[bool] = False
+    response_type: Optional[str] = "concise"
     use_cache: Optional[bool] = True
 
 
@@ -54,10 +64,14 @@ class ChatResponse(BaseModel):
     is_sql: bool = False
 
 
+class CreateSessionRequest(BaseModel):
+    tenant_name: Optional[str] = ""
+    user_code: Optional[str] = ""
+    database_id: Optional[str] = ""
+
 class SQLRequest(BaseModel):
     table_schemas: List[str]  # Accept a list of schemas
     query: str
-    
 
 class SQLResponse(BaseModel):
     response: str
@@ -91,15 +105,21 @@ class MakeResponse(BaseModel):
 class FeedbackRequest(BaseModel):
     message_id: str
     feedback_type: str
-    session_id: Optional[str]
+    session_id: Optional[str] = None  # Add default value
+    tenant_name: Optional[str] = None
+    user_code: Optional[str] = None
 
 
 class FeedbackResponse(BaseModel):
     message: str
     
+    
 class CreateDatabaseResponse(BaseModel):
     database_id: str
     message: str
+
+class GetDatabasesResponse(BaseModel):
+    response: List[dict]
 
 
 def get_session_id(request: Request, content_request: ChatRequest):
@@ -109,14 +129,27 @@ def get_session_id(request: Request, content_request: ChatRequest):
         raise HTTPException(status_code=422, detail="No Session-ID")
     return session_id
 
+def get_tenant_name(content_request: BaseModel):
+    if hasattr(content_request, "tenant_name"):
+        if content_request.tenant_name: 
+            return content_request.tenant_name
+    return ""
+    
 
+def get_user_code(content_request: BaseModel):
+    if hasattr(content_request, "user_code"):
+        if content_request.user_code: 
+            return content_request.user_code
+    return ""
+
+    
 def validate_query(query):
     if not query.strip():
         raise HTTPException(status_code=422, detail="Query is empty")
 
 
 def find_database_path(database_index: str = None):
-    if database_index == None:
+    if database_index == "None" or database_index == None:
         match_dir = "../VectorDB"
         company_name = config["database"]["company_name"]
         assistant_name = config["database"]["assistant_name"]
@@ -138,7 +171,7 @@ def find_database_path(database_index: str = None):
     return match_dir, company_name, assistant_name
         
 
-async def preprocess_vector_db_input(files, target_chunk_size, max_chunk_size):
+async def preprocess_vector_db_input(files, target_chunk_size, max_chunk_size, company_name, assistant_name):
     _settings = {}
     for file in files:
         content = await file.read()
@@ -149,6 +182,8 @@ async def preprocess_vector_db_input(files, target_chunk_size, max_chunk_size):
             "max_chunk_size": max_chunk_size,
             "sentence_overlap": 1,
         }
+    _settings["company_name"] = company_name
+    _settings["assistant_name"] = assistant_name
     return _settings
 
 
@@ -175,6 +210,27 @@ async def get_latest_sessions():
 
     except Exception as e:
         raise e
+
+
+@app.get(
+    "/databases",
+    response_model=GetDatabasesResponse,
+    responses={
+        200: {},
+        500: {"description": "Unhandled error that should be reported"},
+    },
+)
+async def get_latest_databases():
+    try:
+        postgres = Postgres()
+        databases = await postgres.get_latest_databases()
+        return GetDatabasesResponse(response=databases)
+
+    except HTTPException as e:
+        raise e 
+
+    except Exception as e:
+        raise e 
 
 
 @app.get(
@@ -211,7 +267,6 @@ async def get_history(
         # TODO: add a proper logger to this function
         raise HTTPException(status_code=500, detail="Unhandled error, Please report")
 
-
 @app.post(
     "/session/create",
     response_model=SessionResponse,
@@ -220,10 +275,35 @@ async def get_history(
         500: {"description": "Unhandled error that should be reported"},
     },
 )
-async def create_session():
+async def create_session(create_session_request: Optional[CreateSessionRequest] = None):
+    start_time = time.time()
     try:
-        postgres = Postgres()
-        session_id = await postgres.create_session()
+        postgres = Postgres()  # Assuming Postgres is your DB class
+        if not create_session_request:
+            tenant_name = ""
+            user_code = ""
+            database_id = ""
+            session_id = await postgres.create_session()
+
+        else:
+            tenant_name = create_session_request.tenant_name
+            user_code = create_session_request.user_code
+            session_id = await postgres.create_session(create_session_request.database_id, tenant_name, user_code)
+
+        elapsed_time = time.time() - start_time
+        non_generative_agent_logger(
+            session_id=session_id.get("session_id"),
+            tenant_name=tenant_name,
+            user_code=user_code,
+            agent="session_creator",
+            message="session created",
+            input_dict={
+                "tenant_name": tenant_name,
+                "user_code": user_code,
+            },
+            output_dict={"response": session_id.get("session_id")},
+            elapsed_time=elapsed_time,
+        )
         return session_id
     except Exception as e:
         traceback.print_exc()
@@ -255,6 +335,14 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
     try:
         postgres = Postgres()
         session_id = get_session_id(request, chat_request)
+        user_code = get_user_code(chat_request)
+        tenant_name = get_tenant_name(chat_request)
+        # if not tenant_name:
+        #     tenant_name_user_code_dict = postgres.get_tenant_name(session_id)
+        #     tenant_name = tenant_name_user_code_dict["tenant_name"]
+        # if not user_code:
+        #     user_code = tenant_name_user_code_dict["user_code"]
+
         validate_query(chat_request.query)
         simple_logger(f"Received chat request", session_id)
         history = await postgres.get_history(
@@ -267,9 +355,8 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                 "",
             )
         else:
-            matched_index, company_name, assistant_name = find_database_path(
-                chat_request.database_index
-            )
+            database_id_dict = await postgres.find_database_id(chat_request.session_id)
+            matched_index, company_name, assistant_name = find_database_path(database_id_dict["database_id"])
             selected_history = [
                 (
                     [h["query"], h["response"]]
@@ -284,7 +371,8 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                 matched_index,
                 company_name,
                 assistant_name,
-                chat_request.answer_type,
+                chat_request.response_type,
+                chat_request.does_evaluate,
                 chat_request.use_cache,
             )
         elapsed_time = time.time() - start_time
@@ -294,10 +382,13 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
             chat_request.query,
             paraphrased_utterance,
             response,
+            chat_request.response_type,
             elapsed_time,
         )
         non_generative_agent_logger(
             session_id=session_id,
+            tenant_name=tenant_name,
+            user_code=user_code,
             agent="chat_responder",
             message="Chat response generated",
             input_dict={
@@ -321,6 +412,8 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
         REQUEST_LATENCY.labels(endpoint="/chat").observe(elapsed_time)
         non_generative_agent_logger(
             session_id=session_id,
+            tenant_name=tenant_name,
+            user_code=user_code,
             agent="chat_responder",
             message="Chat response not generated",
             input_dict={
@@ -407,15 +500,23 @@ async def create_database(
     max_chunk_size: int = Query(1200, alias="max_chunk_size"),
 ):
 
-    # try:
-    settings = await preprocess_vector_db_input(
-        files, target_chunk_size, max_chunk_size
-    )
-    database_unique_id = create_vector_database(settings, company_name, assistant_name)
-    return CreateDatabaseResponse(
-            database_id=database_unique_id,
-            message="Database Created",
+    try:
+        settings = await preprocess_vector_db_input(
+            files, target_chunk_size, max_chunk_size, company_name, assistant_name
         )
+        postgres = Postgres()
+        database_id_dict = await postgres.create_database(company_name, assistant_name)
+        database_id = database_id_dict["database_id"]
+        create_vector_database(settings, database_id)
+        return CreateDatabaseResponse(
+                database_id=database_id,
+                message="Database Created",
+            )
+    except HTTPException as e:
+        raise e
+    
+    except Exception as e:
+        raise e
 
 
 @app.post(
@@ -443,14 +544,15 @@ async def feedback(feedback_request: FeedbackRequest, request: Request):
     endpoint = "/feedback"
     REQUEST_COUNT.labels(endpoint=endpoint).inc()
     start_time = time.time()
-
     try:
         # validate_feedback(feedback_request)
 
-        # session_id = get_session_id(request, feedback_request)
-        session_id = req.headers.get("Session-ID", None)
+        tenant_name = get_tenant_name(feedback_request)
+        user_code = get_user_code(feedback_request)
+
         if session_id is None:
             session_id = request.session_id
+
 
             if session_id is None:
                 raise HTTPException(status_code=422, detail="No Session-ID")
@@ -462,7 +564,7 @@ async def feedback(feedback_request: FeedbackRequest, request: Request):
         log_feedback_request(session_id)
         result = await process_feedback(feedback_request, message_fields)
 
-        log_feedback_response(session_id, feedback_request, message_fields, start_time)
+        log_feedback_response(session_id, tenant_name, user_code, feedback_request, message_fields, start_time)
         return result
 
     except HTTPException as e:
@@ -474,7 +576,6 @@ async def feedback(feedback_request: FeedbackRequest, request: Request):
 # def validate_feedback(feedback_request: FeedbackRequest):
 #     if feedback_request.feedback_type not in ["thumb_up", "thumb_down", "flag"]:
 #         raise HTTPException(status_code=422, detail="Invalid feedback")
-
 
 async def fetch_message_fields(session_id, message_id):
     postgres = Postgres()
@@ -499,18 +600,19 @@ async def process_feedback(feedback_request, message_fields):
         return FeedbackResponse(message="Feedback received")
     return FeedbackResponse(message="Duplicate feedback")
 
-
 def log_feedback_request(session_id):
     simple_logger("Received feedback request", session_id)
 
 
-def log_feedback_response(session_id, feedback_request, message_fields, start_time):
+def log_feedback_response(session_id, tenant_name, user_code, feedback_request, message_fields, start_time):
     elapsed_time = time.time() - start_time
     REQUEST_LATENCY.labels(endpoint="/feedback").observe(elapsed_time)
 
     user_query, paraphrased_query, _ = message_fields
     non_generative_agent_logger(
         session_id=session_id,
+        tenant_name=tenant_name,
+        user_code=user_code,
         agent="feedback",
         message="feedback generated",
         input_dict={
@@ -522,13 +624,15 @@ def log_feedback_response(session_id, feedback_request, message_fields, start_ti
     )
 
 
-def handle_unexpected_error(exception, session_id, feedback_request, start_time):
+def handle_unexpected_error(exception, tenant_name, user_code, session_id, feedback_request, start_time):
     elapsed_time = time.time() - start_time
     REQUEST_LATENCY.labels(endpoint="/feedback").observe(elapsed_time)
 
     traceback.print_exc()
     non_generative_agent_logger(
         session_id,
+        tenant_name,
+        user_code,
         "feedback",
         f"Error in feedback: {str(exception)}",
         feedback_request.dict(),
