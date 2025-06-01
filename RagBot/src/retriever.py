@@ -54,7 +54,7 @@ class Retriever(object):
             "alpha_threshold"
         ]
 
-    async def _rerank_documents(self, query, documents, k):
+    async def _rerank_documents(self, query, documents, k, reverse=True):
         scores = self.reranker_model_.compute_score([[query, doc] for doc in documents], normalize=True)
         docs_with_scores = [(documents[i], scores[i]) for i in range(len(documents)) if scores[i] > config["retriever"]["retriever_threshold"]]
         if len(docs_with_scores) > 0:
@@ -66,7 +66,10 @@ class Retriever(object):
                 docs_scores_sorted = docs_scores_sorted[:k]
             # conf = mean([d[1] for d in docs_scores_sorted])
             # TODO: appropriate logger
-            sorted_documents = [d[0] for d in reversed(docs_scores_sorted)]
+            if reverse:
+                sorted_documents = [d[0] for d in reversed(docs_scores_sorted)]
+            else:
+                sorted_documents = [d[0] for d in docs_scores_sorted]                
         else:
             sorted_documents = []
         return sorted_documents
@@ -81,11 +84,15 @@ class Retriever(object):
             search_kwargs={"k": config["retriever"]["retrieved_documents"]}
         )
         
-    async def retrieve_context(self, query, database_index, k=config["retriever"]["retrieved_rank2_documents"]):
+    async def retrieve_context(self, query, database_index, k=config["retriever"]["retrieved_rank2_documents"], reverse=True, split=False):
         # TODO: appropriate logger
         await self.find_vdb(database_index)
         documents = await self.retriever_.ainvoke(query)
         documents = [doc.page_content for doc in documents]
-        sorted_documents = await self._rerank_documents(query, documents, k)
-        final_documents = '\n\n'.join(sorted_documents)
+        sorted_documents = await self._rerank_documents(query, documents, k, reverse=reverse)
+        if split:
+            split_marker = "\n\n ============================================================= \n\n"
+            final_documents = split_marker.join(sorted_documents)
+        else:
+            final_documents = '\n\n'.join(sorted_documents)
         return final_documents

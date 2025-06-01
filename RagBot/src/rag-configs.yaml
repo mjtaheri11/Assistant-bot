@@ -59,7 +59,7 @@ api:
   port: 8686
 
 postgres:
-  address: postgres # 172.26.0.2 # postgres # 127.0.0.1  # 192.168.208.2
+  address: 172.26.0.6 # postgres # 172.26.0.6 # postgres # 172.26.0.6 # postgres # 172.26.0.2 # postgres # 127.0.0.1  # 192.168.208.2
   database: chatbot
   max_user_input_character_length: 200
   history_length: 3
@@ -106,7 +106,7 @@ streamlit:
 # configurations for ollama
 ollama:
   sql_model_name: qwen2.5-coder:32b-instruct-q5_K_M
-  model_name: aya-expanse:32b-q4_K_M
+  model_name: qwen3:30b-a3b-q8_0 # qwen3:30b-a3b-fp16 # qwen3:14b-fp16 # aya-expanse:32b-q4_K_M # qwen2.5-coder:32b-instruct-q5_K_M # aya-expanse:32b-q4_K_M
   temperature: 0
   stream: true
   keep_alive: -1
@@ -128,7 +128,7 @@ reranker:
 # configurations for retriever
 retriever:
   retrieved_documents: 40 # initiate_vdb.py
-  retrieved_rank2_documents: 8
+  retrieved_rank2_documents: 5
   alpha_threshold: 0.9
   expansion: false
   rerank: true

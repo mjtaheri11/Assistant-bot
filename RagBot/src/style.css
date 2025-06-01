@@ -25,7 +25,7 @@ input {
 [data-testid="stMarkdownContainer"]:has(.reference) {
     display: flex;
     flex-direction: row;
-    text-align: left;
+    text-align: start;
     direction: rtl;
 }
 
@@ -65,9 +65,9 @@ div.stAlert {
 
 /* Styling for columns in order to be scrollable */
 
-section.main>div {
+/* section.main>div {
     padding-bottom: 1rem;
-}
+} */
 
 [data-testid="column"] {
     overflow-y: auto;
@@ -189,12 +189,18 @@ section.main>div {
     border-color: #a6b1ba; /* Slightly darker border on hover */
 }
 
-
-[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stMarkdownContainer"] p {
+[data-testid="stTabs"] button {
     display: flex;
     flex-direction: row;
-    text-align: start;
+    text-align: right;
     direction: rtl;
+}
+
+div.stTabs {
+    display: flex;
+    flex-direction: column;
+    text-align: end;
+    direction: ltr;
     box-sizing: border-box;
 }
 
@@ -213,7 +219,6 @@ section.main>div {
     direction: rtl;
     box-sizing: border-box;
 }
-
 
 
 /* 

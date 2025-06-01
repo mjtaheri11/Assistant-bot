@@ -3,8 +3,8 @@ import os
 from typing import Any, List, Mapping, Optional, Dict
 
 import numpy as np
-from langchain.vectorstores import Chroma
-from langchain.embeddings import HuggingFaceEmbeddings  # Ensure compatibility
+from langchain_community.vectorstores import Chroma
+from langchain_community.embeddings import HuggingFaceEmbeddings  # Ensure compatibility
 from FlagEmbedding import FlagReranker
 
 from .config import config
@@ -302,6 +302,7 @@ class Cache:
 #             "ممنونم",
 #             ]
 
+
 #     print("hello")
 #     cache = Cache()
 #     for query in lst_1:
@@ -311,8 +312,8 @@ class Cache:
 #         await cache.increment_thumb_up(query, response_2, "")
 
         
-if __name__ == "__main__":
-    asyncio.run(temp())
+# if __name__ == "__main__":
+#     asyncio.run(temp())
             
     
     

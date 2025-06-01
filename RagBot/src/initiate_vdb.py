@@ -36,6 +36,7 @@ def create_vector_database(
 
     os.makedirs(database_path)
     chunks = chunk_document(settings)
+    
     vdb = Chroma(persist_directory=database_path, embedding_function=embedding_model)
 
     if len(vdb.get()["ids"]) > 0:

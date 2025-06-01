@@ -53,11 +53,11 @@ def convert_doc_bytes_to_docx(doc_bytes: bytes) -> bytes:
 
 def load_document(file_path, **kwargs) -> DocxDocument:
     """Load a DOC or DOCX file into a python-docx Document object."""
-    file_path = kwargs["doc_obj"] if "doc_obj" in kwargs else file_path
     if file_path.lower().endswith('.doc'):
-        docx_path = convert_doc_bytes_to_docx(doc_obj)
+        docx_path = convert_doc_bytes_to_docx(kwargs["doc_obj"])
         return Document(BytesIO(docx_path))
-    return Document(file_path)
+    return Document(BytesIO(kwargs["doc_obj"]))
+
 
 
 def is_excluded_format(text: str) -> bool:
@@ -543,39 +543,37 @@ def chunk_document(doc_settings: Dict[object, Dict]) -> List["Document"]:
     # A ProcessPoolExecutor sidesteps the GIL for CPU-bound tasks, which can help 
     # since python-docx parsing and chunking can be CPU-intensive on large docs.
 
-    # for doc_obj, settings in doc_settings.items():
-    #     doc_path = settings["file_name"]
-    #     result = process_single_document(doc_obj , doc_path)
-    #     all_chunks.extend(result)
-    #     import pdb
-    #     pdb.set_trace()
-    #     print(f"Submitting {doc_path} for processing...")
+    for doc_obj, settings in doc_settings.items():
+        doc_path = settings["file_name"]
+        result = process_single_document(doc_obj , doc_path)
+        all_chunks.extend(result)
+        print(f"Submitting {doc_path} for processing...")
     
     
-    with concurrent.futures.ProcessPoolExecutor() as executor:
-        # Collect futures for each document
-        future_to_doc = {}
-        for doc_obj, settings in doc_settings.items():
-            doc_path = settings["file_name"]
-            future = executor.submit(
-                process_single_document,
-                doc_obj,
-                doc_path,
-                settings["target_chunk_size"],
-                settings["max_chunk_size"]
-            )
-            future_to_doc[future] = doc_path
+    # with concurrent.futures.ProcessPoolExecutor() as executor:
+    #     # Collect futures for each document
+    #     future_to_doc = {}
+    #     for doc_obj, settings in doc_settings.items():
+    #         doc_path = settings["file_name"]
+    #         future = executor.submit(
+    #             process_single_document,
+    #             doc_obj,
+    #             doc_path,
+    #             settings["target_chunk_size"],
+    #             settings["max_chunk_size"]
+    #         )
+    #         future_to_doc[future] = doc_path
 
-        # As futures complete, retrieve their results
-        for future in concurrent.futures.as_completed(future_to_doc):
-            doc_path = future_to_doc[future]
-            try:
-                result = future.result()
-            except Exception as e:
-                print(f"Exception occurred while processing {doc_path}: {e}")
-            else:
-                all_chunks.extend(result)
-                print(f"Successfully processed: {doc_path}")
+    #     # As futures complete, retrieve their results
+    #     for future in concurrent.futures.as_completed(future_to_doc):
+    #         doc_path = future_to_doc[future]
+    #         try:
+    #             result = future.result()
+    #         except Exception as e:
+    #             print(f"Exception occurred while processing {doc_path}: {e}")
+    #         else:
+    #             all_chunks.extend(result)
+    #             print(f"Successfully processed: {doc_path}")
     return all_chunks
 
 

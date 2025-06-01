@@ -66,8 +66,10 @@ def json_text_cleaning(text, key="explanation"):
 
 def json_cleaning(input_string):    
     cleaned_string = input_string.replace("json", "").replace("```", "").strip() #.replace("\n\n", "\n").strip()
+    cleaned_string = re.sub(r'<think>.*?</think>', '', cleaned_string, flags=re.DOTALL)
     # cleaned_string = re.sub(r'\n+', '\n', cleaned_string)
-    return cleaned_string
+    final_cleaned_response = cleaned_string.replace("sql", "").replace("```", "").strip() #.replace("\n\n", "\n").strip()
+    return final_cleaned_response
 
 
 def init_session_state():
@@ -75,6 +77,10 @@ def init_session_state():
         st.session_state["message_id"] = []
     if "user_input" not in st.session_state:
         st.session_state["user_input"] = ""
+    if "retriever_user_input" not in st.session_state:
+        st.session_state["retriever_user_input"] = ""
+    if "retriever_user_answer" not in st.session_state:
+        st.session_state["retriever_user_answer"] = ""
     if "user_input_storage" not in st.session_state:
         st.session_state["user_input_storage"] = []
     if "user_utterance" not in st.session_state:
@@ -119,3 +125,16 @@ def init_session_state():
         st.session_state["does_evaluate"] = False 
     if "enable_submit_form" not in st.session_state:
         st.session_state["enable_submit_form"] = False 
+    if "enable_chat_tab" not in st.session_state:
+        st.session_state["enable_main_tab"] = True
+    if "enable_retrieve_tab" not in st.session_state:
+        st.session_state["enable_retrieve_tab"] = True
+    if "retrieve_user_utterance" not in st.session_state:
+        st.session_state["retrieve_user_utterance"] = ""
+    if "retrieve_response" not in st.session_state:
+        st.session_state["retrieve_response"] = ""
+    # NEW: State variables for the new "Direct Q&A" tab
+    if "simple_qa_question" not in st.session_state:
+        st.session_state.simple_qa_question = ""
+    if "simple_qa_answer" not in st.session_state:
+        st.session_state.simple_qa_answer = ""

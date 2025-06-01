@@ -3,10 +3,11 @@ version: '3.8'
 services:
   api:
     build: .
-    image: assistant-bot:dude
+    image: assistant-bot:dude_6
     container_name: assistant-bot-container
     ports:
-      - "8686:8687"
+      - "8689:8687"
+      - "8585:8585"
     volumes:
       - ../VectorDB:/app/VectorDB
       - ../db-cache:/app/db-cache
@@ -15,7 +16,7 @@ services:
       - log_data:/var/log  # Shared volume for log files
     environment:
       - OLLAMA_HOST=${API_OLLAMA_HOST}
-      - CUDA_VISIBLE_DEVICES=2
+      - CUDA_VISIBLE_DEVICES=1,2
 
     restart: always
     user: root
@@ -47,7 +48,7 @@ services:
     restart: always
     environment:
       - OLLAMA_KEEP_ALIVE=${OLLAMA_KEEP_ALIVE}
-      # - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES}
+      - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES}
 
     networks:
       - ollama-docker2

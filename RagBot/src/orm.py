@@ -263,11 +263,12 @@ class Postgres:
             }
             for row in results
         ]
-    
+
+
     async def get_latest_sessions(
         self,
-        num_sessions=30, 
-        offset=0, 
+        num_sessions=30,
+        offset=0,
         recent_limit=1000
     ):
         sql_latest_unique_sessions_with_paraphrase = """
@@ -284,7 +285,7 @@ class Postgres:
                 FROM recent_messages
                 ORDER BY session_id, create_time DESC
             )
-            SELECT 
+            SELECT
                 ds.session_id,
                 (
                     SELECT m.paraphrased_query
@@ -293,59 +294,34 @@ class Postgres:
                     AND m.paraphrased_query IS NOT NULL
                     ORDER BY m.create_time ASC
                     LIMIT 1
-                ) AS first_paraphrased_query
+                ) AS first_paraphrased_query,
+                COALESCE(d.company_name, 'همکاران سیستم') AS company_name,
+                COALESCE(d.assistant_name, 'دستیار دیجیتال') AS assistant_name
             FROM distinct_sessions ds
+            LEFT JOIN public.session s ON ds.session_id = s.session_id
+            LEFT JOIN public.databases d ON s.database_id = d.database_id
             ORDER BY ds.create_time DESC
             OFFSET $1
             LIMIT $2;
         """
-
-#         sql_latest_unique_sessions_with_paraphrase = """            
-#             WITH recent_messages AS (
-#                 SELECT session_id, create_time
-#                 FROM message
-#                 ORDER BY create_time DESC
-#                 LIMIT $3
-#             ),
-#             distinct_sessions AS (
-#                 SELECT DISTINCT ON (session_id)
-#                     session_id,
-#                     create_time
-#                 FROM recent_messages
-#                 ORDER BY session_id, create_time DESC
-#             )
-#             SELECT 
-#                 ds.session_id,
-#                 s.database_id,
-#                 (
-#                     SELECT m.paraphrased_query
-#                     FROM message m
-#                     WHERE m.session_id = ds.session_id
-#                     AND m.paraphrased_query IS NOT NULL
-#                     ORDER BY m.create_time ASC
-#                     LIMIT 1
-#                 ) AS first_paraphrased_query
-#             FROM distinct_sessions ds
-#             JOIN session s ON ds.session_id = s.session_id
-#             ORDER BY ds.create_time DESC
-#             OFFSET $1
-#             LIMIT $2;
-# """
 
         results = await self._execute_query(
             sql_latest_unique_sessions_with_paraphrase,
             fetch_results=True,
             insert_values=(offset, num_sessions, recent_limit)
         )
-        
-        # Each row = (session_id, first_paraphrased_query)
+
+        # Each row = (session_id, first_paraphrased_query, company_name, assistant_name)
         return [
             {
                 "session_id": row[0],
-                "paraphrased_query": row[1]
+                "paraphrased_query": row[1],
+                "company_name": row[2],
+                "assistant_name": row[3],
             }
             for row in results
         ]
+    
     
     async def insert_chat_row(
         self, session_id, user_query, paraphrased_query, bot_response, response_type, elapsed_time

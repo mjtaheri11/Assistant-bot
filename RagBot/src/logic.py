@@ -8,7 +8,7 @@ import torch
 import numpy as np
 from langchain.schema import SystemMessage
 from langchain_community.chat_models import ChatOllama
-from langchain.chat_models import ChatOpenAI
+from langchain_community.chat_models import ChatOpenAI
 
 from .prompts import (
     RAG_CONCISE_SYSTEM_PROMPT,
@@ -31,18 +31,27 @@ torch.cuda.manual_seed_all(SEED)
 random.seed(SEED)
 
 
-template_for_not_answer = "پاسخ به این سوال در محدوده دانش من نیست"
-template_for_not_context = """این سوال خارج از حوزه کاری {company_name} است. لطفا سوال خود را در رابطه با محصولات و خدمات {company_name} مطرح کنید."""
+template_for_not_answer = "پاسخ به این سوال در محدوده پاسخگویی من نیست برای اطلاعات بیشتر به ‘https://systemgroup.net’ مراجعه کنید."
+template_for_not_context = """این سوال خارج از حوزه کاری {company_name} است. لطفا سوال خود را در رابطه با محصولات و خدمات {company_name} مطرح کنید. برای اطلاعات بیشتر به ‘https://systemgroup.net’ مراجعه کنید"""
 template_for_doubtful_answer = "سوال شما را به خوبی متوجه نشدم. لطفا سوال خود را به صورت دقیق تر بپرسید تا بتوانم بهتر کمک کنم."
 
-async def get_chat_response(prompt: str, model_name: str) -> str:
+async def get_chat_response(prompt: str, model_name: str, port_number: str = "8980", num_ctx: int = 8192) -> str:
     print("Character Length of the prompt: ", len(prompt))
     print("words length of the prompt: ", len(prompt.split()))
-    llm = ChatOpenAI(
-        openai_api_base="http://185.13.230.222:8001/v1",
-        openai_api_key="EMPTY",
-        model_name="/models/aya-expanse-32b-gptq-4bit"
-        )
+
+    # llm = ChatOpenAI(
+    #     openai_api_base="http://185.13.230.222:8008/v1",
+    #     openai_api_key="EMPTY",
+    #     model_name="/models/aya-expanse-32b-gptq-4bit"
+    #     )
+    llm = ChatOllama(
+        model=model_name,
+        temperature=0,
+        keep_alive=config["ollama"]["keep_alive"],
+        seed=SEED,
+        base_url=f"http://localhost:{port_number}", 
+        num_ctx=num_ctx
+    )
     messages = [SystemMessage(content=prompt)]
     response = await llm.ainvoke(messages)  # type: ignore[arg-type]
     return response.content
@@ -85,6 +94,7 @@ async def utterance_paraphraser(history: List[tuple[str, str]], user_utterance: 
         question=user_utterance,
     )
     response = await get_chat_response(prompt, config["ollama"]["model_name"])
+    response = json_cleaning(response)
     # import pdb
     # pdb.set_trace()
     # paraphrased_query = json_cleaning(response)
@@ -109,8 +119,10 @@ async def query_responder(query: str, context: str, history: str, company_name: 
         company_name=company_name,
         assistant_name=assistant_name,
         question=query,
+        conversation_history=history
     )
     response = await get_chat_response(prompt, config["ollama"]["model_name"])
+    response = json_cleaning(response)
     return response
     # cleaned_response = json_cleaning(response)
     # cleaned_response_dict = json_text_cleaning(cleaned_response, "answer")
@@ -187,7 +199,7 @@ async def chat_responder_(
         return paraphrased_utterance, template_for_not_answer, "" 
     
     response = await query_responder(
-        paraphrased_utterance,
+        user_utterance,
         context,
         history,
         company_name,
@@ -198,7 +210,7 @@ async def chat_responder_(
     # json_response = fix_asterisks(json_response)
     # return paraphrased_utterance, json_response["answer"], context
     
-    if "محدوده دانش من " in response:
+    if "محدوده پاسخگویی من " in response:
         return paraphrased_utterance, template_for_not_answer, context
 
     elif "خارج از حوزه کاری" in response:
@@ -216,6 +228,8 @@ async def chat_responder_(
             return paraphrased_utterance, response, context
     else:
         return paraphrased_utterance, response, context
+
+
 async def feedback_(
     query: str,
     response: str,

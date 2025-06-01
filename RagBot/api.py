@@ -15,12 +15,12 @@ import asyncpg
 from fastapi import (FastAPI, File, Form, HTTPException, Query, Request,
                      UploadFile)
 
-
 from fastapi.responses import JSONResponse
 from prometheus_client import Counter, Histogram, generate_latest
 from pydantic import BaseModel
 from src.config import config
 from src.initiate_vdb import create_vector_database
+from src.retriever import Retriever
 from src.logic import (chat_responder_, feedback_, prepare_final_context,
                        query_responder, sql_responder, utterance_paraphraser)
 
@@ -51,7 +51,6 @@ class ChatRequest(BaseModel):
     session_id: Optional[str] = None
     tenant_name: Optional[str] = None
     user_code: Optional[str] = None
-    database_index: Optional[str] = None
     does_evaluate: Optional[bool] = False
     response_type: Optional[str] = "concise"
     use_cache: Optional[bool] = True
@@ -69,9 +68,11 @@ class CreateSessionRequest(BaseModel):
     user_code: Optional[str] = ""
     database_id: Optional[str] = ""
 
+
 class SQLRequest(BaseModel):
     table_schemas: List[str]  # Accept a list of schemas
     query: str
+
 
 class SQLResponse(BaseModel):
     response: str
@@ -118,8 +119,18 @@ class CreateDatabaseResponse(BaseModel):
     database_id: str
     message: str
 
+
 class GetDatabasesResponse(BaseModel):
     response: List[dict]
+
+
+class FaqRequest(BaseModel):
+    query: str
+    session_id: Optional[str] = ""
+    database_index: str
+    
+class FaqResponse(BaseModel):
+    response: str
 
 
 def get_session_id(request: Request, content_request: ChatRequest):
@@ -149,7 +160,7 @@ def validate_query(query):
 
 
 def find_database_path(database_index: str = None):
-    if database_index == "None" or database_index == None:
+    if not database_index or database_index == "None" or database_index == None:
         match_dir = "../VectorDB"
         company_name = config["database"]["company_name"]
         assistant_name = config["database"]["assistant_name"]
@@ -177,7 +188,8 @@ async def preprocess_vector_db_input(files, target_chunk_size, max_chunk_size, c
         content = await file.read()
         obj_ = content
         _settings[obj_] = {
-            "filename": file.filename,
+            "file_name": file.filename,
+            "doc_obj": obj_,
             "target_chunk_size": target_chunk_size,
             "max_chunk_size": max_chunk_size,
             "sentence_overlap": 1,
@@ -231,6 +243,37 @@ async def get_latest_databases():
 
     except Exception as e:
         raise e 
+
+
+@app.get(
+    "/faq",
+    response_model=FaqResponse,
+    responses={
+        200: {},
+        500: {"description": "Unhandled error that should be reported"},
+    },
+)
+async def get_faq(
+    request: Request,
+    query: str = Query(..., alias="query"),
+    session_id: str = Query(..., alias="session_id"),
+):
+    try:
+        postgres = Postgres()
+        database_id_dict = await postgres.find_database_id(session_id) 
+        matched_index, company_name, assistant_name = find_database_path(database_id_dict["database_id"])
+        retriever = Retriever()
+        context = await retriever.retrieve_context(query, matched_index, reverse=False, split=True) 
+        # TODO: need appropriate context management > context = context[: config["context"]["max_length"]]
+        return FaqResponse(response=context.strip())
+    
+    except HTTPException as e:
+        raise e
+    
+    except Exception as e:
+        traceback.print_exc()
+        # TODO: add a proper logger to this function
+        raise HTTPException(status_code=500, detail="Unhandled error, Please report")
 
 
 @app.get(
