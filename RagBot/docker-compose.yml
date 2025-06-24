@@ -7,6 +7,7 @@ services:
     container_name: assistant-bot-container
     ports:
       - "8686:8687"
+      - "8585:8585"
     volumes:
       - ../VectorDB:/app/VectorDB
       - ../db-cache:/app/db-cache
@@ -14,12 +15,13 @@ services:
       - log_data:/var/log  # Shared volume for log files
     environment:
       - OLLAMA_HOST=${API_OLLAMA_HOST}
-      # - CUDA_VISIBLE_DEVICES=0
+      # - CUDA_VISIBLE_DEVICES=2
 
     restart: always
     user: root
     depends_on:
-      - ollama
+      # - ollama
+      - vllmserver
       - kibana
       - elasticsearch
       - grafana
@@ -35,29 +37,29 @@ services:
               capabilities: [gpu]
     runtime: nvidia
 
-  ollama:
-    image: ollama/ollama:latest
-    ports:
-      - 8980:11434
-    volumes:
-      - /usr/share/ollama/.ollama/:/root/.ollama
-    container_name: ollama
-    tty: true
-    restart: always
-    environment:
-      - OLLAMA_KEEP_ALIVE=${OLLAMA_KEEP_ALIVE}
-      # - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES}
-    networks:
-      - ollama-docker2
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   ports:
+  #     - 8980:11434
+  #   volumes:
+  #     - /usr/share/ollama/.ollama/:/root/.ollama
+  #   container_name: ollama
+  #   tty: true
+  #   restart: always
+  #   environment:
+  #     - OLLAMA_KEEP_ALIVE=${OLLAMA_KEEP_ALIVE}
+  #     # - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES}
+  #   networks:
+  #     - ollama-docker2
 
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
-    runtime: nvidia
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             count: all
+  #             capabilities: [gpu]
+  #   runtime: nvidia
 
   postgres:
     image: postgres:latest
@@ -191,6 +193,44 @@ services:
       - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
     networks:
       - ollama-docker2
+
+  vllmserver:
+    image: vllm/vllm-openai:latest
+    container_name: vllm-assistant
+    # build: .
+    ports:
+      - "8690:8000"
+    volumes:
+      - ../saved_models/aya-expanse-32b-gptq-4bit:/models/aya-expanse-32b-gptq-4bit
+    environment:
+      - TRANSFORMERS_OFFLINE=1
+      - HF_DATASETS_OFFLINE=1
+      #- "HUGGING_FACE_HUB_TOKEN=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"
+      # - "CUDA_VISIBLE_DEVICES=2"
+      - "CUDA_LAUNCH_BLOCKING=1"
+      - "VLLM_LOGGING_LEVEL=DEBUG"
+      - "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True"
+      - "PYTHONUNBUFFERED=1"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all  # Use one GPU
+              capabilities: [gpu]
+    shm_size: "10g"
+    ipc: host  # Critical for multi-GPU
+    command: [
+      "--model", "/models/aya-expanse-32b-gptq-4bit",
+      "--tensor-parallel-size", "1",
+      "--quantization", "gptq",
+      "--max-model-len", "4096",
+      "--gpu-memory-utilization", "0.7",
+      "--host", "0.0.0.0"
+    ]
+    networks:
+      - ollama-docker2
+ 
 
 volumes:
   esdata:

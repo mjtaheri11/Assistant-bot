@@ -16,7 +16,7 @@ from src.retriever import Retriever
 NUMBER_OF_SUGGESTED_SESSIONS = 30
 
 CSS_STYLE_FILE = "./src/style.css"
-BASE_URL = "http://185.13.230.222:8686" # "http://172.27.0.6:8686" #
+BASE_URL = "http://0.0.0.0:8689" # "http://172.27.0.6:8686" #
 
 def session_create(api_url: str = BASE_URL): 
     """

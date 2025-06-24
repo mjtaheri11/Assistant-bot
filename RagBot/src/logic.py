@@ -7,7 +7,7 @@ import os
 import torch
 import numpy as np
 from langchain.schema import SystemMessage
-from langchain_community.chat_models import ChatOllama
+from langchain_community.chat_models import ChatOllama, ChatOpenAI
 
 from .prompts import (
     RAG_SYSTEM_PROMPT,
@@ -27,19 +27,26 @@ torch.cuda.manual_seed_all(SEED)
 random.seed(SEED)
 
 
-template_for_not_answer = "پاسخ به این سوال در محدوده دانش من نیست"
+template_for_not_answer = "پاسخ به این سوال در محدوده پاسخگویی من نیست"
 template_for_not_context = "این سوال خارج از حوزه کاری همکاران سیستم است. لطفا سوال خود را در رابطه با محصولات و خدمات همکاران سیستم مطرح کنید."
 
 async def get_chat_response(prompt: str, model_name: str) -> str:
     print("Character Length of the prompt: ", len(prompt))
     print("words length of the prompt: ", len(prompt.split()))
-    llm = ChatOllama(
-        model=model_name,
-        temperature=config["ollama"]["temperature"],
-        keep_alive=config["ollama"]["keep_alive"],
-        seed=SEED,
-        base_url="http://ollama:11434",
-    )
+    llm = ChatOpenAI(
+        openai_api_base="http://185.13.230.222:8008/v1",
+        openai_api_key="EMPTY",
+        model_name="/models/aya-expanse-32b-gptq-4bit"
+        )
+    
+    # llm = ChatOllama(
+    #     model=model_name,
+    #     temperature=config["ollama"]["temperature"],
+    #     keep_alive=config["ollama"]["keep_alive"],
+    #     seed=SEED,
+    #     base_url="http://ollama:11434",
+    # )
+    
     messages = [SystemMessage(content=prompt)]
     response = await llm.ainvoke(messages)  # type: ignore[arg-type]
     return response.content
@@ -94,7 +101,7 @@ async def query_responder(query: str, context: str, history: str) -> str:
     serialized_history = history_serializer(history)
     prompt = RAG_SYSTEM_PROMPT.format(
         context=context,
-        # history=serialized_history,
+        history=history,
         question=query,
     )
     response = await get_chat_response(prompt, config["ollama"]["model_name"])
@@ -154,10 +161,10 @@ async def chat_responder_(
     if not context:
         return paraphrased_utterance, template_for_not_answer, "" 
         
-    response = await query_responder(paraphrased_utterance, context, history)
+    response = await query_responder(user_utterance, context, history) # user_utterance replaced with paraphrased_utterance
     # json_response = fix_asterisks(json_response)
     # return paraphrased_utterance, json_response["answer"], context
-    if "محدوده دانش من " in response:
+    if "محدوده پاسخگویی من " in response:
         response = template_for_not_answer
     if "خارج از حوزه کاری" in response:
         response = template_for_not_context
