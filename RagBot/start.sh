@@ -5,7 +5,7 @@ echo "Starting FastAPI server..."
 uvicorn api:app --host 0.0.0.0 --port 8687 --reload &
 
 # Wait a moment for the API to start
-sleep 120
+sleep 10
 
 # Start Streamlit in foreground
 echo "Starting Streamlit app..."

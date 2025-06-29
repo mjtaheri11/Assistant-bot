@@ -59,7 +59,7 @@ api:
   port: 8686
 
 postgres:
-  address: 172.26.0.6 # postgres # 172.26.0.6 # postgres # 172.26.0.6 # postgres # 172.26.0.2 # postgres # 127.0.0.1  # 192.168.208.2
+  address: 172.26.0.5 # postgres # 172.26.0.6 # postgres # 172.26.0.6 # postgres # 172.26.0.6 # postgres # 172.26.0.2 # postgres # 127.0.0.1  # 192.168.208.2
   database: chatbot
   max_user_input_character_length: 200
   history_length: 3

@@ -39,19 +39,19 @@ async def get_chat_response(prompt: str, model_name: str, port_number: str = "89
     print("Character Length of the prompt: ", len(prompt))
     print("words length of the prompt: ", len(prompt.split()))
 
-    # llm = ChatOpenAI(
-    #     openai_api_base="http://185.13.230.222:8008/v1",
-    #     openai_api_key="EMPTY",
-    #     model_name="/models/aya-expanse-32b-gptq-4bit"
-    #     )
-    llm = ChatOllama(
-        model=model_name,
-        temperature=0,
-        keep_alive=config["ollama"]["keep_alive"],
-        seed=SEED,
-        base_url=f"http://localhost:{port_number}", 
-        num_ctx=num_ctx
-    )
+    llm = ChatOpenAI(
+        openai_api_base="http://185.13.230.222:8008/v1",
+        openai_api_key="EMPTY",
+        model_name="/models/aya-expanse-32b-gptq-4bit"
+        )
+    # llm = ChatOllama(
+    #     model=model_name,
+    #     temperature=0,
+    #     keep_alive=config["ollama"]["keep_alive"],
+    #     seed=SEED,
+    #     base_url=f"http://localhost:{port_number}", 
+    #     num_ctx=num_ctx
+    # )
     messages = [SystemMessage(content=prompt)]
     response = await llm.ainvoke(messages)  # type: ignore[arg-type]
     return response.content

@@ -15,7 +15,7 @@ NUMBER_OF_SUGGESTED_SESSIONS = 30
 NUMBER_OF_SUGGESTED_DATABASE = 10
 CSS_STYLE_FILE = "./src/style.css"
 
-BASE_URL = "http://localhost:8687" # "http://172.27.0.6:8686" #
+BASE_URL = "http://0.0.0.0:8689" # "http://172.27.0.6:8686" #
 
 
 def session_create(database_id : str = None, api_url: str = BASE_URL):
