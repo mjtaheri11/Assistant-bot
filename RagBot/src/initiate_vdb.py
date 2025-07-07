@@ -51,7 +51,7 @@ def create_vector_database(
     vdb.add_documents(chunks)
 
 
-def create_documents_from_csvs(directory_path="/home/user01/mj-workspace/Assistant-bot/knowledge_base/faq-questions"):
+def create_documents_from_csvs(directory_path="/home/user01/mj-workspace/Assistant-bot/knowledge_base/qa-questions"):
     """
     Reads all CSV files from a directory and converts each question-answer
     pair into a LangChain Document object with metadata.
