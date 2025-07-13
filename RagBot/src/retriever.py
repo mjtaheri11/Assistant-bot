@@ -116,7 +116,7 @@ class Retriever(object):
     async def retrieve_context(self, query, k=config["retriever"]["retrieved_rank2_documents"]):
         # TODO: appropriate logger
         documents = await self.retriever_.ainvoke(query)
-        documents = [doc.page_content for doc in documents]
+        documents = [{"page_content": doc.page_content, "module": doc.metadata["source"]} for doc in documents]
         sorted_documents = await self._rerank_documents(query, documents, k)
         final_documents = '\n\n'.join(sorted_documents)
         return final_documents

@@ -50,6 +50,8 @@ class ChatRequest(BaseModel):
     tenant_name: Optional[str] = None
     user_code: Optional[str] = None
     on_click: Optional[bool] = False
+    do_retry: Optional[bool] = False
+    error_payload: Optional[str] = ""
 
 
 class ChatResponse(BaseModel):
@@ -59,6 +61,7 @@ class ChatResponse(BaseModel):
     is_sql: bool = False
     do_suggest: bool = False
     choices: List[str] = []
+    parameters: Optional[dict] = {}
     
 
 class CreateSessionRequest(BaseModel):

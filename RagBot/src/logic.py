@@ -21,7 +21,7 @@ from .config import config
 from .cache import Cache
 from .logs import simple_logger
 from .utils import json_cleaning, json_text_cleaning, json_cleaning_1, json_string_to_dict
-from .business_objects import FINANCIAL_BO, LOGISTICS_BO
+from .business_objects import FINANCIAL_BO, LOGISTICS_BO, LOGISTICS_SALES_MODFIED, FINANCIAL_BO_MODIFIED
 from langchain.chat_models import ChatOpenAI
 
 
@@ -139,26 +139,19 @@ async def prepare_final_context(query: str) -> str:
         config["cache"]["knn"],
     )
 
-    context = "\n\n".join(
-        "Q: " + result["query"] + "\n" + "A: " + result["response"]
-        for result in reversed(records)
-        if result["query"].strip() != ""
-    )
-
     retriever = Retriever()
-    context = await retriever.retrieve_context(query) + "\n\n" + context
-    # TODO: need appropriate context management > context = context[: config["context"]["max_length"]]
+    context = await retriever.retrieve_context(query) + "\n\n"
     return context.strip()
 
 async def module_proposer():
-    return ["انبار", "مالی"]
+    return ["انبار و فروش", "دفتر کل"]
 
 
 async def sql_responder_(query: str, detected_module: str = ""):
-    if detected_module.strip() == "مالی":
-        bo_prompt = SQL_CONVERTER.format(schema=FINANCIAL_BO, query=query)
+    if detected_module.strip() == "دفتر کل":
+        bo_prompt = SQL_CONVERTER.format(schema=FINANCIAL_BO_MODIFIED, query=query)
     else:
-        bo_prompt = SQL_CONVERTER.format(schema=LOGISTICS_BO, query=query)
+        bo_prompt = SQL_CONVERTER.format(schema=LOGISTICS_SALES_MODFIED, query=query)
     raw_json_response = await get_chat_response(bo_prompt, answer_type="sql")
     response = json_cleaning(raw_json_response)
     
@@ -176,8 +169,11 @@ async def router_SQL_QA(query: str, context: str):
     raw_response = await get_chat_response(prompt, answer_type="sql")
     response = json_cleaning(raw_response)
     return response
+
+# async def qa_module_clarification(query: str, context: str):
     
-    
+
+
 async def chat_responder_(
     history: List[tuple[str, str]],
     user_utterance: str,
@@ -188,9 +184,8 @@ async def chat_responder_(
     )
     if response:
         return user_utterance, response, ""
-    paraphrased_utterance_dict = await utterance_paraphraser(history, user_utterance)
-    # paraphrased_utterance = paraphrased_utterance_dict["rephrased_question"]
-    paraphrased_utterance = paraphrased_utterance_dict
+    
+    paraphrased_utterance = await utterance_paraphraser(history, user_utterance)
     response, url = await get_cache_response(
         paraphrased_utterance,
     )
@@ -204,7 +199,7 @@ async def chat_responder_(
     route_response = await router_SQL_QA(paraphrased_utterance, context)
     if route_response == "DATABASE":
         return paraphrased_utterance, "", ""
-        
+    
     response = await query_responder(paraphrased_utterance, context, history)
     # json_response = fix_asterisks(json_response)
     # return paraphrased_utterance, json_response["answer"], context

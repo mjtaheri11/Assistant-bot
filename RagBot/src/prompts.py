@@ -1309,6 +1309,142 @@ Your reasoning field must include:
 - Use CURRENT_DATE for "امروز" without quotes.
 """
 
+SQL_MODIFIER = """
+# SQL Query Error Correction and Revision
+
+**Your task is to analyze the provided error message and faulty SQL query, then generate a corrected SELECT SQL query based on the user questions and provided business objects. If the error cannot be fixed with a SELECT query, respond with NULL.**
+
+## OUTPUT REQUIREMENTS [CRITICAL]
+
+- After your internal thinking process (within `<think>...</think>`), output **only** the final corrected SQL query or NULL.
+- Do not include explanations, comments, notes, code blocks, quotes, markdown, or any additional text in the final output.
+- The final output must be the raw SQL query text or the word NULL.
+
+## Query Type Restrictions [CRITICAL]
+
+- Only process requests that can be answered with a SELECT query.
+- Return NULL immediately if the original request involves:
+  1. Data modification (INSERT, UPDATE, DELETE)
+  2. Schema changes (CREATE, ALTER, DROP)
+  3. Data control operations (GRANT, REVOKE)
+  4. Transaction control (COMMIT, ROLLBACK)
+  5. Multiple queries to complete
+  6. Non-data retrieval operations
+  7. Ambiguous requests that cannot be confidently converted to a SELECT query
+
+## Error Analysis Protocol [CRITICAL]
+
+1. **Syntax Errors**: Fix SQL syntax issues (missing commas, parentheses, quotes, etc.)
+2. **Column/Table Not Found**: Verify against schema and correct column/table names
+3. **Join Errors**: Fix incorrect join conditions or missing join clauses
+4. **Data Type Mismatches**: Correct data type incompatibilities in comparisons/joins
+5. **Aggregate Function Errors**: Fix GROUP BY issues, invalid aggregate usage
+6. **Date/Time Errors**: Correct date format or date function usage
+7. **Persian Text Handling**: Fix LIKE patterns or text comparison issues
+8. **Logic Errors**: Correct WHERE clause logic or condition ordering
+
+## Persian/Farsi Text Handling [CRITICAL]
+
+- Use LIKE operators with wildcards ('%term%') for Persian/Farsi text matching.
+- Do not translate Persian/Farsi to English or English to Persian/Farsi in the query.
+- For text comparisons, prioritize:
+  1. LIKE '%فارسی_term%' over exact matches
+  2. Combine multiple Persian terms with AND/OR and LIKE operators
+  3. Apply case insensitivity if needed
+  4. Minimize LIKE scope (e.g., LIKE '%مواد اولیه تولید%' instead of LIKE '%انبار مواد اولیه تولید%')
+  5. Convert informal Persian questions (e.g., چقدره => چه مقدار است, چیه => چیست)
+
+## Persian Date Conversion [CRITICAL]
+
+- Convert all Persian (Solar Hijri) dates in user queries to Gregorian for SQL use.
+- Key conversions:
+  - **Years:**
+    - ۱۴۰۴/1404 (current): 2025-2026 Gregorian
+    - ۱۴۰۳/1403 (previous): 2024-2025 Gregorian
+    - ابتدای سال (start of year): March 21 of the year
+    - انتهای سال/پایان سال (end of year): March 20 of the next year
+  - **Months:**
+    - فروردین: March 21 - April 20
+    - اردیبهشت: April 21 - May 21
+    - خرداد: May 22 - June 21
+    - تیر: June 22 - July 22
+    - مرداد: July 23 - August 22
+    - شهریور: August 23 - September 22
+    - مهر: September 23 - October 22
+    - آبان: October 23 - November 21
+    - آذر: November 22 - December 21
+    - دی: December 22 - January 20
+    - بهمن: January 21 - February 19
+    - اسفند: February 20 - March 20
+  - **Time Periods:**
+    - امروز (today): CURRENT_DATE
+    - دیروز (yesterday): CURRENT_DATE - INTERVAL '1 day'
+    - هفته گذشته (last week): CURRENT_DATE - INTERVAL '1 week'
+    - ماه گذشته (last month): CURRENT_DATE - INTERVAL '1 month'
+    - سال گذشته (last year): CURRENT_DATE - INTERVAL '1 year'
+    - سال جاری (current year): March 21, 2025 to present
+    - سال قبل (previous year): March 21, 2024 to March 20, 2025
+  - **Special Cases:**
+    - Specific dates (e.g., "۱۰ مرداد ۱۴۰۴"): Convert to 2025-08-01
+    - Date ranges: Convert both start and end dates
+
+## Anti-Hallucination Protocol [CRITICAL]
+
+- Verify all column names against the provided schema.
+- **Never** invent or assume column names not listed in the schema.
+- Only join tables using explicit foreign key relationships in the schema.
+- Ensure joined columns have matching data types.
+- Do not reference nonexistent tables or columns.
+- If the error indicates a missing column/table, check the schema carefully before assuming it doesn't exist.
+
+## Error Correction Steps
+
+1. **Analyze the Error Message**: Identify the specific type of error (syntax, column not found, join error, etc.)
+2. **Review the Faulty Query**: Understand what the original query was trying to accomplish
+3. **Cross-Reference with Schema**: Verify all table names, column names, and relationships
+4. **Apply Corrections**: Fix the identified issues while maintaining the original intent
+5. **Validate Logic**: Ensure the corrected query answers the original natural language question
+6. **Apply Business Rules**: Ensure Persian text handling and date conversion rules are followed
+
+## Common Error Patterns and Fixes
+
+### Column Not Found
+- **Error**: `column "xyz" does not exist`
+- **Fix**: Check schema for correct column name, fix typos, or remove if not needed
+
+### Invalid Join
+- **Error**: `column must appear in GROUP BY clause`
+- **Fix**: Add missing columns to GROUP BY or use appropriate aggregate functions
+
+### Syntax Error
+- **Error**: `syntax error at or near "..."`
+- **Fix**: Add missing commas, parentheses, quotes, or correct SQL keywords
+
+### Date Format Error
+- **Error**: `invalid input syntax for type date`
+- **Fix**: Correct date format to 'YYYY-MM-DD' or use proper date functions
+
+## Business Object Schema:
+{schema}
+
+## Original Natural Language Question:
+{original_query}
+
+## Faulty SQL Query:
+{faulty_query}
+
+## Error Message:
+{error_message}
+
+**REMINDER:**  
+- Output **only** the corrected raw SQL query or NULL.  
+- **Never** assume database structure or invent columns/keys not in the schema.  
+- Persian calendar year: March 2025 - March 2026.  
+- Use CURRENT_DATE for "امروز" without quotes.
+- Focus on fixing the specific error while maintaining the original query's intent.
+"""
+
+
 # SQL_CONVERTER = """
 # # SQL Query Generator (SELECT QUERIES ONLY)
 
