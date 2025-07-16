@@ -258,7 +258,8 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
     user_code = get_user_code(chat_request)
     tenant_name = get_tenant_name(chat_request)
     do_suggest = False
-     
+    parameters = {}
+    
     try:
         postgres = Postgres()
         session_id = get_session_id(request, chat_request)
@@ -277,23 +278,72 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
             )
         else:
             selected_history = [[h["query"], h["response"]] if len(h["query"]) < 60 else [h["paraphrased_query"], h["response"]] for h in history]
-            if chat_request.on_click:
+            if chat_request.do_retry:
                 is_sql = True
                 agent = "sql_responder"
-                paraphrased_utterance, message_id = history[-1]["paraphrased_query"], str(history[-1]["message_id"]) # TODO: in the near future, this should be changed to paraphrased_query 
-                detected_module = chat_request.query
-                response = await sql_responder_(
+                paraphrased_utterance, message_id = history[-1]["paraphrased_query"], str(history[-1]["message_id"])
+                selected_module = history[-1]["selected_module"]
+                paraphrased_utterance, faulty_sql_query, message_id = history[-1]["paraphrased_query"], history[-1]["response"], str(history[-1]["message_id"]) # TODO: in the near future, this should be changed to paraphrased_query 
+                response_dict_str = await sql_responder_(
                     paraphrased_utterance,
-                    detected_module
+                    selected_module,
+                    faulty_sql_query,
+                    chat_request.error_payload,
+                    chat_request.do_retry,
                 )
-                message = "table response generated"
+                if "NULL" not in response:
+                    response_dict = json.loads(response_dict_str)
+                    response = response_dict["SQL"]
+                    parameters = response_dict["parameters"]
+                    
+                message = "retried table response generated"
                 elapsed_time = time.time() - start_time
-                _ = await postgres.update_on_click_chat_row(message_id, response, elapsed_time)            
-            else:
-                paraphrased_utterance, response, context = await chat_responder_(
-                    selected_history, chat_request.query
+                _ = await postgres.update_on_click_chat_row(message_id, response, elapsed_time)                        
+            
+            elif chat_request.on_click:
+                paraphrased_utterance, response, context, do_clarify, modules = await chat_responder_(
+                    selected_history,
+                    chat_request.query,
+                    True
                 )
+                message_id = str(history[-1]["message_id"])
+                assert do_clarify==False, "on_click should not return do_clarify=True"
+                assert len(modules) == 1, "on_click should not return modules"
                 if not response:
+                    if chat_request.query in ["انبار", "فروش", "دفتر کل"]:
+                        is_sql = True                           
+                        agent = "sql_responder"
+                        response_dict_str = await sql_responder_(
+                            paraphrased_utterance,
+                            chat_request.query,
+                            "",
+                            "",
+                            chat_request.do_retry,
+                        )
+                        import pdb
+                        pdb.set_trace()
+                        if "NULL" not in response_dict:
+                            response_dict = json.loads(response_dict_str)
+                            response = response_dict["SQL"]
+                            parameters = response_dict["parameters"]
+                        message = "table response generated"
+                        elapsed_time = time.time() - start_time
+                        _ = await postgres.update_on_click_chat_row(message_id, response, elapsed_time)
+                    else:
+                        response = RESPONSE_TEMPLATE_FOR_NO_ANSWER
+                        elapsed_time = time.time() - start_time
+                        _ = await postgres.update_on_click_chat_row(message_id, response, elapsed_time)
+
+                elapsed_time = time.time() - start_time
+                _ = await postgres.update_on_click_chat_row(message_id, response, elapsed_time)
+                _ = await postgres.update_selected_module(message_id, chat_request.query)
+            else:
+                paraphrased_utterance, response, context, do_clarify, modules = await chat_responder_(
+                    selected_history,
+                    chat_request.query,
+                    False 
+                )
+                if do_clarify:
                     response = MODULE_CLARIFICATION_RESPONSE_TEMPLATE
                     elapsed_time = time.time() - start_time
                     message_id = await postgres.insert_chat_row(
@@ -303,12 +353,28 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         "",
                         elapsed_time,
                     )
-                    response = MODULE_CLARIFICATION_RESPONSE_TEMPLATE
                     do_suggest = True
                     agent = "module_clarification"
                     message = "modules proposed"
-                    choices = await module_proposer()
+                    choices = modules
                 else:
+                    if not response:
+                        agent = "sql_responder"
+                        response_dict = await sql_responder_(
+                            paraphrased_utterance,
+                            modules[0],
+                            "",
+                            "",
+                            chat_request.do_retry,
+                        )
+                        import pdb
+                        pdb.set_trace()
+                        if "NULL" not in response_dict:
+                            response_dict = json.loads(response_dict)
+                            response = response_dict["SQL"]
+                            parameters = response_dict["parameters"]
+
+                        
                     elapsed_time = time.time() - start_time
                     REQUEST_LATENCY.labels(endpoint="/chat").observe(elapsed_time)  # Record latency
                     message_id = await postgres.insert_chat_row(
@@ -317,6 +383,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         paraphrased_utterance,
                         response,
                         elapsed_time,
+                        modules[0]
                     )
                     
         non_generative_agent_logger(
@@ -344,7 +411,8 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
             query=paraphrased_utterance, 
             is_sql=is_sql,
             choices=choices,
-            do_suggest=do_suggest
+            do_suggest=do_suggest,
+            parameters=parameters
         )
 
     except HTTPException as e:

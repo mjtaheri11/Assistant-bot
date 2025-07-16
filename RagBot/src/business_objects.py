@@ -9284,7 +9284,7 @@ LOGISTICS_BO_MODIFIED = """
 """
 
 
-LOGISTICS_SALES_MODFIED = """
+LOGISTICS_SALES_MODIFIED = """
     ## logistics_partaltunit
     - **Title**: واحد فرعی کالا 
     - **Context**: logistics

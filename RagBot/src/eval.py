@@ -57,8 +57,6 @@ def create_retriever():
     # text_splitter = RecursiveCharacterTextSplitter(chunk_size=config["retriever"]["chunk_size"],
     #                                                chunk_overlap=config["evaluation"]["chunk_overlap"])
     # chunks = text_splitter.split_documents(documents)
-    import pdb
-    pdb.set_trace()
     chunks = chunk_document(config["evaluation"]["documents"])
     print(f'Generated {len(chunks)} chunks')
 

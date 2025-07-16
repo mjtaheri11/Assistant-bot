@@ -110,7 +110,7 @@ class Postgres:
 
     async def get_history(self, session_id, page_index, page_size, with_paraphrase=False):
         sql_history_query = """
-            SELECT user_query, paraphrased_query, bot_response, message_id, is_sql FROM message
+            SELECT user_query, paraphrased_query, bot_response, message_id, is_sql, selected_module FROM message
             WHERE session_id = $1
             ORDER BY create_time DESC
             OFFSET $2
@@ -192,7 +192,7 @@ class Postgres:
         ]
     
     async def insert_chat_row(
-        self, session_id, user_query, paraphrased_query, bot_response, elapsed_time
+        self, session_id, user_query, paraphrased_query, bot_response, elapsed_time, selected_module=None
     ):
         values = (
             session_id,
@@ -200,11 +200,19 @@ class Postgres:
             paraphrased_query,
             bot_response,
             elapsed_time,
+            selected_module  # Pass None directly; the driver converts it to NULL
         )
-        sql_insert_query = "INSERT INTO message (session_id, user_query, paraphrased_query, bot_response, elapsed_time) VALUES ($1, $2, $3, $4, $5) RETURNING message_id;"
+        sql_insert_query = """
+            INSERT INTO message (
+                session_id, user_query, paraphrased_query, 
+                bot_response, elapsed_time, selected_module
+            ) VALUES ($1, $2, $3, $4, $5, $6) 
+            RETURNING message_id;
+        """
+        # The _execute_query probably returns a list of records, e.g., [(123,)]
         message_id = await self._execute_query(
             sql_insert_query, is_insert=True, insert_values=values, fetch_results=True
-        )
+        )            
         return str(message_id[0])
 
     async def update_on_click_chat_row(
@@ -216,6 +224,16 @@ class Postgres:
             message_id, 
         )
         sql_insert_query = "UPDATE message SET bot_response = $1, elapsed_time = $2 WHERE message_id = $3;" 
+        message_id = await self._execute_query(
+            sql_insert_query, is_insert=True, insert_values=values, fetch_results=True
+        )
+        return True
+    
+    async def update_selected_module(
+        self, message_id, selected_module
+    ):
+        values = (selected_module, message_id)
+        sql_insert_query = "UPDATE message SET selected_module = $1 WHERE message_id = $2;"
         message_id = await self._execute_query(
             sql_insert_query, is_insert=True, insert_values=values, fetch_results=True
         )

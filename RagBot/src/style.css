@@ -149,7 +149,7 @@ section.main>div {
 }
 
 .markdown-rtl {
-    direction: rtl;
+    direction: ltr;
     text-align: right;
 }
 
