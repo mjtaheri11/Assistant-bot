@@ -27,7 +27,7 @@ def session_create(api_url: str = BASE_URL):
     :return: The session ID if successful, None otherwise.
     """
     try:
-        response = requests.post(f"{api_url}/session/create")
+        response = requests.post(f"{api_url}/v1/session/create")
         # Check if the request was successful
         if response.status_code == 200:
             # Parse the JSON response and extract the 
@@ -55,7 +55,7 @@ def chat_request(session_id: str, query: str, on_click: bool, api_url: str = BAS
     # import pdb
     # pdb.set_trace()
     headers = {"Session-ID": session_id}
-    response = requests.post(f"{api_url}/chat", json=chat_data, headers=headers) # , timeout=11
+    response = requests.post(f"{api_url}/v1/chat", json=chat_data, headers=headers) # , timeout=11
 
     # Handle the different response status codes
     json_response = response.json()
@@ -80,7 +80,7 @@ def sql_request(query: str, session_id: str, on_click: bool, api_url: str = BASE
         "on_click": on_click
        }
 
-    response = requests.post(f"{api_url}/chat/sql", json=sql_data) # , timeout=11
+    response = requests.post(f"{api_url}/v1/chat/sql", json=sql_data) # , timeout=11
 
     # Handle the different response status codes
     json_response = response.json()
@@ -97,7 +97,7 @@ def request_history(session_id, api_url: str = BASE_URL):
         "session_id": session_id,
         "contain_paraphrase": True
         }
-    response = requests.get(f"{api_url}/chat", params=payload)
+    response = requests.get(f"{api_url}/v1/chat", params=payload)
     json_response = response.json()
     if response.status_code == 200: 
         return {"status": "sucess", "history": json_response['history']}
@@ -106,7 +106,7 @@ def request_history(session_id, api_url: str = BASE_URL):
     
 
 def request_previous_sessions(api_url: str = BASE_URL):
-    response = requests.get(f"{api_url}/sessions")
+    response = requests.get(f"{api_url}/v1/sessions")
     json_response = response.json()
     if response.status_code == 200:
         paraphrased_query = []
@@ -129,7 +129,7 @@ def send_feedback(message_id: str, feedback_type: str, session_id: str, api_url:
     }
 
     # Send the POST request with the feedback data
-    response = requests.post(f"{api_url}/feedback", json=feedback_data, headers={"Session-ID": session_id})
+    response = requests.post(f"{api_url}/v1/feedback", json=feedback_data, headers={"Session-ID": session_id})
     json_response = response.json()
     if response.status_code == 200:
         return json_response

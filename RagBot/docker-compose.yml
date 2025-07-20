@@ -3,10 +3,10 @@ version: '3.8'
 services:
   api:
     build: .
-    image: assistant-bot:dude_6
+    image: assistant-bot:dude_7
     container_name: assistant-bot-container
     ports:
-      - "8686:8687"
+      - "8689:8687"
     volumes:
       - ../VectorDB:/app/VectorDB
       - ../db-cache:/app/db-cache

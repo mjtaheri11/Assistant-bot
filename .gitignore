@@ -184,3 +184,6 @@ RagBot/mydata
 
 # documents 
 knowledge_base/qa-questions
+
+# keyring
+RagBot/cuda-keyring_1.1-1_all.deb

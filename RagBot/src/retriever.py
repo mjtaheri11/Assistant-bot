@@ -3,7 +3,7 @@ import logging
 from statistics import mean
 from typing import List, Dict
 
-from FlagEmbedding import FlagReranker
+# from FlagEmbedding import FlagReranker
 from mxbai_rerank import MxbaiRerankV2
 from langchain.vectorstores import Chroma
 from langchain_community.embeddings import HuggingFaceEmbeddings

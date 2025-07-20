@@ -5,7 +5,7 @@ from typing import Any, List, Mapping, Optional, Dict
 import numpy as np
 from langchain.vectorstores import Chroma
 from langchain.embeddings import HuggingFaceEmbeddings  # Ensure compatibility
-from FlagEmbedding import FlagReranker
+# from FlagEmbedding import FlagReranker
 
 from .config import config
 from .retriever import ModelManager

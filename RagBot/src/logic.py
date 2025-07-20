@@ -29,6 +29,7 @@ from .cache import Cache
 from .logs import simple_logger
 from .utils import json_cleaning, json_text_cleaning, json_cleaning_1, json_string_to_dict
 from .business_objects import FINANCIAL_BO, LOGISTICS_BO, LOGISTICS_SALES_MODIFIED, FINANCIAL_BO_MODIFIED
+from .semantic_router import SemanticRouterPipeline
 from langchain.chat_models import ChatOpenAI
 
 SEED = 44
@@ -123,6 +124,7 @@ async def get_chat_response(prompt: str, answer_type: str) -> str:
         openai_api_base="https://openrouter.ai/api/v1",
         # model_name="moonshotai/kimi-k2:free",
         model_name="deepseek/deepseek-r1-0528-qwen3-8b:free",
+        # model_name="tencent/hunyuan-a13b-instruct:free",
         streaming=False,
         temperature=0,
         # Optionally add headers via openai_client_headers or monkeypatch if needed
@@ -190,7 +192,7 @@ async def query_responder(query: str, context: str, history: str) -> str:
     # return cleaned_response_dict    
 
 
-async def is_somewhat_uniform(freq_dict: dict, threshold: float = 0.65) -> bool:
+async def is_somewhat_uniform(freq_dict: dict, threshold: float = 0.7) -> bool:
     """
     Checks if the frequency distribution in a dictionary is somewhat uniform
     based on the Coefficient of Variation (CV).
@@ -257,6 +259,7 @@ async def prepare_final_context(query: str, input_module: str = "") -> Tuple[boo
     proposable_modules = set(config["modules"]["proposable_modules"])
     detected_modules = [result["module"] for result in context_with_metadata]
     module_frequencies = Counter(detected_modules)
+    print(module_frequencies)
     
     # Handle single module case
     if len(module_frequencies) < 2:
@@ -302,6 +305,8 @@ def _handle_clarification_case(
     proposable_modules: Set[str]
 ) -> Tuple[bool, List[str], Union[str, List[str]]]:
     """Handle case where clarification is needed for module selection."""
+    # import pdb
+    # pdb.set_trace()
     unique_modules = set(detected_modules)
     valid_modules = unique_modules & proposable_modules
     
@@ -327,7 +332,7 @@ async def sql_responder_(query: str,
                          error_message: str = "",
                          do_retry: bool = False
                          ):
-    if detected_module.strip() == "دفتر کل":
+    if detected_module.strip() == "دفتر کل" or detected_module.strip() == "دفترکل":
         if not do_retry:
             bo_prompt = SQL_CONVERTER_MODIFIED.format(schema=FINANCIAL_BO_MODIFIED, query=query)
         else:
@@ -373,6 +378,7 @@ async def chat_responder_(
     )
     if response:
         return paraphrased_utterance, response, "", False, []
+    
     if detected_module:
         do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, user_utterance) # user_utterance as detected_module
     else:
@@ -385,8 +391,18 @@ async def chat_responder_(
     if do_clarify:
         return paraphrased_utterance, "", "", do_clarify, modules
     
-    route_response = await router_SQL_QA(paraphrased_utterance, context)
-    if route_response == "DATABASE":
+    semantic_router_object = SemanticRouterPipeline(
+        inference_only=True,
+        embedding_address=None,
+        # embedding_address="/home/user01/.cache/huggingface/hub/models--intfloat--multilingual-e5-large",
+        classifier_address="/home/user01/mj-workspace/Assistant-bot/saved_models/svm.joblib",
+        model_name="svm"
+        )
+
+    route_response = semantic_router_object.predict_sentences([paraphrased_utterance])
+
+    # route_response = await router_SQL_QA(paraphrased_utterance, context)
+    if route_response[0] == "sql":
         return paraphrased_utterance, "", "", do_clarify, modules
     
     response = await query_responder(paraphrased_utterance, context, history)

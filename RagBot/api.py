@@ -47,8 +47,6 @@ class SessionResponse(BaseModel):
 class ChatRequest(BaseModel):
     query: str
     session_id: Optional[str] = None
-    tenant_name: Optional[str] = None
-    user_code: Optional[str] = None
     on_click: Optional[bool] = False
     do_retry: Optional[bool] = False
     error_payload: Optional[str] = ""
@@ -98,8 +96,7 @@ class FeedbackRequest(BaseModel):
     message_id: str
     feedback_type: str
     session_id: Optional[str] = None  # Add default value
-    tenant_name: Optional[str] = None
-    user_code: Optional[str] = None
+
 
 
 class FeedbackResponse(BaseModel):
@@ -138,7 +135,7 @@ async def metrics():
 
 
 @app.get(
-    "/sessions",
+    "/v1/sessions",
     response_model=GetSessionsResponse,
     responses={
         200: {},
@@ -158,7 +155,7 @@ async def get_latest_sessions():
 
 
 @app.get(
-    "/chat",
+    "/v1/chat",
     response_model=HistoryResponse,
     responses={
         200: {},
@@ -190,7 +187,7 @@ async def get_history(
         raise HTTPException(status_code=500, detail="Unhandled error, Please report")
 
 @app.post(
-    "/session/create",
+    "/v1/session/create",
     response_model=SessionResponse,
     responses={
         200: {},
@@ -230,7 +227,7 @@ async def create_session(create_session_request: Optional[CreateSessionRequest] 
 
 
 @app.post(
-    "/chat",
+    "/v1/chat",
     response_model=ChatResponse,
     responses={
         200: {},
@@ -248,15 +245,13 @@ async def create_session(create_session_request: Optional[CreateSessionRequest] 
     },
 )
 async def chat_responder(chat_request: ChatRequest, request: Request):
-    REQUEST_COUNT.labels(endpoint="/chat").inc()  # Increment request count for /chat
+    REQUEST_COUNT.labels(endpoint="/v1/chat").inc()  # Increment request count for /chat
     start_time = time.time()
     is_sql = False
     context = ""
     agent = "chat_responder"
     message = "Chat response generated"
     choices = []
-    user_code = get_user_code(chat_request)
-    tenant_name = get_tenant_name(chat_request)
     do_suggest = False
     parameters = {}
     
@@ -320,9 +315,8 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                             "",
                             chat_request.do_retry,
                         )
-                        import pdb
-                        pdb.set_trace()
-                        if "NULL" not in response_dict:
+
+                        if "NULL" not in response_dict_str:
                             response_dict = json.loads(response_dict_str)
                             response = response_dict["SQL"]
                             parameters = response_dict["parameters"]
@@ -360,6 +354,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                 else:
                     if not response:
                         agent = "sql_responder"
+                        is_sql = True
                         response_dict = await sql_responder_(
                             paraphrased_utterance,
                             modules[0],
@@ -367,29 +362,35 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                             "",
                             chat_request.do_retry,
                         )
-                        import pdb
-                        pdb.set_trace()
                         if "NULL" not in response_dict:
+                            is_sql = False
                             response_dict = json.loads(response_dict)
                             response = response_dict["SQL"]
                             parameters = response_dict["parameters"]
+                            if response == None:
+                                response = RESPONSE_TEMPLATE_FOR_NO_ANSWER
 
                         
                     elapsed_time = time.time() - start_time
                     REQUEST_LATENCY.labels(endpoint="/chat").observe(elapsed_time)  # Record latency
+                    if not modules:
+                        modules = "cache"
+                        
+                    else:
+                        modules = modules[0]
                     message_id = await postgres.insert_chat_row(
                         session_id,
                         chat_request.query,
                         paraphrased_utterance,
                         response,
                         elapsed_time,
-                        modules[0]
+                        modules
                     )
-                    
+        
         non_generative_agent_logger(
             session_id=session_id,
-            tenant_name=tenant_name,
-            user_code=user_code,
+            tenant_name="",
+            user_code="",
             agent=agent,
             message=message,
             input_dict={
@@ -424,8 +425,8 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
         REQUEST_LATENCY.labels(endpoint="/chat").observe(elapsed_time)
         non_generative_agent_logger(
             session_id=session_id,
-            tenant_name=tenant_name,
-            user_code=user_code,
+            tenant_name="",
+            user_code="",
             agent="chat_responder",
             message="exception happened",
             input_dict={
@@ -455,7 +456,7 @@ class SQLResponse(BaseModel):
     
     
 @app.post(
-    "/chat/sql",
+    "/v1/chat/sql",
     response_model=SQLResponse,
     responses={
         200: {},
@@ -473,7 +474,7 @@ class SQLResponse(BaseModel):
     },
 )
 async def sql_responder(sql_request: SQLRequest, request: Request):
-    REQUEST_COUNT.labels(endpoint="/chat").inc()  # Increment request count for /chat
+    REQUEST_COUNT.labels(endpoint="v1/chat").inc()  # Increment request count for /chat
     start_time = time.time()
 
     try:
@@ -533,7 +534,7 @@ class ModuleResponse(BaseModel):
     
     
 @app.post(
-    "/chat/module",
+    "v1/chat/module",
     response_model=ModuleResponse,
     responses={
         200: {},
@@ -574,7 +575,7 @@ async def detect_module(module_request: ModuleRequest, request: Request):
 
 # TODO
 @app.post(
-    "/chat/queries/id/response",
+    "v1/chat/queries/id/response",
     response_model=MakeResponse,
     responses={
         200: {},
@@ -622,7 +623,7 @@ async def make_response(make_request: MakeRequest, request: Request):
 
 
 @app.post(
-    "/feedback",
+    "/v1/feedback",
     responses={
         200: {"content": {"application/json": {"example": {"message": "Feedback received"}}}},
         422: {"description": "Invalid feedback", "content": {"application/json": {"example": {"detail": "No Session-ID"}}}},
@@ -631,13 +632,10 @@ async def make_response(make_request: MakeRequest, request: Request):
     },
 )
 async def feedback(feedback_request: FeedbackRequest, request: Request):
-    endpoint = "/feedback"
+    endpoint = "/v1/feedback"
     REQUEST_COUNT.labels(endpoint=endpoint).inc()
     start_time = time.time()
     try:
-        # validate_feedback(feedback_request)
-        tenant_name = get_tenant_name(feedback_request)
-        user_code = get_user_code(feedback_request)
 
         session_id = get_session_id(request, feedback_request)
         if session_id is None:
@@ -654,7 +652,7 @@ async def feedback(feedback_request: FeedbackRequest, request: Request):
         log_feedback_request(session_id)
         result = await process_feedback(feedback_request, message_fields)
 
-        log_feedback_response(session_id, tenant_name, user_code, feedback_request, message_fields, start_time)
+        log_feedback_response(session_id, "", "", feedback_request, message_fields, start_time)
         return result
 
     except HTTPException as e:
@@ -700,7 +698,7 @@ def log_feedback_request(session_id):
 
 def log_feedback_response(session_id, tenant_name, user_code, feedback_request, message_fields, start_time):
     elapsed_time = time.time() - start_time
-    REQUEST_LATENCY.labels(endpoint="/feedback").observe(elapsed_time)
+    REQUEST_LATENCY.labels(endpoint="/v1/feedback").observe(elapsed_time)
 
     user_query, paraphrased_query, _ = message_fields
     non_generative_agent_logger(
@@ -720,7 +718,7 @@ def log_feedback_response(session_id, tenant_name, user_code, feedback_request, 
 
 def handle_unexpected_error(exception, tenant_name, user_code, session_id, feedback_request, start_time):
     elapsed_time = time.time() - start_time
-    REQUEST_LATENCY.labels(endpoint="/feedback").observe(elapsed_time)
+    REQUEST_LATENCY.labels(endpoint="/v1/feedback").observe(elapsed_time)
 
     traceback.print_exc()
     non_generative_agent_logger(

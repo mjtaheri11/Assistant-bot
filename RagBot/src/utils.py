@@ -98,6 +98,28 @@ def json_text_cleaning(text, answer_key="query"):
 #     json_output = {key: str(answer_value), "reasoning": str(reasoning_value)}
 #     return json_output
 
+import re
+
+def extract_answer(llm_output):
+    """
+    Extracts the content between <answer> and </answer> tags using regex.
+
+    Args:
+        llm_output: A string containing the LLM's output.
+
+    Returns:
+        The extracted answer string, or None if the tags are not found.
+    """
+    # The re.DOTALL flag makes '.' match newlines as well
+    match = re.search(r'<answer>(.*?)</answer>', llm_output, re.DOTALL)
+    
+    if match:
+        # group(1) returns the first captured group (the content inside the parentheses)
+        return match.group(1).strip()
+    else:
+        return None
+
+
 def json_cleaning_1(input_string):
     input_string.replace("\n", "").strip()
     json_input = json.loads(input_string)
@@ -107,6 +129,10 @@ def json_cleaning(input_string):
     cleaned_string = re.sub(r'<think>.*?</think>', '', input_string, flags=re.DOTALL)
     # cleaned_string = re.sub(r'\n+', '\n', cleaned_string)
     final_cleaned_response = cleaned_string.replace("sql", "").replace("```", "").strip() #.replace("\n\n", "\n").strip()
+    final_cleaned = extract_answer(final_cleaned_response)
+    if final_cleaned:
+        final_cleaned_response = final_cleaned
+
     return final_cleaned_response
 
 def remove_think_tags(text):
