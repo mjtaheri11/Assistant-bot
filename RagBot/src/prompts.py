@@ -500,6 +500,216 @@ NULL
 - Use CURRENT_DATE for "امروز" without quotes.
 """
 
+# SQL_CONVERTER_MODIFIED = """
+# # SQL Query Generator (SELECT QUERIES ONLY)
+
+# **Your task is to generate a JSON containing only SELECT SQL queries and their parameters. If the request cannot be fulfilled with a SELECT query, respond with NULL as the value of the SQL field of the output JSON**
+
+# ## OUTPUT REQUIREMENTS [CRITICAL]
+
+# - After your internal thinking process (within `<think>...</think>`), output **only** the final JSON output that contains a SQL and its parameters.
+# - Do not include explanations, comments, notes, code blocks, quotes, markdown, or any additional text in the final output.
+# - The final output must be a JSON with two fields: SQL query (which is a valid SQL query based on the provided business objects or NULL, and the parameters.)
+
+# ## Query Type Restrictions [CRITICAL]
+
+# - Only process requests that can be answered with a SELECT query.
+# - Return NULL immediately if the request involves:
+#   1. Data modification (INSERT, UPDATE, DELETE)
+#   2. Schema changes (CREATE, ALTER, DROP)
+#   3. Data control operations (GRANT, REVOKE)
+#   4. Transaction control (COMMIT, ROLLBACK)
+#   5. Multiple queries to complete
+#   6. Non-data retrieval operations
+#   7. Ambiguous requests that cannot be confidently converted to a SELECT query
+
+
+# ## Parameters Restrictions [CRITICAL]
+
+# - **Column Fields vs. Parameters:** Do not treat column field values (e.g., cmp_title: شرکت) as parameters; include them directly in the SQL query.
+# - **Separate Parameter Handling:** Parameters (e.g., p3: شرکت) must be included separately in the parameters part of the output JSON, even if they overlap with column fields.
+# - **Non-Column Parameters:** If a parameter is mentioned in the user's question but has no corresponding column field, include it only in the parameters part of the output JSON, not in the SQL query.
+# - **SQL Query Syntax:** Avoid syntax like company_title = :company in SQL queries; parameters should be handled separately in the parameters section.
+# - **Business Object Parameters:** Use the separate parameter parts provided in the business objects and include them in the parameters section of the output JSON.
+
+
+# ## Persian/Farsi Text Handling [CRITICAL]
+
+# - Use LIKE operators with wildcards ('%term%') for Persian/Farsi text matching.
+# - Do not translate Persian/Farsi to English or English to Persian/Farsi in the query.
+# - For text comparisons, prioritize:
+#   1. LIKE '%فارسی_term%' over exact matches
+#   2. Combine multiple Persian terms with AND/OR and LIKE operators
+#   3. Apply case insensitivity if needed
+#   4. Minimize LIKE scope (e.g., LIKE '%مواد اولیه تولید%' instead of LIKE '%انبار مواد اولیه تولید%')
+#   5. Convert informal Persian questions (e.g., چقدره => چه مقدار است, چیه => چیست)
+
+# ## Persian Date Conversion [CRITICAL]
+
+# - Convert all Persian (Solar Hijri) dates in user queries to Gregorian for SQL use.
+# - Key conversions:
+#   - **Years:**
+#     - ۱۴۰۴/1404 (current): 2025-2026 Gregorian
+#     - ۱۴۰۳/1403 (previous): 2024-2025 Gregorian
+#     - ابتدای سال (start of year): March 21 of the year
+#     - انتهای سال/پایان سال (end of year): March 20 of the next year
+#   - **Months:**
+#     - فروردین: March 21 - April 20
+#     - اردیبهشت: April 21 - May 21
+#     - خرداد: May 22 - June 21
+#     - تیر: June 22 - July 22
+#     - مرداد: July 23 - August 22
+#     - شهریور: August 23 - September 22
+#     - مهر: September 23 - October 22
+#     - آبان: October 23 - November 21
+#     - آذر: November 22 - December 21
+#     - دی: December 22 - January 20
+#     - بهمن: January 21 - February 19
+#     - اسفند: February 20 - March 20
+#   - **Time Periods:**
+#     - امروز (today): CURRENT_DATE
+#     - دیروز (yesterday): CURRENT_DATE - INTERVAL '1 day'
+#     - هفته گذشته (last week): CURRENT_DATE - INTERVAL '1 week'
+#     - ماه گذشته (last month): CURRENT_DATE - INTERVAL '1 month'
+#     - سال گذشته (last year): CURRENT_DATE - INTERVAL '1 year'
+#     - سال جاری (current year): March 21, 2025 to present
+#     - سال قبل (previous year): March 21, 2024 to March 20, 2025
+#   - **Special Cases:**
+#     - Specific dates (e.g., "۱۰ مرداد ۱۴۰۴"): Convert to 2025-08-01
+#     - Date ranges: Convert both start and end dates
+
+# ## Anti-Hallucination Protocol [CRITICAL]
+
+# - Verify all column names against the provided schema.
+# - **Never** invent or assume column names not listed in the schema.
+# - Only join tables using explicit foreign key relationships in the schema.
+# - Ensure joined columns have matching data types.
+# - Do not reference nonexistent tables or columns.
+
+# ## SELECT Query Construction Steps
+
+# 1. Analyze the Persian query to identify entities, conditions, and relationships.
+# 'available space
+# 2. Verify the request is answerable with a SELECT query (return NULL if not).
+# 3. Map entities to schema tables and columns.
+# 4. For joins:
+#    a. Use explicit foreign keys (e.g., store_id, voucher_specification_id).
+#    b. Verify join columns exist.
+#    c. Apply correct join conditions.
+# 5. Select only columns that:
+#    a. Answer the query.
+#    b. Exist in the schema.
+#    c. Are accessible via joins.
+# 6. Apply Persian text handling rules.
+# 7. Convert Persian dates to Gregorian.
+
+# ## Optimization Rules
+
+# - Use consistent table aliases.
+# - Structure WHERE clauses with parentheses for clarity.
+# - Use literals or SQL expressions (no variables).
+# - Avoid SELECT *; specify column names.
+# ## Output Format:
+# The final output must be in JSON format with two keys: SQL and parameters. {{"SQL": The SQL query, "parameters": The parameters for the SQL query.}}
+
+# ## Examples
+
+# ### Example 1
+# **Persian:** حداقل مصرف پروژه روزانه گریس از ابتدای سال چقدر بوده؟  
+# **English:** What was the minimum daily project consumption of grease since the start of the year?  
+# {{
+# "SQL":"  
+#     SELECT MIN(A.daily_total) FROM (  
+#       SELECT SUM(logistics_invvoucheritem.major_quantity) AS daily_total, logistics_invvoucher.date  
+#       FROM logistics_invvoucheritem  
+#       JOIN logistics_invvoucher ON logistics_invvoucher.id = logistics_invvoucheritem.inventory_voucher_id  
+#       JOIN logistics_voucherspecification ON logistics_voucherspecification.id = logistics_invvoucher.voucher_specification_id  
+#       JOIN logistics_parts ON logistics_parts.id = logistics_invvoucheritem.part_id  
+#       WHERE logistics_invvoucher.date >= '2025-03-21'  
+#         AND logistics_parts.title LIKE '%گریس%'  
+#         AND logistics_voucherspecification.title LIKE '%مصرف پروژه%'  
+#         AND (logistics_invvoucher.state = 'تایید شده' OR logistics_invvoucher.state = 'ثبت شده')  
+#       GROUP BY logistics_invvoucher.date  
+#     ) AS A;
+#   ",
+#   "parameters": {{}} 
+# }}
+
+# ### Example 2
+# **Persian:** کل مقدار برگشت خورده کالای آهن قراضه، از انبار WH_001 شیراز چقدره؟  
+# **English:** What is the total amount of scrap iron returned from WH_001 warehouse in Shiraz?  
+# {{"SQL":"   
+#     SELECT SUM(logistics_invvoucheritem.major_quantity)  
+#     FROM logistics_invvoucheritem  
+#     JOIN logistics_invvoucher ON logistics_invvoucher.id = logistics_invvoucheritem.inventory_voucher_id  
+#     JOIN logistics_voucherspecification ON logistics_voucherspecification.id = logistics_invvoucher.voucher_specification_id  
+#     JOIN logistics_parts ON logistics_parts.id = logistics_invvoucheritem.part_id  
+#     JOIN logistics_store ON logistics_invvoucher.store_id = logistics_store.id  
+#     JOIN logistics_plants ON logistics_store.plant_id = logistics_plants.id  
+#     WHERE logistics_plants.title LIKE '%شیراز%'  
+#       AND logistics_store.code = 'WH_001'  
+#       AND logistics_parts.title LIKE '%آهن قراضه%'  
+#       AND logistics_voucherspecification.voucher_type = 'خرید'
+#       AND logistics_voucherspecification.title LIKE '%برگشت از خرید%'  
+#       AND logistics_invvoucher.state IN ('تایید شده', 'ثبت شده');  
+#   ",
+#   parameters": {{}}
+# }}
+
+# ### Example 3
+# **Persian:** میانگین هر بار خروج کالا از انبار بابت کالای DRI برای تولید چقدر بوده؟
+# **English:** What was the average number of times goods were taken out of the warehouse for DRI goods for production?
+# {{"SQL":"
+#     SELECT AVG(logistics_invvoucheritem.major_quantity) -- NOTE TO MAJOR_QUANTITY NOT QUANTITY
+#     FROM logistics_invvoucheritem
+#     JOIN logistics_invvoucher ON logistics_invvoucheritem.inventory_voucher_id = logistics_invvoucher.id
+#     JOIN parts ON logistics_invvoucheritem.part_id = logistics_parts.id
+#     JOIN logistics_voucherspecification ON logistics_voucherspecification.id = logistics_invvoucher.voucher_specification_id
+#     WHERE logistics_parts.title LIKE ‘%DRI%’
+#     	AND logistics_invvoucher.state IN (
+#     		‘تایید شده’
+#     		,’ثبت شده’)
+#     	AND logistics_voucherspecification.direction = ‘خروجی’ -- NEVER EVEN FORGET TO USE DIRECTION IN SUCH QUESTIONS
+#     	AND logistics_voucherspecification.title LIKE ‘%تولید%’
+#     	AND logistics_invvoucher.date >= '2025-03-21';
+#   ",
+#   "parameters": {{}}
+# }}
+
+# ### Example 4
+# **Persian:** اقلام فاکتور شرکت شفا با مبلغ خالص بالای 1000000 را نمایش دهید.
+# **English:** Display pharmaceutical company invoice items with a net amount above 1,000,000.
+# {{"SQL":"SELECT amount, fee, net_price, unit_title, description_c  FROM sales_invoiceitem  WHERE cmp_title = 'دارویی' AND net_price > 1000000;", 
+#   "parameters": {{
+#     "p3": "دارویی",
+#   }}
+# }}
+
+# ### Example 5
+# **Persian:** لیست قیمت کالاهایی که با ارز دلار در شرکت پتروشیمی جم معامله می‌شوند را نمایش بده.
+# {{"SQL": "SELECT T1.product_title, T1.plip_fee, T1.unit_title  FROM sales_pricelistitem AS T1  JOIN sales_pricelistheader AS T2 ON T1.pl_id = T2.id  WHERE T1.cmp_title = 'پتروشیمی جم'  AND T2.currency_title = 'دلار';",
+#   "parameters": {{"p3": "پتروشیمی جم", "p4": "دلار"}}
+# }}
+
+# # Example 6
+# **Persian:** کالاهایی که در فاکتورهای شرکت «فراورده های لبنی میهن» با روش تسویه «اعتباری» فروخته شده‌اند را لیست کن.
+# {{"SQL": "SELECT DISTINCT T3.title FROM sales_invoiceitem AS T1 JOIN sales_invoice AS T2 ON T1.invoice_id = T2.id JOIN sales_product AS T3 ON T1.gnr_product_id = T3.id  WHERE T1.cmp_title = 'فراورده های لبنی میهن' AND T2.sm_title = 'اعتباری';",
+#   "parameters": {{"p3": "فراورده های لبنی میهن"}}
+# }}
+
+# ## Business Object:
+# {schema}
+
+# ## Natural Language Query:
+# {query}
+
+# **REMINDER:**  
+# - Output **only** the raw SQL query or NULL.  
+# - **Never** assume database structure or invent columns/keys not in the schema.  
+# - Persian calendar year: March 2025 - March 2026.  
+# - Use CURRENT_DATE for "امروز" without quotes.
+# """
+
 SQL_CONVERTER_MODIFIED = """
 # SQL Query Generator (SELECT QUERIES ONLY)
 
