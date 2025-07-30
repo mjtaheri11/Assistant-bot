@@ -50,7 +50,7 @@ async def get_chat_response(prompt: str, answer_type: str = "qa") -> str:
 
     # Check for environment variables for different configurations
     LLM_API_KEY = os.getenv("LLM_API_KEY")
-    LLM_MODEL_NAME = os.getenv("LLM_MODEL_NAME") 
+    LLM_MODEL_NAME = os.getenv("LLM_MODEL_NAME")
     LLM_API_BASE = os.getenv("LLM_API_BASE")
     OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY')
 
@@ -101,7 +101,7 @@ def history_serializer(history: List[tuple[str, str]]) -> str:
 
 async def utterance_paraphraser(history: List[tuple[str, str]], user_utterance: str, assistant_name: str = None) -> str:
     serialized_history = history_serializer(history)
-    
+
     if assistant_name:
         # Use the original format with assistant_name (from develop branch)
         prompt = UTTERANCE_PARAPHRASER_PROMPT.format(
@@ -115,22 +115,22 @@ async def utterance_paraphraser(history: List[tuple[str, str]], user_utterance: 
             history=serialized_history,
             question=user_utterance,
         )
-    
+
     response = await get_chat_response(prompt, answer_type="sql")
     response = json_cleaning(response)
     return response
 
 async def query_responder(
-    query: str, 
-    context: str, 
-    history: str, 
-    company_name: str = None, 
-    assistant_name: str = None, 
+    query: str,
+    context: str,
+    history: str,
+    company_name: str = None,
+    assistant_name: str = None,
     answer_type: str = "normal"
     ) -> str:
 
     serialized_history = history_serializer(history)
-    
+
     # Use develop branch format with multiple prompt types
     if answer_type == "concise":
         RAG_SYSTEM_PROMPT = RAG_CONCISE_SYSTEM_PROMPT
@@ -140,7 +140,7 @@ async def query_responder(
         RAG_SYSTEM_PROMPT = RAG_EXPLANATORY_SYSTEM_PROMPT
     else:
         RAG_SYSTEM_PROMPT = RAG_NORMAL_SYSTEM_PROMPT
-        
+
     prompt = RAG_SYSTEM_PROMPT.format(
         context=context,
         company_name=company_name,
@@ -148,7 +148,7 @@ async def query_responder(
         question=query,
         conversation_history=serialized_history
     )
-    
+
     response = await get_chat_response(prompt, answer_type="qa")
     response = json_cleaning(response)
     return response
@@ -171,10 +171,10 @@ async def is_somewhat_uniform(freq_dict: dict, threshold: float = 0.7) -> bool:
     
     frequencies = list(freq_dict.values())
     mean_freq = statistics.mean(frequencies)
-    
+
     if mean_freq == 0:
         return True, mean_freq
-    
+
     stdev_freq = statistics.stdev(frequencies)
     cv = stdev_freq / mean_freq
     
@@ -182,7 +182,7 @@ async def is_somewhat_uniform(freq_dict: dict, threshold: float = 0.7) -> bool:
 
 async def retrieve_context_with_metadata(query: str, input_modules: List = None, database_index: str = None) -> List[dict]:
     retriever = Retriever()
-    
+
     if input_modules:
         context_with_metadata = await retriever.retrieve_context(query, module_filter=input_modules)
     elif database_index:
@@ -198,7 +198,7 @@ async def prepare_final_context(query: str, database_index: str = None, input_mo
     """
     
     context_with_metadata = await retrieve_context_with_metadata(query, database_index=database_index, input_modules=[input_module] if input_module else None)
-    
+
 
     if not context_with_metadata:
         return False, [], []
@@ -209,7 +209,7 @@ async def prepare_final_context(query: str, database_index: str = None, input_mo
     proposable_modules = set(config["modules"]["proposable_modules"])
     detected_modules = [result["module"] for result in context_with_metadata]
     module_frequencies = Counter(detected_modules)
-    
+
     if len(module_frequencies) < 2:
         detected_modules_lst = list(module_frequencies.keys())
         return _handle_single_module_case(context_with_metadata, detected_modules_lst[0])
@@ -266,35 +266,35 @@ async def module_proposer():
 
 async def sql_responder_(
     query: str,
-    detected_module: str = "", 
-    faulty_sql_query: str = "", 
-    error_message: str = "", 
+    detected_module: str = "",
+    faulty_sql_query: str = "",
+    error_message: str = "",
     do_retry: bool = False
     ):
     """
     Unified SQL responder supporting both simple schema list and module-based schema selection
     """
-    
+
     # Use feature/add-sql-agent logic with detected_module
     if detected_module.strip() == "دفتر کل" or detected_module.strip() == "دفترکل":
         if not do_retry:
             bo_prompt = SQL_CONVERTER_MODIFIED.format(schema=FINANCIAL_BO_MODIFIED, query=query)
         else:
-            bo_prompt = SQL_MODIFIER.format(schema=FINANCIAL_BO_MODIFIED, original_query=query, 
+            bo_prompt = SQL_MODIFIER.format(schema=FINANCIAL_BO_MODIFIED, original_query=query,
                                           faulty_sql_query=faulty_sql_query, error_message=error_message)
     else:
         if not do_retry:
             bo_prompt = SQL_CONVERTER_MODIFIED.format(schema=LOGISTICS_SALES_MODIFIED, query=query)
         else:
-            bo_prompt = SQL_MODIFIER.format(schema=LOGISTICS_SALES_MODIFIED, original_query=query, 
+            bo_prompt = SQL_MODIFIER.format(schema=LOGISTICS_SALES_MODIFIED, original_query=query,
                                           faulty_sql_query=faulty_sql_query, error_message=error_message)
-    
+
     raw_json_response = await get_chat_response(bo_prompt, answer_type="sql")
     response = json_cleaning(raw_json_response)
-    
+
     if not response:
         response = "در حال حاضر نمیتوانم به این سوال پاسخ دهم"
-    
+
     return response
 
 async def router_SQL_QA(query: str, context: str):
@@ -317,7 +317,7 @@ async def chat_responder_(
     """
     Unified chat responder supporting both develop branch (simple RAG) and feature/add-sql-agent (SQL + module handling)
     """
-    
+
     # If sql_mode is True, use the new SQL agent logic
     if not detected_module and use_cache:
         response, url = await get_cache_response(user_utterance)
@@ -325,9 +325,9 @@ async def chat_responder_(
             return user_utterance, response, "", False, []
 
     paraphrased_utterance = await utterance_paraphraser(history, user_utterance)
-    
+
     if use_cache:
-        response, url = await get_cache_response(paraphrased_utterance) 
+        response, url = await get_cache_response(paraphrased_utterance)
         if response:
             return paraphrased_utterance, response, "", False, []
     
@@ -351,7 +351,7 @@ async def chat_responder_(
             model_name="svm"
         )
         route_response = semantic_router_object.predict_sentences([paraphrased_utterance])
-        
+
         if route_response[0] == "sql":
             return paraphrased_utterance, "", "", do_clarify, modules
     except:
@@ -359,11 +359,11 @@ async def chat_responder_(
         pass
     
     response = await query_responder(
-        paraphrased_utterance, 
-        context, 
-        history, 
-        company_name=company_name, 
-        assistant_name=assistant_name, 
+        paraphrased_utterance,
+        context,
+        history,
+        company_name=company_name,
+        assistant_name=assistant_name,
         answer_type=response_type
         )
     
@@ -371,10 +371,10 @@ async def chat_responder_(
         response = template_for_not_answer
     if "خارج از حوزه کاری" in response:
         response = template_for_not_context.format(company_name=company_name)
-    
+
     return paraphrased_utterance, response, context, do_clarify, modules
 
-    
+
 async def feedback_(
     query: str,
     response: str,
