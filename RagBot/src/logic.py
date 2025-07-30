@@ -1,3 +1,5 @@
+import asyncio
+import json
 import random
 from typing import List
 from collections import Counter
@@ -8,26 +10,25 @@ from dotenv import load_dotenv
 import torch
 import numpy as np
 from langchain.schema import SystemMessage
+from langchain_community.chat_models import ChatOllama
 
 from collections import Counter
 from typing import List, Tuple, Union, Set
 from .prompts import (
-    RAG_CONCISE_SYSTEM_PROMPT,
-    RAG_EXPLANATORY_SYSTEM_PROMPT,
-    RAG_NORMAL_SYSTEM_PROMPT,
+    RAG_SYSTEM_PROMPT,
     UTTERANCE_PARAPHRASER_PROMPT,
     SQL_CONVERTER,
+    SQL_CONVERTER_1,
     SQL_CONVERTER_MODIFIED,
     SQL_MODIFIER,
     QUERY_ROUTER,
-    ANSWER_VALIDATOR_PROMPT
 )
 from .retriever import Retriever
 from .config import config
 from .cache import Cache
 from .logs import simple_logger
-from .utils import json_cleaning, json_text_cleaning
-from .business_objects import LOGISTICS_SALES_MODIFIED, FINANCIAL_BO_MODIFIED
+from .utils import json_cleaning, json_text_cleaning, json_cleaning_1, json_string_to_dict
+from .business_objects import FINANCIAL_BO, LOGISTICS_BO, LOGISTICS_SALES_MODIFIED, FINANCIAL_BO_MODIFIED
 from .semantic_router import SemanticRouterPipeline
 from langchain.chat_models import ChatOpenAI
 
@@ -37,44 +38,105 @@ np.random.seed(SEED)
 torch.cuda.manual_seed_all(SEED)
 random.seed(SEED)
 
-template_for_not_answer = "پاسخ به این سوال در محدوده پاسخگویی من نیست برای اطلاعات بیشتر به 'https://systemgroup.net' مراجعه کنید."
-template_for_not_context = """این سوال خارج از حوزه کاری {company_name} است. لطفا سوال خود را در رابطه با محصولات و خدمات {company_name} مطرح کنید. برای اطلاعات بیشتر به 'https://systemgroup.net' مراجعه کنید"""
-template_for_doubtful_answer = "سوال شما را به خوبی متوجه نشدم. لطفا سوال خود را به صورت دقیق تر بپرسید تا بتوانم بهتر کمک کنم."
 
-async def get_chat_response(prompt: str, answer_type: str = "qa") -> str:
-    print("Character Length of the prompt: ", len(prompt))
-    print("words length of the prompt: ", len(prompt.split()))
+template_for_not_answer = "پاسخ به این سوال در محدوده دانش من نیست"
+template_for_not_context = "این سوال خارج از حوزه کاری همکاران سیستم است. لطفا سوال خود را در رابطه با محصولات و خدمات همکاران سیستم مطرح کنید."
+
+
+# chat = ChatOpenAI(  # type: ignore[call-arg]
+#     openai_api_base=secret["openai"]["api_base"],
+#     openai_api_key=secret["openai"]["api_key"],
+#     openai_proxy=secret["openai"]["proxy"],
+#     model_name=config["openai"]["model_name"],
+#     max_tokens=config["openai"]["max_tokens"],
+#     temperature=config["openai"]["temperature"],
+# )
+
+
+
+#   GNU nano 6.2                                                                                       test_gpt.py                                                                                                 import os
+# from openai import OpenAI
+
+# # It's recommended to set your API key as an environment variable
+# # to avoid hardcoding it in your script.
+# # You can get your API key from https://platform.openai.com/
+# client = OpenAI(api_key="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") # Replace with y>
+# try:
+#     response = client.chat.completions.create(
+#         model="gpt-4o-mini",  # You can also use other models like "gpt-4"
+#         messages=[
+#             {"role": "system", "content": "You are a helpful assistant."},
+#             {"role": "user", "content": "Hello, world!"},
+#         ]
+#     )
+
+#     print(response.choices[0].message.content)
+
+# except Exception as e:
+#     print(f"An error occurred: {e}")
+
+
+async def get_chat_response(prompt: str, answer_type: str) -> str:
+    print("Character Length of the prompt: ", len(prompt)) # TODO print should be replaced with a proper log
+    print("words length of the prompt: ", len(prompt.split())) # TODO print should be replaced with a proper log
+    # if answer_type == "qa":
+    #     model_name = config["ollama"]["qa_model_name"]
+    #     base_url = f"http://185.13.230.222:{str(config['ollama']['qa_model_port'])}/v1"
+    #     num_ctx = config['ollama']['qa_model_num_ctx']
+    #     llm = ChatOpenAI(
+    #         openai_api_base=base_url,
+    #         openai_api_key="EMPTY",
+    #         model_name="/models/aya-expanse-32b-gptq-4bit"
+    #     ) 
+    # else:
+    #     model_name = config["ollama"]["sql_model_name"]
+    #     # base_url = f"http://ollama:{config['ollama']['sql_model_port']}"
+    #     base_url = "http://localhost:8980"
+    #     num_ctx = config['ollama']['sql_model_num_ctx']
+    #     llm = ChatOllama(
+    #         model=model_name,
+    #         temperature=0,
+    #         keep_alive=config["ollama"]["keep_alive"],
+    #         seed=SEED,
+    #         # base_url="http://ollama:11434",
+    #         base_url=base_url, 
+    #         num_ctx=num_ctx
+    #     )
+    
+    # llm = ChatOpenAI(  # type: ignore[call-arg]
+    #     openai_api_base="https://api.openai.com/v1",
+    #     openai_api_key="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",
+    #     # openai_proxy=secret["openai"]["proxy"],
+    #     max_tokens=8192,
+    #     model_name="gpt-4.1",
+    #     temperature=0,
+    # )
 
     # Load environment variables from .env file
     load_dotenv()
 
-    # Check for environment variables for different configurations
-    LLM_API_KEY = os.getenv("LLM_API_KEY")
-    LLM_MODEL_NAME = os.getenv("LLM_MODEL_NAME") 
-    LLM_API_BASE = os.getenv("LLM_API_BASE")
-    OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY')
+    # Access environment variables
+    api_key = os.getenv('OPENROUTER_API_KEY')
 
-    # Use OpenRouter if available, otherwise fall back to original configuration
-    if OPENROUTER_API_KEY:
-        llm = ChatOpenAI(
-            openai_api_key=OPENROUTER_API_KEY,
-            openai_api_base="https://openrouter.ai/api/v1",
-            model_name="qwen/qwen3-30b-a3b-instruct-2507",
-            streaming=False,
-            temperature=0,
-        )
-    elif LLM_API_KEY and LLM_MODEL_NAME and LLM_API_BASE:
-        llm = ChatOpenAI(
-            openai_api_base=LLM_API_KEY,
-            openai_api_key=LLM_API_BASE,
-            model_name=LLM_MODEL_NAME
-        )
-    else:
-        raise ValueError("No valid LLM configuration found in environment variables")
+    llm = ChatOpenAI(
+        # openai_api_key=api_key,
+        openai_api_key=api_key,
+        openai_api_base="https://openrouter.ai/api/v1",
+        model_name="qwen/qwen3-coder:free",
+        # model_name="moonshotai/kimi-k2:free",
+        # model_name="deepseek/deepseek-r1-0528-qwen3-8b:free",
+        # model_name="qwen/qwen3-235b-a22b-2507:free",
+        # model_name="tencent/hunyuan-a13b-instruct:free",
+        streaming=False,
+        temperature=0,
+        # Optionally add headers via openai_client_headers or monkeypatch if needed
+    )
+
 
     messages = [SystemMessage(content=prompt)]
-    response = await llm.ainvoke(messages)
+    response = await llm.ainvoke(messages)  
     return response.content
+
 
 async def get_cache_response(
     query: str,
@@ -92,157 +154,152 @@ async def get_cache_response(
     else:
         return "", ""
 
+
 def history_serializer(history: List[tuple[str, str]]) -> str:
     serialized_history = ""
+    # TODO this history part should be considered effectively. I just wrote something messy.
     for question, answer in history:
         serialized_history += f"USER: {question}\nASSISTANT: {answer}\n\n"
     return serialized_history
 
-async def utterance_paraphraser(history: List[tuple[str, str]], user_utterance: str, assistant_name: str = None) -> str:
+
+async def utterance_paraphraser(history: List[tuple[str, str]], user_utterance: str) -> str:
+    # TODO such a messy modification. resolve it as soon as you can
+    # serialized_history = "\n".join(["USER: " + user_hist[0] + "\n" + "ASSISTANT" + user_hist[1] for user_hist in history])
+    # import pdb
+    # pdb.set_trace()
     serialized_history = history_serializer(history)
-    
-    if assistant_name:
-        # Use the original format with assistant_name (from develop branch)
-        prompt = UTTERANCE_PARAPHRASER_PROMPT.format(
-            history=serialized_history,
-            assistant_name=assistant_name,
-            question=user_utterance,
-        )
-    else:
-        # Use the simplified format (from feature/add-sql-agent branch)
-        prompt = UTTERANCE_PARAPHRASER_PROMPT.format(
-            history=serialized_history,
-            question=user_utterance,
-        )
-    
+    prompt = UTTERANCE_PARAPHRASER_PROMPT.format(
+        history=serialized_history,
+        question=user_utterance,
+    )
     response = await get_chat_response(prompt, answer_type="sql")
     response = json_cleaning(response)
     return response
 
-async def query_responder(
-    query: str, 
-    context: str, 
-    history: str, 
-    company_name: str = None, 
-    assistant_name: str = None, 
-    answer_type: str = "normal"
-    ) -> str:
 
-    serialized_history = history_serializer(history)
+async def query_responder(query: str, context: str, history: str) -> str:
+    # TODO: Add appropriate logger.
     
-    # Use develop branch format with multiple prompt types
-    if answer_type == "concise":
-        RAG_SYSTEM_PROMPT = RAG_CONCISE_SYSTEM_PROMPT
-    elif answer_type == "normal":
-        RAG_SYSTEM_PROMPT = RAG_NORMAL_SYSTEM_PROMPT
-    elif answer_type == "explanatory":
-        RAG_SYSTEM_PROMPT = RAG_EXPLANATORY_SYSTEM_PROMPT
-    else:
-        RAG_SYSTEM_PROMPT = RAG_NORMAL_SYSTEM_PROMPT
-        
+    serialized_history = history_serializer(history)
     prompt = RAG_SYSTEM_PROMPT.format(
         context=context,
-        company_name=company_name,
-        assistant_name=assistant_name,
+        history=serialized_history,
         question=query,
-        conversation_history=serialized_history
     )
-    
     response = await get_chat_response(prompt, answer_type="qa")
-    response = json_cleaning(response)
     return response
+    # cleaned_response = json_cleaning(response)
+    # cleaned_response_dict = json_text_cleaning(cleaned_response, "answer")
+    # return cleaned_response_dict    
 
-async def answer_validator(question: str, context: str, answer: str) -> bool:
-    prompt = ANSWER_VALIDATOR_PROMPT.format(
-        context=context,
-        question=question,
-        answer=answer,
-    )
-    response = await get_chat_response(prompt, answer_type="qa")
-    return response
 
 async def is_somewhat_uniform(freq_dict: dict, threshold: float = 0.7) -> bool:
     """
     Checks if the frequency distribution in a dictionary is somewhat uniform
     based on the Coefficient of Variation (CV).
+
+    Args:
+        freq_dict: A dictionary with items as keys and frequencies as values.
+        threshold: The maximum allowed CV to be considered uniform.
+                   Defaults to 0.3.
+
+    Returns:
+        True if the distribution is somewhat uniform, False otherwise.
     """
+    # Ensure that the freq_dict has more than one item
     assert len(freq_dict) > 1, "Frequency dictionary must contain more than one item."
     
     frequencies = list(freq_dict.values())
+
+    # Calculate mean and standard deviation
     mean_freq = statistics.mean(frequencies)
     
+    # Avoid division by zero if all frequencies are 0
     if mean_freq == 0:
-        return True, mean_freq
-    
+        return True, mean_freq # All items are 0, so it's perfectly uniform
+
     stdev_freq = statistics.stdev(frequencies)
+
+    # Calculate the Coefficient of Variation (CV)
     cv = stdev_freq / mean_freq
     
     return cv <= threshold, mean_freq
 
-async def retrieve_context_with_metadata(query: str, input_modules: List = None, database_index: str = None) -> List[dict]:
-    retriever = Retriever()
-    
+
+async def retrieve_context_with_metadata(query: str, input_modules: List) -> List[dict]:
+    retriever = Retriever() 
     if input_modules:
         context_with_metadata = await retriever.retrieve_context(query, module_filter=input_modules)
-    elif database_index:
-        # Support database_index parameter from develop branch
-        context_with_metadata = await retriever.retrieve_context(query, database_index)
     else:
         context_with_metadata = await retriever.retrieve_context(query)
-    import pdb
-    pdb.set_trace()
     return context_with_metadata
 
-async def prepare_final_context(query: str, database_index: str = None, input_module: str = "") -> Union[str, Tuple[bool, List[str], Union[str, List[str]]]]:
+
+async def prepare_final_context(query: str, input_module: str = "") -> Tuple[bool, List[str], Union[str, List[str]]]:
     """
-    Unified function supporting both develop branch (simple context) and feature/add-sql-agent (complex module handling)
+    Analyzes query context and determines if clarification is needed for module selection.
+    
+    Args:
+        query: The input query string
+        
+    Returns:
+        Tuple containing:
+        - bool: Whether clarification is needed
+        - List[str]: List of detected/proposed modules
+        - Union[str, List[str]]: Document content (single string or list of strings)
     """
-    
-    context_with_metadata = await retrieve_context_with_metadata(query, database_index=database_index, input_modules=[input_module] if input_module else None)
-    
+    context_with_metadata = await retrieve_context_with_metadata(query, input_module)
 
     if not context_with_metadata:
         return False, [], []
     
     if input_module:
+        # If a specific module is provided, we assume no clarification is needed
         return _handle_single_module_case(context_with_metadata, input_module)
     
     proposable_modules = set(config["modules"]["proposable_modules"])
     detected_modules = [result["module"] for result in context_with_metadata]
     module_frequencies = Counter(detected_modules)
     
+    # Handle single module case
     if len(module_frequencies) < 2:
         detected_modules_lst = list(module_frequencies.keys())
         return _handle_single_module_case(context_with_metadata, detected_modules_lst[0])
     
     print(module_frequencies)
+    # Check if distribution is uniform (needs clarification)
     needs_clarification, mean_freq = await is_somewhat_uniform(module_frequencies)
     if not needs_clarification:
         max_value = max(module_frequencies.values())
         probable_detected_module = [k for k, v in module_frequencies.items() if v == max_value]
         return _handle_clear_preference_case(context_with_metadata, probable_detected_module[0])
     else:
-        probable_detected_modules = [k for k, v in module_frequencies.items() if v >= mean_freq]
+        probable_detected_modules = [k for k, v in module_frequencies.items() if v >= mean_freq] 
         return _handle_clarification_case(
-            context_with_metadata,
-            probable_detected_modules,
+            context_with_metadata, 
+            probable_detected_modules, 
             proposable_modules
         )
 
+
 def _handle_single_module_case(
-    context_with_metadata: List,
-    detected_modules: str
+    context_with_metadata: List, 
+    detected_modules: List[str]
 ) -> Tuple[bool, List[str], str]:
     """Handle case where only one module type is detected."""
     documents = "\n\n".join(context["text"] for context in context_with_metadata)
-    return False, [detected_modules], documents
+    module = detected_modules if detected_modules else ""
+    return False, [module], documents
+
 
 def _handle_clear_preference_case(
     context_with_metadata: List, detected_module: str
 ) -> Tuple[bool, List[str], List[str]]:
     """Handle case where module preference is clear (no clarification needed)."""
     documents = [doc["text"] for doc in context_with_metadata]
-    return False, [detected_module], documents
+    return False, detected_module, documents
+
 
 def _handle_clarification_case(
     context_with_metadata: List,
@@ -250,132 +307,118 @@ def _handle_clarification_case(
     proposable_modules: Set[str]
 ) -> Tuple[bool, List[str], Union[str, List[str]]]:
     """Handle case where clarification is needed for module selection."""
+    # import pdb
+    # pdb.set_trace()
     unique_modules = set(detected_modules)
     valid_modules = unique_modules & proposable_modules
     
     if len(valid_modules) < 2:
+        # Not enough valid modules for clarification
         documents = context_with_metadata[0]["text"]
         valid_modules_lst = list(valid_modules)
         return False, valid_modules_lst, documents
     else:
+        # Multiple valid modules - clarification needed
         documents = [doc["text"] for doc in context_with_metadata]
         valid_modules_lst = list(valid_modules)
         return True, valid_modules_lst, documents
+        
 
 async def module_proposer():
     return ["انبار و فروش", "دفتر کل"]
 
-async def sql_responder_(
-    query: str,
-    detected_module: str = "", 
-    faulty_sql_query: str = "", 
-    error_message: str = "", 
-    do_retry: bool = False
-    ):
-    """
-    Unified SQL responder supporting both simple schema list and module-based schema selection
-    """
-    
-    # Use feature/add-sql-agent logic with detected_module
+
+async def sql_responder_(query: str,
+                         detected_module: str = "",
+                         faulty_sql_query: str = "",
+                         error_message: str = "",
+                         do_retry: bool = False
+                         ):
     if detected_module.strip() == "دفتر کل" or detected_module.strip() == "دفترکل":
         if not do_retry:
             bo_prompt = SQL_CONVERTER_MODIFIED.format(schema=FINANCIAL_BO_MODIFIED, query=query)
         else:
-            bo_prompt = SQL_MODIFIER.format(schema=FINANCIAL_BO_MODIFIED, original_query=query, 
-                                          faulty_sql_query=faulty_sql_query, error_message=error_message)
+            bo_prompt = SQL_MODIFIER.format(schema=FINANCIAL_BO_MODIFIED, original_query=query, faulty_sql_query=faulty_sql_query, error_message=error_message)
     else:
         if not do_retry:
             bo_prompt = SQL_CONVERTER_MODIFIED.format(schema=LOGISTICS_SALES_MODIFIED, query=query)
         else:
-            bo_prompt = SQL_MODIFIER.format(schema=LOGISTICS_SALES_MODIFIED, original_query=query, 
-                                          faulty_sql_query=faulty_sql_query, error_message=error_message)
-    
+            bo_prompt = SQL_MODIFIER.format(schema=LOGISTICS_SALES_MODIFIED, original_query=query, faulty_sql_query=faulty_sql_query, error_message=error_message)
+        
     raw_json_response = await get_chat_response(bo_prompt, answer_type="sql")
     response = json_cleaning(raw_json_response)
-    
+    response = response
     if not response:
         response = "در حال حاضر نمیتوانم به این سوال پاسخ دهم"
-    
     return response
-
+    
+    
 async def router_SQL_QA(query: str, context: str):
     prompt = QUERY_ROUTER.format(query=query, context=context)
     raw_response = await get_chat_response(prompt, answer_type="sql")
     response = json_cleaning(raw_response)
     return response
 
+# async def qa_module_clarification(query: str, context: str):
+
 async def chat_responder_(
     history: List[tuple[str, str]],
     user_utterance: str,
-    database_index: str = config["database"]["persist_directory"],
-    company_name: str = config["database"]["company_name"],
-    assistant_name: str = config["database"]["assistant_name"],
-    response_type: str = config["database"]["response_type"],
-    does_evaluate: bool = config["database"]["does_evaluate"],
-    use_cache: bool = config["database"]["use_cache"],
-    detected_module: str = "",
-) -> Union[tuple[str, str, str, str], tuple[str, str, str, bool, List[str]]]:
-    """
-    Unified chat responder supporting both develop branch (simple RAG) and feature/add-sql-agent (SQL + module handling)
-    """
-    
-    # If sql_mode is True, use the new SQL agent logic
-    if not detected_module and use_cache:
-        response, url = await get_cache_response(user_utterance)
+    detected_module: bool = False,
+) -> tuple[str, str, str, bool, List[str]]:
+
+    if not detected_module:
+        response, url = await get_cache_response(
+            user_utterance,
+        )
         if response:
             return user_utterance, response, "", False, []
 
     paraphrased_utterance = await utterance_paraphraser(history, user_utterance)
-    
-    if use_cache:
-        response, url = await get_cache_response(paraphrased_utterance) 
-        if response:
-            return paraphrased_utterance, response, "", False, []
+    response, url = await get_cache_response(
+        paraphrased_utterance,
+    )
+    if response:
+        return paraphrased_utterance, response, "", False, []
     
     if detected_module:
-        do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, input_module=detected_module)
+        do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, user_utterance) # user_utterance as detected_module
     else:
-        do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index)
+        do_clarify, modules, context = await prepare_final_context(paraphrased_utterance) # user_utterance as detected_module
 
+    # When you detect a module, it is impossible not to return context
     if not context:
         return paraphrased_utterance, "", "", False, []
 
     if do_clarify:
         return paraphrased_utterance, "", "", do_clarify, modules
     
-    # Use semantic router if available
-    try:
-        semantic_router_object = SemanticRouterPipeline(
-            inference_only=True,
-            embedding_address=None,
-            classifier_address="/home/user01/mj-workspace/Assistant-bot/saved_models/mlp.joblib",
-            model_name="svm"
+    semantic_router_object = SemanticRouterPipeline(
+        inference_only=True,
+        embedding_address=None,
+        # embedding_address="/home/user01/.cache/huggingface/hub/models--intfloat--multilingual-e5-large",
+        classifier_address="/home/user01/mj-workspace/Assistant-bot/saved_models/svm.joblib",
+        model_name="svm"
         )
-        route_response = semantic_router_object.predict_sentences([paraphrased_utterance])
-        
-        if route_response[0] == "sql":
-            return paraphrased_utterance, "", "", do_clarify, modules
-    except:
-        # If semantic router fails, continue with QA
-        pass
+
+    route_response = semantic_router_object.predict_sentences([paraphrased_utterance])
+
+    # route_response = await router_SQL_QA(paraphrased_utterance, context)
+    if route_response[0] == "sql":
+        return paraphrased_utterance, "", "", do_clarify, modules
     
-    response = await query_responder(
-        paraphrased_utterance, 
-        context, 
-        history, 
-        company_name=company_name, 
-        assistant_name=assistant_name, 
-        answer_type=response_type
-        )
+    response = await query_responder(paraphrased_utterance, context, history)
+    # json_response = fix_asterisks(json_response)
+    # return paraphrased_utterance, json_response["answer"], context
     
     if "محدوده دانش من " in response:
         response = template_for_not_answer
     if "خارج از حوزه کاری" in response:
-        response = template_for_not_context.format(company_name=company_name)
+        response = template_for_not_context
     
     return paraphrased_utterance, response, context, do_clarify, modules
 
-    
+
 async def feedback_(
     query: str,
     response: str,
