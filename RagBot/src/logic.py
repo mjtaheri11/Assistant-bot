@@ -122,8 +122,10 @@ async def get_chat_response(prompt: str, answer_type: str) -> str:
         # openai_api_key=api_key,
         openai_api_key=api_key,
         openai_api_base="https://openrouter.ai/api/v1",
+        model_name="qwen/qwen3-coder:free",
         # model_name="moonshotai/kimi-k2:free",
-        model_name="deepseek/deepseek-r1-0528-qwen3-8b:free",
+        # model_name="deepseek/deepseek-r1-0528-qwen3-8b:free",
+        # model_name="qwen/qwen3-235b-a22b-2507:free",
         # model_name="tencent/hunyuan-a13b-instruct:free",
         streaming=False,
         temperature=0,
@@ -222,7 +224,7 @@ async def is_somewhat_uniform(freq_dict: dict, threshold: float = 0.7) -> bool:
     # Calculate the Coefficient of Variation (CV)
     cv = stdev_freq / mean_freq
     
-    return cv < threshold, mean_freq
+    return cv <= threshold, mean_freq
 
 
 async def retrieve_context_with_metadata(query: str, input_modules: List) -> List[dict]:
@@ -259,13 +261,13 @@ async def prepare_final_context(query: str, input_module: str = "") -> Tuple[boo
     proposable_modules = set(config["modules"]["proposable_modules"])
     detected_modules = [result["module"] for result in context_with_metadata]
     module_frequencies = Counter(detected_modules)
-    print(module_frequencies)
     
     # Handle single module case
     if len(module_frequencies) < 2:
         detected_modules_lst = list(module_frequencies.keys())
         return _handle_single_module_case(context_with_metadata, detected_modules_lst[0])
     
+    print(module_frequencies)
     # Check if distribution is uniform (needs clarification)
     needs_clarification, mean_freq = await is_somewhat_uniform(module_frequencies)
     if not needs_clarification:
@@ -273,7 +275,7 @@ async def prepare_final_context(query: str, input_module: str = "") -> Tuple[boo
         probable_detected_module = [k for k, v in module_frequencies.items() if v == max_value]
         return _handle_clear_preference_case(context_with_metadata, probable_detected_module[0])
     else:
-        probable_detected_modules = [k for k, v in module_frequencies.items() if v > mean_freq] 
+        probable_detected_modules = [k for k, v in module_frequencies.items() if v >= mean_freq] 
         return _handle_clarification_case(
             context_with_metadata, 
             probable_detected_modules, 
@@ -413,6 +415,7 @@ async def chat_responder_(
         response = template_for_not_answer
     if "خارج از حوزه کاری" in response:
         response = template_for_not_context
+    
     return paraphrased_utterance, response, context, do_clarify, modules
 
 

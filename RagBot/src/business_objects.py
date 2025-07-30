@@ -8959,7 +8959,7 @@ LOGISTICS_BO_MODIFIED = """
     - code: کد انبار 
     - title: عنوان انبار 
     - storage_type_title: عنوان نوع انبار 
-    - state: استان 
+    - state: استان
     - company_title: شرکت 
 - **Relations**:
   - plants: مرکز نگهداری (foreign key: plant_id to plants.id)
@@ -9631,11 +9631,11 @@ LOGISTICS_SALES_MODIFIED = """
         - price_in_reporting_currency1: مبلغ به ارز گزارشگری1 
         - price_in_reporting_currency2: مبلغ به ارز گزارشگری2 
       - Str Type:
-        - transfer_fee_title: ارز کرایه حمل 
-        - reporting1_currency: ارز گزارشگری 1 
-        - reporting2_currency: ارز گزارشگری 2 
-        - voucher_number: شماره سند حسابداری 
-        - inv_voucher_number: شماره سند انبار 
+        - transfer_fee_title: ارز کرایه حمل
+        - reporting1_currency: ارز گزارشگری 1
+        - reporting2_currency: ارز گزارشگری 2
+        - voucher_number: شماره سند حسابداری
+        - inv_voucher_number: شماره سند انبار
         - company_title: شرکت 
     - **Relations**: None
 

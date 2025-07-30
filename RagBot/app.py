@@ -1,20 +1,12 @@
-import json 
-import random
-import re
-import pathlib
-
 import requests
 import streamlit as st
 
 from src.logs import simple_logger, non_generative_agent_logger
 from src.utils import init_session_state
 from src.config import config
-from src.logic import feedback_
-from src.retriever import Retriever
 
 
 NUMBER_OF_SUGGESTED_SESSIONS = 30
-NUMBER_OF_SUGGESTED_MODULES = 2
 
 CSS_STYLE_FILE = "./src/style.css"
 BASE_URL = "http://185.13.230.222:8689" # "http://172.27.0.6:8686" #
@@ -61,7 +53,7 @@ def chat_request(session_id: str, query: str, on_click: bool, api_url: str = BAS
     json_response = response.json()
     if response.status_code == 200:
         return {"status": "success",
-                "query": json_response["query"], 
+                "query": json_response["query"],
                 "response": json_response["response"], 
                 "message_id": json_response["message_id"], 
                 "choices": json_response["choices"], 
@@ -180,10 +172,11 @@ def main():
             else:
                 st.session_state["first_encounter_with_searchbox"] = True
                 
-    for i in range(NUMBER_OF_SUGGESTED_MODULES):
+    for i in range(len(st.session_state["suggested_sessions"])):
         if st.session_state.get(f"suggestion_button_clicked_{i}"):
-            st.session_state["on_click_user_input"] = st.session_state.get(f"suggestion_button_clicked_title_{i}")
-            st.session_state["on_click_response"] = True
+            st.session_state["user_input"] = st.session_state.get(f"suggestion_button_clicked_title_{i}")
+            # st.session_state["on_click_user_input"] = st.session_state.get(f"suggestion_button_clicked_title_{i}")
+            # st.session_state["on_click_response"] = True
 
     if st.session_state.get("new_session"):
         clicked_on_new_session = True
@@ -236,9 +229,8 @@ def main():
                 chat_response = chat_request(
                     session_id=st.session_state["session_id"],
                     query=user_input,
-                    on_click=st.session_state["on_click_response"],
+                    on_click=st.session_state["on_click"],
                 )
-
                 do_suggest, is_sql, choices, message_id, response, query = (
                     chat_response["do_suggest"],
                     chat_response["is_sql"],
@@ -249,65 +241,28 @@ def main():
                 )
                 if chat_response["status"] == config["chat_responder"]["ok_status"]:
                     response_is_valid = True
-                
                 if do_suggest:
                     st.session_state["do_suggest_modules"] = True
-                    st.session_state.temporary_response = response
+                    st.session_state["on_click"] = True
+                    # st.session_state.temporary_response = response
                 else:
                     st.session_state["do_suggest_modules"] = False
-                    st.session_state.temporary_response = ""
+                    st.session_state["on_click"] = False
+                    # st.session_state.temporary_response = ""
                     
                 progress_bar.progress(value=100, text="Done.")
+                st.session_state["choices"] = choices
                 st.session_state.do_suggest = do_suggest
                 st.session_state.query.append(query)
                 st.session_state.user_input_storage.append(user_input)
                 st.session_state["user_input"] = ""
                 st.session_state["have_clicked_on_feedback"] = False
                 st.session_state["response_is_valid"] = response_is_valid
-                if not st.session_state["do_suggest_modules"]:
-                    st.session_state.response.append(response)
-                    st.session_state.message_id.append(message_id)
-                    st.session_state.sql_response_type.append(is_sql)
-
-            elif st.session_state["on_click_response"]:
-                user_input = st.session_state["on_click_user_input"]
-                simple_logger(
-                    f"user said: {user_input}",
-                    session_id=st.session_state.get("session_id"),
-                )
-                chat_response = chat_request(
-                    query=user_input,
-                    on_click=st.session_state["on_click_response"],
-                    session_id=st.session_state["session_id"]
-                )
-                do_suggest, is_sql, choices, message_id, response, query = (
-                    chat_response["do_suggest"],
-                    chat_response["is_sql"],
-                    chat_response["choices"],
-                    chat_response["message_id"],
-                    chat_response["response"],
-                    chat_response["query"],
-                )
-                if chat_response["status"] == config["chat_responder"]["ok_status"]:
-                    response_is_valid = True
-                
-                if chat_response["do_suggest"]:
-                    st.session_state["do_suggest_modules"] = True
-                    st.session_state.temporary_response = response
-                    st.session_state["on_click_response"] = True
-
-                else:
-                    st.session_state["do_suggest_modules"] = False
-                    st.session_state.temporary_response = ""
-                    st.session_state["on_click_response"] = False
-                    
-                progress_bar.progress(value=100, text="Done.")  
-                st.session_state["user_input"] = ""
+                st.session_state["suggested_modules"] = choices
+                st.session_state.sql_response_type.append(is_sql)
                 st.session_state.response.append(response)
                 st.session_state.message_id.append(message_id)
-                st.session_state.do_suggest = do_suggest
-                st.session_state.sql_response_type.append(is_sql)
-            
+
             elif clicked_on_sidebar_sessions:
                 session_id = st.session_state.get("session_id")
                 st.session_state.user_utterance = [message["query"] for message in history['history'] if history["history"]]
@@ -332,9 +287,6 @@ def main():
                 st.session_state.sql_response_type = []
                 progress_bar.progress(value=0)
 
-            # if st.session_state.get("response") and st.session_state.get(
-            #     "user_utterance",
-            # ):
 
             if st.session_state.get("user_utterance"):
                 for i in reversed(range(len(st.session_state["user_utterance"]))):
@@ -346,33 +298,26 @@ def main():
                     with st.chat_message("assistant"):
                         help_msg = f"""برای پاسخ به سوال شما کوئری «{st.session_state['query'][i]}» \
                         جستجو شده است."""
-                        if len(st.session_state["user_utterance"]) == len(st.session_state["response"]) + 1 and i == len(st.session_state["user_utterance"]) - 1:
-                            content = st.session_state["temporary_response"]
-                            # Determine direction class based on session state
-                            st.markdown(
-                                f'<div class="markdown-rtl">{content}</div>',
-                                unsafe_allow_html=True,
-                                help=help_msg
-                            )
-                            col1, col2 = st.columns(2)
-                            module_1, module_2 = chat_response["choices"][0], chat_response["choices"][1]
-                            with col1:
-                                st.button(module_1, key="suggestion_button_clicked_0")
-                                st.session_state["suggestion_button_clicked_title_0"] = module_1
+                        content = st.session_state["response"][i]
+                        direction_class = "markdown-ltr" if st.session_state["sql_response_type"][i] else "markdown-rtl"
+                        st.markdown(
+                            f'<div class="{direction_class}">{content}</div>',
+                            unsafe_allow_html=True,
+                            help=help_msg
+                        )
+                        if st.session_state["do_suggest_modules"]:
+                            # Create a number of columns equal to the number of suggested modules
+                            cols = st.columns(len(st.session_state["suggested_modules"]))
+
+                            # Iterate through each module to create a button in its own column
+                            for index, module_name in enumerate(st.session_state["suggested_modules"]):
+                                with cols[index]:
+                                    # Create a button with a unique key for each module
+                                    st.button(module_name, key=f"suggestion_button_clicked_{index}")
                                     
-                            with col2:
-                                st.button(module_2, key="suggestion_button_clicked_1")
-                                st.session_state["suggestion_button_clicked_title_1"] = module_2
-                                    
-                        else: 
-                            content = st.session_state["response"][i]
-                            # Determine direction class based on session state
-                            direction_class = "markdown-ltr" if st.session_state["sql_response_type"][i] else "markdown-rtl"
-                            st.markdown(
-                                f'<div class="{direction_class}">{content}</div>',
-                                unsafe_allow_html=True
-                            )
-                        
+                                    # Store the module's title in the session state with a corresponding unique key
+                                    st.session_state[f"suggestion_button_clicked_title_{index}"] = module_name            
+
                         if (
                             i == len(st.session_state["response"]) - 1
                             and not st.session_state["do_suggest_modules"]

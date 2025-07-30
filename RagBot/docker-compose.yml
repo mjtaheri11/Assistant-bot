@@ -60,9 +60,9 @@ services:
               capabilities: [gpu]
     runtime: nvidia
     
-  postgres_new:
+  postgres:
     image: postgres:16
-    container_name: postgres_new
+    container_name: postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -74,7 +74,7 @@ services:
     restart: always
     user: root
     ports:
-      - "5433:5432"
+      - "5432:5432"
 
   pgadmin:
     image: dpage/pgadmin4:latest
@@ -177,7 +177,7 @@ services:
     networks:
       - ollama-docker2
     depends_on:
-      - postgres_new
+      - postgres
     volumes:
       - grafana_data:/var/lib/grafana
     user: root
@@ -197,8 +197,8 @@ volumes:
   esdata:
   log_data:  
   VectorDB:
-  postgres_data:
   grafana_data:
+  # postgres_data
 
 networks:
   ollama-docker2:
