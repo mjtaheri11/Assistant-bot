@@ -719,6 +719,7 @@ async def sql_responder_endpoint(sql_request: SQLRequest, request: Request):
             user_question = history[0]["query"]
             message_id = str(history[0]["message_id"])
             detected_module = sql_request.query
+            is_sql = True
             response = await sql_responder_(
                 user_question,
                 detected_module
