@@ -59,24 +59,30 @@ class Postgres:
                 password="MySecretPassword123!@#",  # add to environment variables
                 port="5432",
             )
-            async with connection.transaction():                
-                # if insert_values is not None:
-                #     await connection.execute(query, *insert_values)
-                # else:
-                #     await connection.execute(query)
-
+            # The transaction will automatically commit on success or rollback on error.
+            async with connection.transaction():
+                # Handle cases where we need to fetch data (e.g., SELECT)
                 if fetch_results:
+                    values = insert_values if insert_values else []
+                    # `is_insert` seems to mean "fetch one row"
                     if is_insert:
-                        result = await connection.fetchrow(query, *insert_values if insert_values else [])
-                        return result
+                        return await connection.fetchrow(query, *values)
                     else:
-                        result = await connection.fetch(query, *insert_values if insert_values else [])
-                        return result
+                        return await connection.fetch(query, *values)
+                # Handle cases where we just execute a command (e.g., UPDATE, INSERT, DELETE)
                 else:
-                    return ""
+                    await connection.execute(query, *insert_values if insert_values else [])
+                    return True  # Return a success indicator
 
         except Exception as ex:
+            # It's good practice to log the exception here
+            print(f"Database query failed: {ex}")
             raise ex
+        finally:
+            # Always ensure the connection is closed
+            if 'connection' in locals() and not connection.is_closed():
+                await connection.close()
+                
 
     async def exist_session(self, session_id):
         sql_exist_session_query = (
@@ -89,7 +95,7 @@ class Postgres:
 
     async def get_message_fields(self, session_id, message_id):
         sql_get_message_fileds = (
-            "SELECT user_query, paraphrased_query, bot_response FROM message WHERE message_id = $1 AND session_id = $2;"
+            "SELECT user_query, paraphrased_query, bot_response FROM messages WHERE message_id = $1 AND session_id = $2;"
         )
         message_fields = await self._execute_query(
             sql_get_message_fileds,
@@ -110,7 +116,7 @@ class Postgres:
 
     async def get_history(self, session_id, page_index, page_size, with_paraphrase=False):
         sql_history_query = """
-            SELECT user_query, paraphrased_query, bot_response, message_id, is_sql, selected_module FROM message
+            SELECT user_query, paraphrased_query, bot_response, message_id, is_sql, selected_module, elapsed_time, do_suggest FROM messages
             WHERE session_id = $1
             ORDER BY create_time DESC
             OFFSET $2
@@ -122,23 +128,33 @@ class Postgres:
         limit = page_size  # Limit to the batch size for each page
         selected_history = await self._execute_query(
             sql_history_query,
-            fetch_results=True,
+            fetch_results=True, 
             insert_values=(session_id, offset, limit)
         )
         
         # Process the history results in the desired format
         if with_paraphrase:
             history = [
-                    {"query": h[0], "response": h[2], "paraphrased_query": h[1], "message_id": h[3], "is_sql": h[4]}
+                    {"query": h[0], "response": h[2], "paraphrased_query": h[1], "message_id": h[3], "is_sql": h[4], "selected_module": h[5], "elapsed_time": h[6], "do_suggest": h[7]}
                 for h in reversed(selected_history)
             ]
         else:
             history = [
-                    {"query": h[0], "response": h[2], "message_id": h[3], "is_sql": h[4]}
+                    {"query": h[0], "response": h[2], "message_id": h[3], "is_sql": h[4], "selected_module": h[5], "elapsed_time": h[6], "do_suggest": h[7]}
                     for h in reversed(selected_history)
             ]       
                 
         return history
+    
+    async def remove_previous_response(self, message_id):
+        sql_remove_previous_response = """UPDATE messages SET bot_response = NULL WHERE message_id = $1;"""
+        await self._execute_query(
+            sql_remove_previous_response,
+            is_insert=True,
+            insert_values=(message_id,),
+            fetch_results=False
+        )
+        return True
     
     async def get_latest_sessions(
         self,
@@ -149,7 +165,7 @@ class Postgres:
         sql_latest_unique_sessions_with_paraphrase = """
             WITH recent_messages AS (
                 SELECT session_id, create_time
-                FROM message
+                FROM messages
                 ORDER BY create_time DESC
                 LIMIT $3
             ),
@@ -164,7 +180,7 @@ class Postgres:
                 ds.session_id,
                 (
                     SELECT m.paraphrased_query
-                    FROM message m
+                    FROM messages m
                     WHERE m.session_id = ds.session_id
                     AND m.paraphrased_query IS NOT NULL
                     ORDER BY m.create_time ASC
@@ -181,11 +197,10 @@ class Postgres:
             fetch_results=True,
             insert_values=(offset, num_sessions, recent_limit)
         )
-        
         # Each row = (session_id, first_paraphrased_query)
         return [
             {
-                "session_id": row[0],
+                "session_id": str(row[0]),
                 "paraphrased_query": row[1]
             }
             for row in results
@@ -194,36 +209,94 @@ class Postgres:
     async def insert_chat_row(
         self, session_id, user_query, paraphrased_query, bot_response, elapsed_time, selected_module=None
     ):
+        # Start with required columns and their values
+        columns = ["session_id", "user_query"]
+        values = [session_id, user_query]
+
+        # Conditionally add parameters if they are not None
+        if paraphrased_query is not None:
+            columns.append("paraphrased_query")
+            values.append(paraphrased_query)
+        if bot_response is not None:
+            columns.append("bot_response")
+            values.append(bot_response)
+        if elapsed_time is not None:
+            columns.append("elapsed_time")
+            values.append(elapsed_time)
+        if selected_module is not None:
+            columns.append("selected_module")
+            values.append(selected_module)
+
+        # Construct the SQL query dynamically
+        sql_insert_query = f"INSERT INTO messages ({', '.join(columns)}) VALUES ({', '.join([f'${i}' for i in range(1, len(values) + 1)])}) RETURNING message_id;"
+
+        # Execute the query
+        message_id = await self._execute_query(
+            sql_insert_query, is_insert=True, insert_values=tuple(values), fetch_results=True
+        )
+        # Assuming _execute_query returns a list of tuples, e.g., [(123,)], adjust return accordingly
+        return str(message_id[0])
+    
+    
+    async def update_last_chat_row(
+        self,
+        session_id,
+        paraphrased_query,
+        bot_response,
+        is_sql,
+        elapsed_time,
+        do_suggest=False,
+        selected_module=None
+        ):
+        
         values = (
-            session_id,
-            user_query,
             paraphrased_query,
             bot_response,
             elapsed_time,
-            selected_module  # Pass None directly; the driver converts it to NULL
+            selected_module,  # Pass None directly; the driver converts it to NULL
+            session_id,
+            is_sql,
+            do_suggest
         )
-        sql_insert_query = """
-            INSERT INTO message (
-                session_id, user_query, paraphrased_query, 
-                bot_response, elapsed_time, selected_module
-            ) VALUES ($1, $2, $3, $4, $5, $6) 
+        sql_update_query = """
+            UPDATE messages
+            SET paraphrased_query = $1,
+                bot_response = $2,
+                elapsed_time = $3,
+                selected_module = $4,
+                is_sql = $6,
+                do_suggest = $7
+            WHERE message_id = (
+                SELECT message_id
+                FROM messages
+                WHERE session_id = $5
+                ORDER BY create_time DESC
+                LIMIT 1
+            )
             RETURNING message_id;
-        """
-        # The _execute_query probably returns a list of records, e.g., [(123,)]
+        """        # The _execute_query probably returns a list of records, e.g., [(123,)]
         message_id = await self._execute_query(
-            sql_insert_query, is_insert=True, insert_values=values, fetch_results=True
+            sql_update_query, is_insert=True, insert_values=values, fetch_results=True
         )            
         return str(message_id[0])
 
+
     async def update_on_click_chat_row(
-        self, message_id, bot_response, elapsed_time
+        self,
+        message_id,
+        bot_response,
+        elapsed_time,
+        do_suggest=False,
+        is_sql=False
     ):
         values = (
             bot_response,
             elapsed_time,
-            message_id, 
+            message_id,
+            do_suggest,
+            is_sql,
         )
-        sql_insert_query = "UPDATE message SET bot_response = $1, elapsed_time = $2 WHERE message_id = $3;" 
+        sql_insert_query = "UPDATE messages SET bot_response = $1, elapsed_time = $2, do_suggest = $4, is_sql = $5 WHERE message_id = $3;" 
         message_id = await self._execute_query(
             sql_insert_query, is_insert=True, insert_values=values, fetch_results=True
         )
@@ -233,7 +306,7 @@ class Postgres:
         self, message_id, selected_module
     ):
         values = (selected_module, message_id)
-        sql_insert_query = "UPDATE message SET selected_module = $1 WHERE message_id = $2;"
+        sql_insert_query = "UPDATE messages SET selected_module = $1 WHERE message_id = $2;"
         message_id = await self._execute_query(
             sql_insert_query, is_insert=True, insert_values=values, fetch_results=True
         )
@@ -242,7 +315,7 @@ class Postgres:
 
     async def set_feedback(self, message_id, feedback_type):
         update_query = """
-            UPDATE message 
+            UPDATE messages
             SET feedback = $1 
             WHERE message_id = $2 AND feedback IS NULL 
             RETURNING message_id;
@@ -267,11 +340,27 @@ class Postgres:
         
     async def insert_message_choices(self, message_id: str, *choices) -> None: 
         for choice in choices:
-            insert_message_choice_query = "INSERT INTO message_choices (message_id, choice_value) VALUES ($1, $2) RETURNING choice_id;"
-            result = await self._execute_query(
+            insert_message_choice_query = "INSERT INTO messages_choices (message_id, choice_value) VALUES ($1, $2) RETURNING choice_id;"
+            _ = await self._execute_query(
                 insert_message_choice_query,
                 fetch_results=True,
                 insert_values=(message_id, choice),
             )                    
-        return 
+        return True
+    
+    async def get_message_choices(self, message_id: str) -> list[str]:
+        """Retrieves all choice values for a given message_id as a list."""
         
+        # 1. Define the SQL query to select choices for the given message_id
+        get_choices_query = "SELECT choice_value FROM messages_choices WHERE message_id = $1;"
+        
+        # 2. Execute the query
+        records = await self._execute_query(
+            get_choices_query,
+            fetch_results=True,
+            insert_values=(message_id,),  # Use the same parameter passing mechanism
+        )
+
+        choices = [record[0] for record in records]
+        
+        return choices

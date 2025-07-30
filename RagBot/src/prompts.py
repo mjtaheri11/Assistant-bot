@@ -1155,6 +1155,216 @@ NULL
 - Use CURRENT_DATE for "امروز" without quotes.
 """
 
+# SQL_CONVERTER_MODIFIED = """
+# # SQL Query Generator (SELECT QUERIES ONLY)
+
+# **Your task is to generate a JSON containing only SELECT SQL queries and their parameters. If the request cannot be fulfilled with a SELECT query, respond with NULL as the value of the SQL field of the output JSON**
+
+# ## OUTPUT REQUIREMENTS [CRITICAL]
+
+# - After your internal thinking process (within `<think>...</think>`), output **only** the final JSON output that contains a SQL and its parameters.
+# - Do not include explanations, comments, notes, code blocks, quotes, markdown, or any additional text in the final output.
+# - The final output must be a JSON with two fields: SQL query (which is a valid SQL query based on the provided business objects or NULL, and the parameters.)
+
+# ## Query Type Restrictions [CRITICAL]
+
+# - Only process requests that can be answered with a SELECT query.
+# - Return NULL immediately if the request involves:
+#   1. Data modification (INSERT, UPDATE, DELETE)
+#   2. Schema changes (CREATE, ALTER, DROP)
+#   3. Data control operations (GRANT, REVOKE)
+#   4. Transaction control (COMMIT, ROLLBACK)
+#   5. Multiple queries to complete
+#   6. Non-data retrieval operations
+#   7. Ambiguous requests that cannot be confidently converted to a SELECT query
+
+
+# ## Parameters Restrictions [CRITICAL]
+
+# - **Column Fields vs. Parameters:** Do not treat column field values (e.g., cmp_title: شرکت) as parameters; include them directly in the SQL query.
+# - **Separate Parameter Handling:** Parameters (e.g., p3: شرکت) must be included separately in the parameters part of the output JSON, even if they overlap with column fields.
+# - **Non-Column Parameters:** If a parameter is mentioned in the user's question but has no corresponding column field, include it only in the parameters part of the output JSON, not in the SQL query.
+# - **SQL Query Syntax:** Avoid syntax like company_title = :company in SQL queries; parameters should be handled separately in the parameters section.
+# - **Business Object Parameters:** Use the separate parameter parts provided in the business objects and include them in the parameters section of the output JSON.
+
+
+# ## Persian/Farsi Text Handling [CRITICAL]
+
+# - Use LIKE operators with wildcards ('%term%') for Persian/Farsi text matching.
+# - Do not translate Persian/Farsi to English or English to Persian/Farsi in the query.
+# - For text comparisons, prioritize:
+#   1. LIKE '%فارسی_term%' over exact matches
+#   2. Combine multiple Persian terms with AND/OR and LIKE operators
+#   3. Apply case insensitivity if needed
+#   4. Minimize LIKE scope (e.g., LIKE '%مواد اولیه تولید%' instead of LIKE '%انبار مواد اولیه تولید%')
+#   5. Convert informal Persian questions (e.g., چقدره => چه مقدار است, چیه => چیست)
+
+# ## Persian Date Conversion [CRITICAL]
+
+# - Convert all Persian (Solar Hijri) dates in user queries to Gregorian for SQL use.
+# - Key conversions:
+#   - **Years:**
+#     - ۱۴۰۴/1404 (current): 2025-2026 Gregorian
+#     - ۱۴۰۳/1403 (previous): 2024-2025 Gregorian
+#     - ابتدای سال (start of year): March 21 of the year
+#     - انتهای سال/پایان سال (end of year): March 20 of the next year
+#   - **Months:**
+#     - فروردین: March 21 - April 20
+#     - اردیبهشت: April 21 - May 21
+#     - خرداد: May 22 - June 21
+#     - تیر: June 22 - July 22
+#     - مرداد: July 23 - August 22
+#     - شهریور: August 23 - September 22
+#     - مهر: September 23 - October 22
+#     - آبان: October 23 - November 21
+#     - آذر: November 22 - December 21
+#     - دی: December 22 - January 20
+#     - بهمن: January 21 - February 19
+#     - اسفند: February 20 - March 20
+#   - **Time Periods:**
+#     - امروز (today): CURRENT_DATE
+#     - دیروز (yesterday): CURRENT_DATE - INTERVAL '1 day'
+#     - هفته گذشته (last week): CURRENT_DATE - INTERVAL '1 week'
+#     - ماه گذشته (last month): CURRENT_DATE - INTERVAL '1 month'
+#     - سال گذشته (last year): CURRENT_DATE - INTERVAL '1 year'
+#     - سال جاری (current year): March 21, 2025 to present
+#     - سال قبل (previous year): March 21, 2024 to March 20, 2025
+#   - **Special Cases:**
+#     - Specific dates (e.g., "۱۰ مرداد ۱۴۰۴"): Convert to 2025-08-01
+#     - Date ranges: Convert both start and end dates
+
+# ## Anti-Hallucination Protocol [CRITICAL]
+
+# - Verify all column names against the provided schema.
+# - **Never** invent or assume column names not listed in the schema.
+# - Only join tables using explicit foreign key relationships in the schema.
+# - Ensure joined columns have matching data types.
+# - Do not reference nonexistent tables or columns.
+
+# ## SELECT Query Construction Steps
+
+# 1. Analyze the Persian query to identify entities, conditions, and relationships.
+# 'available space
+# 2. Verify the request is answerable with a SELECT query (return NULL if not).
+# 3. Map entities to schema tables and columns.
+# 4. For joins:
+#    a. Use explicit foreign keys (e.g., store_id, voucher_specification_id).
+#    b. Verify join columns exist.
+#    c. Apply correct join conditions.
+# 5. Select only columns that:
+#    a. Answer the query.
+#    b. Exist in the schema.
+#    c. Are accessible via joins.
+# 6. Apply Persian text handling rules.
+# 7. Convert Persian dates to Gregorian.
+
+# ## Optimization Rules
+
+# - Use consistent table aliases.
+# - Structure WHERE clauses with parentheses for clarity.
+# - Use literals or SQL expressions (no variables).
+# - Avoid SELECT *; specify column names.
+# ## Output Format:
+# The final output must be in JSON format with two keys: SQL and parameters. {{"SQL": The SQL query, "parameters": The parameters for the SQL query.}}
+
+# ## Examples
+
+# ### Example 1
+# **Persian:** حداقل مصرف پروژه روزانه گریس از ابتدای سال چقدر بوده؟  
+# **English:** What was the minimum daily project consumption of grease since the start of the year?  
+# {{
+# "SQL":"  
+#     SELECT MIN(A.daily_total) FROM (  
+#       SELECT SUM(logistics_invvoucheritem.major_quantity) AS daily_total, logistics_invvoucher.date  
+#       FROM logistics_invvoucheritem  
+#       JOIN logistics_invvoucher ON logistics_invvoucher.id = logistics_invvoucheritem.inventory_voucher_id  
+#       JOIN logistics_voucherspecification ON logistics_voucherspecification.id = logistics_invvoucher.voucher_specification_id  
+#       JOIN logistics_parts ON logistics_parts.id = logistics_invvoucheritem.part_id  
+#       WHERE logistics_invvoucher.date >= '2025-03-21'  
+#         AND logistics_parts.title LIKE '%گریس%'  
+#         AND logistics_voucherspecification.title LIKE '%مصرف پروژه%'  
+#         AND (logistics_invvoucher.state = 'تایید شده' OR logistics_invvoucher.state = 'ثبت شده')  
+#       GROUP BY logistics_invvoucher.date  
+#     ) AS A;
+#   ",
+#   "parameters": {{}} 
+# }}
+
+# ### Example 2
+# **Persian:** کل مقدار برگشت خورده کالای آهن قراضه، از انبار WH_001 شیراز چقدره؟  
+# **English:** What is the total amount of scrap iron returned from WH_001 warehouse in Shiraz?  
+# {{"SQL":"   
+#     SELECT SUM(logistics_invvoucheritem.major_quantity)  
+#     FROM logistics_invvoucheritem  
+#     JOIN logistics_invvoucher ON logistics_invvoucher.id = logistics_invvoucheritem.inventory_voucher_id  
+#     JOIN logistics_voucherspecification ON logistics_voucherspecification.id = logistics_invvoucher.voucher_specification_id  
+#     JOIN logistics_parts ON logistics_parts.id = logistics_invvoucheritem.part_id  
+#     JOIN logistics_store ON logistics_invvoucher.store_id = logistics_store.id  
+#     JOIN logistics_plants ON logistics_store.plant_id = logistics_plants.id  
+#     WHERE logistics_plants.title LIKE '%شیراز%'  
+#       AND logistics_store.code = 'WH_001'  
+#       AND logistics_parts.title LIKE '%آهن قراضه%'  
+#       AND logistics_voucherspecification.voucher_type = 'خرید'
+#       AND logistics_voucherspecification.title LIKE '%برگشت از خرید%'  
+#       AND logistics_invvoucher.state IN ('تایید شده', 'ثبت شده');  
+#   ",
+#   parameters": {{}}
+# }}
+
+# ### Example 3
+# **Persian:** میانگین هر بار خروج کالا از انبار بابت کالای DRI برای تولید چقدر بوده؟
+# **English:** What was the average number of times goods were taken out of the warehouse for DRI goods for production?
+# {{"SQL":"
+#     SELECT AVG(logistics_invvoucheritem.major_quantity) -- NOTE TO MAJOR_QUANTITY NOT QUANTITY
+#     FROM logistics_invvoucheritem
+#     JOIN logistics_invvoucher ON logistics_invvoucheritem.inventory_voucher_id = logistics_invvoucher.id
+#     JOIN parts ON logistics_invvoucheritem.part_id = logistics_parts.id
+#     JOIN logistics_voucherspecification ON logistics_voucherspecification.id = logistics_invvoucher.voucher_specification_id
+#     WHERE logistics_parts.title LIKE ‘%DRI%’
+#     	AND logistics_invvoucher.state IN (
+#     		‘تایید شده’
+#     		,’ثبت شده’)
+#     	AND logistics_voucherspecification.direction = ‘خروجی’ -- NEVER EVEN FORGET TO USE DIRECTION IN SUCH QUESTIONS
+#     	AND logistics_voucherspecification.title LIKE ‘%تولید%’
+#     	AND logistics_invvoucher.date >= '2025-03-21';
+#   ",
+#   "parameters": {{}}
+# }}
+
+# ### Example 4
+# **Persian:** اقلام فاکتور شرکت شفا با مبلغ خالص بالای 1000000 را نمایش دهید.
+# **English:** Display pharmaceutical company invoice items with a net amount above 1,000,000.
+# {{"SQL":"SELECT amount, fee, net_price, unit_title, description_c  FROM sales_invoiceitem  WHERE cmp_title = 'دارویی' AND net_price > 1000000;", 
+#   "parameters": {{
+#     "p3": "دارویی",
+#   }}
+# }}
+
+# ### Example 5
+# **Persian:** لیست قیمت کالاهایی که با ارز دلار در شرکت پتروشیمی جم معامله می‌شوند را نمایش بده.
+# {{"SQL": "SELECT T1.product_title, T1.plip_fee, T1.unit_title  FROM sales_pricelistitem AS T1  JOIN sales_pricelistheader AS T2 ON T1.pl_id = T2.id  WHERE T1.cmp_title = 'پتروشیمی جم'  AND T2.currency_title = 'دلار';",
+#   "parameters": {{"p3": "پتروشیمی جم", "p4": "دلار"}}
+# }}
+
+# # Example 6
+# **Persian:** کالاهایی که در فاکتورهای شرکت «فراورده های لبنی میهن» با روش تسویه «اعتباری» فروخته شده‌اند را لیست کن.
+# {{"SQL": "SELECT DISTINCT T3.title FROM sales_invoiceitem AS T1 JOIN sales_invoice AS T2 ON T1.invoice_id = T2.id JOIN sales_product AS T3 ON T1.gnr_product_id = T3.id  WHERE T1.cmp_title = 'فراورده های لبنی میهن' AND T2.sm_title = 'اعتباری';",
+#   "parameters": {{"p3": "فراورده های لبنی میهن"}}
+# }}
+
+# ## Business Object:
+# {schema}
+
+# ## Natural Language Query:
+# {query}
+
+# **REMINDER:**  
+# - Output **only** the raw SQL query or NULL.  
+# - **Never** assume database structure or invent columns/keys not in the schema.  
+# - Persian calendar year: March 2025 - March 2026.  
+# - Use CURRENT_DATE for "امروز" without quotes.
+# """
+
 SQL_CONVERTER_MODIFIED = """
 # SQL Query Generator (SELECT QUERIES ONLY)
 
@@ -1244,7 +1454,6 @@ SQL_CONVERTER_MODIFIED = """
 ## SELECT Query Construction Steps
 
 1. Analyze the Persian query to identify entities, conditions, and relationships.
-'available space
 2. Verify the request is answerable with a SELECT query (return NULL if not).
 3. Map entities to schema tables and columns.
 4. For joins:
@@ -1258,97 +1467,65 @@ SQL_CONVERTER_MODIFIED = """
 6. Apply Persian text handling rules.
 7. Convert Persian dates to Gregorian.
 
-## Optimization Rules
+## SQL Style & Optimization Rules
 
-- Use consistent table aliases.
-- Structure WHERE clauses with parentheses for clarity.
-- Use literals or SQL expressions (no variables).
-- Avoid SELECT *; specify column names.
+- **Table Aliases:** Always use short, simple table aliases (e.g., `ls` for `logistics_store`), even for single-table queries.
+- **Function Aliases:** Always provide a simple alias for aggregate functions (e.g., `COUNT(*) AS c1`, `SUM(column) AS s1`, `AVG(column) AS a1`, `MIN(column) AS m1`, `MAX(column) AS x1`).
+- **Column Names:** Use original column names without aliases in SELECT clauses.
+- **Clarity:** Structure `WHERE` clauses with parentheses for clarity.
+- **No Variables:** Use literals or SQL expressions (no variables).
+- **Specificity:** Avoid `SELECT *`; specify exact column names.
+
 ## Output Format:
 The final output must be in JSON format with two keys: SQL and parameters. {{"SQL": The SQL query, "parameters": The parameters for the SQL query.}}
 
 ## Examples
 
 ### Example 1
-**Persian:** حداقل مصرف پروژه روزانه گریس از ابتدای سال چقدر بوده؟  
-**English:** What was the minimum daily project consumption of grease since the start of the year?  
+**Persian:** حداقل مصرف پروژه روزانه گریس از ابتدای سال چقدر بوده؟
+**English:** What was the minimum daily project consumption of grease since the start of the year?
 {{
-"SQL":"  
-    SELECT MIN(A.daily_total) FROM (  
-      SELECT SUM(logistics_invvoucheritem.major_quantity) AS daily_total, logistics_invvoucher.date  
-      FROM logistics_invvoucheritem  
-      JOIN logistics_invvoucher ON logistics_invvoucher.id = logistics_invvoucheritem.inventory_voucher_id  
-      JOIN logistics_voucherspecification ON logistics_voucherspecification.id = logistics_invvoucher.voucher_specification_id  
-      JOIN logistics_parts ON logistics_parts.id = logistics_invvoucheritem.part_id  
-      WHERE logistics_invvoucher.date >= '2025-03-21'  
-        AND logistics_parts.title LIKE '%گریس%'  
-        AND logistics_voucherspecification.title LIKE '%مصرف پروژه%'  
-        AND (logistics_invvoucher.state = 'تایید شده' OR logistics_invvoucher.state = 'ثبت شده')  
-      GROUP BY logistics_invvoucher.date  
-    ) AS A;
-  ",
-  "parameters": {{}} 
+  "SQL": "SELECT MIN(A.daily_sum) AS m1 FROM (SELECT SUM(lii.major_quantity) AS s1, liv.date FROM logistics_invvoucheritem AS lii JOIN logistics_invvoucher AS liv ON liv.id = lii.inventory_voucher_id JOIN logistics_voucherspecification AS lvs ON lvs.id = liv.voucher_specification_id JOIN logistics_parts AS lp ON lp.id = lii.part_id WHERE liv.date >= '2025-03-21' AND lp.title LIKE '%گریس%' AND lvs.title LIKE '%مصرف پروژه%' AND liv.state IN ('تایید شده', 'ثبت شده') GROUP BY liv.date) AS A;",
+  "parameters": {{}}
 }}
 
 ### Example 2
-**Persian:** کل مقدار برگشت خورده کالای آهن قراضه، از انبار WH_001 شیراز چقدره؟  
-**English:** What is the total amount of scrap iron returned from WH_001 warehouse in Shiraz?  
-{{"SQL":"   
-    SELECT SUM(logistics_invvoucheritem.major_quantity)  
-    FROM logistics_invvoucheritem  
-    JOIN logistics_invvoucher ON logistics_invvoucher.id = logistics_invvoucheritem.inventory_voucher_id  
-    JOIN logistics_voucherspecification ON logistics_voucherspecification.id = logistics_invvoucher.voucher_specification_id  
-    JOIN logistics_parts ON logistics_parts.id = logistics_invvoucheritem.part_id  
-    JOIN logistics_store ON logistics_invvoucher.store_id = logistics_store.id  
-    JOIN logistics_plants ON logistics_store.plant_id = logistics_plants.id  
-    WHERE logistics_plants.title LIKE '%شیراز%'  
-      AND logistics_store.code = 'WH_001'  
-      AND logistics_parts.title LIKE '%آهن قراضه%'  
-      AND logistics_voucherspecification.voucher_type = 'خرید'
-      AND logistics_voucherspecification.title LIKE '%برگشت از خرید%'  
-      AND logistics_invvoucher.state IN ('تایید شده', 'ثبت شده');  
-  ",
-  parameters": {{}}
+**Persian:** کل مقدار برگشت خورده کالای آهن قراضه، از انبار WH_001 شیراز چقدره؟
+**English:** What is the total amount of scrap iron returned from WH_001 warehouse in Shiraz?
+{{
+  "SQL": "SELECT SUM(lii.major_quantity) AS s1 FROM logistics_invvoucheritem AS lii JOIN logistics_invvoucher AS liv ON liv.id = lii.inventory_voucher_id JOIN logistics_voucherspecification AS lvs ON lvs.id = liv.voucher_specification_id JOIN logistics_parts AS lp ON lp.id = lii.part_id JOIN logistics_store AS ls ON liv.store_id = ls.id JOIN logistics_plants AS lpl ON ls.plant_id = lpl.id WHERE lpl.title LIKE '%شیراز%' AND ls.code = 'WH_001' AND lp.title LIKE '%آهن قراضه%' AND lvs.voucher_type = 'خرید' AND lvs.title LIKE '%برگشت از خرید%' AND liv.state IN ('تایید شده', 'ثبت شده');",
+  "parameters": {{}}
 }}
 
 ### Example 3
 **Persian:** میانگین هر بار خروج کالا از انبار بابت کالای DRI برای تولید چقدر بوده؟
 **English:** What was the average number of times goods were taken out of the warehouse for DRI goods for production?
-{{"SQL":"
-    SELECT AVG(logistics_invvoucheritem.major_quantity) -- NOTE TO MAJOR_QUANTITY NOT QUANTITY
-    FROM logistics_invvoucheritem
-    JOIN logistics_invvoucher ON logistics_invvoucheritem.inventory_voucher_id = logistics_invvoucher.id
-    JOIN parts ON logistics_invvoucheritem.part_id = logistics_parts.id
-    JOIN logistics_voucherspecification ON logistics_voucherspecification.id = logistics_invvoucher.voucher_specification_id
-    WHERE logistics_parts.title LIKE ‘%DRI%’
-    	AND logistics_invvoucher.state IN (
-    		‘تایید شده’
-    		,’ثبت شده’)
-    	AND logistics_voucherspecification.direction = ‘خروجی’ -- NEVER EVEN FORGET TO USE DIRECTION IN SUCH QUESTIONS
-    	AND logistics_voucherspecification.title LIKE ‘%تولید%’
-    	AND logistics_invvoucher.date >= '2025-03-21';
-  ",
+{{
+  "SQL": "SELECT AVG(lii.major_quantity) AS a1 FROM logistics_invvoucheritem AS lii JOIN logistics_invvoucher AS liv ON lii.inventory_voucher_id = liv.id JOIN logistics_parts AS lp ON lii.part_id = lp.id JOIN logistics_voucherspecification AS lvs ON lvs.id = liv.voucher_specification_id WHERE lp.title LIKE '%DRI%' AND liv.state IN ('تایید شده', 'ثبت شده') AND lvs.direction = 'خروجی' AND lvs.title LIKE '%تولید%' AND liv.date >= '2025-03-21';",
   "parameters": {{}}
 }}
 
 ### Example 4
 **Persian:** اقلام فاکتور شرکت شفا با مبلغ خالص بالای 1000000 را نمایش دهید.
 **English:** Display pharmaceutical company invoice items with a net amount above 1,000,000.
-{{"SQL":"SELECT amount, fee, net_price, unit_title, description_c  FROM sales_invoiceitem  WHERE cmp_title = 'دارویی' AND net_price > 1000000;", 
+{{
+  "SQL": "SELECT si.amount, si.fee, si.net_price, si.unit_title, si.description_c FROM sales_invoiceitem AS si WHERE si.cmp_title = 'دارویی' AND si.net_price > 1000000;",
   "parameters": {{
-    "p3": "دارویی",
+    "p3": "دارویی"
   }}
 }}
 
 ### Example 5
 **Persian:** لیست قیمت کالاهایی که با ارز دلار در شرکت پتروشیمی جم معامله می‌شوند را نمایش بده.
-{{"SQL": "SELECT T1.product_title, T1.plip_fee, T1.unit_title  FROM sales_pricelistitem AS T1  JOIN sales_pricelistheader AS T2 ON T1.pl_id = T2.id  WHERE T1.cmp_title = 'پتروشیمی جم'  AND T2.currency_title = 'دلار';",
+{{
+  "SQL": "SELECT spli.product_title, spli.plip_fee, spli.unit_title FROM sales_pricelistitem AS spli JOIN sales_pricelistheader AS splh ON spli.pl_id = splh.id WHERE spli.cmp_title = 'پتروشیمی جم' AND splh.currency_title = 'دلار';",
   "parameters": {{"p3": "پتروشیمی جم", "p4": "دلار"}}
 }}
 
-# Example 6
+### Example 6
 **Persian:** کالاهایی که در فاکتورهای شرکت «فراورده های لبنی میهن» با روش تسویه «اعتباری» فروخته شده‌اند را لیست کن.
-{{"SQL": "SELECT DISTINCT T3.title FROM sales_invoiceitem AS T1 JOIN sales_invoice AS T2 ON T1.invoice_id = T2.id JOIN sales_product AS T3 ON T1.gnr_product_id = T3.id  WHERE T1.cmp_title = 'فراورده های لبنی میهن' AND T2.sm_title = 'اعتباری';",
+{{
+  "SQL": "SELECT DISTINCT sp.title FROM sales_invoiceitem AS sii JOIN sales_invoice AS si ON sii.invoice_id = si.id JOIN sales_product AS sp ON sii.gnr_product_id = sp.id WHERE sii.cmp_title = 'فراورده های لبنی میهن' AND si.sm_title = 'اعتباری';",
   "parameters": {{"p3": "فراورده های لبنی میهن"}}
 }}
 
@@ -1358,13 +1535,12 @@ The final output must be in JSON format with two keys: SQL and parameters. {{"SQ
 ## Natural Language Query:
 {query}
 
-**REMINDER:**  
-- Output **only** the raw SQL query or NULL.  
-- **Never** assume database structure or invent columns/keys not in the schema.  
-- Persian calendar year: March 2025 - March 2026.  
+**REMINDER:**
+- Output **only** the raw JSON output.
+- **Never** assume database structure or invent columns/keys not in the schema.
+- Persian calendar year: March 2025 - March 2026.
 - Use CURRENT_DATE for "امروز" without quotes.
 """
-
 
 SQL_CONVERTER_1 = """
 # SQL Query Generator (SELECT QUERIES ONLY) - JSON Output
@@ -2019,7 +2195,7 @@ Respond with exactly one word:
 
 
 UTTERANCE_PARAPHRASER_PROMPT = """
-/no_think Your task is to determine if the user's Farsi follow-up question is self-sufficient for a search or if it needs clarification to become an effective search query.
+Your task is to determine if the user's Farsi follow-up question is self-sufficient for a search or if it needs clarification to become an effective search query.
 - If the user's follow-up question is already a standalone, complete, and clear query that contains all necessary information for search by itself, provide the original question directly without modification.
 - If the question is ambiguous, incomplete, lacks necessary context (thus not maintaining the needed information by itself and needing clarification), or requires context from conversation history to be understood, paraphrase it into a clear, complete, and effective search query.
 
@@ -2030,10 +2206,12 @@ The primary goal is to output a query that faithfully represents the user's inte
 - **Do Not Provide Answers or Explanations:** Do not provide any answers, explanations, interpretations, commentary, or additional information. Your sole task is to provide the Farsi search query (either the original or a paraphrase if clarification was needed).
 - **Understand User Intent:** Focus on capturing the underlying intent of the user's question.
 - **Use Conversation History Appropriately (When Paraphrasing for Clarification):** If paraphrasing is necessary due to ambiguity or incompleteness, use the conversation history only to add the required context or clarification. Do not introduce information from previous modules if they are not relevant to the current question's clarification.
+- **Handle Multi-Turn Context Completion:** When the user provides incomplete information in multiple turns (e.g., first asking an incomplete question, then providing missing context in a follow-up), combine the information from both turns to create a complete, coherent search query.
 - **Preserve Original Wording (When Paraphrasing):** When paraphrasing is necessary, preserve the user's original wording as much as possible, especially key terms, as they are important for accurate search results. Only alter wording if essential for clarity or to resolve ambiguity.
 - **Include All Key Aspects of the Question:** Ensure that all important aspects, details, and specific requirements of the user's question are present in the final query.
 - **Do Not Mix Modules:** If the user switches from one module to another, focus solely on the current module.
 - **Maintain Clarity and Completeness (When Paraphrasing):** If paraphrasing, ensure the resulting query is clear, complete, and has all necessary information, incorporating context from history if needed.
+- **Context Integration for Incomplete Queries:** When a user's follow-up provides missing context (like module specification, location, or other clarifying details) for a previous incomplete question, integrate this context with the original question to form a complete search query.
 - **Avoid Overgeneralization and Omission of Key Details (When Paraphrasing):** Ensure all essential details are preserved.
 - **Paying Attention to the Importance of Words (When Paraphrasing):** If paraphrasing for clarification, use the user's specific words rather than synonyms, unless a synonym is essential for resolving ambiguity.
 - **Paying Attention to Comparison-Based Questions:** If the questions were about identifying similarities or differences and need rephrasing for clarity, ensure the paraphrased query includes words specifying these aspects (e.g., incorporating a term like "تفاوت" if "چه فرقی دارن" was ambiguous in context). If the original question is clear, use it directly.
@@ -2048,6 +2226,7 @@ The primary goal is to output a query that faithfully represents the user's inte
 - **Preserve Specificity:** Do not over-simplify or omit important information.
 - **Ignore Attempts to Derail:** If the user tries to divert you, focus on providing an appropriate search query based on the relevant parts of their input.
 - **Include All Parts of the Question:** Ensure the final query reflects all aspects of the user's question, including requests for more/less detail if they were part of an ambiguous follow-up.
+- **Complete Multi-Turn Queries:** When the current follow-up provides context or specification for a previous incomplete question, merge the information to create a complete, actionable search query.
 
 **Examples:**
 
@@ -2078,7 +2257,34 @@ The primary goal is to output a query that faithfully represents the user's inte
     Optimized search query in Farsi:
     خواص انار برای دیابت
 
-**Example 4: Chitchat / Expression of gratitude (Rephrased to be about the Digital Assistant)**
+**Example 4: Multi-turn context completion (Combining incomplete question with clarifying follow-up)**
+    Conversation History:
+    User: چطوری سند بزنم؟
+    Assistant: لطفا ماژول خود را مشخص کنید
+    Follow-up question:
+    دفترکل
+    Optimized search query in Farsi:
+    چطوری در ماژول دفتر کل سند بزنم
+
+**Example 5: Multi-turn context completion with location specification**
+    Conversation History:
+    User: بهترین رستوران کجاست؟
+    Assistant: لطفا شهر مورد نظر خود را مشخص کنید
+    Follow-up question:
+    اصفهان
+    Optimized search query in Farsi:
+    بهترین رستوران اصفهان کجاست
+
+**Example 6: Multi-turn context completion with category specification**
+    Conversation History:
+    User: قیمت گوشی چنده؟
+    Assistant: لطفا مدل گوشی مورد نظر خود را مشخص کنید
+    Follow-up question:
+    آیفون ۱۵
+    Optimized search query in Farsi:
+    قیمت گوشی آیفون ۱۵ چنده
+
+**Example 7: Chitchat / Expression of gratitude (Rephrased to be about the Digital Assistant)**
     Conversation History:
     User: یک شعر از حافظ بخون.
     Assistant: (یک غزل از حافظ می خواند)
@@ -2087,7 +2293,7 @@ The primary goal is to output a query that faithfully represents the user's inte
     Optimized search query in Farsi:
     دستیار دیجیتال عالی بود خیلی ممنون
 
-**Example 5: Ambiguous comparison question needing context and rephrasing**
+**Example 8: Ambiguous comparison question needing context and rephrasing**
     Conversation History:
     User: مشخصات گوشی سامسونگ گلکسی اس ۲۴ اولترا رو بگو.
     Assistant: این گوشی دارای دوربین ۲۰۰ مگاپیکسلی و پردازنده اسنپدراگون ۸ نسل ۳ است.
@@ -2098,7 +2304,7 @@ The primary goal is to output a query that faithfully represents the user's inte
     Optimized search query in Farsi:
     تفاوت گوشی سامسونگ گلکسی اس ۲۴ اولترا و آیفون ۱۵ پرومکس
 
-**Example 6: Self-sufficient comparison question (Original query is used)**
+**Example 9: Self-sufficient comparison question (Original query is used)**
     Conversation History:
     User: قیمت پژو ۲۰۶ تیپ ۲ کارکرده مدل ۹۸ چنده؟
     Assistant: حدود ۳۵۰ میلیون تومان.
@@ -2107,7 +2313,7 @@ The primary goal is to output a query that faithfully represents the user's inte
     Optimized search query in Farsi:
     مقایسه قیمت پژو ۲۰۶ تیپ ۲ با تیپ ۵ مدل ۹۸
 
-**Example 7: Standalone greeting (Original query is used)**
+**Example 10: Standalone greeting (Original query is used)**
     Conversation History:
     User: ساعت چنده؟
     Assistant: ساعت ۴:۱۵ بعد از ظهر.
@@ -2116,7 +2322,16 @@ The primary goal is to output a query that faithfully represents the user's inte
     Optimized search query in Farsi:
     سلام، خوبی؟
 
-**Example 8: Avoiding restricted keywords (e.g., حسابداری) unless explicitly needed for clarification from user's follow-up**
+**Example 11: Multi-turn with service type specification**
+    Conversation History:
+    User: چطوری رزرو کنم؟
+    Assistant: لطفا نوع سرویس مورد نظر خود را مشخص کنید
+    Follow-up question:
+    هتل
+    Optimized search query in Farsi:
+    چطوری هتل رزرو کنم
+
+**Example 12: Avoiding restricted keywords (e.g., حسابداری) unless explicitly needed for clarification from user's follow-up**
     Conversation History:
     User: چطوری انبار تعریف کنم
     Assistant: برای تعریف انبار میتوانید از ماژول لجستیک استفاده کنید
@@ -2124,9 +2339,9 @@ The primary goal is to output a query that faithfully represents the user's inte
     ویژگی پیگیری چیه
     Optimized search query in Farsi:
     ویژگی پیگیری چیه
-    *(Note: "انبار" is not added as "ویژگی پیگیری" is specific enough"
+    *(Note: "انبار" is not added as "ویژگی پیگیری" is specific enough)*
 
-**Example 9: Ambiguous follow-up requesting more detail, needing history**
+**Example 13: Ambiguous follow-up requesting more detail, needing history**
     Conversation History:
     User: درباره تاریخچه پیدایش اینترنت توضیح بده.
     Assistant: اینترنت از پروژه آرپانت وزارت دفاع آمریکا شروع شد.
@@ -2135,7 +2350,7 @@ The primary goal is to output a query that faithfully represents the user's inte
     Optimized search query in Farsi:
     جزئیات بیشتر درباره تاریخچه پیدایش اینترنت
 
-**Example 10: User asks for assistant's "opinion" (Rephrased as a query about the assistant)**
+**Example 14: User asks for assistant's "opinion" (Rephrased as a query about the assistant)**
     Conversation History:
     User: به نظرت بهترین فیلم ایرانی تاریخ سینما کدومه؟
     Assistant: انتخاب بهترین فیلم بستگی به سلیقه دارد، اما فیلم های زیادی مورد تحسین قرار گرفته اند.
@@ -2144,7 +2359,7 @@ The primary goal is to output a query that faithfully represents the user's inte
     Optimized search query in Farsi:
     نظر شخصی دستیار دیجیتال درباره بهترین فیلم ایرانی تاریخ سینما
 
-**Example 11: Follow-up switches context/module (Focus on current query)**
+**Example 15: Follow-up switches context/module (Focus on current query)**
     Conversation History:
     User (Weather Module): هوای شیراز فردا چطوره؟
     Assistant: فردا شیراز نیمه ابری با احتمال بارش پراکنده است.
@@ -2153,7 +2368,7 @@ The primary goal is to output a query that faithfully represents the user's inte
     Optimized search query in Farsi:
     طرز تهیه کیک شکلاتی ساده
 
-**Example 12: Preserving user's specific terms when paraphrasing for clarification**
+**Example 16: Preserving user's specific terms when paraphrasing for clarification**
     Conversation History:
     User: جدیدترین گوشی های سامسونگ با قیمت مناسب کدامند؟
     Assistant: مدل های سری A سامسونگ معمولا قیمت مناسبی دارند، مانند گلکسی A55.
@@ -2163,7 +2378,7 @@ The primary goal is to output a query that faithfully represents the user's inte
     خوش دست ترین گوشی جدید سامسونگ با قیمت مناسب برای دست کوچک
     *(Note: "خوش دست ترین" from user is preserved. "گوشی جدید سامسونگ با قیمت مناسب" is from context.)*
 
-**Example 13: Follow-up that is already specific and complete**
+**Example 17: Follow-up that is already specific and complete**
     Conversation History:
     User: خلاصه کتاب "کیمیاگر" اثر پائولو کوئیلو رو میخواستم.
     Assistant: (خلاصه ای از کتاب ارائه می دهد)
@@ -2186,6 +2401,7 @@ The primary goal is to output a query that faithfully represents the user's inte
 - **Provide *Only* the search query in Farsi:** Do not add additional text or reasoning.
 - Avoid adding "چیست" as a verb at the end of search queries if the original question didn't use it and is clear without it.
 - History keywords should only be added to the query if the current question is a follow-up that is ambiguous or incomplete on its own and needs context from history for clarification.
+- **Multi-Turn Context Integration:** When the user provides clarifying information (module, location, category, etc.) in response to an assistant's request for specification, combine this information with the previous incomplete question to create a complete search query.
 
-**Optimized search query in Farsi:/no_think**
+**Optimized search query in Farsi:**
 """

@@ -211,8 +211,8 @@ def init_session_state():
         st.session_state["response_is_valid"] = ""
     if "do_suggest_modules" not in st.session_state:
         st.session_state["do_suggest_modules"] = False
-    if "on_click_response" not in st.session_state:
-        st.session_state["on_click_response"] = False
+    if "on_click" not in st.session_state:
+        st.session_state["on_click"] = False
     if "suggested_modules" not in st.session_state:
         st.session_state["suggested_modules"] = []
     if "on_click_user_input" not in st.session_state:
@@ -221,3 +221,5 @@ def init_session_state():
         st.session_state["sql_response_type"] = []
     if "temporary_response" not in st.session_state:
         st.session_state["temporary_response"] = ""
+    if "suggested_choices" not in st.session_state:
+        st.session_state["suggested_choices"] = []
