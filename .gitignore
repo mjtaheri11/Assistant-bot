@@ -180,3 +180,11 @@ RagBot/pgadmin/
 RagBot/ragbot/VectorDB.zip
 RagBot/pgadmin.tar
 RagBot/mydata
+
+# nvidia-files 
+RagBot/nvidia_*
+*.sql
+cuda-*
+torch-*
+triton-*
+duckdb-*

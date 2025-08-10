@@ -59,7 +59,7 @@ api:
   port: 8686
 
 postgres:
-  address: 172.26.0.5 # postgres # 172.26.0.6 # postgres # 172.26.0.6 # postgres # 172.26.0.6 # postgres # 172.26.0.2 # postgres # 127.0.0.1  # 192.168.208.2
+  address: postgres # 172.26.0.6 # postgres # 172.26.0.5 # postgres # 172.26.0.6 # postgres # 172.26.0.6 # postgres # 172.26.0.6 # postgres # 172.26.0.2 # postgres # 127.0.0.1  # 192.168.208.2
   database: chatbot
   max_user_input_character_length: 200
   history_length: 3
@@ -122,8 +122,8 @@ embedding_model:
 
 # configurations for reranker
 reranker:
-  # model_name: ../saved_models/models--BAAI--bge-reranker-v2-m3/snapshots/12e974610ba9083ed95f3edf08d7e899581f4de4
-  model_name: ../saved_models/models--mixedbread-ai--mxbai-rerank-large-v2
+  model_name: ../saved_models/models--BAAI--bge-reranker-v2-m3/snapshots/12e974610ba9083ed95f3edf08d7e899581f4de4
+  # model_name: ../saved_models/models--mixedbread-ai--mxbai-rerank-large-v2
   device: cuda
 
 

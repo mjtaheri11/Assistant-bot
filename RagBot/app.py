@@ -1,13 +1,7 @@
-import json
-import pathlib
-import random
 import re
-from io import StringIO
-
 import requests
 import streamlit as st
 from src.config import config
-from src.logic import feedback_
 from src.logs import non_generative_agent_logger, simple_logger
 from src.utils import init_session_state
 
@@ -15,7 +9,7 @@ NUMBER_OF_SUGGESTED_SESSIONS = 30
 NUMBER_OF_SUGGESTED_DATABASE = 10
 CSS_STYLE_FILE = "./src/style.css"
 
-BASE_URL = "http://0.0.0.0:8689" # "http://172.27.0.6:8686" #
+BASE_URL = "http://0.0.0.0:8687" # "http://172.27.0.6:8686" #
 
 
 def session_create(database_id : str = None, api_url: str = BASE_URL):
@@ -255,7 +249,6 @@ def main():
     clicked_on_sidebar_sessions = False
     clicked_on_new_session = False
     clicked_on_database_id = False
-    enable_answer_type_selectbox = False
     for i in range(NUMBER_OF_SUGGESTED_SESSIONS):
         if st.session_state.get(f"session_button_{i}"):
             clicked_on_sidebar_sessions = True
