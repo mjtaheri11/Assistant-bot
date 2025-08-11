@@ -1,5 +1,3 @@
-import asyncio
-import json
 import random
 from typing import List
 from collections import Counter
@@ -10,15 +8,12 @@ from dotenv import load_dotenv
 import torch
 import numpy as np
 from langchain.schema import SystemMessage
-from langchain_community.chat_models import ChatOllama
 
 from collections import Counter
 from typing import List, Tuple, Union, Set
 from .prompts import (
     RAG_SYSTEM_PROMPT,
     UTTERANCE_PARAPHRASER_PROMPT,
-    SQL_CONVERTER,
-    SQL_CONVERTER_1,
     SQL_CONVERTER_MODIFIED,
     SQL_MODIFIER,
     QUERY_ROUTER,
@@ -26,9 +21,8 @@ from .prompts import (
 from .retriever import Retriever
 from .config import config
 from .cache import Cache
-from .logs import simple_logger
-from .utils import json_cleaning, json_text_cleaning, json_cleaning_1, json_string_to_dict
-from .business_objects import FINANCIAL_BO, LOGISTICS_BO, LOGISTICS_SALES_MODIFIED, FINANCIAL_BO_MODIFIED
+from .utils import json_cleaning
+from .business_objects import LOGISTICS_SALES_MODIFIED, FINANCIAL_BO_MODIFIED
 from .semantic_router import SemanticRouterPipeline
 from langchain.chat_models import ChatOpenAI
 
@@ -41,40 +35,6 @@ random.seed(SEED)
 
 template_for_not_answer = "پاسخ به این سوال در محدوده دانش من نیست"
 template_for_not_context = "این سوال خارج از حوزه کاری همکاران سیستم است. لطفا سوال خود را در رابطه با محصولات و خدمات همکاران سیستم مطرح کنید."
-
-
-# chat = ChatOpenAI(  # type: ignore[call-arg]
-#     openai_api_base=secret["openai"]["api_base"],
-#     openai_api_key=secret["openai"]["api_key"],
-#     openai_proxy=secret["openai"]["proxy"],
-#     model_name=config["openai"]["model_name"],
-#     max_tokens=config["openai"]["max_tokens"],
-#     temperature=config["openai"]["temperature"],
-# )
-
-
-
-#   GNU nano 6.2                                                                                       test_gpt.py                                                                                                 import os
-# from openai import OpenAI
-
-# # It's recommended to set your API key as an environment variable
-# # to avoid hardcoding it in your script.
-# # You can get your API key from https://platform.openai.com/
-# client = OpenAI(api_key="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") # Replace with y>
-# try:
-#     response = client.chat.completions.create(
-#         model="gpt-4o-mini",  # You can also use other models like "gpt-4"
-#         messages=[
-#             {"role": "system", "content": "You are a helpful assistant."},
-#             {"role": "user", "content": "Hello, world!"},
-#         ]
-#     )
-
-#     print(response.choices[0].message.content)
-
-# except Exception as e:
-#     print(f"An error occurred: {e}")
-
 
 async def get_chat_response(prompt: str, answer_type: str) -> str:
     print("Character Length of the prompt: ", len(prompt)) # TODO print should be replaced with a proper log
@@ -119,20 +79,12 @@ async def get_chat_response(prompt: str, answer_type: str) -> str:
     api_key = os.getenv('OPENROUTER_API_KEY')
 
     llm = ChatOpenAI(
-        # openai_api_key=api_key,
         openai_api_key=api_key,
         openai_api_base="https://openrouter.ai/api/v1",
         model_name="openai/gpt-oss-20b:free",
-        # model_name="moonshotai/kimi-k2:free",
-        # model_name="deepseek/deepseek-r1-0528-qwen3-8b:free",
-        # model_name="qwen/qwen3-235b-a22b-2507:free",
-        # model_name="tencent/hunyuan-a13b-instruct:free",
         streaming=False,
         temperature=0,
-        # Optionally add headers via openai_client_headers or monkeypatch if needed
     )
-
-
     messages = [SystemMessage(content=prompt)]
     response = await llm.ainvoke(messages)  
     return response.content
@@ -164,10 +116,6 @@ def history_serializer(history: List[tuple[str, str]]) -> str:
 
 
 async def utterance_paraphraser(history: List[tuple[str, str]], user_utterance: str) -> str:
-    # TODO such a messy modification. resolve it as soon as you can
-    # serialized_history = "\n".join(["USER: " + user_hist[0] + "\n" + "ASSISTANT" + user_hist[1] for user_hist in history])
-    # import pdb
-    # pdb.set_trace()
     serialized_history = history_serializer(history)
     prompt = UTTERANCE_PARAPHRASER_PROMPT.format(
         history=serialized_history,
@@ -179,7 +127,6 @@ async def utterance_paraphraser(history: List[tuple[str, str]], user_utterance: 
 
 
 async def query_responder(query: str, context: str, history: str) -> str:
-    # TODO: Add appropriate logger.
     
     serialized_history = history_serializer(history)
     prompt = RAG_SYSTEM_PROMPT.format(
@@ -307,8 +254,6 @@ def _handle_clarification_case(
     proposable_modules: Set[str]
 ) -> Tuple[bool, List[str], Union[str, List[str]]]:
     """Handle case where clarification is needed for module selection."""
-    # import pdb
-    # pdb.set_trace()
     unique_modules = set(detected_modules)
     valid_modules = unique_modules & proposable_modules
     
@@ -403,13 +348,10 @@ async def chat_responder_(
 
     route_response = semantic_router_object.predict_sentences([paraphrased_utterance])
 
-    # route_response = await router_SQL_QA(paraphrased_utterance, context)
     if route_response[0] == "sql":
         return paraphrased_utterance, "", "", do_clarify, modules
     
     response = await query_responder(paraphrased_utterance, context, history)
-    # json_response = fix_asterisks(json_response)
-    # return paraphrased_utterance, json_response["answer"], context
     
     if "محدوده دانش من " in response:
         response = template_for_not_answer
