@@ -13,7 +13,7 @@ from .make_sentence_chunks import chunk_document
 
 embedding_model = HuggingFaceEmbeddings(
     model_name=config["embedding_model"]["model_name"],
-    model_kwargs={"device": config["embedding_model"]["device"]} #, "trust_remote_code": config["embedding_model"]["trust_remote_code"]},
+    model_kwargs={"device": config["embedding_model"]["device"]} # , "trust_remote_code": config["embedding_model"]["trust_remote_code"]},
 )
 
 def create_vector_database(
@@ -35,7 +35,7 @@ def create_vector_database(
 
     os.makedirs(database_path)
     chunks = chunk_document(settings)
-    
+   
     vdb = Chroma(persist_directory=database_path, embedding_function=embedding_model)
 
     if len(vdb.get()["ids"]) > 0:
@@ -50,7 +50,7 @@ import pandas as pd
 import os
 from langchain_core.documents import Document
 
-def create_documents_from_csvs(directory_path="../qa-questions-2"):
+def create_documents_from_csvs(directory_path="../knowledge_base/qa-questions"):
     """
     Reads all CSV files from a directory and converts each question-answer
     pair into a LangChain Document object with metadata.
@@ -64,7 +64,7 @@ def create_documents_from_csvs(directory_path="../qa-questions-2"):
                         source filename.
     """
     all_docs = []
-    
+   
     # Check if the directory exists
     if not os.path.isdir(directory_path):
         print(f"❌ Error: Directory not found at '{directory_path}'")
@@ -74,28 +74,31 @@ def create_documents_from_csvs(directory_path="../qa-questions-2"):
     for filename in os.listdir(directory_path):
         if filename.endswith('.csv'):
             file_path = os.path.join(directory_path, filename)
-            
+           
             try:
                 df = pd.read_csv(file_path)
 
                 if 'Question' in df.columns and 'Answer' in df.columns:
                     for index, row in df.iterrows():
-                        # The text content for the vector store
-                        page_content = f"QUESTION: {row['Question']},\n Answer: {row['Answer']}"
-                        
+                        # The text content for the vector store (using develop branch format)
+                        page_content = f"{{'QUESTION': {row['Question']}, 'Answer':  {row['Answer']}}}"
+                       
                         # The metadata, including the source filename
-                        metadata = {"source": filename, "module": config["modules"]["names"][filename]}
-                        
+                        # Keep the module metadata from feature/add-sql-agent if available
+                        metadata = {"source": filename}
+                        if filename in config.get("modules", {}).get("names", {}):
+                            metadata["module"] = config["modules"]["names"][filename]
+                       
                         # Create the Document object
                         doc = Document(page_content=page_content, metadata=metadata)
-                        
+                       
                         all_docs.append(doc)
                 else:
                     print(f"⚠️ Warning: Skipping '{filename}' because it lacks 'Question' or 'Answer' columns.")
 
             except Exception as e:
                 print(f"❌ Error processing file '{filename}': {e}")
-                
+               
     return all_docs
 
 # --- --- --- Usage Example --- --- ---
@@ -111,7 +114,6 @@ def create_documents_from_csvs(directory_path="../qa-questions-2"):
 #     print(f"✅ Successfully created {len(documents)} Document objects.")
 #     print("\n--- Structure of the First Document ---")
 #     print(documents[0])
-
 
 def main(args):
     collection_path = args.persist_directory
@@ -131,7 +133,6 @@ def main(args):
 
     vdb.add_documents(chunks)
     print(f"{len(chunks)} documents have been added to the vector DB")
-
 
 if __name__ == "__main__":
     import argparse
