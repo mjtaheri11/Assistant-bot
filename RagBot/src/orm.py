@@ -244,7 +244,7 @@ class Postgres:
         limit = page_size  # Limit to the batch size for each page
         selected_history = await self._execute_query(
             sql_history_query,
-            fetch_results=True, 
+            fetch_results=True,
             insert_values=(session_id, offset, limit)
         )
        
@@ -421,7 +421,6 @@ class Postgres:
             sql_update_query, is_insert=True, insert_values=values, fetch_results=True
         )            
         return str(message_id[0])
-
 
     async def update_on_click_chat_row(
         self,
