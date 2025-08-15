@@ -16,6 +16,15 @@ from fastapi.responses import JSONResponse
 from prometheus_client import Counter, Histogram, generate_latest
 from pydantic import BaseModel
 from starlette.responses import Response
+from langfuse.decorators import langfuse_context, observe
+
+# Langfuse configuration
+LANGFUSE_PUBLIC_KEY="pk-lf-280b67c9-093b-4e71-8df2-9502726dc9cc"
+LANGFUSE_SECRET_KEY="sk-lf-d19e4f4b-8483-406a-bc76-6ce2d4959afa"
+LANGFUSE_HOST="http://localhost:3000"
+os.environ["LANGFUSE_PUBLIC_KEY"] = LANGFUSE_PUBLIC_KEY
+os.environ["LANGFUSE_SECRET_KEY"] = LANGFUSE_SECRET_KEY
+os.environ["LANGFUSE_HOST"] = LANGFUSE_HOST
 
 from src.orm import Postgres
 from src.config import config
@@ -35,6 +44,7 @@ from src.logs import non_generative_agent_logger, simple_logger
 
 RESPONSE_TEMPLATE_FOR_NO_ANSWER = "در حال حاضر نمی‌توانم به سوال شما پاسخ دهم"
 MODULE_CLARIFICATION_RESPONSE_TEMPLATE = "لطفا مشخص نمایید سوال شما از کدام یک از ماژول های سیستم است."
+
 app = FastAPI(title="Digital Assistant")
 
 # Define Prometheus metrics
@@ -47,7 +57,6 @@ REQUEST_LATENCY = Histogram(
 
 class SessionResponse(BaseModel):
     session_id: str
-
 
 class ChatRequest(BaseModel):
     query: str
@@ -62,7 +71,6 @@ class ChatRequest(BaseModel):
     is_sync: Optional[bool] = True
     sql_mode: Optional[bool] = True  # Toggle between legacy and SQL agent mode
 
-
 class ChatResponse(BaseModel):
     message_id: str
     response: str
@@ -71,7 +79,6 @@ class ChatResponse(BaseModel):
     do_suggest: bool = False
     choices: List[str] = []
     parameters: Optional[dict] = {}
-    
 
 class CreateSessionRequest(BaseModel):
     tenant_name: Optional[str] = ""
@@ -135,9 +142,9 @@ class MakeResponse(BaseModel):
 class FeedbackRequest(BaseModel):
     message_id: str
     feedback_type: str
-    session_id: Optional[str] = None  # Add default value
-
-
+    session_id: Optional[str] = None
+    tenant_name: Optional[str] = None
+    user_code: Optional[str] = None
 
 class FeedbackResponse(BaseModel):
     message: str
@@ -215,22 +222,21 @@ async def async_responder(session_id):
     history = await postgres.get_history(session_id, 1, 1, True)
     if not history:
         raise HTTPException(status_code=404, detail="No previous sync request found for this session.")
-
+   
     for _ in range(int(ASYNC_POLLING_TIMEOUT / ASYNC_POLLING_INTERVAL)):
         final_records = await postgres.get_history(session_id, 1, 1, True)
         final_record = final_records[0] if final_records else {}
-
+       
         if final_record.get("response") is not None:
             if final_record.get("do_suggest"):
                 final_record["choices"] = await postgres.get_message_choices(final_record["message_id"])
                 assert len(final_record["choices"]) > 0, "No choices found for the message while do_suggest is True"
             return final_record
         await asyncio.sleep(ASYNC_POLLING_INTERVAL)
-
+   
     raise HTTPException(status_code=408, detail="Request timed out while waiting for the synchronous job to complete.")
 
 # ================== API Endpoints ==================
-
 
 @app.get("/metrics")
 async def metrics():
@@ -255,7 +261,7 @@ async def get_latest_sessions():
         raise e
 
 @app.get(
-    "/v1/databases",
+    "/v1/databases", 
     response_model=GetDatabasesResponse,
     responses={
         200: {},
@@ -347,7 +353,7 @@ async def create_session(create_session_request: Optional[CreateSessionRequest] 
             tenant_name = create_session_request.tenant_name
             user_code = create_session_request.user_code
             database_id = create_session_request.database_id
-
+            
         session_id = await postgres.create_session(tenant_name=tenant_name, user_code=user_code, database_id=database_id)
         elapsed_time = time.time() - start_time
         non_generative_agent_logger(
@@ -404,7 +410,9 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
 
     try:
         session_id = get_session_id(request, chat_request)
-        if not chat_request.is_sync:
+
+        # Handle async responses for SQL agent mode
+        if chat_request.sql_mode and not chat_request.is_sync:
             final_records = await async_responder(session_id)
             response = final_records.get("response", "")
             paraphrased_utterance = final_records.get("paraphrased_query", "")
@@ -418,7 +426,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
             user_code, tenant_name = await get_user_code_tenant_name(chat_request, postgres)
             validate_query(chat_request.query) # excessive request handling, we can remove it as soon as possible
             simple_logger(f"Received chat request", session_id)
-
+            
             history = await postgres.get_history(
                 session_id,
                 1,
@@ -455,11 +463,11 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                 matched_index, company_name, assistant_name = find_database_path(database_id_dict["database_id"])
 
                 selected_history = [
-                    [h["query"], h["response"]] if len(h["query"]) < 60
+                    [h["query"], h["response"]] if len(h["query"]) < 60 
                     else [h["paraphrased_query"], h["response"]]
                     for h in history
                 ]
-
+                
                 # Use SQL Agent logic
                 if chat_request.do_retry:
                     # Handle SQL retry logic
@@ -469,7 +477,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                     message_id = str(history[-1]["message_id"])
                     selected_module = history[-1]["selected_module"]
                     faulty_sql_query = history[-1]["response"]
-
+                    
                     _ = await postgres.remove_previous_response(history[-1]["message_id"])
                     response_dict_str = await sql_responder_(
                         paraphrased_utterance,
@@ -478,24 +486,24 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         chat_request.error_payload,
                         chat_request.do_retry,
                     )
+                    
                     if "NULL" not in response_dict_str:
                         response_dict = json.loads(response_dict_str)
                         response = response_dict["SQL"]
                         parameters = response_dict["parameters"]
-
+                    
                     message = "retried table response generated"
                     elapsed_time = time.time() - start_time
                     _ = await postgres.update_on_click_chat_row(message_id, response, elapsed_time)
 
                 elif chat_request.on_click:
                     # Handle on_click logic
-
                     do_suggest = False
                     message_id = await postgres.insert_chat_row(
                         session_id=session_id,
                         user_query=chat_request.query,
                     )
-
+                    
                     paraphrased_utterance, response, context, do_clarify, modules = await chat_responder_(
                         selected_history,
                         chat_request.query,
@@ -504,9 +512,8 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         company_name=company_name,
                         assistant_name=assistant_name
                     )
-
+                    
                     assert do_clarify == False, "on_click should not return do_clarify=True"
-
                     assert len(modules) == 1, "on_click should not return modules"
 
                     if not response:
@@ -528,7 +535,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         else:
                             is_sql = False
                             response = RESPONSE_TEMPLATE_FOR_NO_ANSWER
-
+                    
                     elapsed_time = time.time() - start_time
                     message_id = await postgres.update_last_chat_row(
                         session_id,
@@ -546,7 +553,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         session_id=session_id,
                         user_query=chat_request.query,
                     )
-
+                    
                     paraphrased_utterance, response, context, do_clarify, modules = await chat_responder_(
                         selected_history,
                         chat_request.query,
@@ -584,6 +591,8 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                                     "",
                                     chat_request.do_retry,
                                 )
+                                import pdb
+                                pdb.set_trace()
                                 response_dict = json.loads(response_dict_str)
                                 if "NULL" not in response_dict_str:
                                     response = response_dict["SQL"]
@@ -591,14 +600,13 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                                     if response is None:
                                         is_sql = False
                                         response = RESPONSE_TEMPLATE_FOR_NO_ANSWER
-
+                            
                         else:
                             is_sql = False
                             response = RESPONSE_TEMPLATE_FOR_NO_ANSWER
-
+                            
                         elapsed_time = time.time() - start_time
                         modules_str = modules[0] if modules else "cache"
-
                         message_id = await postgres.update_last_chat_row(
                             session_id,
                             paraphrased_utterance,
@@ -608,7 +616,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                             do_suggest,
                             modules_str
                         )
-
+                
         REQUEST_LATENCY.labels(endpoint="/v1/chat").observe(time.time() - start_time)
         
         non_generative_agent_logger(
@@ -630,7 +638,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
             },
             elapsed_time=elapsed_time,
         )
-
+        
         langfuse_context.update_current_observation(
             input={"chat_request": chat_request, "request": request},
             output={
@@ -643,7 +651,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                 "parameters": parameters
             }
         )
-
+        
         return ChatResponse(
             response=response,
             message_id=message_id,
@@ -660,7 +668,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
         traceback.print_exc()
         elapsed_time = time.time() - start_time
         REQUEST_LATENCY.labels(endpoint="/v1/chat").observe(elapsed_time)
-
+        
         non_generative_agent_logger(
             session_id=session_id,
             tenant_name=tenant_name,
@@ -697,26 +705,27 @@ async def sql_responder_endpoint(sql_request: SQLRequest, request: Request):
 
     try:
         postgres = Postgres()
-
+        
         # Handle both legacy (table_schemas) and new (session-based) approaches
         if sql_request.table_schemas:
             # Legacy approach: direct SQL generation from schemas
             response = await sql_responder_(sql_request.query, sql_request.table_schemas)
             return SQLResponse(response=response, do_suggest=False, choices=[], message_id="")
-
+        
         # New approach: session-based with module detection
         session_id = get_session_id(request, sql_request)
-
+        
         if sql_request.on_click:
             history = await postgres.get_history(session_id, 1, 1, True)
             user_question = history[0]["query"]
             message_id = str(history[0]["message_id"])
             detected_module = sql_request.query
+            
             response = await sql_responder_(
                 user_question,
                 detected_module
             )
-
+            
             elapsed_time = time.time() - start_time
             await postgres.update_on_click_chat_row(message_id, response, elapsed_time)
             choices = []
