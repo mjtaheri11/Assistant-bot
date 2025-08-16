@@ -1,15 +1,63 @@
+import concurrent.futures
 import math
+import os
 import re
+import subprocess
+import tempfile
+from io import BytesIO
 # from markitdown import MarkItDown
 from typing import Dict, List, Optional, Tuple
 
 from docx import Document
-from docx.oxml import OxmlElement
+from docx.document import Document as DocxDocument
+from docx.oxml import CT_P, CT_Tbl, OxmlElement
 from docx.oxml.ns import qn
 from langchain_text_splitters import (MarkdownHeaderTextSplitter,
                                       RecursiveCharacterTextSplitter)
 
 from .config import config
+
+
+def convert_doc_bytes_to_docx(doc_bytes: bytes) -> bytes:
+    """Converts .doc bytes to .docx bytes using LibreOffice in a temp directory with a unique profile."""
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        # Create a unique LibreOffice user profile directory to prevent conflicts
+        profile_dir = os.path.join(tmp_dir, 'lo_profile')
+        os.makedirs(profile_dir, exist_ok=True)
+        
+        # Write input .doc to temp file
+        input_path = os.path.join(tmp_dir, "input.doc")
+        with open(input_path, "wb") as f:
+            f.write(doc_bytes)
+        
+        # Convert to .docx with isolated LibreOffice profile
+        cmd = [
+            'libreoffice',
+            '--headless',
+            f'-env:UserInstallation=file://{profile_dir.replace(os.sep, "/")}',  # URI format
+            '--convert-to',
+            'docx',
+            '--outdir',
+            tmp_dir,
+            input_path
+        ]
+        
+        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if result.returncode != 0:
+            raise RuntimeError(f"Conversion failed: {result.stderr.decode()}")
+        
+        # Read converted .docx
+        output_path = os.path.join(tmp_dir, "input.docx")
+        with open(output_path, "rb") as f:
+            return f.read()
+
+
+def load_document(file_path, **kwargs) -> DocxDocument:
+    """Load a DOC or DOCX file into a python-docx Document object."""
+    if file_path.lower().endswith('.doc'):
+        docx_path = convert_doc_bytes_to_docx(kwargs["doc_obj"])
+        return Document(BytesIO(docx_path))
+    return Document(BytesIO(kwargs["doc_obj"]))
 
 
 def is_excluded_format(text: str) -> bool:
@@ -48,11 +96,14 @@ def get_heading_level_from_paragraph_style(style_name: str) -> Optional[int]:
             raise("error happend finding header")
     return ""
 
+
 def get_heading_level_from_text(doc: Document, index: int) -> Optional[int]:
     """
     Determine heading level from paragraph numbering pattern,
     considering the context and style.
     """
+    
+    known_styles = ['normal', 'body']
     def is_likely_heading(doc, paragraph):
         text = paragraph.text.strip()
         
@@ -65,6 +116,7 @@ def get_heading_level_from_text(doc: Document, index: int) -> Optional[int]:
             score += 2
 
         # Exclude known non-heading styles
+        style_lower = paragraph.style.name.lower()
         if any(term in style_lower for term in ['bullet', 'normal', 'body']):
             score -= 1
         
@@ -75,8 +127,8 @@ def get_heading_level_from_text(doc: Document, index: int) -> Optional[int]:
             score += 2
 
         # Check for formatting
-        if any(run.bold or run.italic for run in paragraph.runs):
-            score += 1
+        if any(run.bold or run.italic for run in paragraph.runs) and style_lower in known_styles and len(text) < 40:
+            score = 8
                 
         return score
 
@@ -107,11 +159,20 @@ def get_heading_level_from_text(doc: Document, index: int) -> Optional[int]:
                 return level
 
     score = is_likely_heading(doc, doc.paragraphs[index])
+    if score == 8:
+        return 1
     if score >= 4:  # Minimum confidence threshold
         # Additional context validation
-        prev_style = doc.paragraphs[max(0, index - 1)].style.name
-        next_style = doc.paragraphs[min(len(doc.paragraphs)-1, index + 1)].style.name
-        
+        prev_paragraph = doc.paragraphs[max(0, index - 1)]
+        if prev_paragraph.style != None:
+            prev_style = prev_paragraph.style.name
+        else:
+            prev_style = "Normal"
+        next_paragraph = doc.paragraphs[min(len(doc.paragraphs)-1, index + 1)]
+        if next_paragraph.style != None:
+            next_style = next_paragraph.style.name
+        else:
+            next_style = "Normal"
         # If surrounded by normal paragraphs or other headings, more likely to be a heading
         if (('normal' in prev_style.lower() or 'heading' in prev_style.lower()) and
             ('normal' in next_style.lower() or 'heading' in next_style.lower())):
@@ -122,7 +183,8 @@ def get_heading_level_from_text(doc: Document, index: int) -> Optional[int]:
             return "" # if score is compatible with a potential heading but level cannot directly be extracted from the paragraph
     return ""
 
-# specially for other documents 
+
+# specially for other documents
 def get_paragraph_number(paragraph):
     """
     Attempt to extract the numbering information from a paragraph.
@@ -161,12 +223,12 @@ def extract_potential_list_paragraph_headings(paragraph):
         paragraph_info = get_paragraph_number(paragraph)
         if paragraph_info["success_flag"]:
             if int(paragraph_info["NumId"]) <= 4:
-                if paragraph_info["NumId"] == 1 or len(paragraph.text) > 50: # for prevent bullet points 
+                if paragraph_info["NumId"] == 1 or len(paragraph.text) > 50: # for prevent bullet points
                     return ""
                 level = paragraph_info["level"]
                 return level
     return level
-    
+
         
 # for heading based documents
 def extract_heading_level(document: Document, index: int) -> int:
@@ -180,7 +242,6 @@ def extract_heading_level(document: Document, index: int) -> int:
     Returns:
         List[Tuple[str, int, str]]: List of tuples containing (heading_text, level, style_name)
     """
-    
     # First check style-based headings (more reliable)
     style_level = get_heading_level_from_paragraph_style(document.paragraphs[index].style.name)
     if style_level:
@@ -218,7 +279,7 @@ def extract_heading_level(document: Document, index: int) -> int:
 #     return md_header_splits
 
 
-def perform(file_path): 
+def perform(file_path):
     doc = Document(file_path)
     headings = []
     for index in range(len(doc.paragraphs)):
@@ -248,7 +309,58 @@ def format_heading_output(headings: List[Tuple[str, int, str]]) -> str:
     return "\n".join(output)
 
 
+def convert_table_to_csv(table) -> str:
+    """Converts a docx table to CSV format, including cell indices."""
+    csv_rows = []
+    for row_index, row in enumerate(table.rows):
+        row_cells = []
+        for col_index, cell in enumerate(row.cells):
+            cell_text = cell.text.strip().replace('\n', ' ')
+            # Include row and column indices in the cell value
+            indexed_cell = f"[{row_index},{col_index}]: {cell_text}"  # Or any format you prefer
+            row_cells.append(indexed_cell)
+        csv_rows.append(",".join(row_cells))
+    return "\n".join(csv_rows)
+
+
+import json
+
+
+def convert_table_to_json(table) -> str:
+    """Converts a docx table to JSON."""
+    table_data = []
+    for row_index, row in enumerate(table.rows):
+        row_data = {}
+        for col_index, cell in enumerate(row.cells):
+            # If you have a header row, use the header text as the key
+            if row_index == 0:  # Header row
+                header_text = cell.text.strip().replace('\n', ' ')
+                row_data["header_" + str(col_index)] = header_text #Temporary key
+            else:
+               header_text = table.rows[0].cells[col_index].text.strip().replace('\n', ' ') if row_index > 0 else "col_" + str(col_index)
+               row_data[header_text] = cell.text.strip().replace('\n', ' ')
+        if row_index > 0:
+            table_data.append(row_data)
+
+    return json.dumps(table_data, indent=4, ensure_ascii=False)  # indent for readability
+
+
+def convert_table_to_markdown(table) -> str:
+    """Converts a docx table to a standard Markdown table format with headers and separators."""
+    markdown_rows = []
+    for i, row in enumerate(table.rows):
+        cells = [cell.text.strip().replace('\n', ' ') for cell in row.cells]
+        markdown_rows.append("| " + " | ".join(cells) + " |")
+        # Add separator after the header row (first row)
+        if i == 0:
+            num_columns = len(cells)
+            separator = "| " + " | ".join(["---"] * num_columns) + " |"
+            markdown_rows.append(separator)
+    return "\n".join(markdown_rows)
+
+
 def process_single_document(
+    doc_obj: object,
     doc_path: str,
     target_chunk_size: int = config["retriever"]["chunk_size"],
     max_chunk_size: int = config["retriever"]["max_chunk_size"],
@@ -256,67 +368,110 @@ def process_single_document(
     """
     Process a single Word document and return chunks as Document objects.
     
+    :param doc_obj: Document object/bytes
     :param doc_path: Path to the Word document
     :param target_chunk_size: Target size of each chunk
     :param max_chunk_size: Maximum allowed size of a chunk
     :return: List of Document objects
     """
     chunks = []
-    current_chunk = {"h1": "", "h2": "", "h3": "", "h4": "", "content": []}
-    
-    doc = Document(doc_path)
+    current_chunk = {"h1": "", "h2": "", "h3": "", "h4": "", "content": []}  
+    # Load the document, converting DOC to DOCX if necessary
+    doc = load_document(doc_path, doc_obj=doc_obj)
+
+    # Extract header text from the first page's header
+    header_text = ""
+    if doc.sections:
+        first_section = doc.sections[0]
+        header = first_section.header
+        for para in header.paragraphs:
+            header_text += para.text.strip() + "\n"
+    header_text = header_text.strip()
+
     current_heading_level = float("inf") # Initialize current heading level
 
-    for index in range(len(doc.paragraphs)):
-        text = doc.paragraphs[index].text.strip()
-        if not text:
-            continue
-        
-        heading_level = extract_heading_level(doc, index)
+    # Track indices for paragraphs and tables separately
+    paragraph_index = 0
+    table_index = 0
+    current_heading_level = float("inf")
 
-        # Handle chunk finalization        
-        if (current_heading_level == 0) and (heading_level > current_heading_level):
-            chunks.extend(
-                finalize_chunk(
-                    current_chunk, target_chunk_size, max_chunk_size, doc_path
+    # Iterate through all document elements in order
+    for element in doc.element.body:
+        if isinstance(element, CT_P):
+            if paragraph_index >= len(doc.paragraphs):
+                continue
+            text = doc.paragraphs[paragraph_index].text.strip()
+
+            paragraph_index += 1  # Increment here to handle continue cases
+            if not text:
+                continue
+            
+            heading_level = extract_heading_level(doc, paragraph_index-1)
+
+            # Handle chunk finalization        
+            if (current_heading_level == 0) and (heading_level > current_heading_level):
+                chunks.extend(
+                    finalize_chunk(
+                        current_chunk, target_chunk_size, max_chunk_size, doc_path
+                    )
                 )
-            )
-        
-        if heading_level == 1:
-            current_chunk["h1"] = doc.paragraphs[index].text
-            current_chunk["h2"] = ""
-            current_chunk["h3"] = "" 
-            current_chunk["h4"] = "" 
-            current_chunk["content"] = []
-                                
-        elif heading_level == 2:
-            current_chunk["h2"] = doc.paragraphs[index].text 
-            current_chunk["h3"] = "" 
-            current_chunk["h4"] = "" 
-            current_chunk["content"] = []
+            
+            if heading_level == 1:
+                current_chunk["h1"] = text
+                current_chunk["h2"] = ""
+                current_chunk["h3"] = ""
+                current_chunk["h4"] = ""
+                current_chunk["content"] = []
+                                    
+            elif heading_level == 2:
+                current_chunk["h2"] = text
+                current_chunk["h3"] = ""
+                current_chunk["h4"] = ""
+                current_chunk["content"] = []
+                        
+            elif heading_level == 3:
+                current_chunk["h3"] = text
+                current_chunk["h4"] = ""
+                current_chunk["content"] = []
+
+            elif heading_level == 4:
+                current_chunk["h4"] = text
+                current_chunk["content"] = []
+
+            else:
+                current_chunk["content"].append(text)
                     
-        elif heading_level == 3:
-            current_chunk["h3"] = doc.paragraphs[index].text 
-            current_chunk["h4"] = "" 
-            current_chunk["content"] = []
+            current_heading_level = heading_level
+
+        elif isinstance(element, CT_Tbl):
+            if table_index >= len(doc.tables):
+                continue
+            table = doc.tables[table_index]
+            table_index += 1
             
-        elif heading_level == 4:
-            current_chunk["h4"] = doc.paragraphs[index].text
-            current_chunk["content"] = []
-            
-        else:
-            current_chunk["content"].append(doc.paragraphs[index].text)
-                
-        current_heading_level = heading_level
-    
+            # Convert table to compact format and add to content
+            compact_table = convert_table_to_json(table)
+            table_chunk = current_chunk.copy()
+            table_chunk["content"] = []
+            if len(current_chunk["content"]) > 0:
+                table_chunk["content"].append(current_chunk["content"].pop(-1))
+            table_chunk["content"].append(compact_table)
+            chunks.extend(finalize_chunk(table_chunk, target_chunk_size, max_chunk_size, doc_path, make_partition=False))
+
     chunks.extend(finalize_chunk(
         current_chunk, target_chunk_size, max_chunk_size, doc_path
         )
                   )
+    # Prepend header text to each chunk's content if header exists
+    if header_text:
+        for chunk in chunks:
+            # Assuming chunk has a 'content' attribute that is a string
+            chunk.page_content = f"{header_text}\n{chunk.page_content}"
+
     return chunks
 
 
-def finalize_chunk(chunk, target_chunk_size, max_chunk_size, source_file):
+def finalize_chunk(chunk, target_chunk_size, max_chunk_size, source_file, make_partition=True):
     """
     Finalize a chunk, splitting it if necessary based on sentences and paragraphs, with 2-sentence overlap.
 
@@ -324,6 +479,7 @@ def finalize_chunk(chunk, target_chunk_size, max_chunk_size, source_file):
     :param target_chunk_size: Target size of each chunk
     :param max_chunk_size: Maximum allowed size of a chunk
     :param source_file: Path of the source document
+    :param make_partition: Whether to partition the chunk
     :return: List of Document objects
     """
     chunk_overlap = 50 # TODO: change it as soon as possible
@@ -345,45 +501,74 @@ def finalize_chunk(chunk, target_chunk_size, max_chunk_size, source_file):
     paragraph = "\n".join(chunk["content"])
     paragraph_length = len(paragraph)
     
-    #  having normalized chunks based on the length of sentences
-    chunk_size_residue = paragraph_length // max_chunk_size + 1 # normalize chunk size based on the length of the content 
-    chunk_size = math.ceil(paragraph_length / chunk_size_residue)
-    if chunk_size < chunk_overlap:
-        chunk_size = target_chunk_size
-    
-    text_splitter = RecursiveCharacterTextSplitter(
-        # Set a really small chunk size, just to show.
-        chunk_size=chunk_size,
-        chunk_overlap=chunk_overlap,
-        length_function=len,
-        is_separator_regex=r'^(\d+(\.\d+)*)\s+(.*)',
-    )
-    documents = text_splitter.create_documents([paragraph])
+    if make_partition:
+        #  having normalized chunks based on the length of sentences
+        chunk_size_residue = paragraph_length // max_chunk_size + 1 # normalize chunk size based on the length of the content
+        chunk_size = math.ceil(paragraph_length / chunk_size_residue)
+        if chunk_size < chunk_overlap:
+            chunk_size = target_chunk_size
+            
+        text_splitter = RecursiveCharacterTextSplitter(
+            # Set a really small chunk size, just to show.
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            length_function=len,
+            is_separator_regex=r'^(\d+(\.\d+)*)\s+(.*)',
+        )
+        documents = text_splitter.create_documents([paragraph])
+    else:
+        chunk_size = int(1e+5)
+        text_splitter = RecursiveCharacterTextSplitter(
+            # Set a really small chunk size, just to show.
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            length_function=len,
+        )
+        documents = text_splitter.create_documents([paragraph])
+        
     for i in range(len(documents)):
         documents[i].page_content = headers + documents[i].page_content
-        documents[i].metadata ={"source": source_file}    
+        documents[i].metadata ={"source": source_file if type(source_file) == str else str(source_file)}    
     return documents
 
 
-def chunk_document(doc_settings: Dict[str, Dict[str, int]]) -> List["Document"]:
+def chunk_document(doc_settings: Dict[object, Dict]) -> List["Document"]:
     """
-    Process multiple Word documents. 
+    Process multiple Word documents.
     Uses parallel processing (ProcessPoolExecutor) to speed up large-scale runs.
     """
     all_chunks = []
 
     # --- NEW: Parallelize the per-document process using concurrent.futures ---
-    import concurrent.futures
 
-    # A ProcessPoolExecutor sidesteps the GIL for CPU-bound tasks, which can help 
+    # A ProcessPoolExecutor sidesteps the GIL for CPU-bound tasks, which can help
     # since python-docx parsing and chunking can be CPU-intensive on large docs.
+
+    # Sequential processing for compatibility with document objects
+    # for doc_obj, settings in doc_settings.items():
+    #     doc_path = settings["file_name"]
+    #     print(f"Submitting {doc_path} for processing...")
+    #     try:
+    #         result = process_single_document(
+    #             doc_obj,
+    #             doc_path,
+    #             settings["target_chunk_size"],
+    #             settings["max_chunk_size"]
+    #         )
+    #         all_chunks.extend(result)
+    #         print(f"Successfully processed: {doc_path}")
+    #     except Exception as e:
+    #         print(f"Exception occurred while processing {doc_path}: {e}")
+
+    # Optional: Uncomment below for parallel processing if document objects are serializable
     with concurrent.futures.ProcessPoolExecutor() as executor:
         # Collect futures for each document
         future_to_doc = {}
-        for doc_path, settings in doc_settings.items():
-            print(f"Submitting {doc_path} for processing...")
+        for doc_obj, settings in doc_settings.items():
+            doc_path = settings["file_name"]
             future = executor.submit(
                 process_single_document,
+                doc_obj,
                 doc_path,
                 settings["target_chunk_size"],
                 settings["max_chunk_size"]
@@ -402,116 +587,3 @@ def chunk_document(doc_settings: Dict[str, Dict[str, int]]) -> List["Document"]:
                 print(f"Successfully processed: {doc_path}")
 
     return all_chunks
-
-
-# def finalize_chunk(chunk, target_chunk_size, max_chunk_size, source_file):
-#     """
-#     Finalize a chunk, splitting it if necessary based on sentences and paragraphs, with 2-sentence overlap.
-
-#     :param chunk: Dictionary containing heading and content information
-#     :param target_chunk_size: Target size of each chunk
-#     :param max_chunk_size: Maximum allowed size of a chunk
-#     :param source_file: Path of the source document
-#     :return: List of Document objects
-#     """
-#     finalized_chunks = []
-#     headers = ""
-#     if chunk["h1"].strip() != "":
-#         headers += chunk["h1"] + "\n"
-
-#     if chunk["h2"].strip() != "":
-#         headers += chunk["h2"] + "\n"
-
-#     if chunk["h3"].strip() != "":
-#         headers += chunk["h3"] + "\n"
-
-#     if chunk["h4"].strip() != "":
-#         headers += chunk["h4"] + "\n"
-
-#     all_sentences = []
-#     for paragraph in chunk["content"]:
-#         if paragraph.strip() == "":
-#             continue
-#         sentences = split_into_sentences(paragraph)
-#         # to preserve the paragraphs in each chunk
-#         if not sentences[-1].endswith("\n"):
-#             sentences[-1] += "\n"
-#         all_sentences.extend(sentences)
-
-#     current_chunk_sentences = []
-#     current_size = 0
-
-#     for i, sentence in enumerate(all_sentences):
-#         sentence_size = len(sentence)
-
-#         if current_size + sentence_size > max_chunk_size and current_chunk_sentences:
-#             # Finalize the current chunk
-#             chunk_text = headers + " ".join(current_chunk_sentences)
-#             finalized_chunks.append(
-#                 Document(page_content=chunk_text, metadata={"source": source_file})
-#             )
-
-#             # Start new chunk with r-sentence overlap
-#             overlap_sentences = (
-#                 current_chunk_sentences[-config["retriever"]["sentence_overlap"] :]
-#                 if len(current_chunk_sentences)
-#                 >= config["retriever"]["sentence_overlap"]
-#                 else current_chunk_sentences[-1:]
-#             )
-#             current_chunk_sentences = overlap_sentences + [sentence]
-#             current_size = sum(len(s) for s in current_chunk_sentences)
-
-#         # Check if we've reached the target chunk size
-#         elif current_size >= target_chunk_size and i < len(all_sentences) - 1:
-#             chunk_text = headers + " ".join(current_chunk_sentences)
-#             finalized_chunks.append(
-#                 Document(page_content=chunk_text, metadata={"source": source_file})
-#             )
-
-#             # Start new chunk with r-sentence overlap
-#             overlap_sentences = (
-#                 current_chunk_sentences[-config["retriever"]["sentence_overlap"] :]
-#                 if len(current_chunk_sentences)
-#                 >= config["retriever"]["sentence_overlap"]
-#                 else current_chunk_sentences[-1:]
-#             )
-#             current_chunk_sentences = overlap_sentences + [sentence]
-#             current_size = sum(len(s) for s in current_chunk_sentences)
-
-#         else:
-#             current_chunk_sentences.append(sentence)
-#             current_size += sentence_size
-
-#     # Add any remaining content
-#     if current_chunk_sentences:
-#         chunk_text = headers + " ".join(current_chunk_sentences)
-#         finalized_chunks.append(
-#             Document(page_content=chunk_text, metadata={"source": source_file})
-#         )
-
-#     return finalized_chunks
-
-
-# if __name__ == "__main__":
-#     chunks = chunk_document(
-#         {
-#             "/home/user01/mj-workspace/Assistant-bot/knowledge_base/new-KB/ReportBuilder_Help_14030925.docx": {
-#                 "target_chunk_size": 800,
-#                 "max_chunk_size": 1200,
-#                 "sentence_overlap": 1,
-#             }
-#         }
-#     )
-
-
-
-# Example usage
-# if __name__ == "__main__":
-#     # Replace with your document path
-#     docx_path = "/home/user01/mj-workspace/Assistant-bot/knowledge_base/new-KB/Usermanual-v3.docx"
-#     try:
-#         headings = extract_potential_headings(docx_path)
-#         print_results(headings)
-#     except Exception as e:
-#         print(f"Error processing document: {str(e)}")
-        

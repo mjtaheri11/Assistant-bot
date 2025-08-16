@@ -397,7 +397,7 @@ opentelemetry-semantic-conventions==0.45b0
 opentelemetry-util-http==0.45b0
 ordered-set==4.1.0
 orjson==3.10.1
-outlines==0.0.46
+outlines==0.0.43
 overrides==7.7.0
 packaging==23.2
 pandas==2.2.2
@@ -511,6 +511,6 @@ xxhash==3.4.1
 yarl==1.9.4
 zipp==3.18.1
 psycopg2-binary==2.9.9
-mxbai-rerank==0.1.6
+# mxbai-rerank==0.1.6
 # Note: flash-attn will be installed separately in the Dockerfile
 # flash-attn  # This will be built from source in Dockerfile
