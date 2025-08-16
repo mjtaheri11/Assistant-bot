@@ -197,3 +197,6 @@ RagBot/triton-3.1.0-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
 RagBot/pg-*
 data_only_backup.sql
 backup.sql
+
+# sql
+*.sql
