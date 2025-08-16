@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime
+from pathlib import Path
 
 from jsonformatter import JsonFormatter  # type: ignore
 
@@ -13,7 +14,7 @@ def get_logger():
     logger.propagate = False
     logger.setLevel(logging.INFO)
 
-    file_handler = logging.FileHandler("/var/log/HamBot.log", encoding="utf8")
+    file_handler = logging.FileHandler((Path(__file__).parent / "log.log").as_posix(), encoding="utf8")
     formatter = JsonFormatter(
         ensure_ascii=False,
         mix_extra=True,

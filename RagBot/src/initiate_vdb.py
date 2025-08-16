@@ -1,4 +1,6 @@
+import json
 import os
+import pathlib
 import uuid
 
 import numpy as np
@@ -49,6 +51,63 @@ def create_vector_database(
 import pandas as pd
 import os
 from langchain_core.documents import Document
+
+def create_documents_from_qa_and_chunks():
+    directory_path = r"E:\digital_assisstant\Assistant-bot\knowledge_base\qa-questions"
+    all_docs = []
+
+    for filename in os.listdir(directory_path):
+        if filename.endswith('.csv'):
+            file_path = os.path.join(directory_path, filename)
+
+            try:
+                df = pd.read_csv(file_path)
+
+                if 'Question' in df.columns and 'Answer' in df.columns:
+                    for index, row in df.iterrows():
+                        # The text content for the vector store (using develop branch format)
+                        page_content = f"{{'query': {row['Question']}, 'passage':  {row['Answer']}}}"
+
+                        # The metadata, including the source filename
+                        # Keep the module metadata from feature/add-sql-agent if available
+                        metadata = {"source": filename}
+                        if filename in config.get("modules", {}).get("names", {}):
+                            metadata["module"] = config["modules"]["names"][filename]
+
+                        # Create the Document object
+                        doc = Document(page_content=page_content, metadata=metadata)
+
+                        all_docs.append(doc)
+                else:
+                    print(f"⚠️ Warning: Skipping '{filename}' because it lacks 'Question' or 'Answer' columns.")
+
+            except Exception as e:
+                print(f"❌ Error processing file '{filename}': {e}")
+
+    all_chunks_address = r"E:\workspace-markdown-chunker\da-markdown-chunker\all_chunks_extracted.json"
+    dict_module_to_filename = {
+        "4thG-Intro": "intro.csv",
+        "CRM": "crm.csv",
+        "INV": "inventory.csv",
+        "Report_builder": "report_builder.csv",
+        "Sales": "sales.csv",
+        "Treasury_14040231": "treasury.csv",
+        "راهنمای دفتر کل نسل 4": "voucher.csv",
+        "TaxPayer": "taxPayer.csv",
+        "DA-Help": "help.csv",
+        "AboutSG": "AboutSG.csv"
+    }
+    with open(all_chunks_address, "r", encoding="utf-8") as file:
+        lines = json.load(file)
+        for line in lines:
+            content = line[0]
+            module = line[1]
+            metadata = {"source": dict_module_to_filename[module]}
+            if dict_module_to_filename[module] in config.get("modules", {}).get("names", {}):
+                metadata["module"] = config["modules"]["names"][dict_module_to_filename[module]]
+            doc = Document(page_content=content, metadata=metadata)
+            all_docs.append(doc)
+    return all_docs
 
 def create_documents_from_csvs(directory_path="../knowledge_base/qa-questions"):
     """
@@ -120,7 +179,8 @@ def main(args):
     os.makedirs(collection_path, exist_ok=True)
 
     print(f"Creating a vector DB in {collection_path} ...")
-    chunks = create_documents_from_csvs() # (config["database"]["documents"])
+    # chunks = create_documents_from_csvs() # (config["database"]["documents"])
+    chunks = create_documents_from_qa_and_chunks()
     print(f"Generated {len(chunks)} chunks")
 
     vdb = Chroma(persist_directory=collection_path, embedding_function=embedding_model)
