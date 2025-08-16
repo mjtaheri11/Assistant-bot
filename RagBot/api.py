@@ -21,7 +21,7 @@ from langfuse.decorators import langfuse_context, observe
 # Langfuse configuration
 LANGFUSE_PUBLIC_KEY="pk-lf-280b67c9-093b-4e71-8df2-9502726dc9cc"
 LANGFUSE_SECRET_KEY="sk-lf-d19e4f4b-8483-406a-bc76-6ce2d4959afa"
-LANGFUSE_HOST="http://localhost:3000"
+LANGFUSE_HOST="http://185.13.230.222:3000/"
 os.environ["LANGFUSE_PUBLIC_KEY"] = LANGFUSE_PUBLIC_KEY
 os.environ["LANGFUSE_SECRET_KEY"] = LANGFUSE_SECRET_KEY
 os.environ["LANGFUSE_HOST"] = LANGFUSE_HOST
@@ -151,6 +151,7 @@ class FeedbackResponse(BaseModel):
 
 # ================== Utility Functions ==================
 
+@observe()
 def get_session_id(request: Request, content_request: BaseModel):
     """Extract session ID from headers or request body"""
     session_id = request.headers.get("Session-ID")
@@ -160,6 +161,7 @@ def get_session_id(request: Request, content_request: BaseModel):
         raise HTTPException(status_code=422, detail="No Session-ID")
     return session_id
 
+@observe()
 async def get_user_code_tenant_name(content_request: BaseModel, postgres_obj: object):
     if hasattr(content_request, "user_code") and hasattr(content_request, "tenant_name"):
         user_code = content_request.user_code
@@ -173,6 +175,7 @@ def validate_query(query):
     if not query.strip():
         raise HTTPException(status_code=422, detail="Query is empty")
 
+@observe()
 def find_database_path(database_index: str = None):
     """Find database path based on index - from develop branch"""
     if not database_index or database_index == "None" or database_index == None:
@@ -196,6 +199,7 @@ def find_database_path(database_index: str = None):
 
     return match_dir, company_name, assistant_name
 
+@observe()
 async def preprocess_vector_db_input(files, target_chunk_size, max_chunk_size, company_name, assistant_name):
     """Preprocess files for vector database creation - from develop branch"""
     _settings = {}
@@ -213,6 +217,7 @@ async def preprocess_vector_db_input(files, target_chunk_size, max_chunk_size, c
     _settings["assistant_name"] = assistant_name
     return _settings
 
+@observe()
 async def async_responder(session_id):
     """Handle async polling for responses - from SQL agent branch"""
     ASYNC_POLLING_TIMEOUT = 180
@@ -240,6 +245,7 @@ async def async_responder(session_id):
 
 
 @app.get("/metrics")
+@observe()
 async def metrics():
     return Response(generate_latest(), media_type="text/plain")
 
@@ -251,6 +257,7 @@ async def metrics():
         500: {"description": "Unhandled error that should be reported"},
     }
 )
+@observe()
 async def get_latest_sessions():
     try:
         postgres = Postgres()
@@ -269,6 +276,7 @@ async def get_latest_sessions():
         500: {"description": "Unhandled error that should be reported"},
     },
 )
+@observe()
 async def get_latest_databases():
     try:
         postgres = Postgres()
@@ -287,6 +295,7 @@ async def get_latest_databases():
         500: {"description": "Unhandled error that should be reported"},
     },
 )
+@observe()
 async def get_faq(
     request: Request,
     query: str = Query(..., alias="query"),
@@ -313,6 +322,7 @@ async def get_faq(
         500: {"description": "Unhandled error that should be reported"},
     },
 )
+@observe()
 async def get_history(
     request: Request,
     page_index: int = Query(1, alias="page_index"),
@@ -372,7 +382,7 @@ async def create_session(create_session_request: Optional[CreateSessionRequest] 
         )
         langfuse_context.update_current_observation(
             input={"create_session_request": create_session_request},
-            output={"session_id": session_id}
+            output={"session_id": session_id.get("session_id")}
         )
         return session_id
     except Exception as e:
@@ -760,6 +770,7 @@ async def sql_responder_endpoint(sql_request: SQLRequest, request: Request):
         500: {"description": "Unhandled error that should be reported"},
     },
 )
+@observe()
 async def detect_module(module_request: ModuleRequest, request: Request):
     try:
         context = await prepare_final_context(module_request.query)
@@ -781,6 +792,7 @@ async def detect_module(module_request: ModuleRequest, request: Request):
         422: {"description": "Unprocessable entity e.g. no company name, or no assistant name"},
     },
 )
+@observe()
 async def create_database(
     files: List[UploadFile] = File(...),
     company_name: str = Query(alias="company_name"),
@@ -824,7 +836,6 @@ async def create_database(
         },
     },
 )
-@observe()
 async def make_response(make_request: MakeRequest, request: Request):
     try:
         postgres = Postgres()
@@ -899,11 +910,12 @@ async def feedback(feedback_request: FeedbackRequest, request: Request):
 #     if feedback_request.feedback_type not in ["thumb_up", "thumb_down", "flag"]:
 #         raise HTTPException(status_code=422, detail="Invalid feedback")
 
+@observe()
 def validate_feedback(feedback_request: FeedbackRequest):
     if feedback_request.feedback_type not in ["thumb_up", "thumb_down", "flag"]:
         raise HTTPException(status_code=422, detail="Invalid feedback")
 
-
+@observe()
 async def fetch_message_fields(session_id, message_id):
     postgres = Postgres()
     message_fields = await postgres.get_message_fields(session_id, message_id)
@@ -913,7 +925,7 @@ async def fetch_message_fields(session_id, message_id):
 
     return message_fields
 
-
+@observe()
 async def process_feedback(feedback_request, message_fields):
     message_id = feedback_request.message_id
     postgres = Postgres()
@@ -925,11 +937,11 @@ async def process_feedback(feedback_request, message_fields):
         return FeedbackResponse(message="feedback received")
     return FeedbackResponse(message="duplicate feedback")
 
-
+@observe()
 def log_feedback_request(session_id):
     simple_logger("Received feedback request", session_id)
 
-
+@observe()
 def log_feedback_response(session_id, tenant_name, user_code, feedback_request, message_fields, start_time):
     elapsed_time = time.time() - start_time
     REQUEST_LATENCY.labels(endpoint="/v1/feedback").observe(elapsed_time)
@@ -949,7 +961,7 @@ def log_feedback_response(session_id, tenant_name, user_code, feedback_request, 
         elapsed_time=elapsed_time,
     )
 
-
+@observe()
 def handle_unexpected_error(exception, tenant_name, user_code, session_id, feedback_request, start_time):
     elapsed_time = time.time() - start_time
     REQUEST_LATENCY.labels(endpoint="/v1/feedback").observe(elapsed_time)

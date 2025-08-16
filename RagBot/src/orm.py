@@ -2,6 +2,7 @@ import asyncpg
 import asyncio
 import os
 from typing import Optional, Tuple
+from langfuse.decorators import langfuse_context, observe
 
 from .config import config
 import os
@@ -112,8 +113,8 @@ class Postgres:
             # Always ensure the connection is closed
             if 'connection' in locals() and not connection.is_closed():
                 await connection.close()
-               
 
+    @observe()
     async def exist_session(self, session_id):
         sql_exist_session_query = (
             "SELECT session_id FROM session WHERE session_id = $1;"
@@ -123,6 +124,7 @@ class Postgres:
         )
         return bool(result)
 
+    @observe()
     async def get_message_fields(self, session_id, message_id):
         sql_get_message_fileds = (
             "SELECT user_query, paraphrased_query, bot_response FROM messages WHERE message_id = $1 AND session_id = $2;"
@@ -133,7 +135,8 @@ class Postgres:
             insert_values=(message_id, session_id),
         )
         return message_fields[0] if message_fields else []
-   
+
+    @observe()
     async def create_database(self, company_name=None, assistant_name=None):
         sql_create_database_query = "INSERT INTO public.databases"
         columns = []
@@ -167,7 +170,8 @@ class Postgres:
         )
         output = {"database_id": str(db_id[0])}
         return output
-   
+
+    @observe()
     async def find_database_id(self, session_id):
         sql_query_find_dbid = "SELECT database_id FROM public.session WHERE session_id = $1"
         database_id = await self._execute_query(
@@ -179,6 +183,7 @@ class Postgres:
         output = {"database_id": str(database_id[0])}
         return output
 
+    @observe()
     async def create_session(self, database_id=None, tenant_name="", user_code=""):
         sql_create_session_query = "INSERT INTO public.session"
         columns = []
@@ -217,7 +222,8 @@ class Postgres:
         )
         output = {"session_id": str(session_id[0])}
         return output
-       
+
+    @observe()
     async def extract_response_type(self, session_id):
         sql_extract_response_type = (
             "select response_type from public.session where session_id=$1"
@@ -230,6 +236,7 @@ class Postgres:
         output = {"response_type": _response_type[0][0] if _response_type else "concise"}
         return output
 
+    @observe()
     async def get_history(self, session_id, page_index, page_size, with_paraphrase=False):
         sql_history_query = """
             SELECT user_query, paraphrased_query, bot_response, message_id, is_sql, selected_module, elapsed_time, do_suggest FROM messages
@@ -261,7 +268,8 @@ class Postgres:
             ]      
                
         return history
-   
+
+    @observe()
     async def remove_previous_response(self, message_id):
         sql_remove_previous_response = """UPDATE messages SET bot_response = NULL WHERE message_id = $1;"""
         await self._execute_query(
@@ -272,6 +280,7 @@ class Postgres:
         )
         return True
 
+    @observe()
     async def get_latest_databases(self, num_databases=30):
         sql_get_latest_databases = "SELECT database_id, company_name, assistant_name FROM public.databases ORDER BY create_time DESC LIMIT $1"
         results = await self._execute_query(
@@ -288,6 +297,7 @@ class Postgres:
             for row in results
         ]
 
+    @observe()
     async def get_latest_sessions(
         self,
         num_sessions=30,
@@ -344,7 +354,8 @@ class Postgres:
             }
             for row in results
         ]
-    
+
+    @observe()
     async def insert_chat_row(
         self, session_id, user_query, paraphrased_query=None, bot_response=None, response_type="concise", elapsed_time=None, selected_module=None
     ):
@@ -378,7 +389,8 @@ class Postgres:
         )
         # Assuming _execute_query returns a list of tuples, e.g., [(123,)], adjust return accordingly
         return str(message_id[0])
-   
+
+    @observe()
     async def update_last_chat_row(
         self,
         session_id,
@@ -422,6 +434,7 @@ class Postgres:
         )            
         return str(message_id[0])
 
+    @observe()
     async def update_on_click_chat_row(
         self,
         message_id,
@@ -442,7 +455,8 @@ class Postgres:
             sql_insert_query, is_insert=True, insert_values=values, fetch_results=False
         )
         return True
-   
+
+    @observe()
     async def update_selected_module(
         self, message_id, selected_module
     ):
@@ -453,6 +467,7 @@ class Postgres:
         )
         return True
 
+    @observe()
     async def set_feedback(self, message_id, feedback_type):
         update_query = """
             UPDATE messages
@@ -467,6 +482,7 @@ class Postgres:
         )        
         return bool(result)
 
+    @observe()
     async def get_user_code_tenant_name(self, session_id):
         sql_get_user_code = "SELECT user_code, tenant_name FROM public.session where session_id = $1"
         result = await self._execute_query(
@@ -476,7 +492,8 @@ class Postgres:
         )
         user_code, tenant_name = (result[0][0] if result and result[0][0] != None else "", result[0][1] if result and result[0][1] != None else "")
         return {"user_code": str(user_code), "tenant_name": str(tenant_name)}
-       
+
+    @observe()
     async def insert_message_choices(self, message_id: str, *choices) -> None:
         for choice in choices:
             insert_message_choice_query = "INSERT INTO messages_choices (message_id, choice_value) VALUES ($1, $2) RETURNING choice_id;"
@@ -486,7 +503,8 @@ class Postgres:
                 insert_values=(message_id, choice),
             )                    
         return True
-   
+
+    @observe()
     async def get_message_choices(self, message_id: str) -> list[str]:
         """Retrieves all choice values for a given message_id as a list."""
        
