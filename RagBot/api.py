@@ -151,6 +151,7 @@ class FeedbackResponse(BaseModel):
 
 # ================== Utility Functions ==================
 
+@observe()
 def get_session_id(request: Request, content_request: BaseModel):
     """Extract session ID from headers or request body"""
     session_id = request.headers.get("Session-ID")
@@ -160,6 +161,7 @@ def get_session_id(request: Request, content_request: BaseModel):
         raise HTTPException(status_code=422, detail="No Session-ID")
     return session_id
 
+@observe()
 async def get_user_code_tenant_name(content_request: BaseModel, postgres_obj: object):
     if hasattr(content_request, "user_code") and hasattr(content_request, "tenant_name"):
         user_code = content_request.user_code
@@ -213,6 +215,7 @@ async def preprocess_vector_db_input(files, target_chunk_size, max_chunk_size, c
     _settings["assistant_name"] = assistant_name
     return _settings
 
+@observe()
 async def async_responder(session_id):
     """Handle async polling for responses - from SQL agent branch"""
     ASYNC_POLLING_TIMEOUT = 180
@@ -370,7 +373,9 @@ async def create_session(create_session_request: Optional[CreateSessionRequest] 
             elapsed_time=elapsed_time,
         )
         langfuse_context.update_current_observation(
-            input={"create_session_request": create_session_request},
+            input={"tenant_name": create_session_request.tenant_name,
+                   "user_code": create_session_request.user_code,
+                   "database_id": create_session_request.database_id},
             output={"session_id": session_id}
         )
         return session_id
