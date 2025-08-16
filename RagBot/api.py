@@ -44,7 +44,6 @@ from src.logs import non_generative_agent_logger, simple_logger
 
 RESPONSE_TEMPLATE_FOR_NO_ANSWER = "در حال حاضر نمی‌توانم به سوال شما پاسخ دهم"
 MODULE_CLARIFICATION_RESPONSE_TEMPLATE = "لطفا مشخص نمایید سوال شما از کدام یک از ماژول های سیستم است."
-
 app = FastAPI(title="Digital Assistant")
 
 # Define Prometheus metrics
@@ -71,6 +70,7 @@ class ChatRequest(BaseModel):
     is_sync: Optional[bool] = True
     sql_mode: Optional[bool] = True  # Toggle between legacy and SQL agent mode
 
+      
 class ChatResponse(BaseModel):
     message_id: str
     response: str
@@ -237,6 +237,7 @@ async def async_responder(session_id):
     raise HTTPException(status_code=408, detail="Request timed out while waiting for the synchronous job to complete.")
 
 # ================== API Endpoints ==================
+
 
 @app.get("/metrics")
 async def metrics():
@@ -410,9 +411,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
 
     try:
         session_id = get_session_id(request, chat_request)
-
-        # Handle async responses for SQL agent mode
-        if chat_request.sql_mode and not chat_request.is_sync:
+        if not chat_request.is_sync:
             final_records = await async_responder(session_id)
             response = final_records.get("response", "")
             paraphrased_utterance = final_records.get("paraphrased_query", "")
@@ -486,7 +485,6 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         chat_request.error_payload,
                         chat_request.do_retry,
                     )
-                    
                     if "NULL" not in response_dict_str:
                         response_dict = json.loads(response_dict_str)
                         response = response_dict["SQL"]
@@ -498,6 +496,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
 
                 elif chat_request.on_click:
                     # Handle on_click logic
+
                     do_suggest = False
                     message_id = await postgres.insert_chat_row(
                         session_id=session_id,
@@ -514,11 +513,12 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                     )
                     
                     assert do_clarify == False, "on_click should not return do_clarify=True"
+
                     assert len(modules) == 1, "on_click should not return modules"
 
                     if not response:
                         if chat_request.query in ["انبار", "فروش", "دفتر کل"]:
-                            is_sql = True
+                            is_sql = True                           
                             agent = "sql_responder"
                             response_dict_str = await sql_responder_(
                                 paraphrased_utterance,
@@ -591,8 +591,6 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                                     "",
                                     chat_request.do_retry,
                                 )
-                                import pdb
-                                pdb.set_trace()
                                 response_dict = json.loads(response_dict_str)
                                 if "NULL" not in response_dict_str:
                                     response = response_dict["SQL"]
@@ -607,6 +605,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                             
                         elapsed_time = time.time() - start_time
                         modules_str = modules[0] if modules else "cache"
+
                         message_id = await postgres.update_last_chat_row(
                             session_id,
                             paraphrased_utterance,
@@ -720,7 +719,6 @@ async def sql_responder_endpoint(sql_request: SQLRequest, request: Request):
             user_question = history[0]["query"]
             message_id = str(history[0]["message_id"])
             detected_module = sql_request.query
-            
             response = await sql_responder_(
                 user_question,
                 detected_module
