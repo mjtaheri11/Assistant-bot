@@ -72,6 +72,7 @@ async def get_chat_response(prompt: str, answer_type: str = "qa") -> str:
     else:
         raise ValueError("No valid LLM configuration found in environment variables")
 
+
     messages = [SystemMessage(content=prompt)]
     response = await llm.ainvoke(messages)
     return response.content

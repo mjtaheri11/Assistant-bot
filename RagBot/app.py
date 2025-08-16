@@ -2,11 +2,13 @@ import re
 import requests
 import streamlit as st
 from src.config import config
+
 from src.logs import non_generative_agent_logger, simple_logger
 from src.utils import init_session_state
 
 NUMBER_OF_SUGGESTED_SESSIONS = 30
 NUMBER_OF_SUGGESTED_DATABASE = 10
+
 CSS_STYLE_FILE = "./src/style.css"
 
 BASE_URL = "http://0.0.0.0:8689" # "http://172.27.0.6:8686" #
@@ -595,6 +597,7 @@ def main():
                                 st.markdown(
                                     f'<div class="markdown-rtl">{st.session_state["user_utterance"][i]}</div>',
                                     unsafe_allow_html=True,
+
                                 )
                             with st.chat_message("assistant"):
                                 help_msg = f"""برای پاسخ به سوال شما کوئری «{st.session_state['query'][i]}» \
