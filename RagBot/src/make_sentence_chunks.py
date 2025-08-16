@@ -545,45 +545,45 @@ def chunk_document(doc_settings: Dict[object, Dict]) -> List["Document"]:
     # since python-docx parsing and chunking can be CPU-intensive on large docs.
 
     # Sequential processing for compatibility with document objects
-    for doc_obj, settings in doc_settings.items():
-        doc_path = settings["file_name"]
-        print(f"Submitting {doc_path} for processing...")
-        try:
-            result = process_single_document(
-                doc_obj,
-                doc_path,
-                settings["target_chunk_size"],
-                settings["max_chunk_size"]
-            )
-            all_chunks.extend(result)
-            print(f"Successfully processed: {doc_path}")
-        except Exception as e:
-            print(f"Exception occurred while processing {doc_path}: {e}")
-
-    # Optional: Uncomment below for parallel processing if document objects are serializable
-    # with concurrent.futures.ProcessPoolExecutor() as executor:
-    #     # Collect futures for each document
-    #     future_to_doc = {}
-    #     for doc_obj, settings in doc_settings.items():
-    #         doc_path = settings["file_name"]
-    #         future = executor.submit(
-    #             process_single_document,
+    # for doc_obj, settings in doc_settings.items():
+    #     doc_path = settings["file_name"]
+    #     print(f"Submitting {doc_path} for processing...")
+    #     try:
+    #         result = process_single_document(
     #             doc_obj,
     #             doc_path,
     #             settings["target_chunk_size"],
     #             settings["max_chunk_size"]
     #         )
-    #         future_to_doc[future] = doc_path
+    #         all_chunks.extend(result)
+    #         print(f"Successfully processed: {doc_path}")
+    #     except Exception as e:
+    #         print(f"Exception occurred while processing {doc_path}: {e}")
 
-    #     # As futures complete, retrieve their results
-    #     for future in concurrent.futures.as_completed(future_to_doc):
-    #         doc_path = future_to_doc[future]
-    #         try:
-    #             result = future.result()
-    #         except Exception as e:
-    #             print(f"Exception occurred while processing {doc_path}: {e}")
-    #         else:
-    #             all_chunks.extend(result)
-    #             print(f"Successfully processed: {doc_path}")
+    # Optional: Uncomment below for parallel processing if document objects are serializable
+    with concurrent.futures.ProcessPoolExecutor() as executor:
+        # Collect futures for each document
+        future_to_doc = {}
+        for doc_obj, settings in doc_settings.items():
+            doc_path = settings["file_name"]
+            future = executor.submit(
+                process_single_document,
+                doc_obj,
+                doc_path,
+                settings["target_chunk_size"],
+                settings["max_chunk_size"]
+            )
+            future_to_doc[future] = doc_path
+
+        # As futures complete, retrieve their results
+        for future in concurrent.futures.as_completed(future_to_doc):
+            doc_path = future_to_doc[future]
+            try:
+                result = future.result()
+            except Exception as e:
+                print(f"Exception occurred while processing {doc_path}: {e}")
+            else:
+                all_chunks.extend(result)
+                print(f"Successfully processed: {doc_path}")
 
     return all_chunks

@@ -189,8 +189,6 @@ async def retrieve_context_with_metadata(query: str, input_modules: List = None,
         context_with_metadata = await retriever.retrieve_context(query, database_index)
     else:
         context_with_metadata = await retriever.retrieve_context(query)
-    import pdb
-    pdb.set_trace()
     return context_with_metadata
 
 async def prepare_final_context(query: str, database_index: str = None, input_module: str = "") -> Union[str, Tuple[bool, List[str], Union[str, List[str]]]]:

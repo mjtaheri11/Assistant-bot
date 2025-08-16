@@ -58,9 +58,18 @@ def request_simple_qa(session_id, query, api_url: str = BASE_URL):
         return {"status": "error", "response": ""}
    
 
-def chat_request(session_id: str, query: str, on_click: bool, database_id: str = None, 
-                answer_type: str = "concise", does_evaluate: bool = False, 
-                use_cache: bool = True, api_url: str = BASE_URL):
+def chat_request(
+    session_id: str, 
+    query: str, 
+    on_click: bool, 
+    database_id: str = None, 
+    answer_type: str = "concise", 
+    does_evaluate: bool = False, 
+    use_cache: bool = True, 
+    api_url: str = BASE_URL,
+    sql_mode: bool = True
+    ):
+    
     # Define the request data
     chat_data = {
         "query": query,
@@ -68,7 +77,8 @@ def chat_request(session_id: str, query: str, on_click: bool, database_id: str =
         "on_click": on_click,
         "does_evaluate": does_evaluate,
         "response_type": answer_type,
-        "use_cache": use_cache
+        "use_cache": use_cache,
+        "sql_mode": sql_mode
     }
     if database_id:
         chat_data["database_id"] = database_id
@@ -227,14 +237,9 @@ def clear_logs():
     st.session_state["log"] = []
 
 
-def update_assistant_name():
-    st.session_state["assistant_name"] = st.session_state["temporal_assistant_name"]
-    st.session_state["temporal_assistant_name"] = ""
-
-
-def update_company_name():
-    st.session_state["company_name"] = st.session_state["temporal_company_name"]
-    st.session_state["temporal_company_name"] = ""
+def udpate_temporal_names(key=None):
+    st.session_state[key] = st.session_state[f"temporal_{key}"]
+    st.session_state[f"temporal_{key}"] = ""
 
 
 def clear_text():
@@ -382,8 +387,8 @@ def main():
                             st.session_state["uploaded_files"],
                         )
                         if status == "success":
-                            update_assistant_name()
-                            update_company_name()
+                            udpate_temporal_names("assistant_name")
+                            udpate_temporal_names("company_name")
                             st.session_state["does_evaluate"] = boolean_mapper(st.session_state.get("temporal_does_evaluate"))
                             st.session_state["use_cache"] = boolean_mapper(st.session_state["temporal_use_cache"])
                             st.session_state["database_id"] = data["database_id"]
@@ -448,12 +453,13 @@ def main():
                         st.info("سلام، من سامانه دستیار دیجیتال نسل چهارم همکاران سیستم هستم. لطفا سوالتون رو در کادر زیر بپرسید.")
                     st.session_state["first_encounter_with_searchbox"] = False
                     
-                st.text_input(
-                    st.session_state.get("session_id"),
-                    placeholder="هر چه می‌خواهد دل تنگت بپرس!",
-                    key="temporal_user_input",
-                    on_change=clear_text,
-                )
+                st.markdown(f'<div class="markdown-rtl">عامل SQL</div>', unsafe_allow_html=True)
+                st.selectbox(
+                        '<div class="markdown-rtl">عامل SQL</div>',
+                        ["بله", "خیر"],
+                        key="temporal_sql_mode",
+                        label_visibility="collapsed"
+                    )
                 st.radio(
                     "radio",
                     options=["خلاصه", "عادی", "توضیحی"],
@@ -462,6 +468,13 @@ def main():
                     disabled=False,
                     horizontal=True,
                 )
+                st.text_input(
+                    st.session_state.get("session_id"),
+                    placeholder="لطفا سوال خود را وارد کنید",
+                    key="temporal_user_input",
+                    on_change=clear_text,
+                )
+                st.session_state["sql_mode"] = boolean_mapper(st.session_state["temporal_sql_mode"])
                 progress_bar = st.progress(value=0)
                 with st.container():
                     if st.session_state.get("user_input"):
@@ -484,7 +497,8 @@ def main():
                             database_id=database_id,
                             answer_type=st.session_state["answer_type"],
                             does_evaluate=st.session_state["does_evaluate"],
-                            use_cache=st.session_state["use_cache"]
+                            use_cache=st.session_state["use_cache"],
+                            sql_mode=st.session_state["sql_mode"]
                         )
                         do_suggest, is_sql, choices, message_id, response, query = (
                             chat_response["do_suggest"],

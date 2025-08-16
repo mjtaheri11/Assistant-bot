@@ -591,8 +591,6 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                                     "",
                                     chat_request.do_retry,
                                 )
-                                import pdb
-                                pdb.set_trace()
                                 response_dict = json.loads(response_dict_str)
                                 if "NULL" not in response_dict_str:
                                     response = response_dict["SQL"]
