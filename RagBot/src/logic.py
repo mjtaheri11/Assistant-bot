@@ -384,6 +384,7 @@ async def chat_responder_(
             return paraphrased_utterance, "", "", do_clarify, modules
     except:
         logger_no_session_id(message="error in semantic router!", log_level=logging.ERROR)
+        route_response = "qa"
         pass
     
     response = await query_responder(
@@ -399,7 +400,9 @@ async def chat_responder_(
         response = template_for_not_answer
     if "خارج از حوزه کاری" in response:
         response = template_for_not_context.format(company_name=company_name)
-    
+    if route_response == "chitchat":
+        cache = Cache()
+        await cache.increment_thumb_up(query=paraphrased_utterance, response=response, url="")
     return paraphrased_utterance, response, context, do_clarify, modules
 
 @observe()
