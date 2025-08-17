@@ -32,8 +32,7 @@ from .business_objects import LOGISTICS_SALES_MODIFIED, FINANCIAL_BO_MODIFIED
 from .semantic_router import SemanticRouterPipeline
 from langchain.chat_models import ChatOpenAI
 from langfuse.decorators import langfuse_context, observe
-SEMANTIC_ROUTER_MODEL_PATH = os.environ.get("SEMANTIC_ROUTER_MODEL_PATH", r"E:\semantic_router\resources\models\classifiers\mlp.joblib")
-SEMANTIC_ROUTER_MODEL_NAME = os.environ.get("SEMANTIC_ROUTER_MODEL_NAME", "mlp")
+
 
 SEED = 44
 torch.manual_seed(SEED)
@@ -366,10 +365,10 @@ async def chat_responder_(
     try:
         semantic_router_object = SemanticRouterPipeline(
             inference_only=True,
-            embedding_address=None,
+            embedding_address=config["embedding_model"]["model_name"],
             # classifier_address="/home/user01/mj-workspace/Assistant-bot/saved_models/mlp.joblib",
-            classifier_address=SEMANTIC_ROUTER_MODEL_PATH,
-            model_name=SEMANTIC_ROUTER_MODEL_NAME
+            classifier_address=config["router_model"]["address"],
+            model_name=config["router_model"]["model_name"]
         )
         cache = Cache()
         route_response_cached = cache.get_exact_cache(paraphrased_utterance)

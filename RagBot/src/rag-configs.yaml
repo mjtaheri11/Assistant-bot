@@ -197,5 +197,7 @@ chat_responder:
 followup_query_generator:
   number_of_suggested_queries: 3
 
-
+router_model:
+  address: ../saved_models/mlp.joblib
+  model_name: mlp
 # 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
