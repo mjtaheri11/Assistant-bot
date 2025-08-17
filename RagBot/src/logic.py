@@ -1,3 +1,4 @@
+import logging
 import random
 from typing import List
 from collections import Counter
@@ -25,11 +26,13 @@ from .prompts import (
 from .retriever import Retriever
 from .config import config
 from .cache import Cache
-from .logs import simple_logger
+from .logs import logger_no_session_id
 from .utils import json_cleaning, json_text_cleaning
 from .business_objects import LOGISTICS_SALES_MODIFIED, FINANCIAL_BO_MODIFIED
 from .semantic_router import SemanticRouterPipeline
 from langchain.chat_models import ChatOpenAI
+from langfuse.decorators import langfuse_context, observe
+
 
 SEED = 44
 torch.manual_seed(SEED)
@@ -41,6 +44,7 @@ template_for_not_answer = "پاسخ به این سوال در محدوده پا�
 template_for_not_context = """این سوال خارج از حوزه کاری {company_name} است. لطفا سوال خود را در رابطه با محصولات و خدمات {company_name} مطرح کنید. برای اطلاعات بیشتر به 'https://systemgroup.net' مراجعه کنید"""
 template_for_doubtful_answer = "سوال شما را به خوبی متوجه نشدم. لطفا سوال خود را به صورت دقیق تر بپرسید تا بتوانم بهتر کمک کنم."
 
+@observe()
 async def get_chat_response(prompt: str, answer_type: str = "qa") -> str:
     print("Character Length of the prompt: ", len(prompt))
     print("words length of the prompt: ", len(prompt.split()))
@@ -77,6 +81,7 @@ async def get_chat_response(prompt: str, answer_type: str = "qa") -> str:
     response = await llm.ainvoke(messages)
     return response.content
 
+@observe()
 async def get_cache_response(
     query: str,
     threshold: float = config["cache"]["alpha_threshold"],
@@ -93,12 +98,14 @@ async def get_cache_response(
     else:
         return "", ""
 
+@observe()
 def history_serializer(history: List[tuple[str, str]]) -> str:
     serialized_history = ""
     for question, answer in history:
         serialized_history += f"USER: {question}\nASSISTANT: {answer}\n\n"
     return serialized_history
 
+@observe()
 async def utterance_paraphraser(history: List[tuple[str, str]], user_utterance: str, assistant_name: str = None) -> str:
     serialized_history = history_serializer(history)
     
@@ -120,6 +127,7 @@ async def utterance_paraphraser(history: List[tuple[str, str]], user_utterance: 
     response = json_cleaning(response)
     return response
 
+@observe()
 async def query_responder(
     query: str, 
     context: str, 
@@ -153,6 +161,7 @@ async def query_responder(
     response = json_cleaning(response)
     return response
 
+@observe()
 async def answer_validator(question: str, context: str, answer: str) -> bool:
     prompt = ANSWER_VALIDATOR_PROMPT.format(
         context=context,
@@ -162,6 +171,7 @@ async def answer_validator(question: str, context: str, answer: str) -> bool:
     response = await get_chat_response(prompt, answer_type="qa")
     return response
 
+@observe()
 async def is_somewhat_uniform(freq_dict: dict, threshold: float = 0.7) -> bool:
     """
     Checks if the frequency distribution in a dictionary is somewhat uniform
@@ -180,6 +190,7 @@ async def is_somewhat_uniform(freq_dict: dict, threshold: float = 0.7) -> bool:
     
     return cv <= threshold, mean_freq
 
+@observe()
 async def retrieve_context_with_metadata(query: str, input_modules: List = None, database_index: str = None) -> List[dict]:
     retriever = Retriever()
     
@@ -192,6 +203,7 @@ async def retrieve_context_with_metadata(query: str, input_modules: List = None,
         context_with_metadata = await retriever.retrieve_context(query)
     return context_with_metadata
 
+@observe()
 async def prepare_final_context(query: str, database_index: str = None, input_module: str = "") -> Union[str, Tuple[bool, List[str], Union[str, List[str]]]]:
     """
     Unified function supporting both develop branch (simple context) and feature/add-sql-agent (complex module handling)
@@ -228,6 +240,7 @@ async def prepare_final_context(query: str, database_index: str = None, input_mo
             proposable_modules
         )
 
+@observe()
 def _handle_single_module_case(
     context_with_metadata: List,
     detected_modules: str
@@ -236,6 +249,7 @@ def _handle_single_module_case(
     documents = "\n\n".join(context["text"] for context in context_with_metadata)
     return False, [detected_modules], documents
 
+@observe()
 def _handle_clear_preference_case(
     context_with_metadata: List, detected_module: str
 ) -> Tuple[bool, List[str], List[str]]:
@@ -243,6 +257,7 @@ def _handle_clear_preference_case(
     documents = [doc["text"] for doc in context_with_metadata]
     return False, [detected_module], documents
 
+@observe()
 def _handle_clarification_case(
     context_with_metadata: List,
     detected_modules: List[str],
@@ -261,9 +276,11 @@ def _handle_clarification_case(
         valid_modules_lst = list(valid_modules)
         return True, valid_modules_lst, documents
 
+@observe()
 async def module_proposer():
     return ["انبار و فروش", "دفتر کل"]
 
+@observe()
 async def sql_responder_(
     query: str,
     detected_module: str = "", 
@@ -297,12 +314,14 @@ async def sql_responder_(
     
     return response
 
+@observe()
 async def router_SQL_QA(query: str, context: str):
     prompt = QUERY_ROUTER.format(query=query, context=context)
     raw_response = await get_chat_response(prompt, answer_type="sql")
     response = json_cleaning(raw_response)
     return response
 
+@observe()
 async def chat_responder_(
     history: List[tuple[str, str]],
     user_utterance: str,
@@ -346,16 +365,25 @@ async def chat_responder_(
     try:
         semantic_router_object = SemanticRouterPipeline(
             inference_only=True,
-            embedding_address=None,
-            classifier_address="/home/user01/mj-workspace/Assistant-bot/saved_models/mlp.joblib",
-            model_name="svm"
+            embedding_address=config["embedding_model"]["model_name"],
+            # classifier_address="/home/user01/mj-workspace/Assistant-bot/saved_models/mlp.joblib",
+            classifier_address=config["router_model"]["address"],
+            model_name=config["router_model"]["model_name"]
         )
-        route_response = semantic_router_object.predict_sentences([paraphrased_utterance])
+        cache = Cache()
+        route_response_cached = cache.get_exact_cache(paraphrased_utterance)
+        if route_response_cached is None:
+            route_response = semantic_router_object.predict_sentences([paraphrased_utterance])
+            route_response = route_response[0]
+            cache.set_exact_cache(paraphrased_utterance, route_response)
+            logger_no_session_id(message="key: %s, is added to redis!" % paraphrased_utterance)
+        else:
+            route_response = route_response_cached
         
-        if route_response[0] == "sql":
+        if route_response == "sql":
             return paraphrased_utterance, "", "", do_clarify, modules
     except:
-        # If semantic router fails, continue with QA
+        logger_no_session_id(message="error in semantic router!", log_level=logging.ERROR)
         pass
     
     response = await query_responder(
@@ -374,7 +402,7 @@ async def chat_responder_(
     
     return paraphrased_utterance, response, context, do_clarify, modules
 
-    
+@observe()
 async def feedback_(
     query: str,
     response: str,
