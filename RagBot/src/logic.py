@@ -1,3 +1,4 @@
+import logging
 import random
 from typing import List
 from collections import Counter
@@ -25,13 +26,14 @@ from .prompts import (
 from .retriever import Retriever
 from .config import config
 from .cache import Cache
-from .logs import simple_logger
+from .logs import logger_no_session_id
 from .utils import json_cleaning, json_text_cleaning
 from .business_objects import LOGISTICS_SALES_MODIFIED, FINANCIAL_BO_MODIFIED
 from .semantic_router import SemanticRouterPipeline
 from langchain.chat_models import ChatOpenAI
 from langfuse.decorators import langfuse_context, observe
-
+SEMANTIC_ROUTER_MODEL_PATH = os.environ.get("SEMANTIC_ROUTER_MODEL_PATH", r"E:\semantic_router\resources\models\classifiers\mlp.joblib")
+SEMANTIC_ROUTER_MODEL_NAME = os.environ.get("SEMANTIC_ROUTER_MODEL_NAME", "mlp")
 
 SEED = 44
 torch.manual_seed(SEED)
@@ -365,15 +367,24 @@ async def chat_responder_(
         semantic_router_object = SemanticRouterPipeline(
             inference_only=True,
             embedding_address=None,
-            classifier_address="/home/user01/mj-workspace/Assistant-bot/saved_models/mlp.joblib",
-            model_name="svm"
+            # classifier_address="/home/user01/mj-workspace/Assistant-bot/saved_models/mlp.joblib",
+            classifier_address=SEMANTIC_ROUTER_MODEL_PATH,
+            model_name=SEMANTIC_ROUTER_MODEL_NAME
         )
-        route_response = semantic_router_object.predict_sentences([paraphrased_utterance])
+        cache = Cache()
+        route_response_cached = cache.get_exact_cache(paraphrased_utterance)
+        if route_response_cached is None:
+            route_response = semantic_router_object.predict_sentences([paraphrased_utterance])
+            route_response = route_response[0]
+            cache.set_exact_cache(paraphrased_utterance, route_response)
+            logger_no_session_id(message="key: %s, is added to redis!" % paraphrased_utterance)
+        else:
+            route_response = route_response_cached
         
-        if route_response[0] == "sql":
+        if route_response == "sql":
             return paraphrased_utterance, "", "", do_clarify, modules
     except:
-        # If semantic router fails, continue with QA
+        logger_no_session_id(message="error in semantic router!", log_level=logging.ERROR)
         pass
     
     response = await query_responder(

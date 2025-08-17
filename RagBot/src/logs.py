@@ -53,3 +53,13 @@ def simple_logger(message, session_id, log_level=logging.INFO):
             "logtime": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
         },
     )
+
+def logger_no_session_id(message, log_level=logging.INFO):
+    logger = get_logger()
+    logger.log(
+        log_level,
+        message,
+        extra={
+            "logtime": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
+        },
+    )
