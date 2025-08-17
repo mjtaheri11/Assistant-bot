@@ -10,6 +10,7 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 import numpy as np
+from .config import config 
 from abc import ABC, abstractmethod
 from pathlib import Path
 from time import time

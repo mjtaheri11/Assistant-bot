@@ -70,7 +70,6 @@ class ChatRequest(BaseModel):
     is_sync: Optional[bool] = True
     sql_mode: Optional[bool] = True  # Toggle between legacy and SQL agent mode
 
-      
 class ChatResponse(BaseModel):
     message_id: str
     response: str
@@ -297,7 +296,8 @@ async def get_faq(
         database_id_dict = await postgres.find_database_id(session_id)
         matched_index, company_name, assistant_name = find_database_path(database_id_dict["database_id"])
         retriever = Retriever()
-        context = await retriever.retrieve_context(query, matched_index, reverse=False, split=True)
+        context_lst = await retriever.retrieve_context(query, matched_index, reverse=False, split=True)
+        context = "\n\n ============= \n\n".join([context["text"] for context in context_lst])
         return FaqResponse(response=context.strip())
     except HTTPException as e:
         raise e
@@ -553,7 +553,6 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         session_id=session_id,
                         user_query=chat_request.query,
                     )
-                    
                     paraphrased_utterance, response, context, do_clarify, modules = await chat_responder_(
                         selected_history,
                         chat_request.query,
@@ -580,8 +579,8 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         message = "modules proposed"
                         choices = modules
                     else:
-                        if chat_request.sql_mode:
-                            if not response:
+                        if not response:
+                            if chat_request.sql_mode:
                                 agent = "sql_responder"
                                 is_sql = True
                                 response_dict_str = await sql_responder_(
@@ -599,9 +598,9 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                                         is_sql = False
                                         response = RESPONSE_TEMPLATE_FOR_NO_ANSWER
                             
-                        else:
-                            is_sql = False
-                            response = RESPONSE_TEMPLATE_FOR_NO_ANSWER
+                            else:
+                                is_sql = False
+                                response = RESPONSE_TEMPLATE_FOR_NO_ANSWER
                             
                         elapsed_time = time.time() - start_time
                         modules_str = modules[0] if modules else "cache"

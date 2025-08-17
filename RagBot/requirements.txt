@@ -511,6 +511,8 @@ xxhash==3.4.1
 yarl==1.9.4
 zipp==3.18.1
 psycopg2-binary==2.9.9
+langfuse==2.21.2
+
 # mxbai-rerank==0.1.6
 # Note: flash-attn will be installed separately in the Dockerfile
 # flash-attn  # This will be built from source in Dockerfile

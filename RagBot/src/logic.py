@@ -53,20 +53,19 @@ async def get_chat_response(prompt: str, answer_type: str = "qa") -> str:
     LLM_MODEL_NAME = os.getenv("LLM_MODEL_NAME") 
     LLM_API_BASE = os.getenv("LLM_API_BASE")
     OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY')
-
     # Use OpenRouter if available, otherwise fall back to original configuration
-    if OPENROUTER_API_KEY:
+    # if OPENROUTER_API_KEY != "false":
+    #     llm = ChatOpenAI(
+    #         openai_api_key=LLM_API_KEY,
+    #         openai_api_base=LLM_API_BASE,
+    #         model_name=LLM_MODEL_NAME,
+    #         streaming=False,
+    #         temperature=0,
+    #     )
+    if LLM_API_KEY and LLM_MODEL_NAME and LLM_API_BASE:
         llm = ChatOpenAI(
-            openai_api_key=OPENROUTER_API_KEY,
-            openai_api_base="https://openrouter.ai/api/v1",
-            model_name="qwen/qwen3-30b-a3b-instruct-2507",
-            streaming=False,
-            temperature=0,
-        )
-    elif LLM_API_KEY and LLM_MODEL_NAME and LLM_API_BASE:
-        llm = ChatOpenAI(
-            openai_api_base=LLM_API_KEY,
-            openai_api_key=LLM_API_BASE,
+            openai_api_base=LLM_API_BASE,
+            openai_api_key=LLM_API_KEY,
             model_name=LLM_MODEL_NAME
         )
     else:
@@ -346,16 +345,21 @@ async def chat_responder_(
     try:
         semantic_router_object = SemanticRouterPipeline(
             inference_only=True,
-            embedding_address=None,
-            classifier_address="/home/user01/mj-workspace/Assistant-bot/saved_models/mlp.joblib",
-            model_name="svm"
+            embedding_address=config["embedding_model"]["model_name"],
+            classifier_address=config["router_model"]["address"],
+            model_name=config["router_model"]["model_name"]
         )
         route_response = semantic_router_object.predict_sentences([paraphrased_utterance])
+        print(" ======================= ")
+        print(route_response)
         
         if route_response[0] == "sql":
             return paraphrased_utterance, "", "", do_clarify, modules
-    except:
+    except Exception as e:
         # If semantic router fails, continue with QA
+        print(e)
+        print(" ======================= ")
+        print("exception in route happened")
         pass
     
     response = await query_responder(
