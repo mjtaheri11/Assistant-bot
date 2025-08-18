@@ -580,8 +580,8 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         message = "modules proposed"
                         choices = modules
                     else:
-                        if chat_request.sql_mode:
-                            if not response:
+                        if not response:
+                            if chat_request.sql_mode:
                                 agent = "sql_responder"
                                 is_sql = True
                                 response_dict_str = await sql_responder_(
@@ -599,9 +599,9 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                                         is_sql = False
                                         response = RESPONSE_TEMPLATE_FOR_NO_ANSWER
                             
-                        else:
-                            is_sql = False
-                            response = RESPONSE_TEMPLATE_FOR_NO_ANSWER
+                            else:
+                                is_sql = False
+                                response = RESPONSE_TEMPLATE_FOR_NO_ANSWER
                             
                         elapsed_time = time.time() - start_time
                         modules_str = modules[0] if modules else "cache"

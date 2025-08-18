@@ -90,13 +90,13 @@ cache:
     # model_name: ../saved_models/models--Snowflake--snowflake-arctic-embed-l-v2.0/snapshots/edc2df7b6c25794b340229ca082e7c78782e6374
     # model_name: /home/user01/.cache/huggingface/hub/models--jinaai--jina-embeddings-v3/snapshots/30996fea06f69ecd8382ee4f11e29acaf6b5405e   # jinai model
     # model_name: nomic-ai/nomic-embed-text-v1.5
-    device: cuda
+    device: cpu
 
   # configurations for reranker
   reranker:
     model_name: ../saved_models/models--BAAI--bge-reranker-v2-m3/snapshots/12e974610ba9083ed95f3edf08d7e899581f4de4
     # model_name: /home/user01/.cache/huggingface/hub/models--BAAI--bge-reranker-v2-gemma/snapshots/1787044f8b6fb740a9de4557c3a12377f84d9e17
-    device: cuda
+    device: cpu
     cutoff: 10
     
   schema:
@@ -141,7 +141,7 @@ embedding_model:
   # model_name: /home/user01/.cache/huggingface/hub/models--jinaai--jina-embeddings-v3/snapshots/30996fea06f69ecd8382ee4f11e29acaf6b5405e
   # model_name: /home/user01/.cache/huggingface/hub/models--nomic-ai--nomic-embed-text-v1.5/snapshots/d802ae16c9caed4d197895d27c6d529434cd8c6d
   # model_name: /home/user01/.cache/huggingface/hub/models--alefbot--alef-zibert/snapshots/b5a9d43b612b57191bb3a618b51b09b8ecabd927
-  device: cuda
+  device: cpu
 
 # configurations for reranker
 reranker:
@@ -149,7 +149,7 @@ reranker:
   # model_name: ../saved_models/models--mixedbread-ai--mxbai-rerank-large-v2
   # model_name: /home/user01/.cache/huggingface/hub/models--nomic-ai--nomic-embed-text-v1.5/snapshots/d802ae16c9caed4d197895d27c6d529434cd8c6d
   # model_name: /home/user01/.cache/huggingface/hub/models--BAAI--bge-reranker-v2-gemma/snapshots/1787044f8b6fb740a9de4557c3a12377f84d9e17
-  device: cuda
+  device: cpu
 
 # configurations for retriever
 retriever:

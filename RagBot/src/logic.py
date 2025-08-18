@@ -57,21 +57,14 @@ async def get_chat_response(prompt: str, answer_type: str = "qa") -> str:
     LLM_MODEL_NAME = os.getenv("LLM_MODEL_NAME") 
     LLM_API_BASE = os.getenv("LLM_API_BASE")
     OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY')
-
     # Use OpenRouter if available, otherwise fall back to original configuration
-    if OPENROUTER_API_KEY:
+
+    if LLM_API_KEY and LLM_MODEL_NAME and LLM_API_BASE:
         llm = ChatOpenAI(
-            openai_api_key=OPENROUTER_API_KEY,
-            openai_api_base="https://openrouter.ai/api/v1",
-            model_name="qwen/qwen3-30b-a3b-instruct-2507",
-            streaming=False,
+            openai_api_base=LLM_API_BASE,
+            openai_api_key=LLM_API_KEY,
+            model_name=LLM_MODEL_NAME,
             temperature=0,
-        )
-    elif LLM_API_KEY and LLM_MODEL_NAME and LLM_API_BASE:
-        llm = ChatOpenAI(
-            openai_api_base=LLM_API_KEY,
-            openai_api_key=LLM_API_BASE,
-            model_name=LLM_MODEL_NAME
         )
     else:
         raise ValueError("No valid LLM configuration found in environment variables")
