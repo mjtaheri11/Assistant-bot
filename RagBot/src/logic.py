@@ -26,7 +26,6 @@ from .retriever import Retriever
 from .config import config
 from .cache import Cache
 from .logs import simple_logger, logger_no_session_id
-from .logs import 
 from .utils import json_cleaning, json_text_cleaning
 from .business_objects import LOGISTICS_SALES_MODIFIED, FINANCIAL_BO_MODIFIED
 from .semantic_router import SemanticRouterPipeline
