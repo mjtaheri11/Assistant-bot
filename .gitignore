@@ -203,3 +203,10 @@ backup.sql
 
 # nvidia-files
 nvidia-files
+VectorDB-legacy/chroma.sqlite3
+VectorDB-legacy/7b2632f6-e995-4037-89f5-54db92961312/data_level0.bin
+.gitignore
+VectorDB-legacy/7b2632f6-e995-4037-89f5-54db92961312/index_metadata.pickle
+VectorDB-legacy/7b2632f6-e995-4037-89f5-54db92961312/link_lists.bin
+VectorDB-legacy/7b2632f6-e995-4037-89f5-54db92961312/length.bin
+VectorDB-legacy/7b2632f6-e995-4037-89f5-54db92961312/header.bin

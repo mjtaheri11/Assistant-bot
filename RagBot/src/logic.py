@@ -56,7 +56,6 @@ async def get_chat_response(prompt: str, answer_type: str = "qa") -> str:
     LLM_API_KEY = os.getenv("LLM_API_KEY")
     LLM_MODEL_NAME = os.getenv("LLM_MODEL_NAME") 
     LLM_API_BASE = os.getenv("LLM_API_BASE")
-    OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY')
     # Use OpenRouter if available, otherwise fall back to original configuration
     if LLM_API_KEY and LLM_MODEL_NAME and LLM_API_BASE:
         llm = ChatOpenAI(

@@ -1,197 +1,652 @@
+import os
+from typing import List, Dict, Any
+from dataclasses import dataclass
+from dotenv import load_dotenv
 import json
-import random
-import re
-import os 
-from statistics import mean
 
-import torch
-import numpy as np 
-import pandas as pd
-from tqdm import tqdm
-from langchain_community.chat_models import ChatOllama
-from langchain_community.vectorstores import Chroma
-from langchain_community.document_loaders import DirectoryLoader, TextLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.embeddings import HuggingFaceEmbeddings
-from FlagEmbedding import FlagReranker
+# DeepEval imports
+from deepeval import evaluate
+from deepeval.metrics import (
+    AnswerRelevancyMetric,
+    FaithfulnessMetric,
+    ContextualPrecisionMetric,
+    ContextualRecallMetric,
+    ContextualRelevancyMetric,
+    HallucinationMetric,
+    ToxicityMetric,
+    BiasMetric,
+    AnswerCorrectnessMetric
+)
+from deepeval.test_case import LLMTestCase
+from deepeval.dataset import EvaluationDataset
+from deepeval.synthesizer import Synthesizer
 
-from .prompts import RAG_EVAL_PROMPT
-from .config import config
-from .make_sentence_chunks import chunk_document
-from .logic import utterance_paraphraser
-from .utils import json_text_cleaning, json_cleaning
+# load environment variables 
+load_dotenv()
 
-# "میخوام طبقه حساب تعریف کنم چه مرحله هایی داره؟", "response"
+@dataclass
+class RAGTestCase:
+    """Custom test case for RAG evaluation"""
+    query: str
+    expected_output: str
+    actual_output: str
+    retrieval_context: List[str]
+    ground_truth_context: List[str] = None
 
-torch.manual_seed(0)
-np.random.seed(0)
-torch.cuda.manual_seed_all(0)
-random.seed(0)
+import os
+from typing import List, Dict, Any, Optional
+from dataclasses import dataclass
+import json
+import litellm
 
+# Configure litellm for verbose output (optional)
+litellm.set_verbose = True
 
-embedding_model_ = HuggingFaceEmbeddings(
-                model_name=config["embedding_model"]["model_name"],
-                model_kwargs={"device": config["embedding_model"]["device"]})
-
-reranker_model_ = FlagReranker(
-                config["reranker"]["model_name"],
-                device=config["reranker"]["device"])
-
-# OLLAMA_HOST = os.getenv('OLLAMA_HOST', 'http://dockerize_assistant-ollama-1:11434')
-llm = ChatOllama(
-        model=config["ollama"]["model_name"],
-        temperature=config["ollama"]["temperature"],
-        keep_alive=config["ollama"]["keep_alive"],
-        seed=0
-        # base_url=OLLAMA_HOST,
-    )
-
-
-def create_retriever():
-    collection_path = config["evaluation"]["persist_directory"]
+class CustomModelRAGEvaluator:
+    """
+    RAG Evaluator with support for custom models and API endpoints
+    """
     
-    print(f'Creating an evaluation vector DB in {collection_path} ...')
-
-    # document_loader = DirectoryLoader(path=config["evaluation"]['documents_addr'], glob="**/*.txt", loader_cls=TextLoader)
-    # documents = document_loader.load()
-    # text_splitter = RecursiveCharacterTextSplitter(chunk_size=config["retriever"]["chunk_size"],
-    #                                                chunk_overlap=config["evaluation"]["chunk_overlap"])
-    # chunks = text_splitter.split_documents(documents)
-    chunks = chunk_document(config["evaluation"]["documents"])
-    print(f'Generated {len(chunks)} chunks')
-
-    vdb = Chroma(persist_directory=collection_path, embedding_function=embedding_model_)
-
-    if len(vdb.get()["ids"]) > 0:
-        print(f'VectorDB has {len(vdb.get()["ids"])} documents already, deleting them ...')
-        vdb._collection.delete(vdb.get()["ids"])
+    def __init__(
+        self, 
+        model: str = "gpt-4",
+        api_base: Optional[str] = None,
+        api_key: Optional[str] = None,
+        provider: Optional[str] = "custom",
+        threshold: float = 0.7,
+        custom_headers: Optional[Dict] = None
+    ):
+        """
+        Initialize evaluator with custom model configuration
         
-    vdb.add_documents(chunks)
-    print(f'{len(chunks)} documents have been added to the vector DB')
-    retriever = vdb.as_retriever(search_kwargs={"k": config['evaluation']['retrieved_documents']})
-    
-    return retriever
-
-retriever = create_retriever()
-
-def retrieve_context(prompt, k=config['evaluation']['retrieved_rank2_documents']):
-    docs = retriever.invoke(prompt)
-    docs = [doc.page_content for doc in docs]
-    scores = reranker_model_.compute_score([[prompt, doc] for doc in docs], normalize=True)
-    docs_scores = [(docs[i], scores[i]) for i in range(len(docs))]
-    docs_scores_sorted = sorted(docs_scores, key=lambda x: x[1], reverse=True)[:k]
-
-    conf = mean([d[1] for d in docs_scores])
-
-    return '\n\n'.join([d[0] for d in reversed(docs_scores_sorted) ]), conf
-
-from langchain.output_parsers import PydanticOutputParser
-from pydantic import BaseModel, Field
-
-class TwitterUser(BaseModel):
-    answer: str = Field(description="Your answer, accompanied by a brief explanation.")
-    reasoning: str = Field(description="Explanation for your choice.")
-
-parser = PydanticOutputParser(pydantic_object=TwitterUser)
-
-def output_parser(output):
-    output = output.split('reasoning')
-    answer = output[0].split(':')[1].strip()
-    reason = output[1].split(':')[1].strip()
-    return (answer, reason)
-
-
-def write_to_file(results, accuracy, num_hits, num_processed_data):
-    print(f'WRTIE {len(results)} RESULTS TO A CSV FILE')
-    headers = ['question', 'A', 'B', 'C','D', 'Answer', 'Model_Answer','Correct?', 'paraphrased_utterance', 'Model_Reason', 'Model_Context', 'Confidence']
-    clean_results = []
-    for result in results:
-        row = [result['question'], result['choices'][0], result['choices'][1], result['choices'][2], result['choices'][3], result['correct_answer'] ]
-        answer, reason = result['predicted_answer']['answer'], result['predicted_answer']['reasoning']
-        row.append(answer)
-        if result['correct_answer'] in answer:
-            row.append('1')
+        Args:
+            model: Model name or path
+            api_base: Custom API base URL (for OpenAI-compatible endpoints)
+            api_key: API key for the service
+            provider: Provider name (ollama, together_ai, azure, etc.)
+            threshold: Minimum score threshold
+            custom_headers: Additional headers for API requests
+        """
+        self.threshold = threshold
+        self.provider = provider
+        
+        # Configure based on provider
+        if provider:
+            self.model = self._configure_provider(provider, model, api_base, api_key)
         else:
-            row.append('0')
-        row.append(result['paraphrased_utterance'])
-        row.append(reason)
-        row.append(result['context'])
-        row.append(result['context_confidence'])
-        clean_results.append(row)
-
-    addr = config['evaluation']['output_path'] + str(accuracy) + "_" + str(num_hits) + "_" + str(num_processed_data) + "_" +  config['evaluation']['dataset'].split('/')[-1].replace(".csv", "") + '_results_' + config['evaluation']['model_name'].replace(":", "-") + "_" + str(config["retriever"]["chunk_size"]) + "_" + str(config["retriever"]["max_chunk_size"]) + "_" + str(config["evaluation"]["retrieved_documents"]) + "_" + str(config["evaluation"]["retrieved_rank2_documents"]) + "_" + str(config["retriever"]["sentence_overlap"]) + ".csv"
+            self.model = model
+            
+        # Set custom headers if provided
+        if custom_headers:
+            litellm.headers = custom_headers
+            
+        self._initialize_metrics()
     
-    pd.DataFrame(clean_results, columns=headers).to_csv(addr, index=False)
-    
-    print(f'RESULTS WRITTEN TO {addr}')
-    
-
-def main(config=config):
-    processed_results = []
-    num_hits = 0
-    test_dataset = pd.read_csv(config['evaluation']['dataset'], header=None)
-    test_dataset.columns = ['source','question', 'a','b','c','d','answer']
-    print(f"RUN THE EVALUATION ON {len(test_dataset)} SAMPLES" )
-    total_test_data = len(test_dataset)
-
-    for question in tqdm(test_dataset.iterrows(), total=len(test_dataset)):
-        raw_question = question[1].question
-        # prompt_lst = [query]
-        result = {
-            'question': raw_question,
-            'choices': [question[1].a, question[1].b, question[1].c, question[1].d], 
-            'correct_answer': question[1].answer
+    def _configure_provider(self, provider: str, model: str, api_base: str, api_key: str) -> str:
+        """
+        Configure specific provider settings
+        Based on [docs.together.ai](https://docs.together.ai/docs/openai-api-compatibility)
+        and [docs.praison.ai](https://docs.praison.ai/models/other)
+        """
+        provider_configs = {
+            "ollama": {
+                "base": api_base or "http://localhost:11434/v1",
+                "key": "NA",
+                "model_prefix": "ollama/"
+            },
+            "lm_studio": {
+                "base": api_base or "http://localhost:1234/v1",
+                "key": "NA",
+                "model_prefix": ""
+            },
+            "together_ai": {
+                "base": api_base or "https://api.together.xyz/v1",
+                "key": api_key or os.getenv("TOGETHER_API_KEY"),
+                "model_prefix": "together_ai/"
+            },
+            "mistral": {
+                "base": api_base or "https://api.mistral.ai/v1",
+                "key": api_key or os.getenv("MISTRAL_API_KEY"),
+                "model_prefix": ""
+            },
+            "fastchat": {
+                "base": api_base or "http://localhost:8001/v1",
+                "key": "NA",
+                "model_prefix": ""
+            },
+            "azure": {
+                "base": api_base,
+                "key": api_key or os.getenv("AZURE_API_KEY"),
+                "model_prefix": "azure/"
+            },
+            "anthropic": {
+                "base": api_base or "https://api.anthropic.com",
+                "key": api_key or os.getenv("ANTHROPIC_API_KEY"),
+                "model_prefix": ""
+            },
+            "custom": {
+                "base": os.getenv("LLM_MODEL_NAME"),
+                "key": os.getenv("LLM_API_KEY") or "NA",
+                "model_prefix": ""
+            }
         }
         
-        # prompt_lst.extend(result["choices"])
-        # prompt = "\n".join(prompt_lst)
-        # paraphrased_utterance = utterance_paraphraser([], raw_question)
-        paraphrased_utterance = raw_question
-        result["paraphrased_utterance"] = paraphrased_utterance
-        context, confidence = retrieve_context(prompt=paraphrased_utterance)
-        result['context'] = context
-        result['context_confidence'] = confidence
+        config = provider_configs.get(provider, provider_configs["custom"])
         
-        prompt = RAG_EVAL_PROMPT.format(context=context, question=raw_question, a=question[1].a, b=question[1].b, c=question[1].c, d=question[1].d)
-        answer = llm.invoke(prompt)
-        cleaned_response = json_cleaning(answer.content, key="answer")
-        output = json_text_cleaning(cleaned_response, "answer")
-        if question[1].answer == output['answer']:
-            num_hits += 1
-
-        result['predicted_answer'] = output
-        processed_results.append(result)
-        accuracy = num_hits / total_test_data
-        print(accuracy)        
-
-    accuracy = num_hits / len(processed_results)
-    print(num_hits, accuracy)
-    write_to_file(processed_results, accuracy, num_hits, len(processed_results))
-
+        # Return model with appropriate prefix
+        if config["model_prefix"] and not model.startswith(config["model_prefix"]):
+            return f"{config['model_prefix']}{model}"
+        return model
+    
+    def _initialize_metrics(self):
+        """Initialize metrics with the configured model"""
+        from deepeval.metrics import (
+            AnswerRelevancyMetric,
+            FaithfulnessMetric,
+            ContextualPrecisionMetric,
+            ContextualRecallMetric,
+            ContextualRelevancyMetric,
+            HallucinationMetric
+        )
+        
+        # All metrics use the same model configuration
+        self.answer_relevancy = AnswerRelevancyMetric(
+            threshold=self.threshold,
+            model=self.model,
+            include_reason=True
+        )
+        
+        self.faithfulness = FaithfulnessMetric(
+            threshold=self.threshold,
+            model=self.model,
+            include_reason=True
+        )
+        
+        self.contextual_precision = ContextualPrecisionMetric(
+            threshold=self.threshold,
+            model=self.model,
+            include_reason=True
+        )
+        
+        self.contextual_recall = ContextualRecallMetric(
+            threshold=self.threshold,
+            model=self.model,
+            include_reason=True
+        )
+        
+        self.contextual_relevancy = ContextualRelevancyMetric(
+            threshold=self.threshold,
+            model=self.model,
+            include_reason=True
+        )
+        
+        self.hallucination = HallucinationMetric(
+            threshold=self.threshold,
+            model=self.model,
+            include_reason=True
+        )
+    
+    def test_connection(self) -> bool:
+        """
+        Test if the model connection is working
+        """
+        try:
+            from deepeval.test_case import LLMTestCase
+            
+            test_case = LLMTestCase(
+                input="Test question",
+                actual_output="Test answer",
+                retrieval_context=["Test context"]
+            )
+            
+            # Try a simple metric evaluation
+            self.answer_relevancy.measure(test_case)
+            print(f"✅ Successfully connected to model: {self.model}")
+            print(f"   API Base: {os.getenv('OPENAI_API_BASE', 'default')}")
+            return True
+            
+        except Exception as e:
+            print(f"❌ Failed to connect to model: {e}")
+            return False
+    
+    def _initialize_metrics(self):
+        """Initialize all evaluation metrics"""
+        
+        # Retrieval Metrics
+        self.contextual_precision = ContextualPrecisionMetric(
+            threshold=self.threshold,
+            model=self.model,
+            include_reason=True
+        )
+        
+        self.contextual_recall = ContextualRecallMetric(
+            threshold=self.threshold,
+            model=self.model,
+            include_reason=True
+        )
+        
+        self.contextual_relevancy = ContextualRelevancyMetric(
+            threshold=self.threshold,
+            model=self.model,
+            include_reason=True
+        )
+        
+        # Generation Metrics
+        self.answer_relevancy = AnswerRelevancyMetric(
+            threshold=self.threshold,
+            model=self.model,
+            include_reason=True
+        )
+        
+        self.faithfulness = FaithfulnessMetric(
+            threshold=self.threshold,
+            model=self.model,
+            include_reason=True
+        )
+        
+        self.hallucination = HallucinationMetric(
+            threshold=self.threshold,
+            model=self.model,
+            include_reason=True
+        )
+        
+        # End-to-End Metrics
+        self.answer_correctness = AnswerCorrectnessMetric(
+            threshold=self.threshold,
+            model=self.model,
+            include_reason=True
+        )
+        
+        # Safety Metrics (optional)
+        self.toxicity = ToxicityMetric(
+            threshold=0.5,
+            model=self.model
+        )
+        
+        self.bias = BiasMetric(
+            threshold=0.5,
+            model=self.model
+        )
+    
+    def evaluate_retrieval(self, test_cases: List[RAGTestCase]) -> Dict[str, Any]:
+        """
+        Evaluate the retrieval component of RAG
+        
+        Args:
+            test_cases: List of RAG test cases
+            
+        Returns:
+            Dictionary containing retrieval evaluation results
+        """
+        print("🔍 Evaluating Retrieval Component...")
+        
+        retrieval_metrics = [
+            self.contextual_precision,
+            self.contextual_recall,
+            self.contextual_relevancy
+        ]
+        
+        results = {
+            "contextual_precision": [],
+            "contextual_recall": [],
+            "contextual_relevancy": []
+        }
+        
+        for test_case in test_cases:
+            llm_test_case = LLMTestCase(
+                input=test_case.query,
+                actual_output=test_case.actual_output,
+                expected_output=test_case.expected_output,
+                retrieval_context=test_case.retrieval_context,
+                context=test_case.ground_truth_context or test_case.retrieval_context
+            )
+            
+            for metric in retrieval_metrics:
+                metric.measure(llm_test_case)
+                metric_name = metric.__class__.__name__.replace("Metric", "").lower()
                 
+                results[metric_name].append({
+                    "score": metric.score,
+                    "passed": metric.score >= self.threshold,
+                    "reason": metric.reason if hasattr(metric, 'reason') else None
+                })
+        
+        return self._aggregate_results(results, "Retrieval")
+    
+    def evaluate_generation(self, test_cases: List[RAGTestCase]) -> Dict[str, Any]:
+        """
+        Evaluate the generation component of RAG
+        
+        Args:
+            test_cases: List of RAG test cases
+            
+        Returns:
+            Dictionary containing generation evaluation results
+        """
+        print("🤖 Evaluating Generation Component...")
+        
+        generation_metrics = [
+            self.answer_relevancy,
+            self.faithfulness,
+            self.hallucination,
+            self.answer_correctness
+        ]
+        
+        results = {
+            "answer_relevancy": [],
+            "faithfulness": [],
+            "hallucination": [],
+            "answer_correctness": []
+        }
+        
+        for test_case in test_cases:
+            llm_test_case = LLMTestCase(
+                input=test_case.query,
+                actual_output=test_case.actual_output,
+                expected_output=test_case.expected_output,
+                retrieval_context=test_case.retrieval_context
+            )
+            
+            for metric in generation_metrics:
+                metric.measure(llm_test_case)
+                metric_name = metric.__class__.__name__.replace("Metric", "").lower()
+                
+                results[metric_name].append({
+                    "score": metric.score,
+                    "passed": metric.score >= self.threshold,
+                    "reason": metric.reason if hasattr(metric, 'reason') else None
+                })
+        
+        return self._aggregate_results(results, "Generation")
+    
+    def evaluate_safety(self, test_cases: List[RAGTestCase]) -> Dict[str, Any]:
+        """
+        Evaluate safety aspects (toxicity, bias) of the generated responses
+        
+        Args:
+            test_cases: List of RAG test cases
+            
+        Returns:
+            Dictionary containing safety evaluation results
+        """
+        print("🛡️ Evaluating Safety Metrics...")
+        
+        safety_metrics = [self.toxicity, self.bias]
+        
+        results = {
+            "toxicity": [],
+            "bias": []
+        }
+        
+        for test_case in test_cases:
+            llm_test_case = LLMTestCase(
+                input=test_case.query,
+                actual_output=test_case.actual_output
+            )
+            
+            for metric in safety_metrics:
+                metric.measure(llm_test_case)
+                metric_name = metric.__class__.__name__.replace("Metric", "").lower()
+                
+                results[metric_name].append({
+                    "score": metric.score,
+                    "passed": metric.score <= 0.5,  # Lower is better for safety metrics
+                    "details": metric.reason if hasattr(metric, 'reason') else None
+                })
+        
+        return self._aggregate_results(results, "Safety")
+    
+    def evaluate_rag_triad(self, test_cases: List[RAGTestCase]) -> Dict[str, Any]:
+        """
+        Evaluate using the RAG Triad approach (Context Relevance, Groundedness, Answer Relevance)
+        Based on [deepeval.com](https://www.deepeval.com/guides/guides-rag-triad)
+        
+        Args:
+            test_cases: List of RAG test cases
+            
+        Returns:
+            Dictionary containing RAG Triad evaluation results
+        """
+        print("🔺 Evaluating RAG Triad...")
+        
+        triad_results = {
+            "context_relevance": [],
+            "groundedness": [],
+            "answer_relevance": []
+        }
+        
+        for test_case in test_cases:
+            llm_test_case = LLMTestCase(
+                input=test_case.query,
+                actual_output=test_case.actual_output,
+                expected_output=test_case.expected_output,
+                retrieval_context=test_case.retrieval_context
+            )
+            
+            # Context Relevance
+            self.contextual_relevancy.measure(llm_test_case)
+            triad_results["context_relevance"].append({
+                "score": self.contextual_relevancy.score,
+                "passed": self.contextual_relevancy.score >= self.threshold
+            })
+            
+            # Groundedness (using Faithfulness)
+            self.faithfulness.measure(llm_test_case)
+            triad_results["groundedness"].append({
+                "score": self.faithfulness.score,
+                "passed": self.faithfulness.score >= self.threshold
+            })
+            
+            # Answer Relevance
+            self.answer_relevancy.measure(llm_test_case)
+            triad_results["answer_relevance"].append({
+                "score": self.answer_relevancy.score,
+                "passed": self.answer_relevancy.score >= self.threshold
+            })
+        
+        return self._aggregate_results(triad_results, "RAG Triad")
+    
+    def full_evaluation(self, test_cases: List[RAGTestCase]) -> Dict[str, Any]:
+        """
+        Perform comprehensive evaluation of the entire RAG pipeline
+        
+        Args:
+            test_cases: List of RAG test cases
+            
+        Returns:
+            Dictionary containing all evaluation results
+        """
+        print("📊 Starting Full RAG Evaluation...")
+        print(f"Evaluating {len(test_cases)} test cases\n")
+        
+        results = {
+            "retrieval": self.evaluate_retrieval(test_cases),
+            "generation": self.evaluate_generation(test_cases),
+            "rag_triad": self.evaluate_rag_triad(test_cases),
+            "safety": self.evaluate_safety(test_cases),
+            "summary": {}
+        }
+        
+        # Calculate overall summary
+        all_scores = []
+        for component in ["retrieval", "generation", "rag_triad"]:
+            all_scores.extend([
+                score for metric_scores in results[component]["detailed_scores"].values()
+                for score in metric_scores
+            ])
+        
+        results["summary"] = {
+            "total_tests": len(test_cases),
+            "overall_average_score": sum(all_scores) / len(all_scores) if all_scores else 0,
+            "component_averages": {
+                "retrieval": results["retrieval"]["average_score"],
+                "generation": results["generation"]["average_score"],
+                "rag_triad": results["rag_triad"]["average_score"],
+                "safety": results["safety"]["average_score"]
+            }
+        }
+        
+        return results
+    
+    def _aggregate_results(self, results: Dict, component_name: str) -> Dict[str, Any]:
+        """Aggregate and summarize evaluation results"""
+        aggregated = {
+            "component": component_name,
+            "metrics": {},
+            "detailed_scores": {},
+            "average_score": 0
+        }
+        
+        all_scores = []
+        for metric_name, metric_results in results.items():
+            scores = [r["score"] for r in metric_results]
+            aggregated["detailed_scores"][metric_name] = scores
+            
+            if scores:
+                avg_score = sum(scores) / len(scores)
+                passed_count = sum(1 for r in metric_results if r["passed"])
+                
+                aggregated["metrics"][metric_name] = {
+                    "average_score": avg_score,
+                    "pass_rate": passed_count / len(metric_results),
+                    "passed": passed_count,
+                    "failed": len(metric_results) - passed_count
+                }
+                all_scores.extend(scores)
+        
+        if all_scores:
+            aggregated["average_score"] = sum(all_scores) / len(all_scores)
+        
+        return aggregated
+    
+    def generate_report(self, results: Dict[str, Any], output_file: str = "rag_evaluation_report.json"):
+        """
+        Generate a detailed evaluation report
+        
+        Args:
+            results: Evaluation results dictionary
+            output_file: Path to save the report
+        """
+        print(f"\n📝 Generating Report...")
+        
+        # Console output
+        print("\n" + "="*60)
+        print("RAG EVALUATION REPORT")
+        print("="*60)
+        
+        for component in ["retrieval", "generation", "rag_triad", "safety"]:
+            if component in results:
+                print(f"\n{component.upper()} METRICS:")
+                print("-"*40)
+                
+                for metric, scores in results[component]["metrics"].items():
+                    print(f"  {metric}:")
+                    print(f"    Average Score: {scores['average_score']:.3f}")
+                    print(f"    Pass Rate: {scores['pass_rate']:.1%}")
+                    print(f"    Passed/Failed: {scores['passed']}/{scores['failed']}")
+        
+        if "summary" in results:
+            print(f"\n{'OVERALL SUMMARY':^60}")
+            print("="*60)
+            print(f"Total Test Cases: {results['summary']['total_tests']}")
+            print(f"Overall Average Score: {results['summary']['overall_average_score']:.3f}")
+            print("\nComponent Averages:")
+            for comp, avg in results['summary']['component_averages'].items():
+                print(f"  {comp}: {avg:.3f}")
+        
+        # Save to file
+        with open(output_file, 'w') as f:
+            json.dump(results, f, indent=2)
+        print(f"\n✅ Report saved to {output_file}")
+
+
+# Example usage function
+def create_sample_test_cases() -> List[RAGTestCase]:
+    """Create sample test cases for demonstration"""
+    return [
+        RAGTestCase(
+            query="What is the capital of France?",
+            expected_output="The capital of France is Paris.",
+            actual_output="The capital of France is Paris, which is also the country's largest city.",
+            retrieval_context=[
+                "Paris is the capital and largest city of France.",
+                "France is a country in Western Europe.",
+                "The Eiffel Tower is located in Paris."
+            ]
+        ),
+        RAGTestCase(
+            query="Explain photosynthesis",
+            expected_output="Photosynthesis is the process by which plants convert light energy into chemical energy.",
+            actual_output="Photosynthesis is the process where plants use sunlight, water, and carbon dioxide to produce glucose and oxygen.",
+            retrieval_context=[
+                "Photosynthesis occurs in chloroplasts.",
+                "Plants use sunlight to convert CO2 and water into glucose.",
+                "Chlorophyll is the green pigment that captures light energy."
+            ]
+        )
+    ]
+
+
+# Synthesizer for generating test data (optional)
+class RAGTestDataGenerator:
+    """
+    Generate synthetic test data for RAG evaluation
+    Based on [llamaindex.ai](https://www.llamaindex.ai/blog/evaluating-rag-with-deepeval-and-llamaindex)
+    """
+    
+    def __init__(self, documents: List[str]):
+        """
+        Initialize the test data generator
+        
+        Args:
+            documents: List of documents to generate test cases from
+        """
+        self.synthesizer = Synthesizer(model="gpt-4")
+        self.documents = documents
+    
+    def generate_test_cases(self, num_cases: int = 10) -> List[RAGTestCase]:
+        """
+        Generate synthetic test cases
+        
+        Args:
+            num_cases: Number of test cases to generate
+            
+        Returns:
+            List of generated test cases
+        """
+        # Generate using DeepEval's synthesizer
+        dataset = self.synthesizer.generate_goldens_from_docs(
+            documents=self.documents,
+            num_goldens_per_doc=num_cases // len(self.documents)
+        )
+        
+        test_cases = []
+        for golden in dataset.goldens:
+            test_cases.append(RAGTestCase(
+                query=golden.input,
+                expected_output=golden.expected_output,
+                actual_output="",  # Will be filled by your RAG system
+                retrieval_context=golden.context,
+                ground_truth_context=golden.context
+            ))
+        
+        return test_cases
+
+
+# Main execution
 if __name__ == "__main__":
-    main()
-    # do_eval()    
-
-
-# def retrieve_context(k=config['evaluation']['retrieved_rank2_documents'], **kwargs):
-#     assert "prompt" in kwargs.keys(), "the prompt doesn't involved in the kwargs"
-#     queries = [kwargs["prompt"]]
-#     # if "choices" in kwargs.keys(): 
-#     #     all_queries = queries.extend(kwargs["choices"])
-#     queries.extend(kwargs["choices"]) if "choices" in kwargs.keys() else None
-#     all_documents = []
-#     for prompt in queries: 
-#         if re.match(pattern, prompt):
-#             continue
-#         docs = retriever.invoke(prompt)
-#         all_documents.extend([doc.page_content for doc in docs])
-
-#     all_documents = list(set(all_documents))
-#     scores = reranker_model_.compute_score([[kwargs["prompt"], doc] for doc in all_documents], normalize=True)
-#     docs_scores = [(all_documents[i], scores[i]) for i in range(len(all_documents))]
-#     docs_scores_sorted = sorted(docs_scores, key=lambda x: x[1], reverse=False)[:k]
-
-#     conf = mean([d[1] for d in docs_scores])
-
-#     return '\n\n'.join([d[0] for d in docs_scores_sorted ]), conf
+    # Initialize evaluator
+    evaluator = RAGEvaluator(model="gpt-4", threshold=0.7)
+    
+    # Create or load your test cases
+    test_cases = create_sample_test_cases()
+    
+    # Run full evaluation
+    results = evaluator.full_evaluation(test_cases)
+    
+    # Generate report
+    evaluator.generate_report(results)
+    
+    # Optional: Generate synthetic test data
+    # generator = RAGTestDataGenerator(documents=["your", "documents", "here"])
+    # synthetic_cases = generator.generate_test_cases(num_cases=20)
