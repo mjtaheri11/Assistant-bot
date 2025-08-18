@@ -5,7 +5,7 @@ from typing import List, Dict
 from dataclasses import dataclass
 
 from FlagEmbedding import FlagReranker
-from mxbai_rerank import MxbaiRerankV2
+# from mxbai_rerank import MxbaiRerankV2
 from langchain.vectorstores import Chroma
 from langchain_community.embeddings import HuggingFaceEmbeddings
 
@@ -116,8 +116,8 @@ class Retriever(object):
         """
         Reranks documents using FlagReranker (from develop branch).
         """
-        scores = self.reranker_model_.compute_score([[query, doc] for doc in documents], normalize=True)
-        
+
+        scores = self.reranker_model_.compute_score([[query, doc] for doc in documents], normalize=True)        
         docs_with_scores_index = [FlagDocument(document=documents[i], score=scores[i], index=i) 
                                   for i in range(len(documents)) if scores[i] > config["retriever"]["retriever_threshold"]
                                   ]
@@ -148,49 +148,49 @@ class Retriever(object):
             sorted_documents = [{}]
         return sorted_documents
 
-    async def _rerank_documents_mxbai(self, query: str, documents: list[str], k: int, reverse: bool = True) -> list[str]:
-        """
-        Reranks documents using the MxbaiRerankV2 model with custom filtering logic.
-        """
-        # 1. Get ranked results from the mxbai model.
-        # The `rank` method returns a sorted list of dictionaries with scores.
-        # We retrieve all results initially to apply custom thresholds later.
-        results = self.mxbai_reranker_model_.rank(
-            query=query,
-            documents=documents,
-            return_documents=True,
-            normalize=True,
-        )
-        # 2. Filter the already sorted results based on your score threshold.
-        # The mxbai model output is a list of dicts: [{'text': doc, 'score': score}, ...]
-        docs_scores_sorted = [
-            res for res in results
-            if res.score > self.config_["retriever"]["retriever_threshold"]
-        ]
+    # async def _rerank_documents_mxbai(self, query: str, documents: list[str], k: int, reverse: bool = True) -> list[str]:
+    #     """
+    #     Reranks documents using the MxbaiRerankV2 model with custom filtering logic.
+    #     """
+    #     # 1. Get ranked results from the mxbai model.
+    #     # The `rank` method returns a sorted list of dictionaries with scores.
+    #     # We retrieve all results initially to apply custom thresholds later.
+    #     results = self.mxbai_reranker_model_.rank(
+    #         query=query,
+    #         documents=documents,
+    #         return_documents=True,
+    #         normalize=True,
+    #     )
+    #     # 2. Filter the already sorted results based on your score threshold.
+    #     # The mxbai model output is a list of dicts: [{'text': doc, 'score': score}, ...]
+    #     docs_scores_sorted = [
+    #         res for res in results
+    #         if res.score > self.config_["retriever"]["retriever_threshold"]
+    #     ]
 
-        # 3. Apply your custom logic for selecting the top 'k' documents.
-        if docs_scores_sorted:
-            final_docs = []
-            # Check if we have more than 'k' documents and if the k-th score is above 0.06
-            if len(docs_scores_sorted) > k and docs_scores_sorted[k-1].score > 0.06:
-                # As in your original code, take the top k+3 documents
-                final_docs = docs_scores_sorted[:k+3]
-            else:
-                # Otherwise, just take the top k documents
-                final_docs = docs_scores_sorted[:k]
+    #     # 3. Apply your custom logic for selecting the top 'k' documents.
+    #     if docs_scores_sorted:
+    #         final_docs = []
+    #         # Check if we have more than 'k' documents and if the k-th score is above 0.06
+    #         if len(docs_scores_sorted) > k and docs_scores_sorted[k-1].score > 0.06:
+    #             # As in your original code, take the top k+3 documents
+    #             final_docs = docs_scores_sorted[:k+3]
+    #         else:
+    #             # Otherwise, just take the top k documents
+    #             final_docs = docs_scores_sorted[:k]
 
-            # 4. Extract the document text for the final output.
-            # NOTE: Your original function reversed the list at the end, returning documents
-            # from lowest score to highest. This behavior is replicated here.
-            # If you want the most relevant documents first, remove `reversed()`.
-            if reverse:
-                sorted_documents = [{"text": d.document, "index": d.index} for d in reversed(final_docs)]
-            else:
-                sorted_documents = [{"text": d.document, "index": d.index} for d in final_docs]                
-        else:
-            # If no documents meet the threshold, return an empty list.
-            sorted_documents = [{}]
-        return sorted_documents
+    #         # 4. Extract the document text for the final output.
+    #         # NOTE: Your original function reversed the list at the end, returning documents
+    #         # from lowest score to highest. This behavior is replicated here.
+    #         # If you want the most relevant documents first, remove `reversed()`.
+    #         if reverse:
+    #             sorted_documents = [{"text": d.document, "index": d.index} for d in reversed(final_docs)]
+    #         else:
+    #             sorted_documents = [{"text": d.document, "index": d.index} for d in final_docs]                
+    #     else:
+    #         # If no documents meet the threshold, return an empty list.
+    #         sorted_documents = [{}]
+    #     return sorted_documents
    
     @staticmethod
     def add_module(lst: List, original_documents: List):

@@ -70,7 +70,6 @@ class ChatRequest(BaseModel):
     is_sync: Optional[bool] = True
     sql_mode: Optional[bool] = True  # Toggle between legacy and SQL agent mode
 
-      
 class ChatResponse(BaseModel):
     message_id: str
     response: str
@@ -297,7 +296,8 @@ async def get_faq(
         database_id_dict = await postgres.find_database_id(session_id)
         matched_index, company_name, assistant_name = find_database_path(database_id_dict["database_id"])
         retriever = Retriever()
-        context = await retriever.retrieve_context(query, matched_index, reverse=False, split=True)
+        context_lst = await retriever.retrieve_context(query, matched_index, reverse=False, split=True)
+        context = "\n\n ============= \n\n".join([context["text"] for context in context_lst])
         return FaqResponse(response=context.strip())
     except HTTPException as e:
         raise e
@@ -562,7 +562,6 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         company_name=company_name,
                         assistant_name=assistant_name
                     )
-
                     if do_clarify:
                         do_suggest = True
                         response = MODULE_CLARIFICATION_RESPONSE_TEMPLATE
@@ -719,6 +718,7 @@ async def sql_responder_endpoint(sql_request: SQLRequest, request: Request):
             user_question = history[0]["query"]
             message_id = str(history[0]["message_id"])
             detected_module = sql_request.query
+            is_sql = True
             response = await sql_responder_(
                 user_question,
                 detected_module

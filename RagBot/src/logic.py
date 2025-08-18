@@ -1,4 +1,3 @@
-import logging
 import random
 from typing import List
 from collections import Counter
@@ -26,7 +25,8 @@ from .prompts import (
 from .retriever import Retriever
 from .config import config
 from .cache import Cache
-from .logs import logger_no_session_id
+from .logs import simple_logger, logger_no_session_id
+from .logs import 
 from .utils import json_cleaning, json_text_cleaning
 from .business_objects import LOGISTICS_SALES_MODIFIED, FINANCIAL_BO_MODIFIED
 from .semantic_router import SemanticRouterPipeline
@@ -58,7 +58,6 @@ async def get_chat_response(prompt: str, answer_type: str = "qa") -> str:
     LLM_API_BASE = os.getenv("LLM_API_BASE")
     OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY')
     # Use OpenRouter if available, otherwise fall back to original configuration
-
     if LLM_API_KEY and LLM_MODEL_NAME and LLM_API_BASE:
         llm = ChatOpenAI(
             openai_api_base=LLM_API_BASE,
@@ -359,7 +358,6 @@ async def chat_responder_(
         semantic_router_object = SemanticRouterPipeline(
             inference_only=True,
             embedding_address=config["embedding_model"]["model_name"],
-            # classifier_address="/home/user01/mj-workspace/Assistant-bot/saved_models/mlp.joblib",
             classifier_address=config["router_model"]["address"],
             model_name=config["router_model"]["model_name"]
         )
