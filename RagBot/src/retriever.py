@@ -116,8 +116,8 @@ class Retriever(object):
         """
         Reranks documents using FlagReranker (from develop branch).
         """
-        scores = self.reranker_model_.compute_score([[query, doc] for doc in documents], normalize=True)
-        
+
+        scores = self.reranker_model_.compute_score([[query, doc] for doc in documents], normalize=True)        
         docs_with_scores_index = [FlagDocument(document=documents[i], score=scores[i], index=i) 
                                   for i in range(len(documents)) if scores[i] > config["retriever"]["retriever_threshold"]
                                   ]

@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime
+from pathlib import Path
 
 from jsonformatter import JsonFormatter  # type: ignore
 
@@ -49,6 +50,16 @@ def simple_logger(message, session_id, log_level=logging.INFO):
         message,
         extra={
             "session_id": session_id,
+            "logtime": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
+        },
+    )
+
+def logger_no_session_id(message, log_level=logging.INFO):
+    logger = get_logger()
+    logger.log(
+        log_level,
+        message,
+        extra={
             "logtime": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
         },
     )

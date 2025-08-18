@@ -200,7 +200,16 @@ class RFModel(ClassifierModel):
 
 
 class SemanticRouterPipeline:
-    def __init__(self, inference_only=False, embedding_address=None, classifier_address=None, **kwargs):
+    _instance = None
+
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            # cls._instance = super().__new__(cls, *args, **kwargs)
+            cls._instance = super().__new__(cls)
+            cls._instance._initialize(**kwargs)
+        return cls._instance
+
+    def _initialize(self, inference_only=False, embedding_address=None, classifier_address=None, **kwargs):
         self.__load_embedding_model(embedding_address)
         self.__load_classifier_model(classifier_address, **kwargs)
         if not inference_only:

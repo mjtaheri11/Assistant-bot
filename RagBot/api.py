@@ -553,6 +553,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         session_id=session_id,
                         user_query=chat_request.query,
                     )
+                    
                     paraphrased_utterance, response, context, do_clarify, modules = await chat_responder_(
                         selected_history,
                         chat_request.query,
@@ -561,7 +562,6 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         company_name=company_name,
                         assistant_name=assistant_name
                     )
-
                     if do_clarify:
                         do_suggest = True
                         response = MODULE_CLARIFICATION_RESPONSE_TEMPLATE

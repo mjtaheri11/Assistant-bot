@@ -49,6 +49,7 @@ def request_simple_qa(session_id, query, api_url: str = BASE_URL):
         "query": query,
         "session_id": session_id,  # Assume this is generated or fetched from somewhere
     }
+
     response = requests.get(f"{api_url}/v1/faq", params=payload)
     json_response = response.json()
     if response.status_code == 200:

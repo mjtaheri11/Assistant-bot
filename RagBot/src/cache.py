@@ -5,10 +5,14 @@ from typing import Any, List, Mapping, Optional, Dict
 import numpy as np
 from langchain.vectorstores import Chroma
 from langchain.embeddings import HuggingFaceEmbeddings  # Ensure compatibility
+import redis
 # from FlagEmbedding import FlagReranker
 
 from .config import config
 from .retriever import ModelManager
+
+REDIS_HOST = os.environ.get("REDIS_HOST", "185.13.230.222")
+REDIS_PORT = os.environ.get("REDIS_PORT", "6380")
 
 
 class Cache:
@@ -22,6 +26,7 @@ class Cache:
 
 
     def _initialize(self):
+        self.redis_db = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=0, decode_responses=True) # db=0 for semantic_router cache
         model_manager = ModelManager()
         self.embedding_model = model_manager.embedding_model
         self.reranker_model = model_manager.reranker_model
@@ -36,6 +41,13 @@ class Cache:
             embedding_function=self.embedding_model,
             persist_directory=persist_directory,
         )
+
+    def get_exact_cache(self, query):
+        route_response_cached = self.redis_db.get(query)
+        return route_response_cached
+
+    def set_exact_cache(self, key, value):
+        self.redis_db.set(key, value)
 
 
     def _get_embedding(self, query: str) -> List[float]:
