@@ -217,14 +217,11 @@ async def prepare_final_context(query: str, database_index: str = None, input_mo
     """
     
     context_with_metadata = await retrieve_context_with_metadata(query, database_index=database_index, input_modules=[input_module] if input_module else None)
-    
-
     if not context_with_metadata:
         return False, [], []
     
     if input_module:
         return _handle_single_module_case(context_with_metadata, input_module)
-    
     proposable_modules = set(config["modules"]["proposable_modules"])
     detected_modules = [result["module"] for result in context_with_metadata]
     module_frequencies = Counter(detected_modules)

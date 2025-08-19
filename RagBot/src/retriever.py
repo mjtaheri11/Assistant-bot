@@ -124,7 +124,6 @@ class Retriever(object):
         from operator import attrgetter
         # 'attrgetter' creates a function that retrieves the 'score' attribute from an object.
         docs_scores_sorted = sorted(docs_with_scores_index, key=attrgetter('score'), reverse=True)
-
         if len(docs_with_scores_index) > 0:
             final_docs = []
             # Check if we have more than 'k' documents and if the k-th score is above 0.06
@@ -145,7 +144,7 @@ class Retriever(object):
                 sorted_documents = [{"text": d.document, "index": d.index} for d in final_docs]                
         else:
             # If no documents meet the threshold, return an empty list.
-            sorted_documents = [{}]
+            sorted_documents = []
         return sorted_documents
 
     # async def _rerank_documents_mxbai(self, query: str, documents: list[str], k: int, reverse: bool = True) -> list[str]:
@@ -255,7 +254,7 @@ class Retriever(object):
         # Choose reranking method
 
         sorted_documents_with_indices = await self._rerank_documents_flag(query, document_texts, k, reverse)            
-        if sorted_documents_with_indices and sorted_documents_with_indices != [{}]:
+        if sorted_documents_with_indices and sorted_documents_with_indices != []:
             final_documents_with_metadata = self.add_module(sorted_documents_with_indices, original_documents)
             return final_documents_with_metadata
         else:
