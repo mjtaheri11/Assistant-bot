@@ -210,3 +210,11 @@ VectorDB-legacy/7b2632f6-e995-4037-89f5-54db92961312/index_metadata.pickle
 VectorDB-legacy/7b2632f6-e995-4037-89f5-54db92961312/link_lists.bin
 VectorDB-legacy/7b2632f6-e995-4037-89f5-54db92961312/length.bin
 VectorDB-legacy/7b2632f6-e995-4037-89f5-54db92961312/header.bin
+VectorDB-Chunk_Question/chroma.sqlite3
+VectorDB-Chunk_Question/a0d458c0-5d6c-4778-8932-9225e5223d95/data_level0.bin
+VectorDB-Chunk_Question/a0d458c0-5d6c-4778-8932-9225e5223d95/header.bin
+VectorDB-Chunk_Question/a0d458c0-5d6c-4778-8932-9225e5223d95/link_lists.bin
+.gitignore
+.gitignore
+VectorDB-Chunk_Question/a0d458c0-5d6c-4778-8932-9225e5223d95/length.bin
+VectorDB-Chunk_Question/a0d458c0-5d6c-4778-8932-9225e5223d95/index_metadata.pickle
