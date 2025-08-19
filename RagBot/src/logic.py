@@ -355,7 +355,7 @@ async def chat_responder_(
         classifier_address=config["router_model"]["address"],
         model_name=config["router_model"]["model_name"]
     )
-    cache = Cache()
+    cache = Cache() # TODO this should be added to a separate function 
     route_response_cached = cache.get_exact_cache(paraphrased_utterance)
     if route_response_cached is None:
         route_response = semantic_router_object.predict_sentences([paraphrased_utterance])
