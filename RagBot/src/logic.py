@@ -351,7 +351,26 @@ async def chat_responder_(
             return user_utterance, response, "", False, []
 
     paraphrased_utterance = await utterance_paraphraser(history, user_utterance)
-    
+
+    semantic_router_object = SemanticRouterPipeline(
+        inference_only=True,
+        embedding_address=config["embedding_model"]["model_name"],
+        classifier_address=config["router_model"]["address"],
+        model_name=config["router_model"]["model_name"]
+    )
+    cache = Cache()
+    route_response_cached = cache.get_exact_cache(paraphrased_utterance)
+    if route_response_cached is None:
+        route_response = semantic_router_object.predict_sentences([paraphrased_utterance])
+        route_response = route_response[0]
+        cache.set_exact_cache(paraphrased_utterance, route_response)
+        logger_no_session_id(message="key: %s, is added to redis!" % paraphrased_utterance)
+    else:
+        route_response = route_response_cached
+
+    if route_response == "sql":
+        return paraphrased_utterance, "", "", False, []
+
     if use_cache:
         response, url = await get_cache_response(paraphrased_utterance) 
         if response:
@@ -369,34 +388,13 @@ async def chat_responder_(
         return paraphrased_utterance, "", "", do_clarify, modules
     
     # Use semantic router if available
-    try:
-        semantic_router_object = SemanticRouterPipeline(
-            inference_only=True,
-            embedding_address=config["embedding_model"]["model_name"],
-            classifier_address=config["router_model"]["address"],
-            model_name=config["router_model"]["model_name"]
-        )
-        cache = Cache()
-        route_response_cached = cache.get_exact_cache(paraphrased_utterance)
-        if route_response_cached is None:
-            route_response = semantic_router_object.predict_sentences([paraphrased_utterance])
-            route_response = route_response[0]
-            cache.set_exact_cache(paraphrased_utterance, route_response)
-            logger_no_session_id(message="key: %s, is added to redis!" % paraphrased_utterance)
-        else:
-            route_response = route_response_cached
-        
-        if route_response == "sql":
-            return paraphrased_utterance, "", "", do_clarify, modules
-    except:
-        logger_no_session_id(message="error in semantic router!", log_level=logging.ERROR)
-        pass
 
     hashed_paraphrased_utterance = hash_string(paraphrased_utterance)
     chitchat_redis_key = "chitchat_{hashed_pu}".format(hashed_pu=hashed_paraphrased_utterance)
     route_response_hashed_cached = cache.get_exact_cache(chitchat_redis_key)
     if route_response_hashed_cached is not None:
         response = route_response_hashed_cached
+        return paraphrased_utterance, response, "", do_clarify, modules
     else:
         response = await query_responder(
             paraphrased_utterance,
