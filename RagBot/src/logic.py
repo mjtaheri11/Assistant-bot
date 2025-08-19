@@ -412,7 +412,8 @@ async def chat_responder_(
         if "خارج از حوزه کاری" in response:
             response = template_for_not_context.format(company_name=company_name)
 
-        cache.set_exact_cache(chitchat_redis_key, response)
+        if route_response == "chitchat":
+            cache.set_exact_cache(chitchat_redis_key, response)
 
     
     return paraphrased_utterance, response, context, do_clarify, modules
