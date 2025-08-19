@@ -31,6 +31,8 @@ from .business_objects import LOGISTICS_SALES_MODIFIED, FINANCIAL_BO_MODIFIED
 from .semantic_router import SemanticRouterPipeline
 from langchain.chat_models import ChatOpenAI
 from langfuse.decorators import langfuse_context, observe
+import logging
+import hashlib
 
 
 SEED = 44
@@ -42,6 +44,21 @@ random.seed(SEED)
 template_for_not_answer = "پاسخ به این سوال در محدوده پاسخگویی من نیست برای اطلاعات بیشتر به 'https://systemgroup.net' مراجعه کنید."
 template_for_not_context = """این سوال خارج از حوزه کاری {company_name} است. لطفا سوال خود را در رابطه با محصولات و خدمات {company_name} مطرح کنید. برای اطلاعات بیشتر به 'https://systemgroup.net' مراجعه کنید"""
 template_for_doubtful_answer = "سوال شما را به خوبی متوجه نشدم. لطفا سوال خود را به صورت دقیق تر بپرسید تا بتوانم بهتر کمک کنم."
+
+
+def hash_string(input_string):
+    """Hashes a string using the SHA-256 algorithm."""
+
+    # Encode the string into bytes, which is required by the hash function
+    encoded_string = input_string.encode('utf-8')
+
+    # Create a SHA-256 hash object
+    hash_object = hashlib.sha256(encoded_string)
+
+    # Get the hexadecimal representation of the hash
+    hex_digest = hash_object.hexdigest()
+
+    return hex_digest
 
 @observe()
 async def get_chat_response(prompt: str, answer_type: str = "qa") -> str:
@@ -334,7 +351,26 @@ async def chat_responder_(
             return user_utterance, response, "", False, []
 
     paraphrased_utterance = await utterance_paraphraser(history, user_utterance)
-    
+
+    semantic_router_object = SemanticRouterPipeline(
+        inference_only=True,
+        embedding_address=config["embedding_model"]["model_name"],
+        classifier_address=config["router_model"]["address"],
+        model_name=config["router_model"]["model_name"]
+    )
+    cache = Cache()
+    route_response_cached = cache.get_exact_cache(paraphrased_utterance)
+    if route_response_cached is None:
+        route_response = semantic_router_object.predict_sentences([paraphrased_utterance])
+        route_response = route_response[0]
+        cache.set_exact_cache(paraphrased_utterance, route_response)
+        logger_no_session_id(message="key: %s, is added to redis!" % paraphrased_utterance)
+    else:
+        route_response = route_response_cached
+
+    if route_response == "sql":
+        return paraphrased_utterance, "", "", False, []
+
     if use_cache:
         response, url = await get_cache_response(paraphrased_utterance) 
         if response:
@@ -352,42 +388,31 @@ async def chat_responder_(
         return paraphrased_utterance, "", "", do_clarify, modules
     
     # Use semantic router if available
-    try:
-        semantic_router_object = SemanticRouterPipeline(
-            inference_only=True,
-            embedding_address=config["embedding_model"]["model_name"],
-            classifier_address=config["router_model"]["address"],
-            model_name=config["router_model"]["model_name"]
-        )
-        cache = Cache()
-        route_response_cached = cache.get_exact_cache(paraphrased_utterance)
-        if route_response_cached is None:
-            route_response = semantic_router_object.predict_sentences([paraphrased_utterance])
-            route_response = route_response[0]
-            cache.set_exact_cache(paraphrased_utterance, route_response)
-            logger_no_session_id(message="key: %s, is added to redis!" % paraphrased_utterance)
-        else:
-            route_response = route_response_cached
-        
-        if route_response == "sql":
-            return paraphrased_utterance, "", "", do_clarify, modules
-    except:
-        logger_no_session_id(message="error in semantic router!", log_level=logging.ERROR)
-        pass
-    
-    response = await query_responder(
-        paraphrased_utterance, 
-        context, 
-        history, 
-        company_name=company_name, 
-        assistant_name=assistant_name, 
-        answer_type=response_type
-        )
-    
-    if "محدوده دانش من " in response:
-        response = template_for_not_answer
-    if "خارج از حوزه کاری" in response:
-        response = template_for_not_context.format(company_name=company_name)
+
+    hashed_paraphrased_utterance = hash_string(paraphrased_utterance)
+    chitchat_redis_key = "chitchat_{hashed_pu}".format(hashed_pu=hashed_paraphrased_utterance)
+    route_response_hashed_cached = cache.get_exact_cache(chitchat_redis_key)
+    if route_response_hashed_cached is not None:
+        response = route_response_hashed_cached
+        return paraphrased_utterance, response, "", do_clarify, modules
+    else:
+        response = await query_responder(
+            paraphrased_utterance,
+            context,
+            history,
+            company_name=company_name,
+            assistant_name=assistant_name,
+            answer_type=response_type
+            )
+
+        if "محدوده دانش من " in response:
+            response = template_for_not_answer
+        if "خارج از حوزه کاری" in response:
+            response = template_for_not_context.format(company_name=company_name)
+
+        if route_response == "chitchat":
+            cache.set_exact_cache(chitchat_redis_key, response)
+
     
     return paraphrased_utterance, response, context, do_clarify, modules
 
