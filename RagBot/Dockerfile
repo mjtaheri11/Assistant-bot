@@ -22,6 +22,7 @@ WORKDIR /app/RagBot
 # Make the initiation script executable
 RUN chmod +x ./run_app.sh
 RUN pip install langfuse==2.21.2
+RUN pip install 'markitdown[all]'
 
 # Run the database initiation script
 # RUN ./initiate_db.sh

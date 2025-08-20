@@ -196,7 +196,7 @@ from deepeval import evaluate
 from deepeval.test_case import LLMTestCase
 import requests
 
-BASE_URL = "http://0.0.0.0:8687" # "http://172.27.0.6:8686" #
+BASE_URL = "http://0.0.0.0:8689" # "http://172.27.0.6:8686" #
 
 def session_create(database_id : str = None, api_url: str = BASE_URL):
     """
@@ -312,9 +312,9 @@ async def main():
     """
     # 1. Setup: Load environment variables and initialize the custom model
     load_dotenv()
-    api_key = os.getenv("LLM_API_KEY")
+    api_key = os.getenv("LLM_API_KEY_EVAL")
     base_url = os.getenv("LLM_API_BASE")
-    model_name = os.getenv("LLM_MODEL_NAME")
+    model_name = os.getenv("LLM_MODEL_NAME_EVAL")
 
     if not base_url or not model_name:
         print("Error: CUSTOM_LLM_BASE_URL and CUSTOM_LLM_MODEL_NAME must be set in.env file.")
@@ -359,6 +359,8 @@ async def main():
     print("\n--- Starting DeepEval Evaluation ---")
     # The evaluate function will run all metrics on all test cases.
     # It handles asynchronous execution internally for performance.
+    import pdb
+    pdb.set_trace()
     results = evaluate(test_cases=test_cases, metrics=metrics)
     print("--- Evaluation Complete ---")
 
