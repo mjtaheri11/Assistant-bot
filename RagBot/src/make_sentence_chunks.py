@@ -457,8 +457,6 @@ def process_single_document(
     chunker = SoleChunker(output_result)
     chunks = chunker(False, True)
     chunks_final = []
-    import pdb
-    pdb.set_trace()
     for w in chunks:
         chunkam = DocLangChain(w)
         chunkam.page_content = w
