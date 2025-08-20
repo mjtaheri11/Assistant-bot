@@ -34,7 +34,7 @@ async def get_chat_response(prompt: str, model_name: str) -> str:
     print("Character Length of the prompt: ", len(prompt))
     print("words length of the prompt: ", len(prompt.split()))
     llm = ChatOpenAI(
-        openai_api_base="http://185.13.230.222:8008/v1",
+        openai_api_base="http://vllmserver:8000/v1",
         openai_api_key="EMPTY",
         model_name="/models/aya-expanse-32b-gptq-4bit"
         )
@@ -159,8 +159,8 @@ async def chat_responder_(
 
     context = await prepare_final_context(paraphrased_utterance)
     if not context:
-        return paraphrased_utterance, template_for_not_answer, "" 
-        
+        return paraphrased_utterance, template_for_not_answer, ""
+
     response = await query_responder(user_utterance, context, history) # user_utterance replaced with paraphrased_utterance
     # json_response = fix_asterisks(json_response)
     # return paraphrased_utterance, json_response["answer"], context

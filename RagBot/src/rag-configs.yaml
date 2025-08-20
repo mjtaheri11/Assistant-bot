@@ -7,11 +7,11 @@ database:
       target_chunk_size: 500
       max_chunk_size: 1000
       sentence_overlap: 1
-    ../knowledge_base/new-KB/80. CRM ChatBot.docx:
+    ../knowledge_base/new-KB/80CRMChatBot.docx:
       target_chunk_size: 500
       max_chunk_size: 1000
       sentence_overlap: 1
-    ../knowledge_base/new-KB/AboutSG.docx:
+    ../knowledge_base/new-KB/GL.docx:
       target_chunk_size: 500
       max_chunk_size: 1000
       sentence_overlap: 1
@@ -19,11 +19,11 @@ database:
       target_chunk_size: 500
       max_chunk_size: 1000
       sentence_overlap: 1
-    ../knowledge_base/new-KB/INV UM 20250512-18.docx:
+    ../knowledge_base/new-KB/INV UM 20250512-20.docx:
       target_chunk_size: 500
       max_chunk_size: 1000
       sentence_overlap: 1
-    ../knowledge_base/new-KB/ReportBuilder_Help_14030925.docx:
+    ../knowledge_base/new-KB/ReportBuilder_Help.docx:
       target_chunk_size: 500
       max_chunk_size: 1000
       sentence_overlap: 1
@@ -35,11 +35,11 @@ database:
       target_chunk_size: 500
       max_chunk_size: 1000
       sentence_overlap: 1
-    ../knowledge_base/new-KB/Treasury_14040231.docx:
+    ../knowledge_base/new-KB/Treasury_14040431.docx:
       target_chunk_size: 500
       max_chunk_size: 1000
       sentence_overlap: 1
-    ../knowledge_base/new-KB/راهنمای دفتر کل نسل 4.docx:
+    ../knowledge_base/new-KB/platform.docx:
       target_chunk_size: 500
       max_chunk_size: 1000
       sentence_overlap: 1
