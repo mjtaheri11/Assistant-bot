@@ -12,12 +12,7 @@ import json
 
 class BaseChunker(ABC):
     def __init__(self, md_file_address):
-        path_of_file = Path(md_file_address)
-        if path_of_file.exists():
-            with open(path_of_file.as_posix(), "r", encoding="utf-8") as f:
-                self._all_of_doc_list = f.readlines()
-                self._retain_only_headers = True
-        elif isinstance(md_file_address, str):
+        if isinstance(md_file_address, str):
             self._all_of_doc_list = md_file_address.splitlines(True)
             self._retain_only_headers = True
         else:
