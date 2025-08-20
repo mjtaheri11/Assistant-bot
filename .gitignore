@@ -218,3 +218,6 @@ VectorDB-Chunk_Question/a0d458c0-5d6c-4778-8932-9225e5223d95/link_lists.bin
 .gitignore
 VectorDB-Chunk_Question/a0d458c0-5d6c-4778-8932-9225e5223d95/length.bin
 VectorDB-Chunk_Question/a0d458c0-5d6c-4778-8932-9225e5223d95/index_metadata.pickle
+RagBot/.deepeval/.temp_test_run_data.json
+RagBot/.deepeval/.deepeval_telemetry.txt
+RagBot/eval/sample.csv
