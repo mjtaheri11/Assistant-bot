@@ -14,8 +14,22 @@ from docx.oxml import CT_P, CT_Tbl, OxmlElement
 from docx.oxml.ns import qn
 from langchain_text_splitters import (MarkdownHeaderTextSplitter,
                                       RecursiveCharacterTextSplitter)
+from langchain_core.documents import Document as DocLangChain
+from markitdown import MarkItDown
 
 from .config import config
+from .chunker_algorithm import SoleChunker
+
+DICT_OF_TITLES = {"راهنمای سیستم CRM": "مدیریت ارتباط با مشتری",
+                  "راهنمای کاربری دفتر کل نسل 4": "دفتر کل",
+                  "راهنمای کاربری ماژول خزانه داری نسل 4": "خزانه داری",
+                  "راهنمای فروش": "فروش",
+                  "راهنمای آموزش ابزار گزارش ساز در نسل 4": "گزارش ساز",
+                  "راهنمای انبار و حسابداری انبار نسل 4": "انبار",
+                  "معرفی سیستم یکپارچه نسل 4": "مقدمه",
+                  "راهنمای استفاده از دستیار دیجیتال": "راهنما",
+                  "كاربر ارشد (Admin) يا سرپرست در Application": "پلتفرم",
+                  "سامانه مودیان مالیاتی": "مودیان"}
 
 
 def convert_doc_bytes_to_docx(doc_bytes: bytes) -> bytes:
@@ -358,8 +372,101 @@ def convert_table_to_markdown(table) -> str:
             markdown_rows.append(separator)
     return "\n".join(markdown_rows)
 
+def remove_stray_backslashes(input_string: str) -> str:
+    """
+    Removes backslash characters from a string unless they are part of a
+    recognized escape sequence (e.g., \\n, \\t, \\\\, \\", \\').
+    """
+    # This regex finds a `\` that is NOT followed by n, t, r, b, f, ', ", or another \.
+    # The `(?!...)` syntax is a "negative lookahead".
+    pattern = r'\\(?![ntrbf\'"\\])'
+
+    return re.sub(pattern, '', input_string)
+
+def remove_table_of_contents(text: str) -> str:
+    """
+    Removes the table of contents from a given text.
+
+    This function identifies the table of contents section starting with
+    the word "Contents" and removes all subsequent lines that match the
+    TOC entry pattern (e.g., "[...](#_Toc...)").
+
+    Args:
+        text: The input string containing the document text.
+
+    Returns:
+        The text with the table of contents section removed.
+    """
+    lines = text.split('\n')
+
+    # This list will hold the lines of the final document.
+    output_lines = []
+
+    # A flag to indicate if the current line is within the TOC section.
+    in_toc_section = False
+
+    # A regex pattern to identify TOC entry lines.
+    toc_pattern = re.compile(r'\[.*\]\(#_Toc\d+\)')
+
+    for line in lines:
+        stripped_line = line.strip()
+
+        # Check for the start of the table of contents.
+        if "Contents" in stripped_line:
+            in_toc_section = True
+            # Skip the "Contents" line itself.
+            continue
+
+        # If we are in the TOC section, we check if the line is a TOC entry.
+        if in_toc_section:
+            # If the line is a TOC entry or an empty line within the TOC, we skip it.
+            if toc_pattern.search(stripped_line) or not stripped_line:
+                continue
+            # If it's not a TOC entry, the TOC section has ended.
+            else:
+                in_toc_section = False
+
+        # Add the line to our output list if it's not part of the TOC.
+        output_lines.append(line)
+
+    # Join the lines back into a single string and remove any leading newlines
+    # that might have been left after removing the TOC block.
+    return '\n'.join(output_lines).lstrip('\n')
+
 
 def process_single_document(
+    doc_obj: object,
+    doc_path: str,
+    target_chunk_size: int = config["retriever"]["chunk_size"],
+    max_chunk_size: int = config["retriever"]["max_chunk_size"],
+) -> List[Document]:
+
+    regex_image = r"!\\?\[[^\]]*\]\([^\)]*\)?|<img[^>]*>"
+    md = MarkItDown(enable_plugins=False)  # Set to True to enable plugins
+    result = md.convert(BytesIO(doc_obj)).text_content
+    result = re.sub(regex_image, "", result)
+    for keyam in DICT_OF_TITLES:
+        index_found = result[:100].find(keyam)
+        if index_found != -1:
+            metadata_value = DICT_OF_TITLES[keyam]
+            metadata = {"source": doc_path}
+            metadata["module"] = metadata_value
+    output_result = remove_table_of_contents(result)
+    index = output_result.find('#')
+    output_result = output_result[index:]
+    chunker = SoleChunker(output_result)
+    chunks = chunker(False, True)
+    chunks_final = []
+    import pdb
+    pdb.set_trace()
+    for w in chunks:
+        chunkam = DocLangChain(w)
+        chunkam.page_content = w
+        chunkam.metadata = metadata
+        chunks_final.append(chunkam)
+    return chunks_final
+
+def process_single_document_old(
     doc_obj: object,
     doc_path: str,
     target_chunk_size: int = config["retriever"]["chunk_size"],

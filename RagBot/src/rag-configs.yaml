@@ -53,7 +53,8 @@ modules:
     intro.csv: مقدمه
     help.csv: راهنما
     crm.csv: مدیریت ارتباط با مشتری
-    aboutSG.csv: درباره همکاران سیستم 
+    aboutSG.csv: درباره همکاران سیستم
+    pla.csv: پلتفرم
   
   proposable_modules:
     - فروش
