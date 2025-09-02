@@ -94,6 +94,8 @@ def chat_request(
     # Handle the different response status codes
     json_response = response.json()
     if response.status_code == 200:
+        if json_response["is_sql"] == True:
+            json_response["response"] = {"response": json_response["response"], "parameters": json_response["parameters"], "response_template": json_response["response_template"]}
         return {
             "status": "success",
             "query": json_response["query"],
@@ -606,8 +608,9 @@ def main():
                                 content = st.session_state["response"][i]
                                 is_sql = st.session_state.get("sql_response_type", [False] * len(st.session_state["response"]))[i]
                                 direction_class = "markdown-ltr" if is_sql else "markdown-rtl"
+                                content = f"```{content}```" if is_sql else content
                                 st.markdown(
-                                    f'<div class="{direction_class}">{content}</div>',
+                                    content if is_sql else f'<div class="{direction_class}">{content}</div>',
                                     unsafe_allow_html=True,
                                     help=help_msg
                                 )

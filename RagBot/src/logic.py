@@ -16,11 +16,13 @@ from .prompts import (
     RAG_EXPLANATORY_SYSTEM_PROMPT,
     RAG_NORMAL_SYSTEM_PROMPT,
     UTTERANCE_PARAPHRASER_PROMPT,
-    SQL_CONVERTER,
-    SQL_CONVERTER_MODIFIED,
+    SQL_CONVERTER_MODIFIED_WITH_PARAMETERS,
+    SQL_CONVERTER_MODIFIED_WITH_PARAMETERS_TEMPLATE,
     SQL_MODIFIER,
     QUERY_ROUTER,
-    ANSWER_VALIDATOR_PROMPT
+    ANSWER_VALIDATOR_PROMPT,
+    SEMANTIC_ROUTER
+    # SQL_CONVERTER,
 )
 from .retriever import Retriever
 from .config import config
@@ -41,10 +43,11 @@ np.random.seed(SEED)
 torch.cuda.manual_seed_all(SEED)
 random.seed(SEED)
 
-template_for_not_answer = "پاسخ به این سوال در محدوده پاسخگویی من نیست برای اطلاعات بیشتر به 'https://systemgroup.net' مراجعه کنید."
+template_for_chitchat_answers = """من اینجا هستم تا تنها به سوالات مربوط به محصولات نسل چهارم شرکت همکاران سیستم پاسخ دهم. لطفاً سوالات خود را در مورد راه‌حل‌های نسل چهارم ما مطرح کنید.
+"""
+template_for_not_answer = "پاسخ به این سوال در محدوده پاسخگویی من نیست."
 template_for_not_context = """این سوال خارج از حوزه کاری {company_name} است. لطفا سوال خود را در رابطه با محصولات و خدمات {company_name} مطرح کنید. برای اطلاعات بیشتر به 'https://systemgroup.net' مراجعه کنید"""
 template_for_doubtful_answer = "سوال شما را به خوبی متوجه نشدم. لطفا سوال خود را به صورت دقیق تر بپرسید تا بتوانم بهتر کمک کنم."
-
 
 def hash_string(input_string):
     """Hashes a string using the SHA-256 algorithm."""
@@ -72,13 +75,17 @@ async def get_chat_response(prompt: str, answer_type: str = "qa") -> str:
     LLM_MODEL_NAME = os.getenv("LLM_MODEL_NAME") 
     LLM_API_KEY = os.getenv("LLM_API_KEY")
     LLM_API_BASE = os.getenv("LLM_API_BASE")
+    print("LLM_API_BASE:", LLM_API_BASE)
+    print("LLM_API_KEY:", LLM_API_KEY)
+    print("LLM_MODEL_NAME:", LLM_MODEL_NAME)
     # Use OpenRouter if available, otherwise fall back to original configuration
     if LLM_API_KEY and LLM_MODEL_NAME and LLM_API_BASE:
         llm = ChatOpenAI(
             openai_api_base=LLM_API_BASE,
             openai_api_key=LLM_API_KEY,
             model_name=LLM_MODEL_NAME,
-            temperature=0,
+            temperature=1,
+            max_completion_tokens=4000,
         )
     else:
         raise ValueError("No valid LLM configuration found in environment variables")
@@ -179,7 +186,7 @@ async def answer_validator(question: str, context: str, answer: str) -> bool:
     return response
 
 @observe()
-async def is_somewhat_uniform(freq_dict: dict, threshold: float = 0.7) -> bool:
+async def is_somewhat_uniform(freq_dict: dict, threshold: float = 0.8) -> bool:
     """
     Checks if the frequency distribution in a dictionary is somewhat uniform
     based on the Coefficient of Variation (CV).
@@ -225,7 +232,7 @@ async def prepare_final_context(query: str, database_index: str = None, input_mo
     proposable_modules = set(config["modules"]["proposable_modules"])
     detected_modules = [result["module"] for result in context_with_metadata]
     module_frequencies = Counter(detected_modules)
-    
+
     if len(module_frequencies) < 2:
         detected_modules_lst = list(module_frequencies.keys())
         return _handle_single_module_case(context_with_metadata, detected_modules_lst[0])
@@ -237,7 +244,8 @@ async def prepare_final_context(query: str, database_index: str = None, input_mo
         probable_detected_module = [k for k, v in module_frequencies.items() if v == max_value]
         return _handle_clear_preference_case(context_with_metadata, probable_detected_module[0])
     else:
-        probable_detected_modules = [k for k, v in module_frequencies.items() if v >= mean_freq]
+        # probable_detected_modules = [k for k, v in module_frequencies.items() if v >= mean_freq]
+        probable_detected_modules = list(module_frequencies.keys())
         return _handle_clarification_case(
             context_with_metadata,
             probable_detected_modules,
@@ -299,13 +307,13 @@ async def sql_responder_(
     # Use feature/add-sql-agent logic with detected_module
     if detected_module.strip() == "دفتر کل" or detected_module.strip() == "دفترکل":
         if not do_retry:
-            bo_prompt = SQL_CONVERTER_MODIFIED.format(schema=FINANCIAL_BO_MODIFIED, query=query)
+            bo_prompt = SQL_CONVERTER_MODIFIED_WITH_PARAMETERS_TEMPLATE.format(schema=FINANCIAL_BO_MODIFIED, query=query)
         else:
             bo_prompt = SQL_MODIFIER.format(schema=FINANCIAL_BO_MODIFIED, original_query=query, 
                                           faulty_sql_query=faulty_sql_query, error_message=error_message)
     else:
         if not do_retry:
-            bo_prompt = SQL_CONVERTER_MODIFIED.format(schema=LOGISTICS_SALES_MODIFIED, query=query)
+            bo_prompt = SQL_CONVERTER_MODIFIED_WITH_PARAMETERS_TEMPLATE.format(schema=LOGISTICS_SALES_MODIFIED, query=query)
         else:
             bo_prompt = SQL_MODIFIER.format(schema=LOGISTICS_SALES_MODIFIED, original_query=query, 
                                           faulty_sql_query=faulty_sql_query, error_message=error_message)
@@ -317,6 +325,96 @@ async def sql_responder_(
         response = "در حال حاضر نمیتوانم به این سوال پاسخ دهم"
     
     return response
+
+
+def _get_chitchat_cache_key(utterance: str) -> str:
+    """Generates a consistent cache key for chitchat routes."""
+    hashed_utterance = hash_string(utterance)
+    return f"chitchat_{hashed_utterance}"
+
+
+async def _determine_final_route(
+    utterance: str,
+    top_prediction: str,
+    probabilities: List[Tuple[str, float]],
+    max_prob: float
+) -> str:
+
+    ROUTER_CONFIG = config["router_model"]
+
+    ALPHA_THRESHOLD = ROUTER_CONFIG["alpha_threshold"]
+    BETA_THRESHOLD = ROUTER_CONFIG["beta_threshold"]
+    """Determines the final route based on probability thresholds."""
+    if max_prob > ALPHA_THRESHOLD and ("همکاران" not in utterance) and (top_prediction != "illegal"):
+        return top_prediction
+
+    # If confidence is low, see if multiple routes are plausible
+    if "همکاران" not in utterance:
+        plausible_routes = [
+            route for route, prob in probabilities if prob > BETA_THRESHOLD
+        ]
+    else:
+        plausible_routes = [route for route in probabilities]
+
+    if len(plausible_routes) < 2:
+        # Fallback if no route meets the beta threshold
+        raise Exception("the Number of plausible routes is less than 2, the least required routes")
+
+    # Use an LLM to disambiguate between plausible routes
+    return await get_chat_response(
+        SEMANTIC_ROUTER.format(user_query=utterance, class_list=plausible_routes)
+    )
+
+
+@observe()
+async def get_route_for_utterance(utterance: str) -> str:    
+    CHITCHAT_ROUTE = "chitchat"
+    ROUTER_CONFIG = config["router_model"]
+    
+    # It's better to instantiate clients once and reuse them
+    # rather than creating them in a function that's called frequently.
+    cache_client = Cache()
+    semantic_router_client = SemanticRouterPipeline(
+        inference_only=True,
+        embedding_address=config["embedding_model"]["model_name"],
+        classifier_address=ROUTER_CONFIG["address"],
+        model_name=ROUTER_CONFIG["model_name"]
+    )
+
+    """
+    Determines the semantic route for a given utterance, using caching to improve performance.
+    """
+    # 1. Check for a direct cached route first (guard clause)
+    cached_route = cache_client.get_exact_cache(utterance)
+    if cached_route:
+        return cached_route
+
+    # 2. Check for the specific chitchat cache (from original logic)
+    chitchat_key = _get_chitchat_cache_key(utterance)
+    if cache_client.get_exact_cache(chitchat_key):
+        return CHITCHAT_ROUTE
+
+    # 3. If not cached, perform prediction
+    predictions, probabilities, max_prob = semantic_router_client.predict_sentences([utterance])
+
+    # 4. Determine the final route using the logic in the helper function
+    final_route = await _determine_final_route(
+        utterance, predictions[0], probabilities, max_prob
+    )
+
+    # 5. Cache the result for future requests
+    # Note: The original code had a commented-out line to cache all routes.
+    # This version explicitly caches the final determined route.
+    # cache_client.set_exact_cache(utterance, final_route)
+    # logging.info(f"Cached route for '{utterance}': '{final_route}'")
+
+    # The original code had a special caching rule for chitchat.
+    # It cached an undefined 'response' variable. Here we cache the route name for consistency.
+    # if final_route == CHITCHAT_ROUTE:
+    #     cache_client.set_exact_cache(chitchat_key, final_route)
+
+    return final_route.strip()
+
 
 @observe()
 async def router_SQL_QA(query: str, context: str):
@@ -348,31 +446,24 @@ async def chat_responder_(
             return user_utterance, response, "", False, []
 
     paraphrased_utterance = await utterance_paraphraser(history, user_utterance)
-
-    semantic_router_object = SemanticRouterPipeline(
-        inference_only=True,
-        embedding_address=config["embedding_model"]["model_name"],
-        classifier_address=config["router_model"]["address"],
-        model_name=config["router_model"]["model_name"]
-    )
-    cache = Cache() # TODO this should be added to a separate function 
-    route_response_cached = cache.get_exact_cache(paraphrased_utterance)
-    if route_response_cached is None:
-        route_response = semantic_router_object.predict_sentences([paraphrased_utterance])
-        route_response = route_response[0]
-        cache.set_exact_cache(paraphrased_utterance, route_response)
-        logger_no_session_id(message="key: %s, is added to redis!" % paraphrased_utterance)
-    else:
-        route_response = route_response_cached
-
-    if route_response == "sql":
-        return paraphrased_utterance, "", "", False, []
-
     if use_cache:
         response, url = await get_cache_response(paraphrased_utterance) 
         if response:
             return paraphrased_utterance, response, "", False, []
     
+    route_response = await get_route_for_utterance(paraphrased_utterance)
+    import pdb
+    pdb.set_trace()
+
+    if route_response == "sql":
+        return paraphrased_utterance, "", "", False, []
+    
+    if route_response == "chitchat":
+        return paraphrased_utterance, template_for_chitchat_answers, "", False, [] 
+    
+    if route_response == "illegal" or route_response =="irrelevant": 
+        return paraphrased_utterance, template_for_not_answer, "", False, []
+
     if detected_module:
         do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, input_module=detected_module)
     else:
@@ -384,32 +475,19 @@ async def chat_responder_(
     if do_clarify:
         return paraphrased_utterance, "", "", do_clarify, modules
     
-    # Use semantic router if available
+    response = await query_responder(
+        paraphrased_utterance,
+        context,
+        history,
+        company_name=company_name,
+        assistant_name=assistant_name,
+        answer_type=response_type
+        )
 
-    hashed_paraphrased_utterance = hash_string(paraphrased_utterance)
-    chitchat_redis_key = "chitchat_{hashed_pu}".format(hashed_pu=hashed_paraphrased_utterance)
-    route_response_hashed_cached = cache.get_exact_cache(chitchat_redis_key)
-    if route_response_hashed_cached is not None:
-        response = route_response_hashed_cached
-        return paraphrased_utterance, response, "", do_clarify, modules
-    else:
-        response = await query_responder(
-            paraphrased_utterance,
-            context,
-            history,
-            company_name=company_name,
-            assistant_name=assistant_name,
-            answer_type=response_type
-            )
-
-        if "محدوده دانش من " in response:
-            response = template_for_not_answer
-        if "خارج از حوزه کاری" in response:
-            response = template_for_not_context.format(company_name=company_name)
-
-        if route_response == "chitchat":
-            cache.set_exact_cache(chitchat_redis_key, response)
-
+    if "محدوده دانش من " in response:
+        response = template_for_not_answer
+    if "خارج از حوزه کاری" in response:
+        response = template_for_not_context.format(company_name=company_name)
     
     return paraphrased_utterance, response, context, do_clarify, modules
 

@@ -9,6 +9,67 @@ import streamlit as st
 import yaml
 from pythonjsonlogger import jsonlogger
 
+def substitute_sql_parameters(json_input):
+    """
+    Substitutes parameters in a SQL query to create a non-parametric SQL query.
+    
+    Args:
+        json_input (str or dict): JSON string or dictionary containing 'SQL' and 'parameters' keys
+    
+    Returns:
+        str: SQL query with parameters substituted
+    """
+    
+    # Parse JSON if it's a string
+    if isinstance(json_input, str):
+        data = json.loads(json_input)
+    else:
+        data = json_input
+    
+    sql_query = data['SQL']
+    parameters = data['parameters']
+    
+    # Create a copy of the SQL query to modify
+    result_sql = sql_query
+    
+    # Find all parameter placeholders in the SQL (format: :parameter_name)
+    param_pattern = r':(\w+)'
+    placeholders = re.findall(param_pattern, sql_query)
+    
+    # Replace each parameter placeholder with its value
+    for param_name in placeholders:
+        if param_name in parameters:
+            param_value = parameters[param_name]
+            placeholder = f':{param_name}'
+            
+            # Handle different data types
+            if isinstance(param_value, str):
+                # Escape single quotes in strings and wrap in quotes
+                escaped_value = param_value.replace("'", "''")
+                substituted_value = f"'{escaped_value}'"
+            elif isinstance(param_value, (int, float)):
+                # Numbers don't need quotes
+                substituted_value = str(param_value)
+            elif isinstance(param_value, list):
+                # For lists, we'll take the first element (you may want to modify this behavior)
+                if param_value and isinstance(param_value[0], str):
+                    escaped_value = param_value[0].replace("'", "''")
+                    substituted_value = f"'{escaped_value}'"
+                elif param_value:
+                    substituted_value = str(param_value[0])
+                else:
+                    substituted_value = "NULL"
+            elif param_value is None:
+                substituted_value = "NULL"
+            else:
+                # For other types, convert to string and wrap in quotes
+                substituted_value = f"'{str(param_value)}'"
+            
+            # Replace the placeholder with the actual value
+            result_sql = result_sql.replace(placeholder, substituted_value)
+    
+    return result_sql
+
 
 def json_text_cleaning(text, answer_key="query"):
     # Extract reasoning value

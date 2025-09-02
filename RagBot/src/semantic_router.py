@@ -20,6 +20,10 @@ import matplotlib.pyplot as plt
 import joblib
 import seaborn as sns
 
+# Your task is to create a prompt to classify the input user query into the provided classes. The provided classes are at least two of the following types. Consider that this input prompt is targeted to classify for "همکاران سیستم" company, an Iranian company that focuses on creating softwares related to ERP systems. Users' questions should be about whether a question is in the system's manuals, or they want to  
+
+# ["qa", "sql", "illegal", "irrelevant", "chitchat"]
+
 # 1. Configure the logger
 # This is the most basic setup. You do this once at the start of your application.
 logging.basicConfig(
@@ -292,10 +296,13 @@ class SemanticRouterPipeline:
     def predict_sentences(self, sentences):
         t0 = time()
         label = self.classifier.predict(self.embedder(sentences))
+        prob = self.classifier.model.predict_proba(self.embedder(sentences))
+        classes = self.classifier.model.classes_
+        classes_prob = zip(classes, prob[0])
         t1 = time()
         logger.info(f"Prediction done in {t1 - t0} seconds")
         logger.info(f"The sentence: {sentences[0]} is classified as: {label}")
-        return label
+        return label, classes_prob, max(prob[0])
 
 # if __name__ == '__main__':
 #     # embedding_address = r"C:\Users\SoroushA\.cache\huggingface\hub\models--intfloat--multilingual-e5-large"

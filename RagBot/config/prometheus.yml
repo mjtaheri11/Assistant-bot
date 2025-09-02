@@ -6,4 +6,4 @@ scrape_configs:
       - targets: ['localhost:9090']
   - job_name: 'api'
     static_configs:
-      - targets: ['api:8687']
+      - targets: ['api:8689']

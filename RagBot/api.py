@@ -41,6 +41,7 @@ from src.logic import (
     router_SQL_QA,
 )
 from src.logs import non_generative_agent_logger, simple_logger
+from src.utils import substitute_sql_parameters
 
 RESPONSE_TEMPLATE_FOR_NO_ANSWER = "در حال حاضر نمی‌توانم به سوال شما پاسخ دهم"
 MODULE_CLARIFICATION_RESPONSE_TEMPLATE = "لطفا مشخص نمایید سوال شما از کدام یک از ماژول های سیستم است."
@@ -78,6 +79,7 @@ class ChatResponse(BaseModel):
     do_suggest: bool = False
     choices: List[str] = []
     parameters: Optional[dict] = {}
+    response_template: str = ""
 
 class CreateSessionRequest(BaseModel):
     tenant_name: Optional[str] = ""
@@ -408,7 +410,9 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
     choices = []
     do_suggest = False
     parameters = {}
-
+    parametric_response = None
+    response_template = ""
+    
     try:
         session_id = get_session_id(request, chat_request)
         if not chat_request.is_sync:
@@ -591,9 +595,11 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                                     chat_request.do_retry,
                                 )
                                 response_dict = json.loads(response_dict_str)
-                                if "NULL" not in response_dict_str:
+                                if "NULL" not in response_dict_str and response_dict["SQL"] is not None:
                                     response = response_dict["SQL"]
+                                    parametric_response = substitute_sql_parameters(response_dict)
                                     parameters = response_dict["parameters"]
+                                    response_template = response_dict["response_template"]
                                     if response is None:
                                         is_sql = False
                                         response = RESPONSE_TEMPLATE_FOR_NO_ANSWER
@@ -608,7 +614,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         message_id = await postgres.update_last_chat_row(
                             session_id,
                             paraphrased_utterance,
-                            response,
+                            parametric_response if is_sql else response,
                             is_sql,
                             elapsed_time,
                             do_suggest,
@@ -632,7 +638,8 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                 "response": response,
                 "is_sql": is_sql,
                 "do_suggest": do_suggest,
-                "choices": choices
+                "choices": choices,
+                "response_templated": response_template
             },
             elapsed_time=elapsed_time,
         )
@@ -657,7 +664,8 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
             is_sql=is_sql,
             choices=choices,
             do_suggest=do_suggest,
-            parameters=parameters
+            parameters=parameters,
+            response_template=response_template
         )
 
     except HTTPException as e:

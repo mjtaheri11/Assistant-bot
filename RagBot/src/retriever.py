@@ -80,27 +80,37 @@ class Retriever(object):
     def _get_retriever(self, module_filter=None, database_index=None):
         """
         Get a retriever with optional module filtering and database selection.
-       
+        
         Args:
             module_filter (str, list, or None):
                 - None or empty list: No filtering (retrieve from all modules)
                 - str: Single module name to filter by
                 - list: List of module names to filter by
             database_index (str, optional): Path to vector database
-       
+        
         Returns:
             Retriever object with appropriate filtering
         """
-        # Use current vectordb if no database_index specified
-        vectordb = self.vectordb_
+        vectordb = None
+        # Prioritize creating a new, temporary vectordb if database_index is provided.
         if database_index:
             vectordb = Chroma(
                 persist_directory=database_index,
                 embedding_function=self.embedding_model_,
             )
+        # If no index is given, try to use the already initialized instance attribute.
+        elif hasattr(self, 'vectordb_'):
+            vectordb = self.vectordb_
+        
+        # If vectordb is still None, the retriever is uninitialized. Raise an error.
+        if not vectordb:
+            raise AttributeError(
+                "'Retriever' object has not been initialized. "
+                "You must call `find_vdb()` or provide a `database_index` argument."
+            )
         
         search_kwargs = {"k": self.config_["retriever"]["retrieved_documents"]}
-       
+        
         # Apply filtering only if module_filter is provided and not empty
         if module_filter:
             if isinstance(module_filter, str):
@@ -109,9 +119,10 @@ class Retriever(object):
             elif isinstance(module_filter, list) and len(module_filter) > 0:
                 # Multiple modules filter using $in operator
                 search_kwargs["filter"] = {"module": {"$in": module_filter}}
-       
+        
         return vectordb.as_retriever(search_kwargs=search_kwargs)
-
+    
+    
     async def _rerank_documents_flag(self, query, documents, k, reverse=True):
         """
         Reranks documents using FlagReranker (from develop branch).
@@ -203,6 +214,8 @@ class Retriever(object):
         output_lst = []
         for item in lst:
             if "index" in item and item["index"] < len(original_documents):
+                import pdb
+                pdb.set_trace()
                 item["module"] = original_documents[item["index"]].metadata.get("module", "unknown")
                 item["source"] = original_documents[item["index"]].metadata.get("source", "unknown")
             output_lst.append(item)
@@ -254,6 +267,7 @@ class Retriever(object):
         # Choose reranking method
 
         sorted_documents_with_indices = await self._rerank_documents_flag(query, document_texts, k, reverse)            
+
         if sorted_documents_with_indices and sorted_documents_with_indices != []:
             final_documents_with_metadata = self.add_module(sorted_documents_with_indices, original_documents)
             return final_documents_with_metadata
