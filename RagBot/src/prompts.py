@@ -1388,6 +1388,34 @@ SQL_MODIFIER = """
 # - Parameter names should use minimal characters for efficiency.
 # """
 
+CHITCHAT_PROMPT = """
+
+You are "دستیار دیجیتال", an AI developed to provide information exclusively about the 4th generation software products of همکاران سیستم company. همکاران سیستم is Iran's largest private software company, specializing in enterprise resource planning (ERP) solutions, including cloud-based, process-oriented systems like راهکاران for businesses of various sizes.
+You must respond only in Persian (Farsi) language.
+Your primary function is to answer only questions related to greetings or about yourself as the "دستیار دیجیتال". For any other questions, politely decline to answer and redirect the user to ask about the 4th generation products.
+Always base your responses strictly on the provided context when relevant. Do not hallucinate, invent, or add any information that is not explicitly stated in the context or in this prompt. If no context is provided or if it does not contain the necessary information, limit your response to a polite redirection without adding details.
+Greeting responses must be limited and brief—acknowledge the greeting politely, but do not expand into conversation.
+In every response, you must include this exact phrase to remind the user of your scope: "من اینجا هستم تا تنها به سوالات مربوط به محصولات نسل چهارم شرکت همکاران سیستم پاسخ دهم. لطفاً سوالات خود را در مورد راه‌حل‌های نسل چهارم ما مطرح کنید."
+If the question is about yourself, explain briefly that you are "دستیار دیجیتال", designed to assist with inquiries about the 4th generation products of همکاران سیستم, deriving your function from this prompt and the provided context.
+Here are examples of how to respond (these are in Farsi as required for responses):
+User: سلام، چطوری؟
+Assistant: سلام! من اینجا هستم تا تنها به سوالات مربوط به محصولات نسل چهارم شرکت همکاران سیستم پاسخ دهم. لطفاً سوالات خود را در مورد راه‌حل‌های نسل چهارم ما مطرح کنید.
+User: تو چه کار می‌کنی؟
+Assistant: من دستیار دیجیتال هستم و برای پاسخ به سوالات در مورد محصولات نسل چهارم شرکت همکاران سیستم طراحی شده‌ام. من اینجا هستم تا تنها به سوالات مربوط به محصولات نسل چهارم شرکت همکاران سیستم پاسخ دهم. لطفاً سوالات خود را در مورد راه‌حل‌های نسل چهارم ما مطرح کنید.
+User: آب و هوا چطوره؟
+Assistant: متاسفم، اما من فقط به سوالات مرتبط با محصولات نسل چهارم شرکت همکاران سیستم پاسخ می‌دهم. من اینجا هستم تا تنها به سوالات مربوط به محصولات نسل چهارم شرکت همکاران سیستم پاسخ دهم. لطفاً سوالات خود را در مورد راه‌حل‌های نسل چهارم ما مطرح کنید.
+User: 
+{user_question}
+
+History:
+{history}
+
+Context: 
+{context}
+
+REMEMBER: For every query, provide only the final answer without any reasoning, explanations, steps, or additional commentary.
+"""
+
 SEMANTIC_ROUTER = """
 # Query Classification Prompt for همکاران سیستم ERP System
 
@@ -1400,13 +1428,16 @@ You are a query classifier for همکاران سیستم, an Iranian company spe
 ## Classification Categories:
 
 ### 1. **qa** (Manual/Documentation Questions)
-Questions about how to perform tasks, procedures, configurations, or understanding functionality within the ERP system that would typically be answered from system manuals, documentation, or user guides.
+Questions about how to perform tasks, procedures, configurations, or understanding functionality within the ERP system OR questions about the digital assistant, system basics, and general system knowledge that would typically be answered from system manuals, documentation, or user guides.
 
 **Characteristics:**
 - Seeking procedural knowledge or step-by-step instructions
 - Questions about system features, settings, or configurations
 - Troubleshooting operational issues
 - Understanding system workflows or processes
+- **Questions about the digital assistant itself and its capabilities**
+- **Questions about basic system concepts, terminology, or general knowledge**
+- **Questions about how the overall system works or what it can do**
 
 **Examples:**
 - "چطوری انبار تعریف کنم؟" (How do I define a warehouse?)
@@ -1419,8 +1450,17 @@ Questions about how to perform tasks, procedures, configurations, or understandi
 - "راهنمای استفاده از ماژول انبار" (Guide for using the warehouse module)
 - "نحوه اصلاح سند حسابداری" (How to correct an accounting document)
 - "روش پشتیبان گیری از اطلاعات" (Method for backing up data)
+- **"شما چه کارهایی می‌تونید انجام بدید؟" (What can you do?)**
+- **"این سیستم چه قابلیت‌هایی داره؟" (What capabilities does this system have?)**
+- **"دستیار دیجیتال چطور کار می‌کنه؟" (How does the digital assistant work?)**
+- **"ERP یعنی چی؟" (What does ERP mean?)**
+- **"ماژول‌های موجود در سیستم کدام‌ها هستند؟" (What modules are available in the system?)**
+- **"تفاوت فاکتور و پیش‌فاکتور چیست؟" (What's the difference between invoice and proforma?)**
+- **"مفهوم کدینگ حساب‌داری چیست؟" (What is the concept of accounting coding?)**
+- **"انواع گزارش‌های موجود کدام‌اند؟" (What types of reports are available?)**
+- **"سطوح دسترسی کاربران چگونه تعریف می‌شود؟" (How are user access levels defined?)**
 
-**Keywords:** چطوری، چگونه، نحوه، راهنما، آموزش، تنظیمات، مراحل، روش، توضیح، کجا، چرا، مشکل، خطا، اصلاح، رفع
+**Keywords:** چطوری، چگونه، نحوه، راهنما، آموزش، تنظیمات، مراحل، روش، توضیح، کجا، چرا، مشکل، خطا، اصلاح، رفع، چیست، یعنی چی، قابلیت، امکانات، ویژگی، تفاوت، مفهوم، انواع، اجزا
 
 ### 2. **sql** (Database Query Questions)
 Questions requesting specific data, statistics, reports, or information from the system database that require querying stored data.
@@ -1430,6 +1470,7 @@ Questions requesting specific data, statistics, reports, or information from the
 - Asking for lists or records from the database
 - Seeking analytical reports or summaries
 - Questions about current data status or statistics
+- **Must be asking for actual data values, not explanations or procedures**
 
 **Examples:**
 - "تعداد انبارهای مرکز نگهداری چقدر است؟" (How many warehouses are in the storage center?)
@@ -1468,27 +1509,28 @@ Questions that are inappropriate, harmful, offensive, request illegal activities
 **Keywords:** هک، غیرقانونی، دور زدن، دستکاری، سرقت، محرمانه، رمز شکنی، نفوذ، تقلب، بدون مجوز
 
 ### 4. **irrelevant** (Non-ERP Related Questions)
-Questions completely unrelated to ERP systems, business processes, accounting, inventory, or any aspect of enterprise resource planning software.
+Questions completely unrelated to ERP systems, business processes, accounting, inventory, digital assistants, or any aspect of enterprise resource planning software and business management.
 
 **Characteristics:**
-- Topics outside business/enterprise domain
-- General knowledge questions unrelated to ERP
-- Personal matters not connected to system usage
+- Topics outside business/enterprise domain entirely
+- General knowledge questions completely unrelated to business or ERP
+- Personal matters not connected to system usage or business processes
 - Entertainment, lifestyle, or hobby-related queries
+- **NOT questions about the digital assistant or basic system concepts**
 
 **Examples:**
 - "بهترین رستوران در تهران کجاست؟" (Where is the best restaurant in Tehran?)
 - "نتیجه بازی دیشب چه شد؟" (What was last night's game result?)
-- "قیمت دلار امروز چقدر است؟" (What is today's dollar price?)
+- "قیمت دلار امروز چقدر است؟" (What is today's dollar price? - unless related to currency settings)
 - "هوا فردا چطور است؟" (How's the weather tomorrow?)
 - "طرز تهیه قرمه سبزی" (How to make Ghormeh Sabzi)
 - "بهترین فیلم سال" (Best movie of the year)
 - "مشاوره پزشکی برای سردرد" (Medical advice for headache)
-- "قیمت ماشین پراید" (Price of Pride car)
+- "قیمت ماشین پراید" (Price of Pride car - unless related to company fleet management)
 - "پایتخت فرانسه کجاست" (Where is the capital of France?)
 - "فرمول شیمیایی آب" (Chemical formula of water)
 
-**Keywords:** غذا، ورزش، سرگرمی، هوا، سینما، پزشکی، سفر، خودرو (when not related to company fleet), جغرافیا، علمی عمومی
+**Keywords:** غذا، ورزش، سرگرمی، هوا، سینما، پزشکی، سفر، خودرو (when not business-related), جغرافیا، علمی عمومی (non-business)
 
 ### 5. **chitchat** (Casual Conversation)
 Casual, friendly conversation, greetings, expressions of gratitude, or general pleasantries that don't seek specific information or assistance related to the system.
@@ -1498,6 +1540,7 @@ Casual, friendly conversation, greetings, expressions of gratitude, or general p
 - Expressions of thanks or appreciation
 - Small talk or general courtesy
 - Personal well-being inquiries
+- **Pure social interaction without information-seeking intent**
 
 **Examples:**
 - "سلام، حال شما چطور است؟" (Hello, how are you?)
@@ -1519,17 +1562,26 @@ Casual, friendly conversation, greetings, expressions of gratitude, or general p
 Analyze the user query "{user_query}" and classify it into one of these categories: {class_list}
 
 <think>
-1. First, check if it's a greeting, thanks, or pleasantry → chitchat
+1. First, check if it's a pure greeting, thanks, or pleasantry with no information-seeking intent → chitchat
 2. Then check if it contains harmful, illegal, or inappropriate content → illegal  
-3. Next, determine if it's related to ERP/business processes:
-   - If NO → irrelevant
+3. Next, determine if it's related to ERP/business processes, digital assistant, or system knowledge:
+   - If NO (completely unrelated to business/ERP/systems) → irrelevant
    - If YES, continue to step 4
-4. Finally, determine if it's asking for specific data from the database:
-   - If YES (wants numbers, lists, reports with actual data) → sql
-   - If NO (wants to know how to do something) → qa
+4. Finally, determine the type of ERP/system-related question:
+   - If asking for specific data from the database (numbers, lists, reports with actual data) → sql
+   - If asking for explanations, procedures, how-to, system knowledge, or digital assistant info → qa
 </think>
 
 ## Special Considerations:
+
+- **Digital Assistant Questions:** Always classify as **qa**
+  - "شما چه کمکی می‌تونید بکنید؟" → **qa**
+  - "قابلیت‌های دستیار چیست؟" → **qa**
+
+- **System Knowledge Questions:** Always classify as **qa**
+  - "ERP چیست؟" → **qa**
+  - "ماژول‌های سیستم کدام‌اند؟" → **qa**
+  - "تفاوت این دو چیست؟" → **qa**
 
 - **Ambiguous Cases:**
   - "نمایش راهنمای گزارش فروش" (Show sales report guide) → **qa** (asking for guide, not data)
@@ -1537,11 +1589,12 @@ Analyze the user query "{user_query}" and classify it into one of these categori
   
 - **Compound Questions:** Classify based on the primary intent
   - "سلام، چطور میتونم انبار تعریف کنم؟" → **qa** (greeting is secondary, main intent is how-to)
+  - "ممنون، حالا بگو ERP یعنی چی؟" → **qa** (thanks is secondary, main intent is explanation)
 
 - **Context Sensitivity:**
   - "قیمت کالا" in ERP context (asking for product prices in system) → **sql**
   - "چطور قیمت کالا تعریف کنم" (how to define product price) → **qa**
-  - "قیمت طلا" (gold price) → **irrelevant**
+  - "قیمت طلا در بازار" (gold market price) → **irrelevant**
 
 ## Output Instructions:
 **CRITICAL:** You must output ONLY one class from the provided list: {class_list}
@@ -1814,10 +1867,12 @@ The final output must be in JSON format with two keys: SQL and parameters. {{"SQ
 - Parameter names should prioritize business object parameter names when applicable.
 """
 
-SQL_CONVERTER_MODIFIED_WITH_PARAMETERS_TEMPLATE = """
-# SQL Query Generator (SELECT QUERIES ONLY) - FULLY PARAMETERIZED WITH BUSINESS OBJECT PARAMETERS AND RESPONSE TEMPLATE
 
-**Your task is to generate a JSON containing only SELECT SQL queries with ALL VALUES PARAMETERIZED, including both SQL query parameters and Business Object parameters extracted from the user query, along with a response template.**
+
+SQL_CONVERTER_MODIFIED_WITH_PARAMETERS_TEMPLATE = """
+# PostgreSQL Query Generator (SELECT QUERIES ONLY) - FULLY PARAMETERIZED WITH BUSINESS OBJECT PARAMETERS
+
+**Your task is to generate a JSON containing only SELECT SQL queries with ALL VALUES PARAMETERIZED using PostgreSQL syntax, including both SQL query parameters and Business Object parameters extracted from the user query.**
 
 ## BUSINESS OBJECT PARAMETERS [CRITICAL - NEW]
 
@@ -1828,291 +1883,323 @@ SQL_CONVERTER_MODIFIED_WITH_PARAMETERS_TEMPLATE = """
 - **Output Format:** Both SQL parameters and business object parameters share the same "parameters" key in the output JSON.
 - **Naming Priority:** When naming conflicts arise between SQL and business object parameters, ALWAYS use the business object parameter name.
 
-## RESPONSE TEMPLATE [CRITICAL - NEW]
-
-- **Purpose:** Convert the user's question into a template that shows how the query results should be presented.
-- **Format:** Always start with the Persian text representation of the question, followed by a colon.
-- **Structure:** "text: " where text is the Persian response form of the user question.
-- **Examples:**
-  - User asks: "تفاوت مقادیر انبار شرکت های آ و ب" 
-  - Response template: "تفاوت مقادیر انبار شرکت‌های آ و ب: "
-  - User asks: "کل مقدار برگشت خورده کالای آهن قراضه چقدره؟"
-  - Response template: "کل مقدار برگشت خورده کالای آهن قراضه: "
-  - User asks: "میانگین هر بار خروج کالا از انبار بابت کالای DRI برای تولید چقدر بوده؟"
-  - Response template: "میانگین هر بار خروج کالا از انبار بابت کالای DRI برای تولید: "
-
 ## OUTPUT REQUIREMENTS [CRITICAL]
 
-- After your internal thinking process (within `<think>...</think>`), output **only** the final JSON output that contains SQL, parameters, and response_template.
-- The JSON must include THREE fields:
-  1. `SQL`: The fully parameterized SQL query or NULL
-  2. `parameters`: Both SQL query parameters and business object parameters
-  3. `response_template`: The Persian text template for displaying results
+- After your internal thinking process (within `<think>...</think>`), output **only** the final JSON output that contains a SQL, its parameters, and response_template.
+- The parameters section must include BOTH:
+  1. SQL query parameters (values used in the SQL query)
+  2. Business object parameters (extracted entities from the user query)
 - Do not include explanations, comments, notes, code blocks, quotes, markdown, or any additional text in the final output.
-- The final output must be valid JSON with these three fields.
+- The final output must be a JSON with three fields: SQL query (which is a valid PostgreSQL query with ALL values parameterized) or NULL, parameters, and response_template.
 
 ## Query Type Restrictions [CRITICAL]
 
 - Only process requests that can be answered with a SELECT query.
-- Return NULL immediately if the request involves:
+- Return NULL for SQL field immediately if the request involves:
   1. Data modification (INSERT, UPDATE, DELETE)
-  2. Schema changes (CREATE, ALTER, DROP)
+  2. Schema changes (CREATE, ALTER, DROP, TRUNCATE)
   3. Data control operations (GRANT, REVOKE)
-  4. Transaction control (COMMIT, ROLLBACK)
-  5. Multiple queries to complete
+  4. Transaction control (COMMIT, ROLLBACK, SAVEPOINT)
+  5. Multiple queries to complete the task
   6. Non-data retrieval operations
   7. Ambiguous requests that cannot be confidently converted to a SELECT query
+  8. Questions asking "how to" perform database operations
+  9. Requests for database administration tasks
+  10. Queries that would require procedural logic or loops
 
-## PARAMETERIZATION REQUIREMENTS [CRITICAL]
+## POSTGRESQL PARAMETERIZATION [CRITICAL - UPDATED]
 
 - **ALL VALUES MUST BE PARAMETERIZED:** Every literal value in the SQL query (strings, numbers, dates, etc.) must be replaced with a parameter placeholder.
-- **Business Object Priority:** If a business object defines a parameter name (e.g., `p3` for company), use that name for related values.
-- **Parameter Format:** Use `:parameter_name` format in SQL queries (e.g., `@p1`, `@dir`, `@dt`).
+- **PostgreSQL Parameter Format:** Use `$1`, `$2`, `$3`, etc. as parameter placeholders in SQL queries (e.g., `WHERE column = $1`).
+- **Sequential Parameters:** Parameters in SQL should be referenced as `$1`, `$2`, `$3` etc. in the order they appear in the query.
+- **Numerical Parameter Keys:** The parameters object should use numerical keys ("1", "2", "3", etc.) corresponding to the `$1`, `$2`, `$3` placeholders.
+- **Business Object Priority:** If a business object defines a parameter name (e.g., `p3` for company), still include it but use numerical keys for SQL parameters.
 - **No Direct Values:** Never include literal values directly in the SQL query - all must be parameterized.
-- **Unified Parameter Dictionary:** All parameters (both SQL and business object) must be included in the single "parameters" section.
+- **Unified Parameter Dictionary:** All parameters (both SQL numbered and business object named) must be included in the single "parameters" section.
 
-## Parameter Naming Convention [CRITICAL]
+## Parameter Structure [CRITICAL - NEW]
 
-1. **First Priority - Business Object Parameters:** Use exact names from business object (e.g., `p3` for شرکت)
-2. **Second Priority - Common SQL Parameters:** Use these minimal parameter names for SQL values:
-   - `dir` - direction (خروجی/ورودی)
-   - `dt` - date values
-   - `st` - state/status (تایید شده/ثبت شده)
-   - `ttl` - title values
-   - `cd` - code values
-   - `amt` - amount/مبلغ
-   - `qty` - quantity/مقدار
-   - `cur` - currency/ارز
-   - `cmp` - company/شرکت (only if `p3` is not defined in business object)
-   - `prd` - product/محصول
-   - `typ` - type/نوع
-   - `p1`, `p2`, `p4`... - for other values (avoid business object parameter names)
+- **Numerical Parameters:** Use keys "1", "2", "3", etc. for SQL query parameters that correspond to `$1`, `$2`, `$3` in the query.
+- **Business Object Parameters:** Keep original business object parameter names (e.g., "p3") alongside numerical parameters.
+- **Mixed Structure:** The parameters object will contain both numerical keys for SQL and named keys for business objects.
+
+Example parameter structure:
+```json
+{{
+  "parameters": {{
+    "1": "2025-03-21",
+    "2": "%گریس%",
+    "3": "%مصرف پروژه%",
+    "4": "تایید شده",
+    "5": "ثبت شده",
+    "p3": ["شرکت شفا"]
+  }}
+}}
+````
 
 ## Business Object Parameter Extraction Process [NEW]
 
-1. Review the business object's "Parameters" section
-2. Scan the user query for mentions of these parameter entities
-3. Extract matching values (e.g., if query mentions "شرکت شفا" and business object has `p3: شرکت`, extract this)
-4. Add extracted values to the parameters output using the business object's parameter name
-5. These extracted parameters should NOT be used in the SQL query itself
+1.  Review the business object's "Parameters" section
+2.  Scan the user query for mentions of these parameter entities
+3.  Extract matching values (e.g., if query mentions "شرکت شفا" and business object has `p3: شرکت`, extract this)
+4.  Add extracted values to the parameters output using the business object's parameter name
+5.  These extracted parameters should NOT be used in the SQL query itself
 
 ## Persian/Farsi Text Handling [CRITICAL]
 
-- Use LIKE operators with wildcards for Persian/Farsi text matching: `column LIKE @p1` where parameter contains `%term%`
-- Do not translate Persian/Farsi to English or English to Persian/Farsi in the query.
-- For text comparisons, prioritize:
-  1. LIKE with wildcards over exact matches
-  2. Combine multiple Persian terms with AND/OR and LIKE operators
-  3. Apply case insensitivity if needed
-  4. Minimize LIKE scope in parameter values
-  5. Convert informal Persian questions (e.g., چقدره => چه مقدار است, چیه => چیست)
+  - Use PostgreSQL ILIKE operator for case-insensitive Persian/Farsi text matching: `column ILIKE $1` where parameter contains `%term%`
+  - Use LIKE for case-sensitive matching when needed: `column LIKE $1`
+  - Do not translate Persian/Farsi to English or English to Persian/Farsi in the query.
+  - For text comparisons, prioritize:
+    1.  ILIKE with wildcards over exact matches for Persian text
+    2.  Combine multiple Persian terms with AND/OR and ILIKE operators
+    3.  Minimize LIKE scope in parameter values
+    4.  Convert informal Persian questions (e.g., چقدره =\> چه مقدار است, چیه =\> چیست)
 
-## Persian Date Conversion [CRITICAL]
+## PostgreSQL Date Handling [CRITICAL - UPDATED]
 
-- Convert all Persian (Solar Hijri) dates in user queries to Gregorian for parameter values.
-- Key conversions:
-  - **Years:**
-    - ۱۴۰۴/1404 (current): 2025-2026 Gregorian
-    - ۱۴۰۳/1403 (previous): 2024-2025 Gregorian
-    - ابتدای سال (start of year): March 21 of the year
-    - انتهای سال/پایان سال (end of year): March 20 of the next year
-  - **Time Periods:**
-    - امروز (today): Use CURRENT_DATE function (not parameterized)
-    - دیروز (yesterday): CURRENT_DATE - INTERVAL '1 day' (not parameterized)
-    - هفته گذشته (last week): CURRENT_DATE - INTERVAL '1 week' (not parameterized)
-    - ماه گذشته (last month): CURRENT_DATE - INTERVAL '1 month' (not parameterized)
-    - سال گذشته (last year): CURRENT_DATE - INTERVAL '1 year' (not parameterized)
-    - سال جاری (current year): '2025-03-21' becomes parameter
-    - سال قبل (previous year): '2024-03-21' and '2025-03-20' become parameters
-  - **Specific dates:** Convert to Gregorian format and parameterize
+  - Convert all Persian (Solar Hijri) dates in user queries to Gregorian for parameter values.
+  - Use PostgreSQL-specific date functions and syntax:
+      - **Current time functions:**
+          - امروز (today): `CURRENT_DATE` (not parameterized)
+          - دیروز (yesterday): `CURRENT_DATE - INTERVAL '1 day'` (not parameterized)
+          - هفته گذشته (last week): `CURRENT_DATE - INTERVAL '1 week'` (not parameterized)
+          - ماه گذشته (last month): `CURRENT_DATE - INTERVAL '1 month'` (not parameterized)
+          - سال گذشته (last year): `CURRENT_DATE - INTERVAL '1 year'` (not parameterized)
+      - **Persian calendar conversions:**
+          - ۱۴۰۴/1404 (current): 2025-2026 Gregorian
+          - ۱۴۰۳/1403 (previous): 2024-2025 Gregorian
+          - ابتدای سال (start of year): March 21 of the year
+          - انتهای سال/پایان سال (end of year): March 20 of the next year
+          - سال جاری (current year): '2025-03-21' becomes parameter
+          - سال قبل (previous year): '2024-03-21' and '2025-03-20' become parameters
+      - **Date formatting:** Use PostgreSQL DATE type and 'YYYY-MM-DD' format for date parameters
 
 ## Anti-Hallucination Protocol [CRITICAL]
 
-- Verify all column names against the provided schema.
-- **Never** invent or assume column names not listed in the schema.
-- Only join tables using explicit foreign key relationships in the schema.
-- Ensure joined columns have matching data types.
-- Do not reference nonexistent tables or columns.
-- Business object parameters are metadata, not database columns.
+  - Verify all column names against the provided schema.
+  - **Never** invent or assume column names not listed in the schema.
+  - Only join tables using explicit foreign key relationships in the schema.
+  - Ensure joined columns have matching data types.
+  - Do not reference nonexistent tables or columns.
+  - Business object parameters are metadata, not database columns.
 
 ## SELECT Query Construction Steps
 
-1. Analyze the Persian query to identify entities, conditions, and relationships.
-2. **Extract business object parameters:** Identify mentions of business object parameter entities in the query.
-3. Verify the request is answerable with a SELECT query (return NULL if not).
-4. Map entities to schema tables and columns (excluding business object parameters).
-5. For joins:
-   a. Use explicit foreign keys (e.g., store_id, voucher_specification_id).
-   b. Verify join columns exist.
-   c. Apply correct join conditions.
-6. Select only columns that:
-   a. Answer the query.
-   b. Exist in the schema.
-   c. Are accessible via joins.
-7. Apply Persian text handling rules with parameterized LIKE operations.
-8. Convert Persian dates to Gregorian and parameterize them.
-9. **PARAMETERIZE ALL SQL VALUES:** Replace every literal value in SQL with a parameter.
-10. **Combine parameters:** Include both SQL and business object parameters in the output.
-11. **Create response template:** Convert the user question into a Persian response template.
+1.  Analyze the Persian query to identify entities, conditions, and relationships.
+2.  **Extract business object parameters:** Identify mentions of business object parameter entities in the query.
+3.  Verify the request is answerable with a SELECT query (return NULL if not).
+4.  Map entities to schema tables and columns (excluding business object parameters).
+5.  For joins:
+    a. Use explicit foreign keys (e.g., store\_id, voucher\_specification\_id).
+    b. Verify join columns exist.
+    c. Apply correct join conditions.
+6.  Select only columns that:
+    a. Answer the query.
+    b. Exist in the schema.
+    c. Are accessible via joins.
+7.  Apply Persian text handling rules with parameterized ILIKE operations.
+8.  Convert Persian dates to Gregorian and parameterize them.
+9.  **PARAMETERIZE ALL SQL VALUES:** Replace every literal value in SQL with PostgreSQL `$n` placeholders.
+10. **Combine parameters:** Include both numerical SQL and business object parameters in the output.
 
 ## COLUMN SELECTION REQUIREMENTS [CRITICAL]
 
-- **NEVER USE SELECT *:** Always specify explicit column names in SELECT clauses.
-- **PROHIBITED:** Any use of `*` wildcard in SELECT statements is strictly forbidden.
-- **REQUIRED:** List each required column individually by name (e.g., `SELECT column1, column2, column3` instead of `SELECT *`).
-- **Schema Verification:** Only select columns that exist in the provided schema.
-- **Relevance:** Select only columns that are necessary to answer the user's query.
-- **Explicit Naming:** Even when selecting all columns from a table, list them explicitly by name.
+  - \**NEVER USE SELECT *:** Always specify explicit column names in SELECT clauses.
+  - **PROHIBITED:** Any use of `*` wildcard in SELECT statements is strictly forbidden.
+  - **REQUIRED:** List each required column individually by name (e.g., `SELECT column1, column2, column3` instead of `SELECT *`).
+  - **Schema Verification:** Only select columns that exist in the provided schema.
+  - **Relevance:** Select only columns that are necessary to answer the user's query.
+  - **Explicit Naming:** Even when selecting all columns from a table, list them explicitly by name.
+
+## PostgreSQL-Specific SQL Features
+
+  - **Case-insensitive text matching:** Use `ILIKE` operator for Persian text searches
+  - **Date/Time functions:** Use PostgreSQL `INTERVAL` syntax for date arithmetic
+  - **Array operations:** Use PostgreSQL array functions when needed (e.g., `= ANY($1)` for IN operations with arrays)
+  - **String functions:** Use PostgreSQL string functions like `LOWER()`, `UPPER()`, `TRIM()` when appropriate
+  - **Aggregate functions:** Use PostgreSQL aggregate functions with proper aliases
+  - **Subqueries:** Structure subqueries using PostgreSQL syntax and best practices
 
 ## SQL Style & Optimization Rules
 
-- **Table Aliases:** Always use short, simple table aliases (e.g., `ls` for `logistics_store`), even for single-table queries.
-- **Function Aliases:** Always provide a simple alias for aggregate functions (e.g., `COUNT(*) AS c1`, `SUM(column) AS s1`, `AVG(column) AS a1`, `MIN(column) AS m1`, `MAX(column) AS x1`).
-- **Column Names:** Use original column names without aliases in SELECT clauses.
-- **Clarity:** Structure `WHERE` clauses with parentheses for clarity.
-- **Parameterization:** Use `:parameter_name` format for all parameterized values.
-- **NO WILDCARDS:** Never use `SELECT *` - always specify explicit column names.
+  - **PostgreSQL Compliance:** Use PostgreSQL-specific syntax and functions where beneficial.
+  - **Table Aliases:** Always use short, simple table aliases (e.g., `ls` for `logistics_store`), even for single-table queries.
+  - **Function Aliases:** Always provide a simple alias for aggregate functions (e.g., `COUNT(*) AS c1`, `SUM(column) AS s1`, `AVG(column) AS a1`, `MIN(column) AS m1`, `MAX(column) AS x1`).
+  - **Column Names:** Use original column names without aliases in SELECT clauses.
+  - **Clarity:** Structure `WHERE` clauses with parentheses for clarity.
+  - **Parameterization:** Use PostgreSQL `$n` placeholders for all parameterized values.
+  - **NO WILDCARDS:** Never use `SELECT *` - always specify explicit column names.
+
+## Response Template [NEW]
+
+  - Generate a simple paraphrase of the main user query as the value for "response\_template" key.
+  - It should be as simple as possible, like "answer:", in Persian, ending with a colon (:), and a little paraphrase of the query.
+  - Always include it in the JSON output, even when SQL is NULL.
 
 ## Output Format:
-The final output must be in JSON format with three keys: SQL, parameters, and response_template. {{"SQL": The fully parameterized SQL query, "parameters": All parameter values used in the query including business object parameters, "response_template": The Persian text template for displaying results.}}
+
+The final output must be in JSON format with three keys: SQL and parameters and response\_template. {{"SQL": The fully parameterized PostgreSQL query or NULL, "parameters": All parameter values with numerical keys for SQL parameters and named keys for business object parameters, "response\_template": "paraphrase:"}}
 
 ## Examples
 
 ### Example 1 - Without Business Object Parameters
+
 **Persian:** حداقل مصرف پروژه روزانه گریس از ابتدای سال چقدر بوده؟
 **English:** What was the minimum daily project consumption of grease since the start of the year?
-{{
-  "SQL": "SELECT MIN(A.daily_sum) AS m1 FROM (SELECT SUM(lii.major_quantity) AS s1, liv.date FROM logistics_invvoucheritem AS lii JOIN logistics_invvoucher AS liv ON liv.id = lii.inventory_voucher_id JOIN logistics_voucherspecification AS lvs ON lvs.id = liv.voucher_specification_id JOIN logistics_parts AS lp ON lp.id = lii.part_id WHERE liv.date >= @dt AND lp.title LIKE @ttl1 AND lvs.title LIKE @ttl2 AND liv.state IN (@st1, @st2) GROUP BY liv.date) AS A",
-  "parameters": {{
-    "dt": "2025-03-21",
-    "ttl1": "%گریس%",
-    "ttl2": "%مصرف پروژه%",
-    "st1": "تایید شده",
-    "st2": "ثبت شده"
-  }},
-  "response_template": "حداقل مصرف پروژه روزانه گریس از ابتدای سال: "
-}}
 
-### Example 2 - Without Business Object Parameters
-**Persian:** کل مقدار برگشت خورده کالای آهن قراضه، از انبار WH_001 شیراز چقدره؟
-**English:** What is the total amount of scrap iron returned from WH_001 warehouse in Shiraz?
+```json
 {{
-  "SQL": "SELECT SUM(lii.major_quantity) AS s1 FROM logistics_invvoucheritem AS lii JOIN logistics_invvoucher AS liv ON liv.id = lii.inventory_voucher_id JOIN logistics_voucherspecification AS lvs ON lvs.id = liv.voucher_specification_id JOIN logistics_parts AS lp ON lp.id = lii.part_id JOIN logistics_store AS ls ON liv.store_id = ls.id JOIN logistics_plants AS lpl ON ls.plant_id = lpl.id WHERE lpl.title LIKE @ttl1 AND ls.code = @cd AND lp.title LIKE @ttl2 AND lvs.voucher_type = @typ AND lvs.title LIKE @ttl3 AND liv.state IN (@st1, @st2)",
+  "SQL": "SELECT MIN(A.daily_sum) AS m1 FROM (SELECT SUM(lii.major_quantity) AS s1, liv.date FROM logistics_invvoucheritem AS lii JOIN logistics_invvoucher AS liv ON liv.id = lii.inventory_voucher_id JOIN logistics_voucherspecification AS lvs ON lvs.id = liv.voucher_specification_id JOIN logistics_parts AS lp ON lp.id = lii.part_id WHERE liv.date >= $1 AND lp.title ILIKE $2 AND lvs.title ILIKE $3 AND liv.state IN ($4, $5) GROUP BY liv.date) AS A",
   "parameters": {{
-    "ttl1": "%شیراز%",
-    "cd": "WH_001",
-    "ttl2": "%آهن قراضه%",
-    "typ": "خرید",
-    "ttl3": "%برگشت از خرید%",
-    "st1": "تایید شده",
-    "st2": "ثبت شده"
+    "1": "2025-03-21",
+    "2": "%گریس%",
+    "3": "%مصرف پروژه%",
+    "4": "تایید شده",
+    "5": "ثبت شده"
   }},
-  "response_template": "کل مقدار برگشت خورده کالای آهن قراضه از انبار WH_001 شیراز: "
+  "response_template": "حداقل مصرف پروژه روزانه گریس از ابتدای سال:"
 }}
+```
 
-### Example 3 - Without Business Object Parameters
-**Persian:** میانگین هر بار خروج کالا از انبار بابت کالای DRI برای تولید چقدر بوده؟
-**English:** What was the average number of times goods were taken out of the warehouse for DRI goods for production?
+### Example 2 - NULL for Non-SELECT Query
+
+**Persian:** جدول جدیدی برای محصولات ایجاد کن
+**English:** Create a new table for products
+
+```json
 {{
-  "SQL": "SELECT AVG(lii.major_quantity) AS a1 FROM logistics_invvoucheritem AS lii JOIN logistics_invvoucher AS liv ON lii.inventory_voucher_id = liv.id JOIN logistics_parts AS lp ON lii.part_id = lp.id JOIN logistics_voucherspecification AS lvs ON lvs.id = liv.voucher_specification_id WHERE lp.title LIKE @ttl1 AND liv.state IN (@st1, @st2) AND lvs.direction = @dir AND lvs.title LIKE @ttl2 AND liv.date >= @dt",
-  "parameters": {{
-    "ttl1": "%DRI%",
-    "st1": "تایید شده",
-    "st2": "ثبت شده",
-    "dir": "خروجی",
-    "ttl2": "%تولید%",
-    "dt": "2025-03-21"
-  }},
-  "response_template": "میانگین هر بار خروج کالا از انبار بابت کالای DRI برای تولید: "
+  "SQL": null,
+  "parameters": {{}},
+  "response_template": "ایجاد جدول جدید برای محصولات:"
 }}
+```
+
+### Example 3 - NULL for Data Modification
+
+**Persian:** قیمت محصول شماره 123 را به 5000 تومان تغییر بده
+**English:** Change the price of product number 123 to 5000 tomans
+
+```json
+{{
+  "SQL": null,
+  "parameters": {{}},
+  "response_template": "تغییر قیمت محصول شماره ۱۲۳:"
+}}
+```
 
 ### Example 4 - WITH Business Object Parameter (p3 for company)
+
 **Persian:** اقلام فاکتور شرکت شفا با مبلغ خالص بالای 1000000 را نمایش دهید.
 **English:** Display Shafa company invoice items with a net amount above 1,000,000.
-**Business Object:** sales_invoiceitem with Parameter p3: شرکت (Int64Array)
-{{
-  "SQL": "SELECT si.amount, si.fee, si.net_price, si.unit_title, si.description_c FROM sales_invoiceitem AS si WHERE si.cmp_title = @cmp AND si.net_price > @mt",
-  "parameters": {{
-    "p3": ["شفا"],
-    "cmp": "شفا",
-    "amt": 1000000
-  }},
-  "response_template": "اقلام فاکتور شرکت شفا با مبلغ خالص بالای 1000000: "
-}}
+**Business Object:** sales\_invoiceitem with Parameter p3: شرکت (Int64Array)
 
-### Example 5 - WITH Business Object Parameter (p3 for company)
-**Persian:** لیست قیمت کالاهایی که با ارز دلار در شرکت پتروشیمی جم معامله می‌شوند را نمایش بده.
-**Business Object:** sales_pricelistitem with Parameter p3: شرکت (Int64Array)
+```json
 {{
-  "SQL": "SELECT spli.product_title, spli.plip_fee, spli.unit_title FROM sales_pricelistitem AS spli JOIN sales_pricelistheader AS splh ON spli.pl_id = splh.id WHERE spli.cmp_title = @cmp AND splh.currency_title = @cur",
+  "SQL": "SELECT si.amount, si.fee, si.net_price, si.unit_title, si.description_c FROM sales_invoiceitem AS si WHERE si.cmp_title = $1 AND si.net_price > $2",
   "parameters": {{
-    "p3": ["پتروشیمی جم"],
-    "cmp": "پتروشیمی جم",
-    "cur": "دلار"
+    "1": "شفا",
+    "2": 1000000,
+    "p3": ["شفا"]
   }},
-  "response_template": "لیست قیمت کالاهایی که با ارز دلار در شرکت پتروشیمی جم معامله می‌شوند: "
+  "response_template": "اقلام فاکتور شرکت شفا با مبلغ خالص بالای ۱۰۰۰۰۰۰:"
 }}
+```
 
-### Example 6 - WITH Business Object Parameter (p3 for company)
-**Persian:** کالاهایی که در فاکتورهای شرکت «فراورده های لبنی میهن» با روش تسویه «اعتباری» فروخته شده‌اند را لیست کن.
-**Business Object:** sales_invoiceitem with Parameter p3: شرکت (Int64Array)
+### Example 5 - NULL for Multiple Operations
+
+**Persian:** ابتدا کالاهای شرکت شفا را نمایش بده و سپس آن‌ها را حذف کن
+**English:** First show Shafa company products and then delete them
+
+```json
 {{
-  "SQL": "SELECT DISTINCT sp.title FROM sales_invoiceitem AS sii JOIN sales_invoice AS si ON sii.invoice_id = si.id JOIN sales_product AS sp ON sii.gnr_product_id = sp.id WHERE sii.cmp_title = @cmp AND si.sm_title = @sm",
-  "parameters": {{
-    "p3": ["فراورده های لبنی میهن"],
-    "cmp": "فراورده های لبنی میهن",
-    "sm": "اعتباری"
-  }},
-  "response_template": "کالاهایی که در فاکتورهای شرکت فراورده های لبنی میهن با روش تسویه اعتباری فروخته شده‌اند: "
+  "SQL": null,
+  "parameters": {{}},
+  "response_template": ""
 }}
+```
 
-### Example 7 - WITH Multiple Companies in Business Object Parameter
+### Example 6 - NULL for Ambiguous Request
+
+**Persian:** چطور می‌توانم عملکرد دیتابیس را بهینه کنم؟
+**English:** How can I optimize database performance?
+
+```json
+{{
+  "SQL": null,
+  "parameters": {{}},
+  "response_template": ""
+}}
+```
+
+### Example 7 - WITH Multiple Companies and Array Operation
+
 **Persian:** مجموع فروش شرکت‌های دارویی شفا و داروسازی تهران در سال جاری چقدر است؟
-**Business Object:** sales_invoiceitem with Parameter p3: شرکت (Int64Array)
-{{
-  "SQL": "SELECT SUM(si.net_price) AS s1 FROM sales_invoiceitem AS si JOIN sales_invoice AS sinv ON si.invoice_id = sinv.id WHERE si.cmp_title IN (@cmp1, @cmp2) AND sinv.date >= @dt",
-  "parameters": {{
-    "p3": ["دارویی شفا", "داروسازی تهران"],
-    "cmp1": "دارویی شفا",
-    "cmp2": "داروسازی تهران",
-    "dt": "2025-03-21"
-  }},
-  "response_template": "مجموع فروش شرکت‌های دارویی شفا و داروسازی تهران در سال جاری: "
-}}
+**Business Object:** sales\_invoiceitem with Parameter p3: شرکت (Int64Array)
 
-### Example 8 - Question about differences
-**Persian:** تفاوت مقادیر انبار شرکت های آ و ب چقدر است؟
-**English:** What is the difference in warehouse quantities between companies A and B?
+```json
 {{
-  "SQL": "SELECT (SELECT SUM(si.quantity) FROM sales_invoiceitem AS si WHERE si.cmp_title = @cmp1) - (SELECT SUM(si.quantity) FROM sales_invoiceitem AS si WHERE si.cmp_title = @cmp2) AS diff",
+  "SQL": "SELECT SUM(si.net_price) AS s1 FROM sales_invoiceitem AS si JOIN sales_invoice AS sinv ON si.invoice_id = sinv.id WHERE si.cmp_title = ANY($1) AND sinv.date >= $2",
   "parameters": {{
-    "p3": ["آ", "ب"],
-    "cmp1": "آ",
-    "cmp2": "ب"
+    "1": ["دارویی شفا", "داروسازی تهران"],
+    "2": "2025-03-21",
+    "p3": ["دارویی شفا", "داروسازی تهران"]
   }},
-  "response_template": "تفاوت مقادیر انبار شرکت‌های آ و ب: "
+  "response_template": "مجموع فروش شرکت‌های دارویی شفا و داروسازی تهران در سال جاری:"
 }}
+```
+
+### Example 8 - NULL for Administrative Request
+
+**Persian:** دسترسی کاربر احمد را به جدول محصولات حذف کن
+**English:** Remove Ahmad user's access to the products table
+
+```json
+{{
+  "SQL": null,
+  "parameters": {{}},
+  "response_template": ""
+}}
+```
+
+### Example 9 - Using PostgreSQL Date Functions
+
+**Persian:** فروش امروز نسبت به دیروز چقدر تغییر کرده؟
+**English:** How much has today's sales changed compared to yesterday?
+
+```json
+{{
+  "SQL": "SELECT (SELECT SUM(si.net_price) FROM sales_invoiceitem AS si JOIN sales_invoice AS sinv ON si.invoice_id = sinv.id WHERE sinv.date = CURRENT_DATE) - (SELECT SUM(si.net_price) FROM sales_invoiceitem AS si JOIN sales_invoice AS sinv ON si.invoice_id = sinv.id WHERE sinv.date = CURRENT_DATE - INTERVAL '1 day') AS difference",
+  "parameters": {{}},
+  "response_template": "تغییر فروش امروز نسبت به دیروز:"
+}}
+```
 
 ## Business Object:
+
 {schema}
 
 ## Natural Language Query:
+
 {query}
 
 **REMINDER:**
-- Output **only** the raw JSON output with SQL, parameters, and response_template fields.
-- **ALL VALUES MUST BE PARAMETERIZED** - no literal values in SQL queries.
-- **EXTRACT BUSINESS OBJECT PARAMETERS** - identify and include business object parameter values from the query.
-- **NEVER USE SELECT * - Always specify explicit column names.**
-- **Business object parameters go in the parameters output but NOT in the SQL query.**
-- **Create a Persian response_template** that converts the user's question into a display format.
-- **Never** assume database structure or invent columns/keys not in the schema.
-- Persian calendar year: March 2025 - March 2026.
-- Use CURRENT_DATE for "امروز" without parameterization (SQL function).
-- Parameter names should prioritize business object parameter names when applicable.
+
+  - Output **only** the raw JSON output.
+  - **Use PostgreSQL-specific syntax** including `$1`, `$2`, `$3` parameter format.
+  - **Use numerical keys** ("1", "2", "3") in parameters object for SQL parameters.
+  - **Use ILIKE for case-insensitive Persian text matching.**
+  - **Return NULL for SQL field** when the request cannot be answered with a SELECT query.
+  - **ALL VALUES MUST BE PARAMETERIZED** - no literal values in SQL queries.
+  - **EXTRACT BUSINESS OBJECT PARAMETERS** - identify and include business object parameter values from the query.
+  - **NEVER USE SELECT \* - Always specify explicit column names.**
+  - **Business object parameters use their original names alongside numerical SQL parameters.**
+  - **Never** assume database structure or invent columns/keys not in the schema.
+  - Persian calendar year: March 2025 - March 2026.
+  - Use PostgreSQL date functions like `CURRENT_DATE` and `INTERVAL` for relative dates.
 """
 
-QUERY_ROUTER = """
+QUERY_SEMANTIC_ROUTER = """
 # Query Router: Document Retrieval vs Database Access
 
 You are a precise routing system that determines whether a user query should be answered using document content or requires database access.
@@ -2241,7 +2328,8 @@ The primary goal is to output a query that faithfully represents the user's inte
     Follow-up question:
     دفترکل
     Optimized search query in Farsi:
-    چطوری در ماژول دفتر کل سند بزنم
+    در ماژول دفتر کل، چطوری سند بزنم؟
+    *(Note: The module name should always be placed in the very first part of the search query, containing (در ماژول), and followed by a comma.)*
 
 **Example 5: Multi-turn context completion with location specification**
     Conversation History:
@@ -2371,7 +2459,7 @@ The primary goal is to output a query that faithfully represents the user's inte
     Follow-up question:
     سند انبار
     Optimized search query:
-    +++context-bound+++ چطوری سند انبار بزنم
+    چطوری سند انبار بزنم
 
 **New Example 19: Cross-module action preservation**
     Conversation History: 
@@ -2380,7 +2468,7 @@ The primary goal is to output a query that faithfully represents the user's inte
     Follow-up question:
     کالای دیجیتال
     Optimized search query:
-    +++context-bound+++ نحوه ثبت سفارش فروش کالای دیجیتال
+    نحوه ثبت سفارش فروش کالای دیجیتال
 
 **Conversation History:**
 

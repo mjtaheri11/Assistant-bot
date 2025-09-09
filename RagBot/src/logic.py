@@ -17,9 +17,9 @@ from .prompts import (
     RAG_NORMAL_SYSTEM_PROMPT,
     UTTERANCE_PARAPHRASER_PROMPT,
     SQL_CONVERTER_MODIFIED_WITH_PARAMETERS,
+    CHITCHAT_PROMPT,
     SQL_CONVERTER_MODIFIED_WITH_PARAMETERS_TEMPLATE,
     SQL_MODIFIER,
-    QUERY_ROUTER,
     ANSWER_VALIDATOR_PROMPT,
     SEMANTIC_ROUTER
     # SQL_CONVERTER,
@@ -81,7 +81,7 @@ async def get_chat_response(prompt: str, answer_type: str = "qa") -> str:
     # Use OpenRouter if available, otherwise fall back to original configuration
     if LLM_API_KEY and LLM_MODEL_NAME and LLM_API_BASE:
         llm = ChatOpenAI(
-            openai_api_base=LLM_API_BASE,
+            # openai_api_base=LLM_API_BASE,
             openai_api_key=LLM_API_KEY,
             model_name=LLM_MODEL_NAME,
             temperature=1,
@@ -175,6 +175,22 @@ async def query_responder(
     response = json_cleaning(response)
     return response
 
+
+@observe()
+async def chitchat_responder(
+    query: str,
+    context: str, 
+    history: str,
+    ):
+    serialized_history = history_serializer(history)
+    prompt = CHITCHAT_PROMPT.format(user_question=query, 
+                             context=context, 
+                             history=serialized_history
+                             )
+    response = await get_chat_response(prompt)                             
+    return response
+
+    
 @observe()
 async def answer_validator(question: str, context: str, answer: str) -> bool:
     prompt = ANSWER_VALIDATOR_PROMPT.format(
@@ -186,7 +202,7 @@ async def answer_validator(question: str, context: str, answer: str) -> bool:
     return response
 
 @observe()
-async def is_somewhat_uniform(freq_dict: dict, threshold: float = 0.8) -> bool:
+async def is_somewhat_uniform(freq_dict: dict, threshold: float = 0.80) -> bool:
     """
     Checks if the frequency distribution in a dictionary is somewhat uniform
     based on the Coefficient of Variation (CV).
@@ -345,6 +361,9 @@ async def _determine_final_route(
     ALPHA_THRESHOLD = ROUTER_CONFIG["alpha_threshold"]
     BETA_THRESHOLD = ROUTER_CONFIG["beta_threshold"]
     """Determines the final route based on probability thresholds."""
+
+    probabilities = list(probabilities)  # Convert to list to make it subscriptable
+
     if max_prob > ALPHA_THRESHOLD and ("همکاران" not in utterance) and (top_prediction != "illegal"):
         return top_prediction
 
@@ -354,17 +373,18 @@ async def _determine_final_route(
             route for route, prob in probabilities if prob > BETA_THRESHOLD
         ]
     else:
-        plausible_routes = [route for route in probabilities]
+        plausible_routes = [route for route, prob in probabilities]
 
     if len(plausible_routes) < 2:
         # Fallback if no route meets the beta threshold
-        raise Exception("the Number of plausible routes is less than 2, the least required routes")
+        # Get the top two routes by probability
+        sorted_probabilities = sorted(probabilities, key=lambda x: x[1], reverse=True)
+        plausible_routes = [sorted_probabilities[0][0], sorted_probabilities[1][0]]
 
     # Use an LLM to disambiguate between plausible routes
     return await get_chat_response(
         SEMANTIC_ROUTER.format(user_query=utterance, class_list=plausible_routes)
     )
-
 
 @observe()
 async def get_route_for_utterance(utterance: str) -> str:    
@@ -418,7 +438,7 @@ async def get_route_for_utterance(utterance: str) -> str:
 
 @observe()
 async def router_SQL_QA(query: str, context: str):
-    prompt = QUERY_ROUTER.format(query=query, context=context)
+    # prompt = QUERY_ROUTER.format(query=query, context=context)
     raw_response = await get_chat_response(prompt, answer_type="sql")
     response = json_cleaning(raw_response)
     return response
@@ -451,30 +471,28 @@ async def chat_responder_(
         if response:
             return paraphrased_utterance, response, "", False, []
     
-    route_response = await get_route_for_utterance(paraphrased_utterance)
-    import pdb
-    pdb.set_trace()
-
-    if route_response == "sql":
-        return paraphrased_utterance, "", "", False, []
-    
-    if route_response == "chitchat":
-        return paraphrased_utterance, template_for_chitchat_answers, "", False, [] 
-    
-    if route_response == "illegal" or route_response =="irrelevant": 
-        return paraphrased_utterance, template_for_not_answer, "", False, []
-
     if detected_module:
         do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, input_module=detected_module)
     else:
         do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index)
 
+    if do_clarify:
+        return paraphrased_utterance, "", "", do_clarify, modules
+
+    route_response = await get_route_for_utterance(paraphrased_utterance)
+    if route_response == "sql":
+        return paraphrased_utterance, "", "", False, [modules[0]]
+    
+    if route_response == "chitchat":
+        response = await chitchat_responder(paraphrased_utterance, history=history, context=context)
+        return paraphrased_utterance, response, context, False, [] 
+    
+    if route_response == "illegal" or route_response =="irrelevant": 
+        return paraphrased_utterance, template_for_not_answer, "", False, []
+
     if not context:
         return paraphrased_utterance, "", "", False, []
 
-    if do_clarify:
-        return paraphrased_utterance, "", "", do_clarify, modules
-    
     response = await query_responder(
         paraphrased_utterance,
         context,

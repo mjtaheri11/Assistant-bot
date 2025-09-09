@@ -19,8 +19,12 @@ services:
       - CUDA_VISIBLE_DEVICES=2
     dns:
       - 178.22.122.100
-      - 185.51.200.2
+      - 181.41.194.186
       - 8.8.8.8
+      
+      # - 178.22.122.100
+      # - 185.51.200.2
+      # - 8.8.8.8
     restart: always
     user: root
     depends_on:

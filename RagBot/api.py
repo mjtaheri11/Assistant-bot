@@ -21,7 +21,7 @@ from langfuse.decorators import langfuse_context, observe
 # Langfuse configuration
 LANGFUSE_PUBLIC_KEY="pk-lf-280b67c9-093b-4e71-8df2-9502726dc9cc"
 LANGFUSE_SECRET_KEY="sk-lf-d19e4f4b-8483-406a-bc76-6ce2d4959afa"
-LANGFUSE_HOST="http://localhost:3000"
+LANGFUSE_HOST="http://185.13.230.222:3000"
 os.environ["LANGFUSE_PUBLIC_KEY"] = LANGFUSE_PUBLIC_KEY
 os.environ["LANGFUSE_SECRET_KEY"] = LANGFUSE_SECRET_KEY
 os.environ["LANGFUSE_HOST"] = LANGFUSE_HOST
@@ -43,7 +43,7 @@ from src.logic import (
 from src.logs import non_generative_agent_logger, simple_logger
 from src.utils import substitute_sql_parameters
 
-RESPONSE_TEMPLATE_FOR_NO_ANSWER = "در حال حاضر نمی‌توانم به سوال شما پاسخ دهم"
+RESPONSE_TEMPLATE_FOR_NO_ANSWER = "متاسفانه، پاسخی به سوال شما یافت نشد."
 MODULE_CLARIFICATION_RESPONSE_TEMPLATE = "لطفا مشخص نمایید سوال شما از کدام یک از ماژول های سیستم است."
 app = FastAPI(title="Digital Assistant")
 
@@ -412,6 +412,8 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
     parameters = {}
     parametric_response = None
     response_template = ""
+    tenant_name = ""
+    user_code = ""
     
     try:
         session_id = get_session_id(request, chat_request)
@@ -515,36 +517,43 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         company_name=company_name,
                         assistant_name=assistant_name
                     )
-                    
                     assert do_clarify == False, "on_click should not return do_clarify=True"
-
-                    assert len(modules) == 1, "on_click should not return modules"
+                    assert len(modules) <= 1, "on_click should not return modules"
 
                     if not response:
-                        if chat_request.query in ["انبار", "فروش", "دفتر کل"]:
-                            is_sql = True                           
-                            agent = "sql_responder"
-                            response_dict_str = await sql_responder_(
-                                paraphrased_utterance,
-                                chat_request.query,
-                                "",
-                                "",
-                                chat_request.do_retry,
-                            )
-                            if "NULL" not in response_dict_str:
+                        if chat_request.sql_mode:
+                            if chat_request.query in ["انبار", "فروش", "دفتر کل"]:
+                                is_sql = True                           
+                                agent = "sql_responder"
+                                response_dict_str = await sql_responder_(
+                                    paraphrased_utterance,
+                                    chat_request.query,
+                                    "",
+                                    "",
+                                    chat_request.do_retry,
+                                )
                                 response_dict = json.loads(response_dict_str)
-                                response = response_dict["SQL"]
-                                parameters = response_dict["parameters"]
-                            message = "table response generated"
+                                if "null" not in response_dict_str and response_dict["SQL"] is not None:
+                                    parametric_response = substitute_sql_parameters(response_dict)
+                                    response = response_dict["SQL"]
+                                    parameters = response_dict["parameters"]
+                                    response_template = response_dict["response_template"]
+                                    message = "table response generated"
+                                else:
+                                    is_sql = False
+                                    response = RESPONSE_TEMPLATE_FOR_NO_ANSWER
+                            else:
+                                is_sql = False
+                                response = RESPONSE_TEMPLATE_FOR_NO_ANSWER
                         else:
                             is_sql = False
                             response = RESPONSE_TEMPLATE_FOR_NO_ANSWER
-                    
+                                                
                     elapsed_time = time.time() - start_time
                     message_id = await postgres.update_last_chat_row(
                         session_id,
                         paraphrased_utterance,
-                        response,
+                        parametric_response if is_sql else response,
                         is_sql,
                         elapsed_time,
                         do_suggest,
@@ -589,20 +598,20 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                                 is_sql = True
                                 response_dict_str = await sql_responder_(
                                     paraphrased_utterance,
-                                    modules[0] if modules else "",
+                                    modules[0],
                                     "",
                                     "",
                                     chat_request.do_retry,
                                 )
                                 response_dict = json.loads(response_dict_str)
-                                if "NULL" not in response_dict_str and response_dict["SQL"] is not None:
+                                if "null" not in response_dict_str and response_dict["SQL"] is not None:
                                     response = response_dict["SQL"]
                                     parametric_response = substitute_sql_parameters(response_dict)
                                     parameters = response_dict["parameters"]
                                     response_template = response_dict["response_template"]
-                                    if response is None:
-                                        is_sql = False
-                                        response = RESPONSE_TEMPLATE_FOR_NO_ANSWER
+                                else:
+                                    is_sql = False
+                                    response = RESPONSE_TEMPLATE_FOR_NO_ANSWER
                             
                             else:
                                 is_sql = False
