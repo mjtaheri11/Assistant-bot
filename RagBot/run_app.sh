@@ -18,7 +18,7 @@ echo "✅ Starting api.py with Uvicorn..."
 uvicorn api:app --host 0.0.0.0 --port 8689 --reload &
 API_PID=$!
 
-# 2. Wait for 30 seconds
+# 2. Wait for 30 sconds
 echo "⏳ Waiting for 30 seconds..."
 sleep 30
 

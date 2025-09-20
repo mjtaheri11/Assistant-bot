@@ -33,7 +33,7 @@ class QwenReranker:
         self.model = AutoModelForCausalLM.from_pretrained(
             model_name,
             torch_dtype=torch.float16,
-            # attn_implementation="flash_attention_2"
+            attn_implementation="flash_attention_2"
         ).to(device).eval()
         self.device = device
         self.max_length = max_length

@@ -233,3 +233,4 @@ RagBot/eval/evaluation_results/*.json
 RagBot/evaluation_results/*.md
 RagBot/eval/evaluation_results/*.md
 RagBot/eval/evaluation_results/*.csv
+RagBot/nvidia-files
