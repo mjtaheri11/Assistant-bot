@@ -197,6 +197,49 @@ def find_database_path(database_index: str = None):
 
     return match_dir, company_name, assistant_name
 
+import re
+
+# Alternative implementation with more explicit handling
+
+import re
+
+def convert_sql_parameters(sql_query):
+    """
+    Convert SQL parameter placeholders from $ format to @ format.
+    All numbers in parameters get an underscore prefix (e.g., $1 -> @_1, @2 -> @_2).
+    
+    Args:
+        sql_query (str): SQL query with $ parameters (e.g., $param, $1, $param_name)
+        
+    Returns:
+        str: SQL query with @ parameters where numbers have underscore prefix
+    """
+    # First convert all $ to @
+    # Pattern to match $ followed by parameter name (alphanumeric + underscore) or just numbers
+    pattern = r'\$([a-zA-Z_][a-zA-Z0-9_]*|\d+)'
+    sql_query = re.sub(pattern, r'@\1', sql_query)
+    
+    # Then add underscore before any numbers that follow @
+    # This catches @1, @2, @3, etc. and converts them to @_1, @_2, @_3
+    sql_query = re.sub(r'@(\d+)', r'@_\1', sql_query)
+    
+    return sql_query
+
+
+
+def add_underscore_to_keys(dictionary):
+    """
+    Add an underscore prefix to all keys in a dictionary.
+    
+    Args:
+        dictionary (dict): Input dictionary
+        
+    Returns:
+        dict: New dictionary with underscore-prefixed keys
+    """
+    return {f"_{key}": value for key, value in dictionary.items()}
+
+
 async def preprocess_vector_db_input(files, target_chunk_size, max_chunk_size, company_name, assistant_name):
     """Preprocess files for vector database creation - from develop branch"""
     _settings = {}
@@ -227,7 +270,6 @@ async def async_responder(session_id):
     for _ in range(int(ASYNC_POLLING_TIMEOUT / ASYNC_POLLING_INTERVAL)):
         final_records = await postgres.get_history(session_id, 1, 1, True)
         final_record = final_records[0] if final_records else {}
-       
         if final_record.get("response") is not None:
             if final_record.get("do_suggest"):
                 final_record["choices"] = await postgres.get_message_choices(final_record["message_id"])
@@ -414,7 +456,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
     response_template = ""
     tenant_name = ""
     user_code = ""
-    
+    response_template = ""
     try:
         session_id = get_session_id(request, chat_request)
         if not chat_request.is_sync:
@@ -426,6 +468,8 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
             do_suggest = final_records.get("do_suggest", False)
             choices = final_records.get("choices", [])
             elapsed_time = final_records.get("elapsed_time", 0)
+            parameters = json.loads(final_records.get("parameters", "{}"))
+            response_template = final_records.get("response_template", "")
         else:
             postgres = Postgres()
             user_code, tenant_name = await get_user_code_tenant_name(chat_request, postgres)
@@ -438,6 +482,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                 config["postgres"]["history_length"],
                 True
             )
+            
             if len(chat_request.query.split()) > 60:
                 paraphrased_utterance, response, context = (
                     "No valid query",
@@ -453,6 +498,8 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         bot_response=response,
                         response_type=chat_request.response_type,
                         elapsed_time=time.time() - start_time,
+                        response_template=response_template,
+                        parameters=json.dumps(parameters)
                     )
                 else:
                     # SQL mode: use different insertion pattern
@@ -461,7 +508,10 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         user_query=chat_request.query,
                         paraphrased_query=paraphrased_utterance,
                         bot_response=response,
+                        response_type=chat_request.response_type,
                         elapsed_time=time.time() - start_time,
+                        response_template=response_template,
+                        parameters=json.dumps(parameters)
                     )
             else:
                 database_id_dict = await postgres.find_database_id(chat_request.session_id)
@@ -482,6 +532,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                     message_id = str(history[-1]["message_id"])
                     selected_module = history[-1]["selected_module"]
                     faulty_sql_query = history[-1]["response"]
+                    faulty_sql_query_parameters = history[-1]["parameters"]
                     
                     _ = await postgres.remove_previous_response(history[-1]["message_id"])
                     response_dict_str = await sql_responder_(
@@ -490,10 +541,14 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         faulty_sql_query,
                         chat_request.error_payload,
                         chat_request.do_retry,
+                        faulty_sql_query_parameters
                     )
+                    response_dict = json.loads(response_dict_str)
                     if "NULL" not in response_dict_str:
-                        response_dict = json.loads(response_dict_str)
+                        response_dict["SQL"] = convert_sql_parameters(response_dict["SQL"])
                         response = response_dict["SQL"]
+                        if response_dict["parameters"]:
+                            response_dict["parameters"] = add_underscore_to_keys(response_dict["parameters"])
                         parameters = response_dict["parameters"]
                     
                     message = "retried table response generated"
@@ -534,11 +589,11 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                                 )
                                 response_dict = json.loads(response_dict_str)
                                 if "null" not in response_dict_str and response_dict["SQL"] is not None:
-                                    parametric_response = substitute_sql_parameters(response_dict)
+                                    response_dict["SQL"] = convert_sql_parameters(response_dict["SQL"])
                                     response = response_dict["SQL"]
+                                    if response_dict["parameters"]:
+                                        response_dict["parameters"] = add_underscore_to_keys(response_dict["parameters"])
                                     parameters = response_dict["parameters"]
-                                    response_template = response_dict["response_template"]
-                                    message = "table response generated"
                                 else:
                                     is_sql = False
                                     response = RESPONSE_TEMPLATE_FOR_NO_ANSWER
@@ -557,7 +612,9 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         is_sql,
                         elapsed_time,
                         do_suggest,
-                        ""
+                        "",
+                        response_template,
+                        json.dumps(parameters)
                     )
 
                 else:
@@ -587,6 +644,8 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                             is_sql,
                             elapsed_time,
                             do_suggest,
+                            response_template,
+                            json.dumps(parameters)
                         )
                         agent = "module_clarification"
                         message = "modules proposed"
@@ -605,10 +664,11 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                                 )
                                 response_dict = json.loads(response_dict_str)
                                 if "null" not in response_dict_str and response_dict["SQL"] is not None:
+                                    response_dict["SQL"] = convert_sql_parameters(response_dict["SQL"])
                                     response = response_dict["SQL"]
-                                    parametric_response = substitute_sql_parameters(response_dict)
+                                    if response_dict["parameters"]:
+                                        response_dict["parameters"] = add_underscore_to_keys(response_dict["parameters"])
                                     parameters = response_dict["parameters"]
-                                    response_template = response_dict["response_template"]
                                 else:
                                     is_sql = False
                                     response = RESPONSE_TEMPLATE_FOR_NO_ANSWER
@@ -627,7 +687,9 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                             is_sql,
                             elapsed_time,
                             do_suggest,
-                            modules_str
+                            modules_str,
+                            response_template,
+                            json.dumps(parameters)
                         )
                 
         REQUEST_LATENCY.labels(endpoint="/v1/chat").observe(time.time() - start_time)
@@ -697,7 +759,9 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
             output_dict={
                 "response": "",
                 "do_suggest": do_suggest,
-                "choices": choices
+                "choices": choices,
+                "parameters": dict(parameters),
+                "response_template": response_template
             },
             elapsed_time=elapsed_time,
         )

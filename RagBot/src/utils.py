@@ -182,14 +182,13 @@ def extract_answer(llm_output):
 
 
 def json_cleaning_1(input_string):
-    input_string.replace("\n", "").strip()
-    json_input = json.loads(input_string)
-    return json_input["user_standalone_input"]
+    final_cleaned_response = input_string.replace("```json", "").replace("```", "").strip() #.replace("\n\n", "\n").strip()
+    return final_cleaned_response
 
 def json_cleaning(input_string):    
     cleaned_string = re.sub(r'<think>.*?</think>', '', input_string, flags=re.DOTALL)
     # cleaned_string = re.sub(r'\n+', '\n', cleaned_string)
-    final_cleaned_response = cleaned_string.replace("sql", "").replace("```", "").strip() #.replace("\n\n", "\n").strip()
+    final_cleaned_response = cleaned_string.replace("```json", "").replace("```", "").strip() #.replace("\n\n", "\n").strip()
     final_cleaned = extract_answer(final_cleaned_response)
     if final_cleaned:
         final_cleaned_response = final_cleaned

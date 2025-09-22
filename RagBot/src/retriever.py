@@ -235,7 +235,7 @@ class Retriever(object):
             output_lst.append(item)
         return output_lst
     
-    async def retrieve_context(self, query, database_index=None, k=None, module_filter=None, reverse=True):
+    async def retrieve_context(self, query, database_index=None, k=None, module_filter=None, reverse=True, split=False):
         """
         Retrieve context with optional module filtering and database selection.
         """

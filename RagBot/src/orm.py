@@ -232,7 +232,7 @@ class Postgres:
 
     async def get_history(self, session_id, page_index, page_size, with_paraphrase=False):
         sql_history_query = """
-            SELECT user_query, paraphrased_query, bot_response, message_id, is_sql, selected_module, elapsed_time, do_suggest FROM messages
+            SELECT user_query, paraphrased_query, bot_response, message_id, is_sql, selected_module, elapsed_time, do_suggest, response_template, parameters FROM messages
             WHERE session_id = $1
             ORDER BY create_time DESC
             OFFSET $2
@@ -251,12 +251,12 @@ class Postgres:
         # Process the history results in the desired format
         if with_paraphrase:
             history = [
-                    {"query": h[0], "response": h[2], "paraphrased_query": h[1], "message_id": h[3], "is_sql": h[4], "selected_module": h[5], "elapsed_time": h[6], "do_suggest": h[7]}
+                    {"query": h[0], "response": h[2], "paraphrased_query": h[1], "message_id": h[3], "is_sql": h[4], "selected_module": h[5], "elapsed_time": h[6], "do_suggest": h[7], "response_template": h[8],"parameters": h[9]}
                 for h in reversed(selected_history)
             ]
         else:
             history = [
-                    {"query": h[0], "response": h[2], "message_id": h[3], "is_sql": h[4], "selected_module": h[5], "elapsed_time": h[6], "do_suggest": h[7]}
+                    {"query": h[0], "response": h[2], "message_id": h[3], "is_sql": h[4], "selected_module": h[5], "elapsed_time": h[6], "do_suggest": h[7], "response_template": h[8],"parameters": h[9]}
                     for h in reversed(selected_history)
             ]      
                
@@ -346,7 +346,7 @@ class Postgres:
         ]
     
     async def insert_chat_row(
-        self, session_id, user_query, paraphrased_query=None, bot_response=None, response_type="concise", elapsed_time=None, selected_module=None
+        self, session_id, user_query, paraphrased_query=None, bot_response=None, response_type="concise", elapsed_time=None, selected_module=None, response_template=None, parameters="{}"
     ):
         # Start with required columns and their values
         columns = ["session_id", "user_query"]
@@ -368,7 +368,13 @@ class Postgres:
         if response_type is not None:
             columns.append("response_type")
             values.append(response_type)
-
+        if response_template is not None:
+            columns.append("response_template")
+            values.append(response_template)
+        if parameters is not None:
+            columns.append("parameters")
+            values.append(parameters)
+        
         # Construct the SQL query dynamically
         sql_insert_query = f"INSERT INTO messages ({', '.join(columns)}) VALUES ({', '.join([f'${i}' for i in range(1, len(values) + 1)])}) RETURNING message_id;"
 
@@ -387,7 +393,9 @@ class Postgres:
         is_sql,
         elapsed_time,
         do_suggest=False,
-        selected_module=None
+        selected_module=None,
+        response_template=None,
+        parameters="{}"
         ):
        
         values = (
@@ -397,7 +405,9 @@ class Postgres:
             selected_module,  # Pass None directly; the driver converts it to NULL
             session_id,
             is_sql,
-            do_suggest
+            do_suggest,
+            parameters,
+            response_template
         )
         sql_update_query = """
             UPDATE messages
@@ -406,7 +416,9 @@ class Postgres:
                 elapsed_time = $3,
                 selected_module = $4,
                 is_sql = $6,
-                do_suggest = $7
+                do_suggest = $7,
+                parameters = $8,
+                response_template = $9
             WHERE message_id = (
                 SELECT message_id
                 FROM messages

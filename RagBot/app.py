@@ -1,4 +1,5 @@
 import re
+import json
 import requests
 import streamlit as st
 from src.config import config
@@ -11,10 +12,10 @@ NUMBER_OF_SUGGESTED_DATABASE = 10
 
 CSS_STYLE_FILE = "./src/style.css"
 
-BASE_URL = "http://0.0.0.0:8689" # "http://172.27.0.6:8686" #
+BASE_URL = "http://0.0.0.0:8689"  # "http://172.27.0.6:8686" #
 
 
-def session_create(database_id : str = None, api_url: str = BASE_URL):
+def session_create(database_id: str = None, api_url: str = BASE_URL):
     """
     Sends a POST request to create a session and returns the session ID if successful.
 
@@ -28,7 +29,8 @@ def session_create(database_id : str = None, api_url: str = BASE_URL):
                                    "tenant_name": "admin",
                                    "user_code": "admin"
                                    }
-        response = requests.post(f"{api_url}/v1/session/create", json=create_session_data)
+        response = requests.post(
+            f"{api_url}/v1/session/create", json=create_session_data)
         # Check if the request was successful
         if response.status_code == 200:
             # Parse the JSON response and extract the
@@ -56,23 +58,23 @@ def request_simple_qa(session_id, query, api_url: str = BASE_URL):
         return {
             "status": "success",
             "response": json_response["response"]
-            }
+        }
     else:
         return {"status": "error", "response": ""}
-   
+
 
 def chat_request(
-    session_id: str, 
-    query: str, 
-    on_click: bool, 
-    database_id: str = None, 
-    answer_type: str = "concise", 
-    does_evaluate: bool = False, 
-    use_cache: bool = True, 
+    session_id: str,
+    query: str,
+    on_click: bool,
+    database_id: str = None,
+    answer_type: str = "concise",
+    does_evaluate: bool = False,
+    use_cache: bool = True,
     api_url: str = BASE_URL,
     sql_mode: bool = True
-    ):
-    
+):
+
     # Define the request data
     chat_data = {
         "query": query,
@@ -85,7 +87,7 @@ def chat_request(
     }
     if database_id:
         chat_data["database_id"] = database_id
-        
+
     headers = {"Session-ID": session_id}
     response = requests.post(
         f"{api_url}/v1/chat", json=chat_data, headers=headers
@@ -95,7 +97,8 @@ def chat_request(
     json_response = response.json()
     if response.status_code == 200:
         if json_response["is_sql"] == True:
-            json_response["response"] = {"response": json_response["response"], "parameters": json_response["parameters"], "response_template": json_response["response_template"]}
+            json_response["response"] = {"response": json_response["response"],
+                                         "parameters": json_response["parameters"], "response_template": json_response["response_template"]}
         return {
             "status": "success",
             "query": json_response["query"],
@@ -106,7 +109,7 @@ def chat_request(
             "do_suggest": json_response.get("do_suggest", False)
         }
     else:
-        return {"status": "error", "query": "", "response": "", "message_id": "", 
+        return {"status": "error", "query": "", "response": "", "message_id": "",
                 "choices": [], "is_sql": False, "do_suggest": False}
 
 
@@ -120,12 +123,13 @@ def sql_request(query: str, session_id: str, on_click: bool, database_id: str = 
     if database_id:
         sql_data["database_id"] = database_id
 
-    response = requests.post(f"{api_url}/chat/sql", json=sql_data) # , timeout=11
+    response = requests.post(f"{api_url}/chat/sql",
+                             json=sql_data)  # , timeout=11
 
     # Handle the different response status codes
     json_response = response.json()
     if response.status_code == 200:
-        return {"status": "success", "query": query, "response": json_response["response"], 
+        return {"status": "success", "query": query, "response": json_response["response"],
                 "message_id": json_response["message_id"], "choices": json_response.get("choices", [])}
     else:
         return {"status": "error", "query": "", "response": "", "message_id": "", "choices": []}
@@ -159,7 +163,8 @@ def request_previous_sessions(api_url: str = BASE_URL):
             assistant_names.append(response.get("assistant_name", ""))
             company_names.append(response.get("company_name", ""))
             sessions.append(response["session_id"])
-            paraphrased_query.append("" if response.get("paraphrased_query") == None else response.get("paraphrased_query"))
+            paraphrased_query.append("" if response.get(
+                "paraphrased_query") == None else response.get("paraphrased_query"))
         return {
             "status": "sucess",
             "company_names": company_names,
@@ -234,6 +239,7 @@ def create_database_api_request(
     except Exception as err:
         return ("error", f"An error occurred: {err}", None)
 
+
 def form_submit_button():
     st.session_state["form_submitted"] = True
 
@@ -250,6 +256,7 @@ def udpate_temporal_names(key=None):
 def clear_text():
     st.session_state["user_input"] = st.session_state["temporal_user_input"]
     st.session_state["temporal_user_input"] = ""
+
 
 def clear_retriever_text():
     st.session_state["retriever_user_input"] = st.session_state["temporal_retriever_user_input"]
@@ -268,21 +275,23 @@ def feedback_button_clicked():
         or st.session_state.get("flag", False)
     )
 
+
 def find_answer_type(type_: str):
     if type_.strip() == "خلاصه":
         return "concise"
     if type_.strip() == "توضیحی":
         return "explanatory"
     if type_.strip() == "عادی":
-        return "normal"    
-       
+        return "normal"
+
 
 def boolean_mapper(type_):
     if type_.strip() == "بله":
         return True
     elif type_.strip() == "خیر":
         return False
-   
+
+
 def main():
     st.set_page_config(
         page_title="hamzan",
@@ -295,13 +304,15 @@ def main():
     clicked_on_new_session = False
     clicked_on_database_id = False
     for i in range(NUMBER_OF_SUGGESTED_SESSIONS):
-        
+
         if st.session_state.get(f"session_button_{i}"):
             clicked_on_sidebar_sessions = True
             session_id_clicked = st.session_state.get(f"session_{i}")
             st.session_state["session_id"] = session_id_clicked
-            st.session_state["company_name"] = st.session_state.get(f"suggested_company_name_{i}", "")
-            st.session_state["assistant_name"] = st.session_state.get(f"suggested_assistant_name_{i}", "")
+            st.session_state["company_name"] = st.session_state.get(
+                f"suggested_company_name_{i}", "")
+            st.session_state["assistant_name"] = st.session_state.get(
+                f"suggested_assistant_name_{i}", "")
             history = request_history(session_id_clicked, BASE_URL)
             st.session_state["enable_submit_form"] = False
             st.session_state["form_submitted"] = False
@@ -315,22 +326,26 @@ def main():
             clicked_on_database_id = True
             database_id_clicked = st.session_state.get(f"database_id_{i}")
             st.session_state["database_id"] = database_id_clicked
-            st.session_state["company_name"] = st.session_state.get(f"company_name_{i}")
-            st.session_state["assistant_name"] = st.session_state.get(f"assistant_name_{i}")
-            st.session_state["session_id"] = session_create(database_id=database_id_clicked)
+            st.session_state["company_name"] = st.session_state.get(
+                f"company_name_{i}")
+            st.session_state["assistant_name"] = st.session_state.get(
+                f"assistant_name_{i}")
+            st.session_state["session_id"] = session_create(
+                database_id=database_id_clicked)
             st.session_state["first_encounter_with_searchbox"] = True
             st.session_state["enable_submit_form"] = False
             st.session_state["form_submitted"] = False
-            
+
     for i in range(len(st.session_state.get("suggested_sessions", []))):
         if st.session_state.get(f"suggestion_button_clicked_{i}"):
-            st.session_state["user_input"] = st.session_state.get(f"suggestion_button_clicked_title_{i}")
+            st.session_state["user_input"] = st.session_state.get(
+                f"suggestion_button_clicked_title_{i}")
 
     if st.session_state.get("new_session"):
         st.session_state["first_encounter_with_searchbox"] = True
         st.session_state["session_id"] = session_create()
         clicked_on_new_session = True
-   
+
     if st.session_state.get("temporal_enable_submit_form"):
         st.session_state["enable_submit_form"] = True
         st.session_state["first_encounter_with_searchbox"] = True
@@ -338,11 +353,11 @@ def main():
     if "session_id" not in st.session_state:
         session_id = session_create()
         st.session_state["session_id"] = session_id
-   
+
     if st.session_state.get("form_submitted", False):
         form_submitted = True
 
-    number_of_columns = [3, 6, 1 ,3, 1]
+    number_of_columns = [3, 6, 1, 3, 1]
     logging_column, main_column, _, sessions_column, _ = st.columns(
         number_of_columns,
         gap="small",
@@ -352,8 +367,10 @@ def main():
         st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
     with st.sidebar:
-        st.markdown("در این قسمت هم میتوانید دستیار خود را سفارش دهید یا از دستیار های قبلی خود استفاده کنید")
-        st.button("ساخت دستیار", key="temporal_enable_submit_form", type="primary")
+        st.markdown(
+            "در این قسمت هم میتوانید دستیار خود را سفارش دهید یا از دستیار های قبلی خود استفاده کنید")
+        st.button("ساخت دستیار", key="temporal_enable_submit_form",
+                  type="primary")
         suggested_databases_titles = []
         previous_databases = request_previous_databases()
         database_ids = previous_databases["database_ids"]
@@ -362,7 +379,8 @@ def main():
         for i, (database_id, company_name, assistant_name) in enumerate(
             zip(database_ids, company_names, assistant_names)
         ):
-            suggested_database_name = company_name + " - " + assistant_name + "\n\n" + database_id
+            suggested_database_name = company_name + \
+                " - " + assistant_name + "\n\n" + database_id
             st.button(suggested_database_name, key=f"database_button_{i}")
             st.session_state[f"database_id_{i}"] = database_id
             st.session_state[f"company_name_{i}"] = company_name
@@ -374,7 +392,7 @@ def main():
 
     if st.session_state.get("clear_logs_button", False):
         clear_logs()
-       
+
     with main_column:
         main_chat_tab, simple_qa_tab = st.tabs(["چت اصلی", "ارزیابی بازیابی"])
         # --- Main Chat Tab ---
@@ -394,15 +412,18 @@ def main():
                         if status == "success":
                             udpate_temporal_names("assistant_name")
                             udpate_temporal_names("company_name")
-                            st.session_state["does_evaluate"] = boolean_mapper(st.session_state.get("temporal_does_evaluate"))
-                            st.session_state["use_cache"] = boolean_mapper(st.session_state["temporal_use_cache"])
+                            st.session_state["does_evaluate"] = boolean_mapper(
+                                st.session_state.get("temporal_does_evaluate"))
+                            st.session_state["use_cache"] = boolean_mapper(
+                                st.session_state["temporal_use_cache"])
                             st.session_state["database_id"] = data["database_id"]
-                            st.session_state["session_id"] = session_create(database_id=data["database_id"])
+                            st.session_state["session_id"] = session_create(
+                                database_id=data["database_id"])
                             st.session_state["enable_submit_form"] = False
                             st.session_state["form_submitted"] = False
                         else:
                             st.error(message)
-           
+
             if st.session_state.get("enable_submit_form", False):
                 with st.form(key="create_database_form"):
                     st.info(
@@ -418,7 +439,7 @@ def main():
                         disabled=False,
                         label_visibility="hidden",
                     )
-                   
+
                     st.markdown("نام دستیار خود را وارد کنید")
                     st.text_input(
                         "نام دستیار خود را وارد کنید",
@@ -447,24 +468,30 @@ def main():
                         key="temporal_use_cache",
                         label_visibility="collapsed"
                     )
-                    st.form_submit_button("ارسال", on_click=form_submit_button, type="primary")
+                    st.form_submit_button(
+                        "ارسال", on_click=form_submit_button, type="primary")
             else:
                 if st.session_state["first_encounter_with_searchbox"]:
-                    company_name = st.session_state.get('company_name', '').strip()
-                    assistant_name = st.session_state.get('assistant_name', '').strip()
+                    company_name = st.session_state.get(
+                        'company_name', '').strip()
+                    assistant_name = st.session_state.get(
+                        'assistant_name', '').strip()
                     if company_name and assistant_name:
-                        st.info(f"سلام، من سامانه {assistant_name} {company_name} هستم. لطفا سوالتون رو در کادر زیر بپرسید.")
+                        st.info(
+                            f"سلام، من سامانه {assistant_name} {company_name} هستم. لطفا سوالتون رو در کادر زیر بپرسید.")
                     else:
-                        st.info("سلام، من سامانه دستیار دیجیتال نسل چهارم همکاران سیستم هستم. لطفا سوالتون رو در کادر زیر بپرسید.")
+                        st.info(
+                            "سلام، من سامانه دستیار دیجیتال نسل چهارم همکاران سیستم هستم. لطفا سوالتون رو در کادر زیر بپرسید.")
                     st.session_state["first_encounter_with_searchbox"] = False
-                    
-                st.markdown(f'<div class="markdown-rtl">عامل SQL</div>', unsafe_allow_html=True)
+
+                st.markdown(
+                    f'<div class="markdown-rtl">عامل SQL</div>', unsafe_allow_html=True)
                 st.selectbox(
-                        '<div class="markdown-rtl">عامل SQL</div>',
-                        ["بله", "خیر"],
-                        key="temporal_sql_mode",
-                        label_visibility="collapsed"
-                    )
+                    '<div class="markdown-rtl">عامل SQL</div>',
+                    ["بله", "خیر"],
+                    key="temporal_sql_mode",
+                    label_visibility="collapsed"
+                )
                 st.radio(
                     "radio",
                     options=["خلاصه", "عادی", "توضیحی"],
@@ -479,18 +506,23 @@ def main():
                     key="temporal_user_input",
                     on_change=clear_text,
                 )
-                st.session_state["sql_mode"] = boolean_mapper(st.session_state["temporal_sql_mode"])
+                st.session_state["sql_mode"] = boolean_mapper(
+                    st.session_state["temporal_sql_mode"])
                 progress_bar = st.progress(value=0)
                 with st.container():
                     if st.session_state.get("user_input"):
                         user_input = st.session_state["user_input"]
                         database_id = st.session_state.get("database_id")
                         st.session_state.user_utterance.append(user_input)
-                        st.session_state["answer_type"] = find_answer_type(st.session_state.get("temporal_answer_type", "عادی"))
-                        st.session_state["on_click"] = st.session_state.get("on_click", False)
-                        st.session_state["does_evaluate"] = st.session_state.get("does_evaluate", False)
-                        st.session_state["use_cache"] = st.session_state.get("use_cache", True)
-                        
+                        st.session_state["answer_type"] = find_answer_type(
+                            st.session_state.get("temporal_answer_type", "عادی"))
+                        st.session_state["on_click"] = st.session_state.get(
+                            "on_click", False)
+                        st.session_state["does_evaluate"] = st.session_state.get(
+                            "does_evaluate", False)
+                        st.session_state["use_cache"] = st.session_state.get(
+                            "use_cache", True)
+
                         simple_logger(
                             f"user said: {user_input}",
                             session_id=st.session_state.get("session_id"),
@@ -521,7 +553,7 @@ def main():
                         else:
                             st.session_state["do_suggest_modules"] = False
                             st.session_state["on_click"] = False
-                           
+
                         progress_bar.progress(value=100, text="Done.")
                         st.session_state["choices"] = choices
                         st.session_state.do_suggest = do_suggest
@@ -545,11 +577,12 @@ def main():
                         st.session_state.query = [
                             message["paraphrased_query"]
                             for message in history["history"]
-                            if history["history"]  
+                            if history["history"]
                         ]
                         progress_bar.progress(value=100, text="Done.")
                         st.session_state.response = [
-                            message["response"]
+                            message["response"] if not message["is_sql"] else 
+                                {"response": message["response"], "parameters": message["parameters"], "response_template": message["response_template"]}
                             for message in history["history"]
                             if history["history"]
                         ]
@@ -571,7 +604,7 @@ def main():
                         st.session_state["have_clicked_on_feedback"] = False
                         st.session_state["response_is_valid"] = True
                         progress_bar.progress(value=0)
-                   
+
                     elif clicked_on_new_session:
                         st.session_state.user_utterance = []
                         st.session_state.query = []
@@ -582,7 +615,7 @@ def main():
                         st.session_state.response_is_valid = False
                         st.session_state.sql_response_type = []
                         progress_bar.progress(value=0)
-                        
+
                     elif clicked_on_database_id:
                         st.session_state.user_utterance = []
                         st.session_state.query = []
@@ -606,7 +639,8 @@ def main():
                                 help_msg = f"""برای پاسخ به سوال شما کوئری «{st.session_state['query'][i]}» \
                                 جستجو شده است."""
                                 content = st.session_state["response"][i]
-                                is_sql = st.session_state.get("sql_response_type", [False] * len(st.session_state["response"]))[i]
+                                is_sql = st.session_state.get(
+                                    "sql_response_type", [False] * len(st.session_state["response"]))[i]
                                 direction_class = "markdown-ltr" if is_sql else "markdown-rtl"
                                 content = f"```{content}```" if is_sql else content
                                 st.markdown(
@@ -616,16 +650,20 @@ def main():
                                 )
                                 if st.session_state.get("do_suggest_modules") and i == len(st.session_state["response"]) - 1:
                                     # Create a number of columns equal to the number of suggested modules
-                                    suggested_modules = st.session_state.get("suggested_modules", [])
+                                    suggested_modules = st.session_state.get(
+                                        "suggested_modules", [])
                                     if suggested_modules:
-                                        cols = st.columns(len(suggested_modules))
+                                        cols = st.columns(
+                                            len(suggested_modules))
                                         # Iterate through each module to create a button in its own column
                                         for index, module_name in enumerate(suggested_modules):
                                             with cols[index]:
                                                 # Create a button with a unique key for each module
-                                                st.button(module_name, key=f"suggestion_button_clicked_{index}")
+                                                st.button(
+                                                    module_name, key=f"suggestion_button_clicked_{index}")
                                                 # Store the module's title in the session state with a corresponding unique key
-                                                st.session_state[f"suggestion_button_clicked_title_{index}"] = module_name            
+                                                st.session_state[
+                                                    f"suggestion_button_clicked_title_{index}"] = module_name
 
                                 if (
                                     i == len(st.session_state["response"]) - 1
@@ -637,34 +675,43 @@ def main():
                                         user_utterance = st.session_state.get(
                                             "user_input_storage",
                                         )[i]
-                                        paraphrased_query = st.session_state.get("query")[i]
+                                        paraphrased_query = st.session_state.get("query")[
+                                            i]
                                         message_id = st.session_state["message_id"][-1]
-                                        response = st.session_state.get("response")[i]
+                                        response = st.session_state.get("response")[
+                                            i]
                                         # TODO: has bug when you click on a suggested question and then on thumbup/down buttons
-                                        like = st.session_state.get("like", False)
-                                        dislike = st.session_state.get("dislike", False)
-                                        flag = st.session_state.get("flag", False)
+                                        like = st.session_state.get(
+                                            "like", False)
+                                        dislike = st.session_state.get(
+                                            "dislike", False)
+                                        flag = st.session_state.get(
+                                            "flag", False)
                                         if like:
                                             result = send_feedback(
                                                 message_id,
                                                 "thumb_up",
-                                                st.session_state.get("session_id"),
+                                                st.session_state.get(
+                                                    "session_id"),
                                             )
                                         elif dislike:
                                             result = send_feedback(
                                                 message_id,
                                                 "thumb_down",
-                                                st.session_state.get("session_id"),
+                                                st.session_state.get(
+                                                    "session_id"),
                                             )
                                         elif flag:
                                             # todo flag is not included in the redis yet!
                                             result = send_feedback(
                                                 message_id,
                                                 "flag",
-                                                st.session_state.get("session_id")
+                                                st.session_state.get(
+                                                    "session_id")
                                             )
                                         non_generative_agent_logger(
-                                            session_id=st.session_state.get("session_id"),
+                                            session_id=st.session_state.get(
+                                                "session_id"),
                                             agent="user feedback",
                                             message="user is clicked on feedback button",
                                             input_dict={
@@ -692,7 +739,8 @@ def main():
                                                 gap="medium",
                                             )
                                             with text_col:
-                                                st.markdown("نظر شما قبلا ثبت شده است.")
+                                                st.markdown(
+                                                    "نظر شما قبلا ثبت شده است.")
                                     else:
                                         (
                                             thumb_up_col,
@@ -726,17 +774,21 @@ def main():
                                             )
                                         with text_col:
                                             st.markdown("نظرت؟")
-                                           
+
         # --- NEW TAB: Direct Q&A ---
         with simple_qa_tab:
             st.markdown("### پرسش و پاسخ مستقیم")
-            st.info("در این بخش می‌توانید یک سوال مشخص بپرسید و اسناد مربوط به آن را مشاهده کنید.")
+            st.info(
+                "در این بخش می‌توانید یک سوال مشخص بپرسید و اسناد مربوط به آن را مشاهده کنید.")
 
             # This tab requires a database to be selected
-            company_name = st.session_state.get("company_name", "همکاران سیستم")
-            assistant_name = st.session_state.get("assistant_name", "دستیار دیجیتال")
-            st.warning(f"در حال حاضر در حال استفاده از {assistant_name} برای شرکت {company_name} هستید.")
-           
+            company_name = st.session_state.get(
+                "company_name", "همکاران سیستم")
+            assistant_name = st.session_state.get(
+                "assistant_name", "دستیار دیجیتال")
+            st.warning(
+                f"در حال حاضر در حال استفاده از {assistant_name} برای شرکت {company_name} هستید.")
+
             # Input for the simple question
             st.text_input(
                 st.session_state.get("session_id"),
@@ -744,7 +796,7 @@ def main():
                 key="temporal_retriever_user_input",
                 on_change=clear_retriever_text
             )
-           
+
             if st.session_state.get("retriever_user_input"):
                 with st.spinner("در حال جستجوی اسناد..."):
                     api_response = request_simple_qa(
@@ -765,7 +817,8 @@ def main():
                 st.success(f"**سوال شما:**")
                 st.markdown(st.session_state.retriever_user_input)
                 st.success(f"**پاسخ دریافت شده:**")
-                st.markdown(st.session_state.retriever_user_answer.replace("\n", "  \n"))
+                st.markdown(
+                    st.session_state.retriever_user_answer.replace("\n", "  \n"))
 
     with sessions_column:
         if st.session_state["first_encounter_with_extra_sessions"]:
@@ -798,7 +851,8 @@ def main():
                 paraphrased_queries = previous_sessions["paraphrased_queries"]
             else:
                 sessions = st.session_state.get("suggested_sessions", [])
-                paraphrased_queries = st.session_state.get("suggested_sessions_titles", [])
+                paraphrased_queries = st.session_state.get(
+                    "suggested_sessions_titles", [])
             for i, (paraphrased_query, session) in enumerate(
                 zip(paraphrased_queries, sessions)
             ):

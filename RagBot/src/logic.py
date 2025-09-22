@@ -1,5 +1,6 @@
 import random
 from typing import List
+import json
 from collections import Counter
 import os
 import statistics
@@ -28,7 +29,7 @@ from .retriever import Retriever
 from .config import config
 from .cache import Cache
 from .logs import simple_logger, logger_no_session_id
-from .utils import json_cleaning, json_text_cleaning
+from .utils import json_cleaning, json_text_cleaning, json_cleaning_1
 from .business_objects import LOGISTICS_SALES_MODIFIED, FINANCIAL_BO_MODIFIED
 from .semantic_router import SemanticRouterPipeline
 from langchain.chat_models import ChatOpenAI
@@ -36,12 +37,18 @@ from langfuse.decorators import langfuse_context, observe
 import logging
 import hashlib
 
+# Load environment variables from .env file
+load_dotenv()
 
 SEED = 44
 torch.manual_seed(SEED)
 np.random.seed(SEED)
 torch.cuda.manual_seed_all(SEED)
 random.seed(SEED)
+SQL_LLM_MODEL_NAME = os.getenv("SQL_LLM_MODEL_NAME")
+QA_LLM_MODEL_NAME = os.getenv("QA_LLM_MODEL_NAME")
+LLM_API_KEY = os.getenv("LLM_API_KEY")
+LLM_API_BASE = os.getenv("LLM_API_BASE")
 
 template_for_chitchat_answers = """من اینجا هستم تا تنها به سوالات مربوط به محصولات نسل چهارم شرکت همکاران سیستم پاسخ دهم. لطفاً سوالات خود را در مورد راه‌حل‌های نسل چهارم ما مطرح کنید.
 """
@@ -64,26 +71,22 @@ def hash_string(input_string):
     return hex_digest
 
 @observe()
-async def get_chat_response(prompt: str, answer_type: str = "qa") -> str:
+async def get_chat_response(prompt: str, model_name: str = QA_LLM_MODEL_NAME) -> str:
     print("Character Length of the prompt: ", len(prompt))
     print("words length of the prompt: ", len(prompt.split()))
 
-    # Load environment variables from .env file
-    load_dotenv()
-
     # Check for environment variables for different configurations
-    LLM_MODEL_NAME = os.getenv("LLM_MODEL_NAME") 
-    LLM_API_KEY = os.getenv("LLM_API_KEY")
-    LLM_API_BASE = os.getenv("LLM_API_BASE")
+    # LLM_MODEL_NAME = os.getenv("LLM_MODEL_NAME") 
+
     print("LLM_API_BASE:", LLM_API_BASE)
     print("LLM_API_KEY:", LLM_API_KEY)
-    print("LLM_MODEL_NAME:", LLM_MODEL_NAME)
+    print("LLM_MODEL_NAME:", model_name)
     # Use OpenRouter if available, otherwise fall back to original configuration
-    if LLM_API_KEY and LLM_MODEL_NAME and LLM_API_BASE:
+    if LLM_API_KEY and model_name and LLM_API_BASE:
         llm = ChatOpenAI(
             # openai_api_base=LLM_API_BASE,
             openai_api_key=LLM_API_KEY,
-            model_name=LLM_MODEL_NAME,
+            model_name=model_name,
             temperature=1,
             max_completion_tokens=4000,
         )
@@ -137,8 +140,8 @@ async def utterance_paraphraser(history: List[tuple[str, str]], user_utterance: 
             question=user_utterance,
         )
     
-    response = await get_chat_response(prompt, answer_type="sql")
-    response = json_cleaning(response)
+    response = await get_chat_response(prompt)
+    response = json_cleaning_1(response)
     return response
 
 @observe()
@@ -171,7 +174,7 @@ async def query_responder(
         conversation_history=serialized_history
     )
     
-    response = await get_chat_response(prompt, answer_type="qa")
+    response = await get_chat_response(prompt)
     response = json_cleaning(response)
     return response
 
@@ -198,7 +201,7 @@ async def answer_validator(question: str, context: str, answer: str) -> bool:
         question=question,
         answer=answer,
     )
-    response = await get_chat_response(prompt, answer_type="qa")
+    response = await get_chat_response(prompt)
     return response
 
 @observe()
@@ -314,7 +317,8 @@ async def sql_responder_(
     detected_module: str = "", 
     faulty_sql_query: str = "", 
     error_message: str = "", 
-    do_retry: bool = False
+    do_retry: bool = False,
+    parameters: dict = {}
     ):
     """
     Unified SQL responder supporting both simple schema list and module-based schema selection
@@ -325,20 +329,19 @@ async def sql_responder_(
         if not do_retry:
             bo_prompt = SQL_CONVERTER_MODIFIED_WITH_PARAMETERS_TEMPLATE.format(schema=FINANCIAL_BO_MODIFIED, query=query)
         else:
+            faulty_sql_query = json.dumps({"SQL": faulty_sql_query, "parameters": parameters})
             bo_prompt = SQL_MODIFIER.format(schema=FINANCIAL_BO_MODIFIED, original_query=query, 
                                           faulty_sql_query=faulty_sql_query, error_message=error_message)
     else:
         if not do_retry:
+            faulty_sql_query = json.dumps({"SQL": faulty_sql_query, "parameters": parameters})
             bo_prompt = SQL_CONVERTER_MODIFIED_WITH_PARAMETERS_TEMPLATE.format(schema=LOGISTICS_SALES_MODIFIED, query=query)
         else:
             bo_prompt = SQL_MODIFIER.format(schema=LOGISTICS_SALES_MODIFIED, original_query=query, 
                                           faulty_sql_query=faulty_sql_query, error_message=error_message)
     
-    raw_json_response = await get_chat_response(bo_prompt, answer_type="sql")
+    raw_json_response = await get_chat_response(bo_prompt, SQL_LLM_MODEL_NAME)
     response = json_cleaning(raw_json_response)
-    
-    if not response:
-        response = "در حال حاضر نمیتوانم به این سوال پاسخ دهم"
     
     return response
 
@@ -439,7 +442,7 @@ async def get_route_for_utterance(utterance: str) -> str:
 @observe()
 async def router_SQL_QA(query: str, context: str):
     # prompt = QUERY_ROUTER.format(query=query, context=context)
-    raw_response = await get_chat_response(prompt, answer_type="sql")
+    raw_response = await get_chat_response(prompt)
     response = json_cleaning(raw_response)
     return response
 

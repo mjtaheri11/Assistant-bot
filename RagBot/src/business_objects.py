@@ -9311,6 +9311,8 @@ LOGISTICS_SALES_MODIFIED = """
     ## logistics_store
     - **Title**: انبار
     - **Context**: logistics
+    - **Parameters**:
+      - logistics_store_p1(Int64Array_Dataview): شرکت
     - **Attributes**:
       - **Str Type**:
         - code: کد انبار 
@@ -9325,6 +9327,8 @@ LOGISTICS_SALES_MODIFIED = """
     ## logistics_partaccountcategory
     - **Title**: طبقه حساب کالا 
     - **Context**: logistics
+    - **Parameters**:
+      - logistics_partaccountcategory_p1 (Int64Array_Dataview): شرکت
     - **Attributes**:
       - Str Type: 
         - code: کد طبقه حساب کالا 
@@ -9337,6 +9341,8 @@ LOGISTICS_SALES_MODIFIED = """
     ## logistics_plants
     - **Title**: مرکز نگهداری 
     - **Context**: logistics
+    - **Parameters**: 
+      - logistics_plants_p1 (Int64Array_Dataview): شرکت
     - **Attributes**:
       - **Str Type**:
         - code: کد مرکز نگهداری 
@@ -9412,6 +9418,8 @@ LOGISTICS_SALES_MODIFIED = """
     ## logistics_parts
     - **Title**: کالا 
     - **Context**: logistics
+    - **Parameters**: 
+      - logistics_parts_p1 (Int64Array_Dataview): شرکت
     - **Attributes**:
       - **Str Type**:
         - code: کد کالا 
@@ -9430,6 +9438,8 @@ LOGISTICS_SALES_MODIFIED = """
     ## logistics_voucherspecification
     - **Title**: الگوی سند انبار
     - **Context**: logistics
+    - **Parameters**: 
+      - logistics_voucherspecification_p1 (Int64Array_Dataview): شرکت
     - **Attributes**:
       - **Str Type**: 
         - code: کد الگو 
@@ -9446,6 +9456,10 @@ LOGISTICS_SALES_MODIFIED = """
     ## logistics_invvoucheritem
     - **Title**: قلم سند انبار 
     - **Context**: logistics
+    - **Parameters**: 
+      - logistics_invvoucher_p1 (Date): از تاریخ سند انبار
+      - logistics_invvoucher_p2 (Date): تا تاریخ سند انبار
+      - logistics_invvoucher_p3 (Int64Array_Dataview): شرکت
     - **Attributes**:
       - **Decimal Type**: 
         - quantity: مقدار 
@@ -9509,6 +9523,8 @@ LOGISTICS_SALES_MODIFIED = """
     ## logistics_invitemprice
     - **Title**: قلم قیمت 
     - **Context**: logistics
+    - **Parameters**: 
+      - logistics_invitemprice_p1(Int64_Dataview): حوزه قیمت‌گذاری
     - **Attributes**:
       - **Date Type**: 
         - date: تاریخ 
@@ -9529,6 +9545,10 @@ LOGISTICS_SALES_MODIFIED = """
     ## logistics_invstockpricing
     - **Title**: گردش مبلغی (Inventory Stock Pricing)
     - **Context**: logistics
+    - **Parameters**: 
+      - logistics_invstockpricing_p1 (Date): از تاریخ قیمت سند انبار
+      - logistics_invstockpricing_p2 (Date): تا تاریخ قیمت سند انبار
+      - logistics_invstockpricing_p3 (Int64Array_Dataview): شرکت
     - **Attributes**:
       - **Decimal Type**: 
         - fee: فی 
@@ -9577,6 +9597,8 @@ LOGISTICS_SALES_MODIFIED = """
     ## logistics_storagetype
     - **Title**: نوع انبار 
     - **Context**: logistics
+    - **Parameters**: 
+      - logistics_storagetype_p1 (Int64Array_Dataview): شرکت
     - **Attributes**:
       - **Str Type**: 
         - code: کد نوع انبار 
@@ -9596,6 +9618,10 @@ LOGISTICS_SALES_MODIFIED = """
     ## logistics_storeinventory
     - **Title**: گزارش مبلغی انبار (Warehouse Inventory Report)
     - **Context**: logistics
+    - **Parameters**: 
+      - logistics_storeinventory_p1 (Int64_Dataview): انبار
+      - logistics_storeinventory_p2 (Date): تا تاریخ
+      - logistics_storeinventory_p3 (Int64_Dataview): شرکت
     - **Attributes**:
       - **Date Type**:
         - last_pricing_date: تاریخ آخرین قیمت گذاری 
@@ -9618,6 +9644,10 @@ LOGISTICS_SALES_MODIFIED = """
     ## logistics_invitempricefactor
     - **Title**: جزییات مبلغی (Item Price Factor)
     - **Context**: logistics
+    - **Parameters**:
+      - logistics_invitempricefactor_p1 (Date): از تاریخ قیمت سند انبار
+      - logistics_invitempricefactor_p2 (Date): تا تاریخ قیمت سند انبار
+      - logistics_invitempricefactor_p3 (Int64Array_Dataview): شرکت
     - **Attributes**:
       - **Date Type**:
         - date_c: تاریخ سند 
@@ -9636,7 +9666,7 @@ LOGISTICS_SALES_MODIFIED = """
         - reporting2_currency: ارز گزارشگری 2
         - voucher_number: شماره سند حسابداری
         - inv_voucher_number: شماره سند انبار
-        - company_title: شرکت 
+        - company_title: شرکت
     - **Relations**: None
 
 
@@ -9644,8 +9674,8 @@ LOGISTICS_SALES_MODIFIED = """
     - **Title**: قلم لیست قیمت
     - **Context**: sales
     - **Parameters**:
-      - p3: شرکت (Int64Array, multiselect)
-      - p4: ارز (Int64Array, multiselect)
+      - sales_pricelistitem_p3: شرکت (Int64Array, multiselect)
+      - sales_pricelistitem_p4: ارز (Int64Array, multiselect)
     - **Attributes**:
       - **Decimal Type**:
         - plip_fee: فی 
@@ -9807,7 +9837,7 @@ LOGISTICS_SALES_MODIFIED = """
     - **Title**: قلم فاکتور برگشتی
     - **Context**: sales
     - **Parameters**:
-      - p3: شرکت (Int64Array with dataview for company selection)
+      - sales_rinvoiceitem_p3: شرکت (Int64Array with dataview for company selection)
     - **Attributes**:
       - **String Type**:
         - cmp_title: شرکت
@@ -9901,7 +9931,7 @@ LOGISTICS_SALES_MODIFIED = """
     - **Title**: قلم فاکتور
     - **Context**: sales
     - **Parameters**:
-      - p3: شرکت (Int64Array - multiselect from companies dataview)
+      - sales_invoiceitem_p3: شرکت (Int64Array - multiselect from companies dataview)
     - **Attributes**:
       - **String Type**:
         - unit_title: واحد سنجش
@@ -9978,9 +10008,12 @@ FINANCIAL_BO_MODIFIED = """
     - Title: اقلام سند حسابداری
     - Context: financial
     - **Parameters**:
-      - financial_vouchers_p1 (Int64): دفتر
+      - financial_vouchers_p1 (Int64_Dataview): شرکت
+      - financial_vouchers_p2 (Int64_Dataview): دفتر
       - financial_vouchers_p3 (Date): تاریخ شروع
       - financial_vouchers_p4 (Date): تاریخ پایان
+      - financial_vouchers_p5: (Int64Array_Dataview) نوع سند
+      - financial_vouchers_p6: (Int64_Enum) وضعیت سند
     - **Attributes**:
       - **Date Type**:
         - voucher_date: تاریخ سند
