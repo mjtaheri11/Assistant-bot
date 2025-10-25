@@ -33,7 +33,7 @@ from .utils import json_cleaning, json_text_cleaning, json_cleaning_1
 from .business_objects import LOGISTICS_SALES_MODIFIED, FINANCIAL_BO_MODIFIED
 from .semantic_router import SemanticRouterPipeline
 from langchain.chat_models import ChatOpenAI
-from langfuse.decorators import langfuse_context, observe
+from langfuse import observe, get_client
 import logging
 import hashlib
 
@@ -45,10 +45,10 @@ torch.manual_seed(SEED)
 np.random.seed(SEED)
 torch.cuda.manual_seed_all(SEED)
 random.seed(SEED)
-SQL_LLM_MODEL_NAME = os.getenv("SQL_LLM_MODEL_NAME")
-QA_LLM_MODEL_NAME = os.getenv("QA_LLM_MODEL_NAME")
-LLM_API_KEY = os.getenv("LLM_API_KEY")
-LLM_API_BASE = os.getenv("LLM_API_BASE")
+SQL_LLM_MODEL_NAME = os.getenv("SQL_LLM_MODEL_NAME", "/gpt-120")
+QA_LLM_MODEL_NAME = os.getenv("QA_LLM_MODEL_NAME", "/gpt-120")
+LLM_API_KEY = os.getenv("LLM_API_KEY", "EMPTY")
+LLM_API_BASE = os.getenv("LLM_API_BASE", 'http://gpt-oss-120b-predictor.admin.svc.cluster.local/v1')
 
 template_for_chitchat_answers = """من اینجا هستم تا تنها به سوالات مربوط به محصولات نسل چهارم شرکت همکاران سیستم پاسخ دهم. لطفاً سوالات خود را در مورد راه‌حل‌های نسل چهارم ما مطرح کنید.
 """
@@ -84,11 +84,21 @@ async def get_chat_response(prompt: str, model_name: str = QA_LLM_MODEL_NAME) ->
     # Use OpenRouter if available, otherwise fall back to original configuration
     if LLM_API_KEY and model_name and LLM_API_BASE:
         llm = ChatOpenAI(
-            # openai_api_base=LLM_API_BASE,
-            openai_api_key=LLM_API_KEY,
+            openai_api_base=LLM_API_BASE,
             model_name=model_name,
-            temperature=1,
-            max_completion_tokens=4000,
+            openai_api_key=LLM_API_KEY,
+            temperature=0,
+            model_kwargs={
+                "top_p": 1,
+                "max_completion_tokens": 8000
+            },
+            extra_body={
+                "top_k": 1,
+                "do_sample": False,
+                "seed": 42,
+                "sampling_method": "greedy",
+                "reasoning_effort": "medium"
+            },
         )
     else:
         raise ValueError("No valid LLM configuration found in environment variables")
@@ -110,6 +120,7 @@ async def get_cache_response(
         threshold=threshold,
         knn=knn,
     )
+    print(records)
     if records and records[0]["thumb_up"] > 0:
         return records[0]["response"], records[0]["url"]
     else:
@@ -205,7 +216,7 @@ async def answer_validator(question: str, context: str, answer: str) -> bool:
     return response
 
 @observe()
-async def is_somewhat_uniform(freq_dict: dict, threshold: float = 0.80) -> bool:
+async def is_somewhat_uniform(freq_dict: dict, threshold: float = 0.75) -> bool:
     """
     Checks if the frequency distribution in a dictionary is somewhat uniform
     based on the Coefficient of Variation (CV).
@@ -243,6 +254,9 @@ async def prepare_final_context(query: str, database_index: str = None, input_mo
     """
     
     context_with_metadata = await retrieve_context_with_metadata(query, database_index=database_index, input_modules=[input_module] if input_module else None)
+    print("#########\n")
+    print(context_with_metadata)
+    print("\n#########")
     if not context_with_metadata:
         return False, [], []
     
@@ -256,7 +270,7 @@ async def prepare_final_context(query: str, database_index: str = None, input_mo
         detected_modules_lst = list(module_frequencies.keys())
         return _handle_single_module_case(context_with_metadata, detected_modules_lst[0])
     
-    print(module_frequencies)
+    print(module_frequencies) # temp logs
     needs_clarification, mean_freq = await is_somewhat_uniform(module_frequencies)
     if not needs_clarification:
         max_value = max(module_frequencies.values())
@@ -332,10 +346,18 @@ async def sql_responder_(
             faulty_sql_query = json.dumps({"SQL": faulty_sql_query, "parameters": parameters})
             bo_prompt = SQL_MODIFIER.format(schema=FINANCIAL_BO_MODIFIED, original_query=query, 
                                           faulty_sql_query=faulty_sql_query, error_message=error_message)
-    else:
+    elif detected_module.strip() == "انبار" or detected_module.strip() == "فروش":
         if not do_retry:
             faulty_sql_query = json.dumps({"SQL": faulty_sql_query, "parameters": parameters})
             bo_prompt = SQL_CONVERTER_MODIFIED_WITH_PARAMETERS_TEMPLATE.format(schema=LOGISTICS_SALES_MODIFIED, query=query)
+        else:
+            bo_prompt = SQL_MODIFIER.format(schema=LOGISTICS_SALES_MODIFIED, original_query=query, 
+                                          faulty_sql_query=faulty_sql_query, error_message=error_message)
+    else:
+        if not do_retry:
+            all_schema = LOGISTICS_SALES_MODIFIED + "\n" + FINANCIAL_BO_MODIFIED
+            faulty_sql_query = json.dumps({"SQL": faulty_sql_query, "parameters": parameters})
+            bo_prompt = SQL_CONVERTER_MODIFIED_WITH_PARAMETERS_TEMPLATE.format(schema=all_schema, query=query)
         else:
             bo_prompt = SQL_MODIFIER.format(schema=LOGISTICS_SALES_MODIFIED, original_query=query, 
                                           faulty_sql_query=faulty_sql_query, error_message=error_message)
@@ -461,7 +483,6 @@ async def chat_responder_(
     """
     Unified chat responder supporting both develop branch (simple RAG) and feature/add-sql-agent (SQL + module handling)
     """
-    
     # If sql_mode is True, use the new SQL agent logic
     if not detected_module and use_cache:
         response, url = await get_cache_response(user_utterance)
@@ -484,6 +505,8 @@ async def chat_responder_(
 
     route_response = await get_route_for_utterance(paraphrased_utterance)
     if route_response == "sql":
+        if not modules:
+            modules = ["all"]
         return paraphrased_utterance, "", "", False, [modules[0]]
     
     if route_response == "chitchat":

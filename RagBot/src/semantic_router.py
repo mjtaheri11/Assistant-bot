@@ -20,6 +20,8 @@ import matplotlib.pyplot as plt
 import joblib
 import seaborn as sns
 
+from src.retriever import ModelManager
+
 # Your task is to create a prompt to classify the input user query into the provided classes. The provided classes are at least two of the following types. Consider that this input prompt is targeted to classify for "همکاران سیستم" company, an Iranian company that focuses on creating softwares related to ERP systems. Users' questions should be about whether a question is in the system's manuals, or they want to  
 
 # ["qa", "sql", "illegal", "irrelevant", "chitchat"]
@@ -36,6 +38,28 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 CLASS_NAMES = ['chitchat', 'illegal', 'irrelevant', 'sql', 'qa']
 LIST_OF_VALID_MODEL_NAMES = ["logistic_regression", "svm", "mlp", "rf"]
+
+
+# Add this adapter class after the imports section
+
+class HuggingFaceEmbeddingAdapter:
+    """Adapter to make ModelManager's HuggingFaceEmbeddings compatible with the existing interface"""
+    def __init__(self, hf_embeddings):
+        self.model = hf_embeddings
+        self.model_name = "huggingface_embeddings_from_modelmanager"
+        logger.info(f"Using HuggingFaceEmbeddings from ModelManager")
+    
+    def __call__(self, sentences, *args, **kwargs):
+        """
+        Makes HuggingFaceEmbeddings compatible with E5Embedder interface.
+        Uses embed_documents for batch processing.
+        """
+        if not isinstance(sentences, list):
+            sentences = [sentences]
+        
+        # Use embed_documents for batch processing
+        embeddings = self.model.embed_documents(sentences)
+        return np.array(embeddings)
 
 
 class EmbeddingLoader(ABC):
@@ -208,20 +232,23 @@ class SemanticRouterPipeline:
 
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
-            # cls._instance = super().__new__(cls, *args, **kwargs)
             cls._instance = super().__new__(cls)
             cls._instance._initialize(**kwargs)
         return cls._instance
 
-    def _initialize(self, inference_only=False, embedding_address=None, classifier_address=None, **kwargs):
-        self.__load_embedding_model(embedding_address)
+    def _initialize(self, inference_only=False, embedding_address=None, classifier_address=None, use_model_manager=True, **kwargs):
+        self.__load_embedding_model(embedding_address, use_model_manager)
         self.__load_classifier_model(classifier_address, **kwargs)
         if not inference_only:
             self.__load__train_data__(**kwargs)
             self.__train_model__(**kwargs)
 
-    def __load_embedding_model(self, address):
-        if address is not None and os.path.exists(address):
+    def __load_embedding_model(self, address, use_model_manager=False):
+        if use_model_manager:
+            # Use the embedding model from ModelManager singleton
+            model_manager = ModelManager()
+            self.embedder = HuggingFaceEmbeddingAdapter(model_manager.embedding_model)
+        elif address is not None and os.path.exists(address):
             self.embedder = E5Embedder(model_path=address)
         else:
             self.embedder = E5Embedder()

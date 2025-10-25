@@ -20,7 +20,7 @@ def get_logger():
     return logging.getLogger(__name__)
 
 logger = get_logger()
-
+torch.cuda.set_per_process_memory_fraction(0.7, device=0)
 # --- New Qwen Reranker Class ---
 class QwenReranker:
     """
@@ -32,7 +32,7 @@ class QwenReranker:
         # Recommended to use flash_attention_2 for better performance
         self.model = AutoModelForCausalLM.from_pretrained(
             model_name,
-            torch_dtype=torch.float16,
+            torch_dtype="torch.float16",
             attn_implementation="flash_attention_2"
         ).to(device).eval()
         self.device = device
@@ -198,7 +198,8 @@ class Retriever(object):
         Reranks documents using the primary reranker model selected in the config.
         """
         scores = self.reranker_model_.compute_score([[query, doc] for doc in documents], normalize=True)
-        
+        if not isinstance(scores, list):
+            scores = [scores]
         docs_with_scores_index = [
             FlagDocument(document=documents[i], score=scores[i], index=i)
             for i in range(len(documents)) if scores[i] > config["retriever"]["retriever_threshold"]

@@ -11,16 +11,19 @@ import json
 
 from .config import config
 from .make_sentence_chunks import chunk_document
+from dotenv import load_dotenv
 
+load_dotenv()
 embedding_model = HuggingFaceEmbeddings(
     model_name=config["embedding_model"]["model_name"],
     model_kwargs={"device": config["embedding_model"]["device"]} # , "trust_remote_code": config["embedding_model"]["trust_remote_code"]},
 )
 
+RAAS_VectorDB = os.getenv("RAAS_PATH")
 def create_vector_database(
     settings: dict,
     database_id: str,
-    collection_path: str = "../RaaS_vectorDB",
+    collection_path: str = RAAS_VectorDB,
     ):
     os.makedirs(collection_path, exist_ok=True)
     company_name = settings.pop("company_name")
@@ -36,7 +39,6 @@ def create_vector_database(
 
     os.makedirs(database_path)
     chunks = chunk_document(settings)
-   
     vdb = Chroma(persist_directory=database_path, embedding_function=embedding_model)
 
     if len(vdb.get()["ids"]) > 0:

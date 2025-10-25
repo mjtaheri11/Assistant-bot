@@ -1,3 +1,4 @@
+import os
 import re
 import json
 import requests
@@ -6,14 +7,16 @@ from src.config import config
 
 from src.logs import non_generative_agent_logger, simple_logger
 from src.utils import init_session_state
+from dotenv import load_dotenv
+
+load_dotenv()
 
 NUMBER_OF_SUGGESTED_SESSIONS = 30
 NUMBER_OF_SUGGESTED_DATABASE = 10
+BASE_URL = os.getenv("BASE_URL_BACKEND")
 
 CSS_STYLE_FILE = "./src/style.css"
-
-BASE_URL = "http://0.0.0.0:8689"  # "http://172.27.0.6:8686" #
-
+# "http://172.27.0.6:8686" #
 
 def session_create(database_id: str = None, api_url: str = BASE_URL):
     """

@@ -29,7 +29,8 @@ DICT_OF_TITLES = {"راهنمای سیستم CRM": "مدیریت ارتباط ب
                   "معرفی سیستم یکپارچه نسل 4": "مقدمه",
                   "راهنمای استفاده از دستیار دیجیتال": "راهنما",
                   "راهنمای امکانات عمومی سیستم": "پلتفرم",
-                  "سامانه مودیان مالیاتی": "مودیان"}
+                  "سامانه مودیان مالیاتی": "مودیان",
+                  "راهنمای ماژول گزارش ساز": "گزارش ساز"}
 
 
 def convert_doc_bytes_to_docx(doc_bytes: bytes) -> bytes:
@@ -649,7 +650,9 @@ def chunk_document(doc_settings: Dict[object, Dict]) -> List["Document"]:
     # A ProcessPoolExecutor sidesteps the GIL for CPU-bound tasks, which can help
     # since python-docx parsing and chunking can be CPU-intensive on large docs.
 
-    # Sequential processing for compatibility with document objects
+    # Sequential processing for compatibility with document objects]
+    # import pdb
+    # pdb.set_trace()
     # for doc_obj, settings in doc_settings.items():
     #     doc_path = settings["file_name"]
     #     print(f"Submitting {doc_path} for processing...")

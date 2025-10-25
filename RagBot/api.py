@@ -16,15 +16,15 @@ from fastapi.responses import JSONResponse
 from prometheus_client import Counter, Histogram, generate_latest
 from pydantic import BaseModel
 from starlette.responses import Response
-from langfuse.decorators import langfuse_context, observe
+from langfuse import observe, get_client 
+from dotenv import load_dotenv
 
 # Langfuse configuration
-LANGFUSE_PUBLIC_KEY="pk-lf-280b67c9-093b-4e71-8df2-9502726dc9cc"
-LANGFUSE_SECRET_KEY="sk-lf-d19e4f4b-8483-406a-bc76-6ce2d4959afa"
-LANGFUSE_HOST="http://185.13.230.222:3000"
-os.environ["LANGFUSE_PUBLIC_KEY"] = LANGFUSE_PUBLIC_KEY
-os.environ["LANGFUSE_SECRET_KEY"] = LANGFUSE_SECRET_KEY
-os.environ["LANGFUSE_HOST"] = LANGFUSE_HOST
+load_dotenv()
+
+LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY")
+LANGFUSE_SECRET_KEY = os.getenv("LANGFUSE_SECRET_KEY")
+LANGFUSE_HOST = os.getenv("LANGFUSE_HOST")
 
 from src.orm import Postgres
 from src.config import config
@@ -45,8 +45,8 @@ from src.utils import substitute_sql_parameters
 
 RESPONSE_TEMPLATE_FOR_NO_ANSWER = "متاسفانه، پاسخی به سوال شما یافت نشد."
 MODULE_CLARIFICATION_RESPONSE_TEMPLATE = "لطفا مشخص نمایید سوال شما از کدام یک از ماژول های سیستم است."
-app = FastAPI(title="Digital Assistant")
-
+app = FastAPI(title="Digital Assistant", root_path="/backend-testdevel") # should be added to env variables
+ 
 # Define Prometheus metrics
 REQUEST_COUNT = Counter("api_http_requests_total", "Total API Requests", ["endpoint"])
 REQUEST_LATENCY = Histogram(
@@ -177,12 +177,12 @@ def validate_query(query):
 def find_database_path(database_index: str = None):
     """Find database path based on index - from develop branch"""
     if not database_index or database_index == "None" or database_index == None:
-        match_dir = "../VectorDB"
+        match_dir = config["database"]["persist_directory"]
         company_name = config["database"]["company_name"]
         assistant_name = config["database"]["assistant_name"]
     else:
         match_dir = ""
-        base_path = "../RaaS_vectorDB"
+        base_path = os.getenv("RAAS_PATH")
         items = os.listdir(base_path)
         for dir_name in items:
             parts = dir_name.split(".")
@@ -414,7 +414,8 @@ async def create_session(create_session_request: Optional[CreateSessionRequest] 
             output_dict={"response": session_id.get("session_id")},
             elapsed_time=elapsed_time,
         )
-        langfuse_context.update_current_observation(
+        langfuse_context = get_client()
+        langfuse_context.update_current_trace(
             input={"create_session_request": create_session_request},
             output={"session_id": session_id}
         )
@@ -452,11 +453,11 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
     choices = []
     do_suggest = False
     parameters = {}
-    parametric_response = None
+    # parametric_response = None
     response_template = ""
     tenant_name = ""
     user_code = ""
-    response_template = ""
+
     try:
         session_id = get_session_id(request, chat_request)
         if not chat_request.is_sync:
@@ -516,7 +517,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
             else:
                 database_id_dict = await postgres.find_database_id(chat_request.session_id)
                 matched_index, company_name, assistant_name = find_database_path(database_id_dict["database_id"])
-
+                print(matched_index)
                 selected_history = [
                     [h["query"], h["response"]] if len(h["query"]) < 60 
                     else [h["paraphrased_query"], h["response"]]
@@ -545,11 +546,12 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                     )
                     response_dict = json.loads(response_dict_str)
                     if "NULL" not in response_dict_str:
-                        response_dict["SQL"] = convert_sql_parameters(response_dict["SQL"])
+                        # response_dict["SQL"] = convert_sql_parameters(response_dict["SQL"])
                         response = response_dict["SQL"]
-                        if response_dict["parameters"]:
-                            response_dict["parameters"] = add_underscore_to_keys(response_dict["parameters"])
+                        # if response_dict["parameters"]:
+                        #     response_dict["parameters"] = add_underscore_to_keys(response_dict["parameters"])
                         parameters = response_dict["parameters"]
+                        response_template = response_dict["response_template"]
                     
                     message = "retried table response generated"
                     elapsed_time = time.time() - start_time
@@ -589,11 +591,12 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                                 )
                                 response_dict = json.loads(response_dict_str)
                                 if "null" not in response_dict_str and response_dict["SQL"] is not None:
-                                    response_dict["SQL"] = convert_sql_parameters(response_dict["SQL"])
+                                    # response_dict["SQL"] = convert_sql_parameters(response_dict["SQL"])
                                     response = response_dict["SQL"]
-                                    if response_dict["parameters"]:
-                                        response_dict["parameters"] = add_underscore_to_keys(response_dict["parameters"])
+                                    # if response_dict["parameters"]:
+                                    #     response_dict["parameters"] = add_underscore_to_keys(response_dict["parameters"])
                                     parameters = response_dict["parameters"]
+                                    response_template = response_dict["response_template"]
                                 else:
                                     is_sql = False
                                     response = RESPONSE_TEMPLATE_FOR_NO_ANSWER
@@ -608,7 +611,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                     message_id = await postgres.update_last_chat_row(
                         session_id,
                         paraphrased_utterance,
-                        parametric_response if is_sql else response,
+                        response,
                         is_sql,
                         elapsed_time,
                         do_suggest,
@@ -664,11 +667,13 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                                 )
                                 response_dict = json.loads(response_dict_str)
                                 if "null" not in response_dict_str and response_dict["SQL"] is not None:
-                                    response_dict["SQL"] = convert_sql_parameters(response_dict["SQL"])
+                                    # response_dict["SQL"] = convert_sql_parameters(response_dict["SQL"])
                                     response = response_dict["SQL"]
-                                    if response_dict["parameters"]:
-                                        response_dict["parameters"] = add_underscore_to_keys(response_dict["parameters"])
+                                    # if response_dict["parameters"]:
+
+                                    #     response_dict["parameters"] = add_underscore_to_keys(response_dict["parameters"])
                                     parameters = response_dict["parameters"]
+                                    response_template = response_dict["response_template"]
                                 else:
                                     is_sql = False
                                     response = RESPONSE_TEMPLATE_FOR_NO_ANSWER
@@ -683,7 +688,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         message_id = await postgres.update_last_chat_row(
                             session_id,
                             paraphrased_utterance,
-                            parametric_response if is_sql else response,
+                            response,
                             is_sql,
                             elapsed_time,
                             do_suggest,
@@ -715,7 +720,8 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
             elapsed_time=elapsed_time,
         )
         
-        langfuse_context.update_current_observation(
+        langfuse_context = get_client()
+        langfuse_context.update_current_trace(
             input={"chat_request": chat_request, "request": request},
             output={
                 "response": response,

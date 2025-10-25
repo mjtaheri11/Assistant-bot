@@ -25,15 +25,37 @@ class Cache:
         return cls._instance
 
 
-    def _initialize(self):
-        self.redis_db = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=0, decode_responses=True) # db=0 for semantic_router cache
+    def _initialize(self, exact_cache=True): # should be added to the config 
+        if exact_cache:
+            self.redis_db = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=0, decode_responses=True) # db=0 for semantic_router cache
         model_manager = ModelManager()
         self.embedding_model = model_manager.embedding_model
         self.reranker_model = model_manager.reranker_model
 
-        # Initialize Chroma with persistence
         persist_directory = config["cache"].get("persist_directory", "../db-cache")
         self._collection_name = config["cache"]["index_name"]
+
+        # # Create a temporary Chroma instance to check collections
+        # try:
+        #     temp_store = Chroma(
+        #         embedding_function=self.embedding_model,
+        #         persist_directory=persist_directory,
+        #     )
+            
+        #     # Access the underlying client
+        #     chroma_client = temp_store._client
+        #     existing_collections = chroma_client.list_collections()
+            
+        #     if existing_collections:
+        #         self._collection_name = existing_collections[0].name
+        #         print(f"Using existing collection: {self._collection_name}")
+        #     else:
+        #         self._collection_name = config["cache"].get("index_name", "default_collection")
+        #         print(f"Creating new collection: {self._collection_name}")
+                
+        # except Exception as e:
+        #     print(f"Could not check existing collections: {e}")
+        #     self._collection_name = config["cache"].get("index_name", "default_collection")
 
         # Initialize the Chroma vector store
         self._vector_store = Chroma(

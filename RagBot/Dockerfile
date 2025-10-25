@@ -210,36 +210,50 @@ ENV LD_LIBRARY_PATH=/usr/local/cuda-12.0/lib64:$LD_LIBRARY_PATH
 RUN apt-get update && apt-get -y install curl  
 
 # Copy NVIDIA wheel files
-COPY ./nvidia-files/nvidia_cublas_cu12-12.6.4.1-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl ./nvidia_cublas_cu12-12.6.4.1-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
-COPY ./nvidia-files/nvidia_cuda_nvrtc_cu12-12.6.77-py3-none-manylinux2014_x86_64.whl ./nvidia_cuda_nvrtc_cu12-12.6.77-py3-none-manylinux2014_x86_64.whl
-COPY ./nvidia-files/nvidia_cudnn_cu12-9.5.1.17-py3-none-manylinux_2_28_x86_64.whl ./nvidia_cudnn_cu12-9.5.1.17-py3-none-manylinux_2_28_x86_64.whl
-COPY ./nvidia-files/nvidia_cufft_cu12-11.3.0.4-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl ./nvidia_cufft_cu12-11.3.0.4-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
-COPY ./nvidia-files/nvidia_curand_cu12-10.3.7.77-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl ./nvidia_curand_cu12-10.3.7.77-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
-COPY ./nvidia-files/nvidia_cusolver_cu12-11.7.1.2-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl ./nvidia_cusolver_cu12-11.7.1.2-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
-COPY ./nvidia-files/nvidia_cusparse_cu12-12.5.4.2-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl ./nvidia_cusparse_cu12-12.5.4.2-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
-COPY ./nvidia-files/nvidia_cusparselt_cu12-0.6.3-py3-none-manylinux2014_x86_64.whl ./nvidia_cusparselt_cu12-0.6.3-py3-none-manylinux2014_x86_64.whl
-COPY ./nvidia-files/nvidia_nccl_cu12-2.26.2-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl ./nvidia_nccl_cu12-2.26.2-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
-COPY ./nvidia-files/nvidia_nvjitlink_cu12-12.6.85-py3-none-manylinux2010_x86_64.manylinux_2_12_x86_64.whl ./nvidia_nvjitlink_cu12-12.6.85-py3-none-manylinux2010_x86_64.manylinux_2_12_x86_64.whl
-COPY ./nvidia-files/scipy-1.16.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl ./scipy-1.16.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
-COPY ./nvidia-files/torch-2.7.1-cp313-cp313-manylinux_2_28_x86_64.whl ./torch-2.7.1-cp313-cp313-manylinux_2_28_x86_64.whl
+# COPY ./nvidia-files/nvidia_cublas_cu12-12.6.4.1-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl ./nvidia_cublas_cu12-12.6.4.1-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
+# COPY ./nvidia-files/nvidia_cuda_nvrtc_cu12-12.6.77-py3-none-manylinux2014_x86_64.whl ./nvidia_cuda_nvrtc_cu12-12.6.77-py3-none-manylinux2014_x86_64.whl
+# COPY ./nvidia-files/nvidia_cudnn_cu12-9.5.1.17-py3-none-manylinux_2_28_x86_64.whl ./nvidia_cudnn_cu12-9.5.1.17-py3-none-manylinux_2_28_x86_64.whl
+# COPY ./nvidia-files/nvidia_cufft_cu12-11.3.0.4-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl ./nvidia_cufft_cu12-11.3.0.4-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
+# COPY ./nvidia-files/nvidia_curand_cu12-10.3.7.77-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl ./nvidia_curand_cu12-10.3.7.77-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
+# COPY ./nvidia-files/nvidia_cusolver_cu12-11.7.1.2-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl ./nvidia_cusolver_cu12-11.7.1.2-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
+# COPY ./nvidia-files/nvidia_cusparse_cu12-12.5.4.2-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl ./nvidia_cusparse_cu12-12.5.4.2-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
+# COPY ./nvidia-files/nvidia_cusparselt_cu12-0.6.3-py3-none-manylinux2014_x86_64.whl ./nvidia_cusparselt_cu12-0.6.3-py3-none-manylinux2014_x86_64.whl
+# COPY ./nvidia-files/nvidia_nccl_cu12-2.26.2-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl ./nvidia_nccl_cu12-2.26.2-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
+# COPY ./nvidia-files/nvidia_nvjitlink_cu12-12.6.85-py3-none-manylinux2010_x86_64.manylinux_2_12_x86_64.whl ./nvidia_nvjitlink_cu12-12.6.85-py3-none-manylinux2010_x86_64.manylinux_2_12_x86_64.whl
+# COPY ./nvidia-files/scipy-1.16.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl ./scipy-1.16.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
+# COPY ./nvidia-files/torch-2.7.1-cp313-cp313-manylinux_2_28_x86_64.whl ./torch-2.7.1-cp313-cp313-manylinux_2_28_x86_64.whl
 
 # Copy flash-attn wheel file (you'll need to download this manually)
 # COPY ./nvidia-files/flash_attn-2.8.1+cu12torch2.4cxx11abiTRUE-cp310-cp310-linux_x86_64.whl ./flash_attn-2.8.1+cu12torch2.4cxx11abiTRUE-cp310-cp310-linux_x86_64.whl
 
 # Copy the local cuda-keyring deb file
-COPY ./nvidia-files/cuda-keyring_1.1-1_all.deb ./cuda-keyring_1.1-1_all.deb
+# COPY ./nvidia-files/cuda-keyring_1.1-1_all.deb ./cuda-keyring_1.1-1_all.deb
 
 # Install NVIDIA wheel files
-RUN pip install ./nvidia_cublas_cu12-12.6.4.1-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl \
-    ./nvidia_nvjitlink_cu12-12.6.85-py3-none-manylinux2010_x86_64.manylinux_2_12_x86_64.whl \
-    ./nvidia_cusparse_cu12-12.5.4.2-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl \
-    ./nvidia_curand_cu12-10.3.7.77-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl \
-    ./nvidia_cufft_cu12-11.3.0.4-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl \
-    ./nvidia_cudnn_cu12-9.5.1.17-py3-none-manylinux_2_28_x86_64.whl \
-    ./nvidia_cuda_nvrtc_cu12-12.6.77-py3-none-manylinux2014_x86_64.whl \
-    ./nvidia_cusolver_cu12-11.7.1.2-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl \
-    ./nvidia_cusparselt_cu12-0.6.3-py3-none-manylinux2014_x86_64.whl \
-    ./nvidia_nccl_cu12-2.26.2-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
+# RUN pip install ./nvidia_cublas_cu12-12.6.4.1-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl \
+#     ./nvidia_nvjitlink_cu12-12.6.85-py3-none-manylinux2010_x86_64.manylinux_2_12_x86_64.whl \
+#     ./nvidia_cusparse_cu12-12.5.4.2-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl \
+#     ./nvidia_curand_cu12-10.3.7.77-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl \
+#     ./nvidia_cufft_cu12-11.3.0.4-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl \
+#     ./nvidia_cudnn_cu12-9.5.1.17-py3-none-manylinux_2_28_x86_64.whl \
+#     ./nvidia_cuda_nvrtc_cu12-12.6.77-py3-none-manylinux2014_x86_64.whl \
+#     ./nvidia_cusolver_cu12-11.7.1.2-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl \
+#     ./nvidia_cusparselt_cu12-0.6.3-py3-none-manylinux2014_x86_64.whl \
+#     ./nvidia_nccl_cu12-2.26.2-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
+
+
+RUN apt-get update && apt-get install -y \
+    wget \
+    ca-certificates \
+    gnupg \
+    && wget -O /tmp/cuda-keyring.deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb \
+    && dpkg -i /tmp/cuda-keyring.deb \
+    && apt-get update \
+    && apt-get install -y \
+    cuda-nvcc-12-0 \
+    cuda-cudart-dev-12-0 \
+    cuda-compiler-12-0 \
+    && rm -rf /var/lib/apt/lists/* /tmp/cuda-keyring.deb
 
 # Install CUDA toolkit using local cuda-keyring file
 RUN apt-get update && apt-get install -y \

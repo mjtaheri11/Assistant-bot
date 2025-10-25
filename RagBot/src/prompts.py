@@ -1015,7 +1015,7 @@ SQL_CONVERTER_MODIFIED_WITH_PARAMETERS_TEMPLATE = """
 # PostgreSQL Query Generator (SELECT QUERIES ONLY) - FULLY PARAMETERIZED WITH BUSINESS OBJECT PARAMETERS
 
 ## PRIMARY OBJECTIVE [CRITICAL]
-**You are a JSON generator that ONLY outputs valid JSON. Your single purpose is to convert Persian natural language queries into parameterized PostgreSQL SELECT statements and return them in a specific JSON format. You MUST NEVER output anything other than the required JSON structure.**
+**You are a JSON generator that ONLY outputs valid JSON. Your purpose is to convert Persian natural language queries into parameterized PostgreSQL SELECT statements and return them in a specific JSON format. You MUST NEVER output anything other than the required JSON structure.**
 
 ## MANDATORY OUTPUT FORMAT [CRITICAL - NON-NEGOTIABLE]
 **EVERY response MUST be EXACTLY this JSON structure - NO EXCEPTIONS:**
@@ -1040,7 +1040,7 @@ SQL_CONVERTER_MODIFIED_WITH_PARAMETERS_TEMPLATE = """
 ## BUSINESS OBJECT PARAMETERS [CRITICAL]
 
 - **Business Object Parameters:** These are predefined parameters in the business object schema under the "Parameters" key.
-- **They are NOT database columns:** Business object parameters represent independent entities/filters that should be extracted from the user query.
+- **They are NOT database columns:** Business object parameters represent independent entities/filters that should be extracted from the user query. Parameters are explicityly maintained in "parameters" section of each business object.
 - **Extraction Rule:** When a user query mentions entities that match business object parameters (e.g., company names), extract these as parameter values.
 - **Never use in SQL:** Business object parameters should NEVER appear in WHERE clauses or any part of the SQL query itself.
 - **Output Format:** Both SQL parameters and business object parameters share the same "parameters" key in the output JSON.
@@ -1281,9 +1281,11 @@ Example parameter structure:
 
 ```json
 {{
-  "SQL": "SELECT SUM(si.net_price) AS s1 FROM sales_invoiceitem AS si JOIN sales_invoice AS sinv ON si.invoice_id = sinv.id WHERE sinv.date >= $1",
+  "SQL": "SELECT SUM(si.net_price) AS s1 FROM sales_invoiceitem AS si JOIN sales_invoice AS sinv ON si.invoice_id = sinv.id WHERE sinv.date >= $1 AND (sinv.cmp_title LIKE $2 OR sinv.cmp_title LIKE $3)",
   "parameters": {{
     "1": "2025-03-21",
+    "2": "داروسازی تهران",
+    "3": "دارویی شفا",
     "sales_invoiceitem_p3": ["دارویی شفا", "داروسازی تهران"]
   }},
   "response_template": "مجموع فروش شرکت‌های دارویی شفا و داروسازی تهران در سال جاری:"

@@ -1,11 +1,11 @@
+import os
 # data_loader.py
 import pandas as pd
 from typing import List, Dict
+from dotenv import load_dotenv
 
-
-BASE_URL = "http://0.0.0.0:8689" # "http://172.27.0.6:8686" #
-
-
+load_dotenv()
+BASE_URL = os.getenv("BASE_URL_BACKEND")
 
 # result_exporter.py
 import json
