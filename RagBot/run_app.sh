@@ -24,7 +24,7 @@ sleep 30
 
 # 3. Start streamlit app in the background
 echo "🚀 Starting app.py with Streamlit..."
-streamlit run app.py --server.port 8585 --server.address 0.0.0.0 &
+streamlit run app.py --server.port 8585 --server.address 0.0.0.0 --server.baseUrlPath "${UI_BASE_PATH:-/}" &
 STREAMLIT_PID=$!
 
 # Wait for both processes

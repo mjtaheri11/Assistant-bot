@@ -45,13 +45,16 @@ torch.manual_seed(SEED)
 np.random.seed(SEED)
 torch.cuda.manual_seed_all(SEED)
 random.seed(SEED)
-SQL_LLM_MODEL_NAME = os.getenv("SQL_LLM_MODEL_NAME", "/gpt-120")
-QA_LLM_MODEL_NAME = os.getenv("QA_LLM_MODEL_NAME", "/gpt-120")
-LLM_API_KEY = os.getenv("LLM_API_KEY", "EMPTY")
-LLM_API_BASE = os.getenv("LLM_API_BASE", 'http://gpt-oss-120b-predictor.admin.svc.cluster.local/v1')
+OSS_LLM_MODEL_NAME = os.getenv("OSS_LLM_MODEL_NAME", "/gpt-120")
+GPT_LLM_MODEL_NAME = os.getenv("GPT_LLM_MODEL_NAME", "/gpt-120")
+OSS_API_KEY = os.getenv("OSS_API_KEY", "EMPTY")
+GPT_API_KEY = os.getenv("GPT_API_KEY", "EMPTY")
+OSS_API_BASE = os.getenv("OSS_API_BASE", "http://gpt-oss-120b-predictor.admin.svc.cluster.local/v1")
+GPT_API_BASE = os.getenv("GPT_API_BASE", "http://gpt-oss-120b-predictor.admin.svc.cluster.local/v1")
 
-template_for_chitchat_answers = """من اینجا هستم تا تنها به سوالات مربوط به محصولات نسل چهارم شرکت همکاران سیستم پاسخ دهم. لطفاً سوالات خود را در مورد راه‌حل‌های نسل چهارم ما مطرح کنید.
-"""
+MODULE_PROPOSER_THRESHOLD = float(os.getenv("MODULE_PROPOSER_THRESHOLD", 0.75))
+
+template_for_chitchat_answers = """من اینجا هستم تا تنها به سوالات مربوط به محصولات نسل چهارم شرکت همکاران سیستم پاسخ دهم. لطفاً سوالات خود را در مورد راه‌حل‌های نسل چهارم ما مطرح کنید."""
 template_for_not_answer = "پاسخ به این سوال در محدوده پاسخگویی من نیست."
 template_for_not_context = """این سوال خارج از حوزه کاری {company_name} است. لطفا سوال خود را در رابطه با محصولات و خدمات {company_name} مطرح کنید. برای اطلاعات بیشتر به 'https://systemgroup.net' مراجعه کنید"""
 template_for_doubtful_answer = "سوال شما را به خوبی متوجه نشدم. لطفا سوال خود را به صورت دقیق تر بپرسید تا بتوانم بهتر کمک کنم."
@@ -70,35 +73,55 @@ def hash_string(input_string):
 
     return hex_digest
 
+def model_selector(use_oss: bool = False):
+    if use_oss:
+        model_name = OSS_LLM_MODEL_NAME
+        api_base = OSS_API_BASE
+        api_key = OSS_API_KEY
+    else:
+        model_name = GPT_LLM_MODEL_NAME
+        api_base = GPT_API_BASE
+        api_key = GPT_API_KEY
+        
+    return model_name, api_base, api_key
+
 @observe()
-async def get_chat_response(prompt: str, model_name: str = QA_LLM_MODEL_NAME) -> str:
+async def get_chat_response(
+        prompt: str, 
+        model_name: str = OSS_LLM_MODEL_NAME,
+        api_key=OSS_API_KEY, 
+        api_base=OSS_API_BASE
+    ) -> str:
+
     print("Character Length of the prompt: ", len(prompt))
     print("words length of the prompt: ", len(prompt.split()))
 
-    # Check for environment variables for different configurations
-    # LLM_MODEL_NAME = os.getenv("LLM_MODEL_NAME") 
-
-    print("LLM_API_BASE:", LLM_API_BASE)
-    print("LLM_API_KEY:", LLM_API_KEY)
+    print("LLM_API_BASE:", api_base)
+    print("LLM_API_KEY:", api_key)
     print("LLM_MODEL_NAME:", model_name)
     # Use OpenRouter if available, otherwise fall back to original configuration
-    if LLM_API_KEY and model_name and LLM_API_BASE:
-        llm = ChatOpenAI(
-            openai_api_base=LLM_API_BASE,
-            model_name=model_name,
-            openai_api_key=LLM_API_KEY,
-            temperature=0,
-            model_kwargs={
-                "top_p": 1,
-                "max_completion_tokens": 8000
-            },
-            extra_body={
+    if api_base and model_name and model_name:
+        if model_name != "/gpt-120":
+            extra = {}
+        else:
+            extra = {
                 "top_k": 1,
                 "do_sample": False,
                 "seed": 42,
                 "sampling_method": "greedy",
                 "reasoning_effort": "medium"
+            }
+            model_kwargs={
+                "top_p": 1,
+                "max_completion_tokens": 8000
             },
+        llm = ChatOpenAI(
+            openai_api_base=api_base,
+            model_name=model_name,
+            openai_api_key=api_key,
+            temperature=0,
+            model_kwargs={},
+            extra_body=extra
         )
     else:
         raise ValueError("No valid LLM configuration found in environment variables")
@@ -216,7 +239,7 @@ async def answer_validator(question: str, context: str, answer: str) -> bool:
     return response
 
 @observe()
-async def is_somewhat_uniform(freq_dict: dict, threshold: float = 0.75) -> bool:
+async def is_somewhat_uniform(freq_dict: dict, threshold: float = MODULE_PROPOSER_THRESHOLD) -> bool:
     """
     Checks if the frequency distribution in a dictionary is somewhat uniform
     based on the Coefficient of Variation (CV).
@@ -332,7 +355,8 @@ async def sql_responder_(
     faulty_sql_query: str = "", 
     error_message: str = "", 
     do_retry: bool = False,
-    parameters: dict = {}
+    parameters: dict = {},
+    use_oss: bool = False
     ):
     """
     Unified SQL responder supporting both simple schema list and module-based schema selection
@@ -361,10 +385,15 @@ async def sql_responder_(
         else:
             bo_prompt = SQL_MODIFIER.format(schema=LOGISTICS_SALES_MODIFIED, original_query=query, 
                                           faulty_sql_query=faulty_sql_query, error_message=error_message)
-    
-    raw_json_response = await get_chat_response(bo_prompt, SQL_LLM_MODEL_NAME)
+
+    model_name, api_base, api_key = model_selector(use_oss)
+    raw_json_response = await get_chat_response(
+        bo_prompt, 
+        model_name=model_name, 
+        api_base=api_base, 
+        api_key=api_key
+        )
     response = json_cleaning(raw_json_response)
-    
     return response
 
 

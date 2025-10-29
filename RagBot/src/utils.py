@@ -285,3 +285,5 @@ def init_session_state():
         st.session_state["suggested_choices"] = []
     if "sql_mode" not in st.session_state:
         st.session_state["sql_mode"] = True
+    if "model_selector" not in st.session_state:
+        st.session_state["model_selector"] = "GPT"

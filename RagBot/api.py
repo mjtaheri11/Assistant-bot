@@ -70,6 +70,7 @@ class ChatRequest(BaseModel):
     error_payload: Optional[str] = ""
     is_sync: Optional[bool] = True
     sql_mode: Optional[bool] = True  # Toggle between legacy and SQL agent mode
+    use_oss: Optional[bool] = False
 
 class ChatResponse(BaseModel):
     message_id: str
@@ -476,7 +477,6 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
             user_code, tenant_name = await get_user_code_tenant_name(chat_request, postgres)
             validate_query(chat_request.query) # excessive request handling, we can remove it as soon as possible
             simple_logger(f"Received chat request", session_id)
-            
             history = await postgres.get_history(
                 session_id,
                 1,
@@ -515,7 +515,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         parameters=json.dumps(parameters)
                     )
             else:
-                database_id_dict = await postgres.find_database_id(chat_request.session_id)
+                database_id_dict = await postgres.find_database_id(session_id)
                 matched_index, company_name, assistant_name = find_database_path(database_id_dict["database_id"])
                 print(matched_index)
                 selected_history = [
@@ -542,7 +542,8 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         faulty_sql_query,
                         chat_request.error_payload,
                         chat_request.do_retry,
-                        faulty_sql_query_parameters
+                        faulty_sql_query_parameters, 
+                        use_oss=chat_request.use_oss
                     )
                     response_dict = json.loads(response_dict_str)
                     if "NULL" not in response_dict_str:
@@ -655,7 +656,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         choices = modules
                     else:
                         if not response:
-                            if chat_request.sql_mode:
+                            if chat_request.sql_mode and modules:
                                 agent = "sql_responder"
                                 is_sql = True
                                 response_dict_str = await sql_responder_(

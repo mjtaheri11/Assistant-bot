@@ -32,7 +32,7 @@ class QwenReranker:
         # Recommended to use flash_attention_2 for better performance
         self.model = AutoModelForCausalLM.from_pretrained(
             model_name,
-            torch_dtype="torch.float16",
+            # torch_dtype="torch.float16",
             attn_implementation="flash_attention_2"
         ).to(device).eval()
         self.device = device

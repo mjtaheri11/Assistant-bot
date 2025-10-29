@@ -287,7 +287,6 @@ class Postgres:
             }
             for row in results
         ]
-
     async def get_latest_sessions(
         self,
         num_sessions=30,
@@ -307,21 +306,38 @@ class Postgres:
                     create_time
                 FROM recent_messages
                 ORDER BY session_id, create_time DESC
+            ),
+            valid_sessions AS (
+                SELECT ds.session_id
+                FROM distinct_sessions ds
+                WHERE (
+                    SELECT COUNT(*)
+                    FROM messages m
+                    WHERE m.session_id = ds.session_id
+                ) > 1
+                OR (
+                    SELECT COUNT(*)
+                    FROM messages m
+                    WHERE m.session_id = ds.session_id
+                    AND m.bot_response IS NOT NULL
+                ) > 0
             )
             SELECT
-                ds.session_id,
+                vs.session_id,
                 (
                     SELECT m.paraphrased_query
                     FROM messages m
-                    WHERE m.session_id = ds.session_id
+                    WHERE m.session_id = vs.session_id
                     AND m.paraphrased_query IS NOT NULL
                     ORDER BY m.create_time ASC
                     LIMIT 1
                 ) AS first_paraphrased_query,
                 COALESCE(d.company_name, 'همکاران سیستم') AS company_name,
-                COALESCE(d.assistant_name, 'دستیار دیجیتال') AS assistant_name
-            FROM distinct_sessions ds
-            LEFT JOIN public.session s ON ds.session_id = s.session_id
+                COALESCE(d.assistant_name, 'دستیار دیجیتال') AS assistant_name,
+                ds.create_time
+            FROM valid_sessions vs
+            JOIN distinct_sessions ds ON vs.session_id = ds.session_id
+            LEFT JOIN public.session s ON vs.session_id = s.session_id
             LEFT JOIN public.databases d ON s.database_id = d.database_id
             ORDER BY ds.create_time DESC
             OFFSET $1
@@ -334,7 +350,7 @@ class Postgres:
             insert_values=(offset, num_sessions, recent_limit)
         )
 
-        # Each row = (session_id, first_paraphrased_query, company_name, assistant_name)
+        # Each row = (session_id, first_paraphrased_query, company_name, assistant_name, create_time)
         return [
             {
                 "session_id": str(row[0]),

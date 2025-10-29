@@ -75,7 +75,8 @@ def chat_request(
     does_evaluate: bool = False,
     use_cache: bool = True,
     api_url: str = BASE_URL,
-    sql_mode: bool = True
+    sql_mode: bool = True,
+    use_oss: bool = False
 ):
 
     # Define the request data
@@ -86,7 +87,8 @@ def chat_request(
         "does_evaluate": does_evaluate,
         "response_type": answer_type,
         "use_cache": use_cache,
-        "sql_mode": sql_mode
+        "sql_mode": sql_mode,
+        "use_oss": use_oss
     }
     if database_id:
         chat_data["database_id"] = database_id
@@ -299,8 +301,8 @@ def main():
     st.set_page_config(
         page_title="hamzan",
         layout="wide",
-        initial_sidebar_state="expanded",
-        # initial_sidebar_state="collapsed",
+        # initial_sidebar_state="expanded",
+        initial_sidebar_state="collapsed",
     )
     init_session_state()
     clicked_on_sidebar_sessions = False
@@ -360,8 +362,8 @@ def main():
     if st.session_state.get("form_submitted", False):
         form_submitted = True
 
-    number_of_columns = [3, 6, 1, 3, 1]
-    logging_column, main_column, _, sessions_column, _ = st.columns(
+    number_of_columns = [3, 5, 1, 2]
+    logging_column, main_column, _, sessions_column = st.columns(
         number_of_columns,
         gap="small",
     )
@@ -486,23 +488,53 @@ def main():
                         st.info(
                             "سلام، من سامانه دستیار دیجیتال نسل چهارم همکاران سیستم هستم. لطفا سوالتون رو در کادر زیر بپرسید.")
                     st.session_state["first_encounter_with_searchbox"] = False
+                
+                st.markdown("""
+                    <style>
+                    div[data-testid="column"] {
+                        padding-top: 0rem;
+                        padding-bottom: 0rem;
+                    }
+                    </style>
+                    """, unsafe_allow_html=True)
+                
+                # IMPROVED: Compact layout for all controls
+                col1, col2, col3 = st.columns([6, 2, 2], gap="small")
 
-                st.markdown(
-                    f'<div class="markdown-rtl">عامل SQL</div>', unsafe_allow_html=True)
-                st.selectbox(
-                    '<div class="markdown-rtl">عامل SQL</div>',
-                    ["بله", "خیر"],
-                    key="temporal_sql_mode",
-                    label_visibility="collapsed"
-                )
-                st.radio(
-                    "radio",
-                    options=["خلاصه", "عادی", "توضیحی"],
-                    key="temporal_answer_type",
-                    label_visibility="collapsed",
-                    disabled=False,
-                    horizontal=True,
-                )
+                with col1:
+                    # IMPROVED: Radio buttons moved to same row, more compact
+                    # st.markdown('<div class="markdown-rtl compact-radio-label">نوع پاسخ:</div>', unsafe_allow_html=True)
+                    st.radio(
+                        "نوع پاسخ",
+                        options=["خلاصه", "عادی", "توضیحی"],
+                        key="temporal_answer_type",
+                        label_visibility="visible",
+                        disabled=False,
+                        horizontal=True,
+                    )
+
+                with col2:
+                    st.markdown(
+                        f'<div class="markdown-rtl">عامل SQL</div>', unsafe_allow_html=True)
+                    st.selectbox(
+                        '<div class="markdown-rtl">عامل SQL</div>',
+                        ["بله", "خیر"],
+                        key="temporal_sql_mode",
+                        label_visibility="collapsed"
+                    )
+
+                with col3:
+                    st.markdown(
+                        f'<div class="markdown-rtl">OSS برای SQL</div>', unsafe_allow_html=True)
+                    st.selectbox(
+                        '<div class="markdown-rtl">مدل او اس اس برای SQL</div>',
+                        ["خیر", "بله"],
+                        key="temporal_model_selector",
+                        label_visibility="collapsed"
+                    )
+                
+                
+                # Text input on its own row
                 st.text_input(
                     st.session_state.get("session_id"),
                     placeholder="لطفا سوال خود را وارد کنید",
@@ -511,6 +543,9 @@ def main():
                 )
                 st.session_state["sql_mode"] = boolean_mapper(
                     st.session_state["temporal_sql_mode"])
+                st.session_state["model_selector"] = boolean_mapper(
+                    st.session_state["temporal_model_selector"]
+                )
                 progress_bar = st.progress(value=0)
                 with st.container():
                     if st.session_state.get("user_input"):
@@ -538,7 +573,8 @@ def main():
                             answer_type=st.session_state["answer_type"],
                             does_evaluate=st.session_state["does_evaluate"],
                             use_cache=st.session_state["use_cache"],
-                            sql_mode=st.session_state["sql_mode"]
+                            sql_mode=st.session_state["sql_mode"],
+                            use_oss=st.session_state["model_selector"]
                         )
                         do_suggest, is_sql, choices, message_id, response, query = (
                             chat_response["do_suggest"],
@@ -644,13 +680,11 @@ def main():
                                 content = st.session_state["response"][i]
                                 is_sql = st.session_state.get(
                                     "sql_response_type", [False] * len(st.session_state["response"]))[i]
-                                direction_class = "markdown-ltr" if is_sql else "markdown-rtl"
-                                content = f"```{content}```" if is_sql else content
-                                st.markdown(
-                                    content if is_sql else f'<div class="{direction_class}">{content}</div>',
-                                    unsafe_allow_html=True,
-                                    help=help_msg
-                                )
+                                if is_sql:
+                                    # IMPROVED: Added custom class for SQL display
+                                    st.markdown(f'<div class="markdown-ltr sql-code-block">\n\n```sql\n{content}\n```\n\n</div>', unsafe_allow_html=True)
+                                else:
+                                    st.markdown(f'<div class="markdown-rtl">{content}</div>', unsafe_allow_html=True)
                                 if st.session_state.get("do_suggest_modules") and i == len(st.session_state["response"]) - 1:
                                     # Create a number of columns equal to the number of suggested modules
                                     suggested_modules = st.session_state.get(

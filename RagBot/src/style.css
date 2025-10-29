@@ -1,159 +1,660 @@
-@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;900&display=swap');
-
+/* ============================================
+   STREAMLIT CHATBOT - IMPROVED VERSION
+   Fixes:
+   1. Compact radio buttons integrated with input
+   2. Removed excessive white box around intro
+   3. Non-scrolling SQL code display
+   ============================================ */
+/* Import Font */
+@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap');
+/* ============================================
+   CSS VARIABLES - DESIGN SYSTEM
+   ============================================ */
+:root {
+    /* Colors */
+    --primary: #3b82f6;
+    --primary-dark: #2563eb;
+    --secondary: #8b5cf6;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --info: #06b6d4;
+   
+    /* Neutrals */
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-300: #d1d5db;
+    --gray-700: #374151;
+    --gray-900: #111827;
+   
+    /* Spacing */
+    --spacing-xs: 0.25rem;
+    --spacing-sm: 0.5rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 1.5rem;
+    --spacing-xl: 2rem;
+   
+    /* Border Radius */
+    --radius-sm: 0.375rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+   
+    /* Shadows */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+   
+    /* Transitions */
+    --transition: all 0.2s ease;
+}
+/* ============================================
+   GLOBAL STYLES
+   ============================================ */
 * {
     font-family: 'Vazirmatn', sans-serif !important;
 }
-
-/* Styling for input element to be right to left */
-
+/* ============================================
+   RTL/LTR DIRECTION CLASSES
+   ============================================ */
+/* Right-to-Left (Persian/Arabic content) */
+.markdown-rtl {
+    direction: rtl !important;
+    text-align: right !important;
+    unicode-bidi: embed;
+}
+/* Left-to-Right (Code/SQL/English content) */
+.markdown-ltr {
+    direction: ltr !important;
+    text-align: left !important;
+    unicode-bidi: embed;
+}
+/* ============================================
+   FIX #3: SQL CODE BLOCK - NO HORIZONTAL SCROLL
+   ============================================ */
+/* SQL code blocks should wrap and not scroll horizontally */
+.sql-code-block pre {
+    white-space: pre-wrap !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    overflow-x: visible !important;
+    max-width: 100% !important;
+}
+.sql-code-block code {
+    white-space: pre-wrap !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    display: block !important;
+}
+/* All code blocks in chat messages */
+[data-testid="stChatMessageContent"] pre {
+    white-space: pre-wrap !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    overflow-x: visible !important;
+    max-width: 100% !important;
+}
+[data-testid="stChatMessageContent"] code {
+    white-space: pre-wrap !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+}
+/* ============================================
+   INPUT FIELDS
+   ============================================ */
 input {
-    direction: RTL;
-    text-align: start;
-}
-
-/* Styling for message content to be right to left */
-
-/* [data-testid="stChatMessageContent"] p,
-[data-testid="stChatMessageContent"] li,
-[data-testid="stChatMessageContent"] ol,
-[data-testid="stChatMessageContent"] ul{
-    text-align: start;
     direction: rtl;
-} */
-
-
-[data-testid="stMarkdownContainer"]:has(.reference) {
-    display: flex;
-    flex-direction: row;
-    text-align: left;
-    direction: rtl;
+    text-align: start;
+    transition: var(--transition);
 }
-
-[data-testid="element-container"] [data-testid="baseButton-secondary"] {
-    text-align: center;
-    width: 100%;
-    /* background-color: rgb(240, 242, 246); /* Transparent background for the box */
-    background: rgba(0, 0, 0, 0);
-    color: rgb(49, 51, 63);
-    inset: 0px;
-    color-scheme: light;
-    box-sizing: border-box;
+input:focus {
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
 }
-
-
-[data-testid="element-container"] [data-testid="baseButton-primary"] {
-    text-align: center;
-    width: 100%;
-    box-sizing: border-box;
-    background-color: #6CB4EE;
-    border-color: #6CB4EE;
-    border-style: solid;
+.stTextInput > div > div > input {
+    border-radius: var(--radius-md) !important;
+    border: 2px solid var(--gray-200) !important;
+    padding: 0.75rem 1rem !important;
+    transition: var(--transition) !important;
 }
-
-/* background-color: rgb(240, 242, 246); /* Transparent background for the box */
-
-/* Styling the tipbox rtl content */
-div.e10yodom1 {
-    display: flex;
-    justify-content: flex-end;
+.stTextInput > div > div > input:focus {
+    border-color: var(--primary) !important;
 }
-
-div.stAlert {
-    direction: RTL;
-    text-align: start; /* the element becomes fixed when the top of the page hits this point */
+/* ============================================
+   MAIN LAYOUT - FIXED
+   ============================================ */
+section.main > div {
+    padding-bottom: var(--spacing-md);
+    background: var(--gray-50);
 }
-
-/* Styling for columns in order to be scrollable */
-
-section.main>div {
-    padding-bottom: 1rem;
-}
-
-[data-testid="column"] {
+/* Main columns with scrolling - FIXED HEIGHT ONLY FOR SIDE COLUMNS */
+section.main > div > [data-testid="stVerticalBlock"] > [data-testid="column"]:nth-child(1),
+section.main > div > [data-testid="stVerticalBlock"] > [data-testid="column"]:nth-child(4) {
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 10px;
+    padding: var(--spacing-lg);
     height: 80vh;
     box-sizing: border-box;
+    background: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    margin: var(--spacing-sm);
+    direction: rtl !important;
+}
+/* Main chat column (first column) - NO FIXED HEIGHT */
+section.main > div > [data-testid="stVerticalBlock"] > [data-testid="column"]:nth-child(2) {
+    overflow-y: visible;
+    overflow-x: hidden;
+    padding: var(--spacing-lg);
+    height: auto !important;
+    box-sizing: border-box;
+    background: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    margin: var(--spacing-sm);
+}
+/* Nested columns (like selectboxes) - NO fixed height */
+[data-testid="column"] {
+    box-sizing: border-box;
+}
+/* Custom Scrollbar */
+section.main > div > [data-testid="stVerticalBlock"] > [data-testid="column"]::-webkit-scrollbar {
+    width: 6px;
+}
+section.main > div > [data-testid="stVerticalBlock"] > [data-testid="column"]::-webkit-scrollbar-track {
+    background: var(--gray-100);
+    border-radius: var(--radius-md);
+}
+section.main > div > [data-testid="stVerticalBlock"] > [data-testid="column"]::-webkit-scrollbar-thumb {
+    background: var(--gray-300);
+    border-radius: var(--radius-md);
+}
+section.main > div > [data-testid="stVerticalBlock"] > [data-testid="column"]::-webkit-scrollbar-thumb:hover {
+    background: var(--primary);
+}
+/* ============================================
+   BUTTONS - FIXED DIMENSIONS
+   ============================================ */
+/* ALL buttons should have consistent dimensions */
+[data-testid="baseButton-secondary"],
+[data-testid="baseButton-primary"] {
+    min-height: 3rem !important;
+    height: auto !important;
+    padding: 0.75rem 1rem !important;
+    border-radius: var(--radius-md) !important;
+    transition: var(--transition) !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    white-space: normal !important;
+    word-wrap: break-word !important;
+    width: 100% !important;
+}
+/* Primary buttons */
+[data-testid="baseButton-primary"] {
+    background: linear-gradient(135deg, var(--primary), var(--secondary)) !important;
+    border: none !important;
+    font-weight: 600 !important;
+    box-shadow: var(--shadow-sm) !important;
+    color: white !important;
+}
+[data-testid="baseButton-primary"]:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md) !important;
+    opacity: 0.95 !important;
+}
+/* Secondary buttons */
+[data-testid="baseButton-secondary"] {
+    border: 1px solid var(--gray-200) !important;
+    background: white !important;
+    font-weight: 500 !important;
+}
+[data-testid="baseButton-secondary"]:hover {
+    border-color: var(--primary) !important;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm) !important;
+    background: var(--gray-50) !important;
+}
+/* Empty buttons or buttons with minimal content */
+[data-testid="baseButton-secondary"]:empty::after {
+    content: '\00a0';
+    display: inline-block;
+}
+/* Ensure consistent width in columns */
+[data-testid="column"] [data-testid="baseButton-secondary"],
+[data-testid="column"] [data-testid="baseButton-primary"] {
+    width: 100% !important;
+    margin-bottom: var(--spacing-sm) !important;
+    direction: rtl !important;
+    text-align: right !important;
+}
+/* Sidebar buttons RTL */
+[data-testid="stSidebarContent"] [data-testid="baseButton-secondary"],
+[data-testid="stSidebarContent"] [data-testid="baseButton-primary"] {
+    direction: rtl !important;
+    text-align: right !important;
+    white-space: normal !important;
+    word-wrap: break-word !important;
+}
+/* ============================================
+   TABS - FIXED ALIGNMENT AND STYLING
+   ============================================ */
+/* Tab container - RIGHT ALIGNED for RTL */
+[data-baseweb="tab-list"] {
+    gap: var(--spacing-sm);
+    background: transparent !important;
+    padding: var(--spacing-sm) 0 !important;
+    margin-bottom: var(--spacing-lg);
+    border-bottom: none !important;
+    display: flex !important;
+    justify-content: flex-end !important; /* RIGHT aligned */
+    flex-direction: row-reverse !important; /* RTL order */
+    direction: rtl !important;
+}
+/* Individual tabs */
+[data-baseweb="tab"] {
+    border-radius: var(--radius-md) var(--radius-md) 0 0 !important;
+    font-weight: 500 !important;
+    transition: var(--transition) !important;
+    background: var(--gray-100) !important;
+    border: 1px solid var(--gray-200) !important;
+    border-bottom: none !important;
+    padding: 0.75rem 1.5rem !important;
+    margin: 0 var(--spacing-xs) !important;
+}
+[data-baseweb="tab"]:hover {
+    background-color: var(--gray-200) !important;
+}
+/* Active tab */
+[data-baseweb="tab"][aria-selected="true"] {
+    background: white !important;
+    color: var(--primary) !important;
+    border-color: var(--primary) !important;
+    border-bottom: 2px solid white !important;
+    position: relative !important;
+    z-index: 2 !important;
+}
+/* Remove the red/colored underline */
+[data-baseweb="tab-highlight"] {
+    display: none !important;
+}
+[data-baseweb="tab-border"] {
+    display: none !important;
+}
+/* Tab panel background */
+[data-baseweb="tab-panel"] {
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    margin-top: -1px;
+    box-shadow: var(--shadow-sm);
+}
+/* ============================================
+   SELECT BOXES
+   ============================================ */
+[data-baseweb="select"] > div {
+    border-radius: var(--radius-md) !important;
+    border: 1px solid var(--gray-200) !important;
+    transition: var(--transition) !important;
+    min-height: 3rem !important;
+}
+[data-baseweb="select"] > div:hover,
+[data-baseweb="select"] > div:focus-within {
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+}
+/* ============================================
+   FIX #1: RADIO BUTTONS - COMPACT AND MINIMAL
+   ============================================ */
+/* Compact label for radio buttons */
+.compact-radio-label {
+    font-size: 0.875rem !important;
+    font-weight: 500 !important;
+    color: var(--gray-700) !important;
+    margin-bottom: 0.25rem !important;
+    padding: 0 !important;
+}
+/* Hide label when label_visibility is collapsed */
+[data-testid="stRadio"] > label {
+    display: none !important;
+}
+/* Container styling - COMPACT */
+[data-testid="stRadio"] {
+    background: transparent !important;
+    padding: 0 !important;
+    border: none !important;
+    margin: 0 !important;
+}
+/* Horizontal radio group - COMPACT */
+[data-testid="stRadio"][data-baseweb="radio-group"] > div {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    gap: 0.375rem !important; /* Reduced gap */
+    justify-content: flex-end !important;
+    direction: rtl !important;
+}
+/* Individual radio option - COMPACT */
+[data-testid="stRadio"] [role="radiogroup"] > label {
+    background: white !important;
+    padding: 0.375rem 0.75rem !important; /* Reduced padding */
+    border-radius: var(--radius-sm) !important; /* Smaller radius */
+    border: 1.5px solid var(--gray-200) !important; /* Thinner border */
+    transition: var(--transition) !important;
+    cursor: pointer !important;
+    min-height: 2rem !important; /* Reduced height */
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 0.875rem !important; /* Smaller text */
+    font-weight: 500 !important;
+}
+/* Radio option hover */
+[data-testid="stRadio"] [role="radiogroup"] > label:hover {
+    border-color: var(--primary) !important;
+    background: var(--gray-50) !important;
+    transform: translateY(-1px) !important;
+}
+/* Radio option selected - COMPACT */
+[data-testid="stRadio"] [role="radiogroup"] > label:has(input:checked) {
+    background: var(--primary) !important; /* Solid color instead of gradient */
+    color: white !important;
+    border-color: var(--primary) !important;
+    font-weight: 600 !important;
+}
+/* Hide the actual radio input circle */
+[data-testid="stRadio"] input[type="radio"] {
+    display: none !important;
+}
+/* ============================================
+   CHAT MESSAGES
+   ============================================ */
+[data-testid="stChatMessageContent"] {
+    background: white;
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-md);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: var(--spacing-md);
+}
+/* User messages - RTL by default */
+[data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-user"]) [data-testid="stMarkdownContainer"] {
+    direction: rtl;
+    text-align: right;
+}
+/* Code blocks inside chat (for SQL) - always LTR */
+[data-testid="stChatMessageContent"] pre,
+[data-testid="stChatMessageContent"] code {
+    direction: ltr !important;
+    text-align: left !important;
+}
+/* ============================================
+   FIX #2: ALERTS - MINIMAL WHITE BOX
+   ============================================ */
+/* Reduce padding and margins for alerts/info boxes */
+[data-baseweb="notification"] {
+    border-radius: var(--radius-md) !important; /* Smaller radius */
+    border: none !important;
+    box-shadow: none !important; /* Removed shadow */
+    padding: 0.5rem 0.75rem !important; /* Reduced padding */
+    margin: 0.5rem 0 !important; /* Reduced margin */
+}
+[data-baseweb="notification"][kind="positive"] {
+    background: linear-gradient(135deg, #d1fae5, #a7f3d0) !important;
+    border-left: 3px solid var(--success) !important; /* Thinner border */
+}
+[data-baseweb="notification"][kind="info"] {
+    background: linear-gradient(135deg, #dbeafe, #bfdbfe) !important;
+    border-left: 3px solid var(--info) !important; /* Thinner border */
+}
+[data-baseweb="notification"][kind="warning"] {
+    background: linear-gradient(135deg, #fef3c7, #fde68a) !important;
+    border-left: 3px solid var(--warning) !important; /* Thinner border */
+}
+[data-baseweb="notification"][kind="negative"] {
+    background: linear-gradient(135deg, #fee2e2, #fecaca) !important;
+    border-left: 3px solid var(--danger) !important; /* Thinner border */
+}
+div.stAlert {
+    direction: rtl;
+    text-align: start;
+    border-radius: var(--radius-md); /* Smaller radius */
+    padding: 0.5rem 0.75rem !important; /* Reduced padding */
+    margin: 0.5rem 0 !important; /* Reduced margin */
+}
+/* Hide info boxes completely if needed (optional) */
+/* Uncomment below to completely hide st.info boxes */
+/*
+[data-baseweb="notification"][kind="info"] {
+    display: none !important;
+}
+*/
+/* ============================================
+   EXPANDERS - CONSISTENT DIMENSIONS
+   ============================================ */
+[data-testid="stExpander"] {
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--spacing-md);
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition);
+}
+[data-testid="stExpander"]:hover {
+    box-shadow: var(--shadow-md);
+    border-color: var(--primary);
+}
+[data-testid="stExpander"] summary {
+    font-weight: 600;
+    padding: var(--spacing-md);
+    min-height: 3rem;
+    display: flex;
+    align-items: center;
+}
+[data-testid="stExpander"] [data-testid="stExpanderDetails"] {
+    padding: 0 var(--spacing-md) var(--spacing-md) var(--spacing-md);
+}
+/* ============================================
+   SIDEBAR - FIXED DIMENSIONS
+   ============================================ */
+[data-testid="stSidebarContent"] {
+    background: linear-gradient(180deg, var(--gray-50), var(--gray-100));
+    padding: var(--spacing-md);
+    direction: rtl !important;
+}
+[data-testid="stSidebarContent"] [data-testid="baseButton-secondary"] {
+    background: white;
+    border: 2px solid var(--primary);
+    color: var(--primary);
+    margin: var(--spacing-sm) 0;
+    font-weight: 500;
+    transition: var(--transition);
+    min-height: 3rem !important;
+    width: 100% !important;
+}
+[data-testid="stSidebarContent"] [data-testid="baseButton-secondary"]:hover {
+    background: var(--primary);
+    color: white;
+    transform: translateX(-4px);
+}
+[data-testid="stSidebarContent"] p {
+    direction: rtl;
+    text-align: end;
+    line-height: 1.6;
+}
+/* ============================================
+   ELEMENT CONTAINERS - CONSISTENT SPACING
+   ============================================ */
+[data-testid="element-container"] {
+    margin-bottom: var(--spacing-sm);
+}
+/* Ensure all elements in a column have consistent spacing */
+[data-testid="column"] > [data-testid="element-container"] {
+    margin-bottom: var(--spacing-sm);
+}
+[data-testid="column"] > [data-testid="element-container"]:last-child {
+    margin-bottom: 0;
+}
+/* ============================================
+   CUSTOM COMPONENTS
+   ============================================ */
+.ussd-code {
+    display: inline-block;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    background: var(--info);
+    color: white;
+    border-radius: var(--radius-sm);
+    font-size: 0.875rem;
+    font-weight: 600;
+    direction: ltr;
+    text-align: left;
+    border: 1px solid var(--info);
+    box-shadow: var(--shadow-sm);
+}
+/* ============================================
+   DIVIDERS
+   ============================================ */
+hr {
+    border: none;
+    border-top: 1px solid var(--gray-200);
+    margin: var(--spacing-lg) 0;
+}
+/* ============================================
+   SPINNER/LOADING
+   ============================================ */
+[data-testid="stSpinner"] > div {
+    border-color: var(--primary) !important;
+}
+/* ============================================
+   MARKDOWN CONTAINERS
+   ============================================ */
+[data-testid="stMarkdownContainer"] {
+    min-height: 1.5rem;
+}
+[data-testid="stMarkdownContainer"] h1,
+[data-testid="stMarkdownContainer"] h2,
+[data-testid="stMarkdownContainer"] h3 {
+    margin-top: var(--spacing-md);
+    margin-bottom: var(--spacing-sm);
+}
+/* ============================================
+   RESPONSIVE DESIGN
+   ============================================ */
+@media (max-width: 768px) {
+    section.main > div > [data-testid="stVerticalBlock"] > [data-testid="column"] {
+        padding: var(--spacing-md);
+        margin: var(--spacing-xs);
+    }
+   
+    [data-baseweb="tab-list"] {
+        flex-wrap: wrap;
+    }
+   
+    [data-baseweb="tab"] {
+        flex: 1 1 auto;
+        min-width: 100px;
+    }
+   
+    /* Compact radio buttons on mobile */
+    [data-testid="stRadio"] [role="radiogroup"] > label {
+        padding: 0.25rem 0.5rem !important;
+        font-size: 0.8rem !important;
+    }
+}
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+[data-testid="stChatMessageContent"] {
+    animation: fadeIn 0.3s ease;
+}
+/* ============================================
+   FIX FOR BUTTON TEXT OVERFLOW
+   ============================================ */
+[data-testid="baseButton-secondary"] > div,
+[data-testid="baseButton-primary"] > div {
+    width: 100%;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    line-height: 1.4;
+}
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+.text-center {
+    text-align: center !important;
+}
+.mt-1 { margin-top: var(--spacing-sm) !important; }
+.mt-2 { margin-top: var(--spacing-md) !important; }
+.mb-1 { margin-bottom: var(--spacing-sm) !important; }
+.mb-2 { margin-bottom: var(--spacing-md) !important; }
+/* ============================================
+   FIXES FOR EMPTY CONTENT
+   ============================================ */
+/* Ensure empty buttons still maintain height */
+[data-testid="baseButton-secondary"]:not(:has(*)) {
+    min-height: 3rem !important;
+}
+/* Ensure empty markdown containers maintain minimum height */
+[data-testid="stMarkdownContainer"]:empty {
+    min-height: 1rem;
+    display: block;
+}
+/* ============================================
+   SESSION BUTTONS SPECIFIC STYLING
+   ============================================ */
+/* Buttons in the sessions column should have consistent height */
+[data-testid="column"]:nth-child(2) [data-testid="baseButton-secondary"],
+[data-testid="column"]:nth-child(3) [data-testid="baseButton-secondary"] {
+    min-height: 3.5rem !important;
+    height: auto !important;
+    max-height: 6rem !important;
+    overflow: hidden !important;
+}
+/* ============================================
+   FEEDBACK SECTION STYLING
+   ============================================ */
+.feedback-section {
+    background-color: var(--gray-100) !important;
+    padding: var(--spacing-sm) !important;
+    border-radius: var(--radius-md) !important;
+    border: 1px solid var(--gray-200) !important;
+    margin-top: var(--spacing-sm) !important;
+}
+.feedback-section [data-testid="column"] {
+    min-height: auto !important;
+}
+.feedback-text {
+    color: var(--primary) !important;
+    font-weight: 600 !important;
+    margin: 0 !important;
+}
+.feedback-section [data-testid="baseButton-secondary"] {
+    background: var(--gray-50) !important;
+    border-color: var(--gray-300) !important;
+}
+.feedback-section [data-testid="baseButton-secondary"]:hover {
+    background: var(--primary) !important;
+    color: white !important;
 }
 
 [data-testid="stChatMessageContent"] [data-testid="stHorizontalBlock"] {
     border: 1px dashed #faa81a98;
     background-color: #54c6d01f;
     border-radius: 10px;
-}
-
-[data-testid="stChatMessageContent"] [data-testid="column"] {
-    height: auto;
-    overflow-y: hidden;
-}
-
-/* [data-testid="stChatMessageContent"] [data-testid="stMarkdownContainer"] {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    justify-content: center;
-    height: auto;
-} */
-
-[data-testid="stChatMessageContent"] [data-testid="stMarkdownContainer"] p {
-    height: auto;
-    padding: 2px;
-    margin: 2px;
-}
-
-/* Special styling for ussd code */
-
-.ussd-code {
-    border: 1px solid #54c5d0;
-    border-radius: 3px;
-    font-size: 14px;
-    padding: 0 3px 0 3px;
-    background-color: #54c5d0;
-    font-weight: 500;
-    color: white;
-    text-align: left;
-    direction: ltr;
-}
-
-.stTextInput p{
-    font-family: monospace !important;
-    font-size: 10px;
-}
-
-[data-testid="stSidebarContent"] [data-testid="baseButton-secondary"] {
-    color: #b37400;
-    background-color: #fffaf0
-}
-
-
-[data-testid="stSidebarContent"] p {
-    direction: "rtl";
-    color: rgb(0, 66, 128);
-    text-align: end;
-}
-
-[data-testid="stSidebarContent"] [data-testid="baseButton-secondary"] {
-    background-color: #6CA4CC11;
-    border: 1px solid #54c5d0;
-    margin: 10px;
-    box-sizing: border-box;
-    border-radius: 3px;
-
-}
-
-/* Dynamic text direction classes */
-.markdown-ltr {
-    direction: ltr;
-    text-align: left;
-}
-
-.markdown-rtl {
-    direction: ltr;
-    text-align: right;
-}
-
-/* Update existing markdown container styles */
-[data-testid="stMarkdownContainer"] {
-    width: 100%;
 }
