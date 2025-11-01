@@ -12,9 +12,15 @@ import json
 from .config import config
 from .make_sentence_chunks import chunk_document
 
+# embedding_model = HuggingFaceEmbeddings(
+#     model_name=config["embedding_model"]["model_name"],
+#     model_kwargs={"device": config["embedding_model"]["device"]} # , "trust_remote_code": config["embedding_model"]["trust_remote_code"]},
+# )
+
 embedding_model = HuggingFaceEmbeddings(
     model_name=config["embedding_model"]["model_name"],
-    model_kwargs={"device": config["embedding_model"]["device"]} # , "trust_remote_code": config["embedding_model"]["trust_remote_code"]},
+    model_kwargs={"device": config["embedding_model"]["device"],
+                  "trust_remote_code": True},
 )
 
 def create_vector_database(
@@ -112,18 +118,20 @@ def create_documents_from_chunks():
     directory_path = r"E:\digital_assisstant\Assistant-bot\knowledge_base\qa-questions"
     all_docs = []
 
-    all_chunks_address = r"E:\workspace-markdown-chunker\da-markdown-chunker\all_chunks_extracted.json"
+    all_chunks_address = r"E:\workspace-markdown-chunker\da-markdown-chunker\all_chunks_extracted_new.json"
     dict_module_to_filename = {
-        "4thG-Intro": "intro.csv",
-        "CRM": "crm.csv",
-        "INV": "inventory.csv",
-        "Report_builder": "report_builder.csv",
-        "Sales": "sales.csv",
-        "Treasury_14040231": "treasury.csv",
-        "راهنمای دفتر کل نسل 4": "voucher.csv",
-        "TaxPayer": "taxPayer.csv",
-        "DA-Help": "help.csv",
-        "AboutSG": "AboutSG.csv"
+        "4thG-Intro.md": "intro.csv",
+        "CRM.md": "crm.csv",
+        "INV.md": "inventory.csv",
+        "ReportBuilder.md": "report_builder.csv",
+        "Sales.md": "sales.csv",
+        "Treasury.md": "treasury.csv",
+        "GL.md": "voucher.csv",
+        "TaXPayer.md": "taxPayer.csv",
+        "DA.md": "help.csv",
+        "AboutSG.md": "AboutSG.csv",
+        "Platform.md": "platform.csv",
+        "HCM.md": "HCM.csv"
     }
     with open(all_chunks_address, "r", encoding="utf-8") as file:
         lines = json.load(file)

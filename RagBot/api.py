@@ -177,7 +177,7 @@ def validate_query(query):
 def find_database_path(database_index: str = None):
     """Find database path based on index - from develop branch"""
     if not database_index or database_index == "None" or database_index == None:
-        match_dir = "../VectorDB"
+        match_dir = "../VectorDB_e5"
         company_name = config["database"]["company_name"]
         assistant_name = config["database"]["assistant_name"]
     else:

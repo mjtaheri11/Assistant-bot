@@ -10,7 +10,7 @@ services:
       - "8003:8585"
     volumes:
       - ./.env:/app/RagBot/.env
-      - ../VectorDB:/app/VectorDB
+      - ../VectorDB_e5:/app/VectorDB_e5
       - ../db-cache:/app/db-cache
       - ../saved_models:/app/saved_models
       - log_data:/var/log  # Shared volume for log files

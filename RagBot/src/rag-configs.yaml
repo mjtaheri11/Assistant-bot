@@ -1,18 +1,17 @@
-# Configurations for vector database
 database:
-  response_type: concise
   persist_directory: ../VectorDB # initiate_vdb.py # ./VectorDB-bahar-hanieh #./VectorDB
-  does_evaluate: False
-  company_name: "همکاران سیستم"
-  assistant_name: "digital assistant"
-  use_cache: True
+#  persist_directory: VectorDB # initiate_vdb.py # ./VectorDB-bahar-hanieh #./VectorDB
   dbname: my-vdb
   documents:
     ../knowledge_base/new-KB/4thG-Intro.docx:
       target_chunk_size: 500
       max_chunk_size: 1000
       sentence_overlap: 1
-    ../knowledge_base/new-KB/AboutSG.docx:
+    ../knowledge_base/new-KB/80CRMChatBot.docx:
+      target_chunk_size: 500
+      max_chunk_size: 1000
+      sentence_overlap: 1
+    ../knowledge_base/new-KB/GL.docx:
       target_chunk_size: 500
       max_chunk_size: 1000
       sentence_overlap: 1
@@ -20,18 +19,31 @@ database:
       target_chunk_size: 500
       max_chunk_size: 1000
       sentence_overlap: 1
-    ../knowledge_base/new-KB/GL_CompleteDoc_14031018.docx:
+    ../knowledge_base/new-KB/INV UM 20250512-20.docx:
       target_chunk_size: 500
       max_chunk_size: 1000
       sentence_overlap: 1
-    ../knowledge_base/new-KB/INV UM 20241204-07.docx:
+    ../knowledge_base/new-KB/ReportBuilder_Help.docx:
       target_chunk_size: 500
       max_chunk_size: 1000
       sentence_overlap: 1
-    ../knowledge_base/new-KB/ReportBuilder_Help_14030925.docx:
+    ../knowledge_base/new-KB/Sales.docx:
       target_chunk_size: 500
       max_chunk_size: 1000
       sentence_overlap: 1
+    ../knowledge_base/new-KB/TaXPayer.docx:
+      target_chunk_size: 500
+      max_chunk_size: 1000
+      sentence_overlap: 1
+    ../knowledge_base/new-KB/Treasury_14040431.docx:
+      target_chunk_size: 500
+      max_chunk_size: 1000
+      sentence_overlap: 1
+    ../knowledge_base/new-KB/platform.docx:
+      target_chunk_size: 500
+      max_chunk_size: 1000
+      sentence_overlap: 1
+
 
 # Configurations for logging
 logging:
@@ -42,32 +54,8 @@ logging:
 api:
   port: 8686
 
-modules:
-  names: 
-    sales.csv: فروش
-    taxPayer.csv: مودیان
-    treasury.csv: خزانه داری
-    voucher.csv: دفتر کل 
-    report_builder.csv: گزارش ساز
-    inventory.csv: انبار
-    intro.csv: مقدمه
-    help.csv: راهنما
-    crm.csv: مدیریت ارتباط با مشتری
-    AboutSG.csv: درباره همکاران سیستم
-    pla.csv: پلتفرم
-  
-  proposable_modules:
-    - فروش
-    - انبار
-    - مودیان
-    - خزانه داری
-    - دفتر کل
-    - گزارش ساز
-    - مدیریت ارتباط با مشتری
-
-
 postgres:
-  address: 172.26.0.6 # 172.26.0.5 # postgres # 172.26.0.6 # postgres # 172.20.0.6 # 192.168.208.2
+  address: postgres # 172.26.0.5 # postgres # 172.26.0.2 # 172.26.0.6 # postgres # 172.20.0.6 # 192.168.208.2
   database: chatbot
   max_user_input_character_length: 200
   history_length: 3
@@ -85,21 +73,20 @@ cache:
   persist_directory: ../db-cache
   num_rank2_documents: 5
   embedding_model:
-    # model_name: ../save_models/models--ibm-granite--granite-embedding-278m-multilingual
-    model_name: ../saved_models/models--BAAI--bge-m3/snapshots/babcf60cae0a1f438d7ade582983d4ba462303c2
     # model_name: ../saved_models/models--BAAI--bge-m3/snapshots/babcf60cae0a1f438d7ade582983d4ba462303c2
-    # model_name: ../saved_models/models--Snowflake--snowflake-arctic-embed-l-v2.0/snapshots/edc2df7b6c25794b340229ca082e7c78782e6374
-    # model_name: /home/user01/.cache/huggingface/hub/models--jinaai--jina-embeddings-v3/snapshots/30996fea06f69ecd8382ee4f11e29acaf6b5405e   # jinai model
-    # model_name: nomic-ai/nomic-embed-text-v1.5
-    device: cuda
+    model_name: ../saved_models/models--jinaai--jina-embeddings-v3
+    trust_remote_code: True
+    device: cpu
+
 
   # configurations for reranker
   reranker:
-    model_name: # ../saved_models/models--BAAI--bge-reranker-v2-m3/snapshots/12e974610ba9083ed95f3edf08d7e899581f4de4
+    # model_name: ../saved_models/models--BAAI--bge-reranker-v2-m3/snapshots/12e974610ba9083ed95f3edf08d7e899581f4de4
+    model_name: ../saved_models/models--mixedbread-ai--mxbai-rerank-large-v2
     # model_name: /home/user01/.cache/huggingface/hub/models--BAAI--bge-reranker-v2-gemma/snapshots/1787044f8b6fb740a9de4557c3a12377f84d9e17
-    device: cuda
+    device: cpu
     cutoff: 10
-    
+
   schema:
     query_field_name: query
     vector_field_name: vector
@@ -117,18 +104,8 @@ streamlit:
 
 # configurations for ollama
 ollama:
-  # model_name: qwen2:72b-instruct-q4_K_M
-  # model_name: gemma2:9b-instruct-fp16
-  # model_name: qwq:32b-preview-q4_K_M
-  # sql_model_name: deepcoder:14b-preview-q8_0
-  # sql_model_name: deepcoder:14b-preview-q4_K_M
-  # sql_model_name: deepcoder:14b-preview-fp16
-  sql_model_name: qwen3:14b-fp16 # devstral:24b-small-2505-fp16 # qwen3:14b-fp16 # qwen3:14b-fp16 # qwen3:32b-q8_0 # qwen3:30b-a3b-fp16 # qwen3:32b-q8_0 # qwen3:14b-fp16 # qwen3:30b-a3b-q8_0 # qwen3:32b-q8_0 
-  sql_model_port: 11434
-  sql_model_num_ctx: 8196
-  qa_model_name: aya-expanse:32b-q4_K_M
-  qa_model_port: 8008
-  qa_model_num_ctx: 2048
+  sql_model_name: qwen2.5-coder:32b-instruct-q5_K_M
+  model_name: aya-expanse:32b-q4_K_M
   temperature: 0
   stream: true
   keep_alive: -1
@@ -136,36 +113,22 @@ ollama:
 
 # configurations for embedding model
 embedding_model:
-  # model_name: ../saved_models/models--Snowflake--snowflake-arctic-embed-l-v2.0/snapshots/edc2df7b6c25794b340229ca082e7c78782e6374
-  model_name: ../saved_models/models--intfloat--multilingual-e5-large/snapshots/0dc5580a448e4284468b8909bae50fa925907bc5
   # model_name: ../saved_models/models--BAAI--bge-m3/snapshots/babcf60cae0a1f438d7ade582983d4ba462303c2
-  # model_name: /home/user01/.cache/huggingface/hub/models--jinaai--jina-embeddings-v3/snapshots/30996fea06f69ecd8382ee4f11e29acaf6b5405e
-  # model_name: /home/user01/.cache/huggingface/hub/models--nomic-ai--nomic-embed-text-v1.5/snapshots/d802ae16c9caed4d197895d27c6d529434cd8c6d
-  # model_name: /home/user01/.cache/huggingface/hub/models--alefbot--alef-zibert/snapshots/b5a9d43b612b57191bb3a618b51b09b8ecabd927
-  device: cuda
+  trust_remote_code: True
+  model_name: "C:\\Users\\SoroushA\\.cache\\huggingface\\hub\\models--jinaai--jina-embeddings-v3\\snapshots\\f1944de8402dcd5f2b03f822a4bc22a7f2de2eb9"
+  device: cpu
+
 
 # configurations for reranker
 reranker:
-  primary_model: qwen
-  flag_model: 
-      model_name: ../saved_models/models--BAAI--bge-reranker-v2-m3/snapshots/12e974610ba9083ed95f3edf08d7e899581f4de4
-      device: cuda
-  
-  qwen_model: 
-      model_name: ../saved_models/Qwen3-Reranker-0.6B
-      device: cuda
-      max_length: 8192
+  model_name: "E:\\digital_assisstant\\Assistant-bot\\saved_models\\models--BAAI--bge-reranker-v2-m3\\snapshots\\12e974610ba9083ed95f3edf08d7e899581f4de4"
+  device: cpu
 
-  model_name: ../saved_models/models--BAAI--bge-reranker-v2-m3/snapshots/12e974610ba9083ed95f3edf08d7e899581f4de4
-  # model_name: ../saved_models/models--mixedbread-ai--mxbai-rerank-large-v2
-  # model_name: /home/user01/.cache/huggingface/hub/models--nomic-ai--nomic-embed-text-v1.5/snapshots/d802ae16c9caed4d197895d27c6d529434cd8c6d
-  # model_name: /home/user01/.cache/huggingface/hub/models--BAAI--bge-reranker-v2-gemma/snapshots/1787044f8b6fb740a9de4557c3a12377f84d9e17
-  device: cuda
 
 # configurations for retriever
 retriever:
   retrieved_documents: 40 # initiate_vdb.py
-  retrieved_rank2_documents: 7
+  retrieved_rank2_documents: 8
   alpha_threshold: 0.9
   expansion: false
   rerank: true
@@ -190,9 +153,9 @@ evaluation:
 
   # dataset: /home/user01/mj-workspace/Assistant-bot/RagBot/eval-questions/Copy-of-QA-sep.csv
   dataset: /home/user01/mj-workspace/Assistant-bot/RagBot/eval-questions/GL_QA_Questions.csv
-  # model_name: gemma2:9b-instruct-fp16 
+  # model_name: gemma2:9b-instruct-fp16
   model_name: qwen2.5:32b-instruct-q5_K_M
-  # model_name: gemma2:27b-instruct-q8_0 
+  # model_name: gemma2:27b-instruct-q8_0
   output_path: /home/user01/mj-workspace/Assistant-bot/RagBot/evaluation/
   retrieved_documents: 12
   retrieved_rank2_documents: 5
@@ -208,9 +171,5 @@ chat_responder:
 followup_query_generator:
   number_of_suggested_queries: 3
 
-router_model:
-  address: ../saved_models/mlp.joblib
-  model_name: mlp
-  beta_threshold: 0.3
-  alpha_threshold: 0.7
-# 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
+
+  # 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

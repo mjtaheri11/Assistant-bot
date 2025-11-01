@@ -3,16 +3,30 @@ import pandas as pd
 from typing import List, Dict
 
 
-BASE_URL = "http://0.0.0.0:8689" # "http://172.27.0.6:8686" #
+# BASE_URL = "http://0.0.0.0:8689" # "http://172.27.0.6:8686" #
+BASE_URL = "http://185.13.230.222:8689" # "http://172.27.0.6:8686" #
 
 
 
 # result_exporter.py
 import json
+from pathlib import Path
 import pandas as pd
 from datetime import datetime
 from typing import List, Dict, Any
 import os
+from datetime import datetime, timedelta, timezone
+from langfuse import Langfuse
+
+LANGFUSE_PUBLIC_KEY="pk-lf-280b67c9-093b-4e71-8df2-9502726dc9cc"
+LANGFUSE_SECRET_KEY="sk-lf-d19e4f4b-8483-406a-bc76-6ce2d4959afa"
+LANGFUSE_HOST="http://185.13.230.222:3000"
+
+os.environ["LANGFUSE_PUBLIC_KEY"] = LANGFUSE_PUBLIC_KEY
+os.environ["LANGFUSE_SECRET_KEY"] = LANGFUSE_SECRET_KEY
+os.environ["LANGFUSE_HOST"] = LANGFUSE_HOST
+
+
 
 class ResultExporter:
     """
@@ -30,6 +44,7 @@ class ResultExporter:
         os.makedirs(output_dir, exist_ok=True)
         self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         self.timestamp_readable = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self.langfuse = Langfuse()
     
     def extract_metric_data(self, metric_result) -> Dict[str, Any]:
         """
@@ -858,7 +873,7 @@ async def main():
 
     # 2. Data Loading: Load the evaluation dataset from the local CSV
     print("\n--- Loading Evaluation Dataset ---")
-    dataset_path = "/home/user01/mj-workspace/Assistant-bot/RagBot/eval/sample.csv"
+    dataset_path = (Path(__file__).parent / "sample.csv").as_posix()
     evaluation_data = load_evaluation_data(dataset_path)
     if not evaluation_data:
         print("Evaluation cannot proceed without data.")
