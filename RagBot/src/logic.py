@@ -385,7 +385,6 @@ async def sql_responder_(
         else:
             bo_prompt = SQL_MODIFIER.format(schema=LOGISTICS_SALES_MODIFIED, original_query=query, 
                                           faulty_sql_query=faulty_sql_query, error_message=error_message)
-
     model_name, api_base, api_key = model_selector(use_oss)
     raw_json_response = await get_chat_response(
         bo_prompt, 

@@ -589,6 +589,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                                     "",
                                     "",
                                     chat_request.do_retry,
+                                    use_oss=chat_request.use_oss
                                 )
                                 response_dict = json.loads(response_dict_str)
                                 if "null" not in response_dict_str and response_dict["SQL"] is not None:
@@ -665,6 +666,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                                     "",
                                     "",
                                     chat_request.do_retry,
+                                    use_oss=chat_request.use_oss
                                 )
                                 response_dict = json.loads(response_dict_str)
                                 if "null" not in response_dict_str and response_dict["SQL"] is not None:
@@ -699,7 +701,6 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         )
                 
         REQUEST_LATENCY.labels(endpoint="/v1/chat").observe(time.time() - start_time)
-        
         non_generative_agent_logger(
             session_id=session_id,
             tenant_name=tenant_name,
@@ -809,7 +810,8 @@ async def sql_responder_endpoint(sql_request: SQLRequest, request: Request):
             is_sql = True
             response = await sql_responder_(
                 user_question,
-                detected_module
+                detected_module,
+                use_oss=chat_request.use_oss
             )
             
             elapsed_time = time.time() - start_time
