@@ -111,27 +111,31 @@ def create_documents_from_qa_and_chunks():
     return all_docs
 
 def create_documents_from_chunks():
-    directory_path = r"E:\digital_assisstant\Assistant-bot\knowledge_base\qa-questions"
     all_docs = []
 
-    all_chunks_address = r"E:\workspace-markdown-chunker\da-markdown-chunker\all_chunks_extracted.json"
+    all_chunks_address = r"E:\workspace-markdown-chunker\da-markdown-chunker\all_chunks_extracted_new.json"
     dict_module_to_filename = {
         "4thG-Intro": "intro.csv",
         "CRM": "crm.csv",
         "INV": "inventory.csv",
-        "Report_builder": "report_builder.csv",
+        "ReportBuilder": "report_builder.csv",
         "Sales": "sales.csv",
-        "Treasury_14040231": "treasury.csv",
-        "راهنمای دفتر کل نسل 4": "voucher.csv",
+        "Treasury": "treasury.csv",
+        "GL": "voucher.csv",
         "TaxPayer": "taxPayer.csv",
-        "DA-Help": "help.csv",
-        "AboutSG": "AboutSG.csv"
+        "DA": "help.csv",
+        "AboutSG": "AboutSG.csv",
+        "HCM": "hcm.csv",
+        "Platform": "platform.csv"
+
     }
     with open(all_chunks_address, "r", encoding="utf-8") as file:
         lines = json.load(file)
         for line in lines:
             content = line[0]
             module = line[1]
+            if module.endswith(".md"):
+                module = module[:-3]
             metadata = {"source": dict_module_to_filename[module]}
             if dict_module_to_filename[module] in config.get("modules", {}).get("names", {}):
                 metadata["module"] = config["modules"]["names"][dict_module_to_filename[module]]

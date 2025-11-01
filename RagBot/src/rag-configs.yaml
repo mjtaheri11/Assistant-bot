@@ -43,7 +43,7 @@ api:
   port: 8686
 
 modules:
-  names: 
+  names:
     sales.csv: فروش
     taxPayer.csv: مودیان
     treasury.csv: خزانه داری
@@ -54,16 +54,18 @@ modules:
     help.csv: راهنما
     crm.csv: مدیریت ارتباط با مشتری
     AboutSG.csv: درباره همکاران سیستم
-    pla.csv: پلتفرم
+    platform.csv: پلتفرم
+    hcm.csv: جبران خدمات
   
   proposable_modules:
     - فروش
-    - انبار
     - مودیان
     - خزانه داری
     - دفتر کل
     - گزارش ساز
+    - انبار
     - مدیریت ارتباط با مشتری
+    - جبران خدمات
 
 
 postgres:
