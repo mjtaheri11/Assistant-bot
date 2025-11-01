@@ -203,28 +203,21 @@ backup.sql
 
 # nvidia-files
 nvidia-files
-VectorDB-legacy/chroma.sqlite3
-VectorDB-legacy/7b2632f6-e995-4037-89f5-54db92961312/data_level0.bin
 .gitignore
-VectorDB-legacy/7b2632f6-e995-4037-89f5-54db92961312/index_metadata.pickle
-VectorDB-legacy/7b2632f6-e995-4037-89f5-54db92961312/link_lists.bin
-VectorDB-legacy/7b2632f6-e995-4037-89f5-54db92961312/length.bin
 VectorDB-legacy/7b2632f6-e995-4037-89f5-54db92961312/header.bin
-VectorDB-Chunk_Question/chroma.sqlite3
-VectorDB-Chunk_Question/a0d458c0-5d6c-4778-8932-9225e5223d95/data_level0.bin
-VectorDB-Chunk_Question/a0d458c0-5d6c-4778-8932-9225e5223d95/header.bin
-VectorDB-Chunk_Question/a0d458c0-5d6c-4778-8932-9225e5223d95/link_lists.bin
-.gitignore
-.gitignore
-VectorDB-Chunk_Question/a0d458c0-5d6c-4778-8932-9225e5223d95/length.bin
-VectorDB-Chunk_Question/a0d458c0-5d6c-4778-8932-9225e5223d95/index_metadata.pickle
+VectorDB-Chunk_Question/*
+VectorDB_main/*
+VectorDB_ON
+VectorDB_2.zip
+VectorDB_only_chunks/*
+VectorDB_Chunk_Only.zip
+VectorDB-temp/chroma.sqlite3
+VectorDB-temp/
 
 # Eval
 RagBot/.deepeval/.temp_test_run_data.json
 RagBot/.deepeval/.deepeval_telemetry.txt
 RagBot/eval/sample.csv
-VectorDB-temp/chroma.sqlite3
-VectorDB-temp/
 RagBot/evaluation_results/*.csv
 RagBot/evaluation_results/*.json
 RagBot/eval/*.json
@@ -234,3 +227,11 @@ RagBot/evaluation_results/*.md
 RagBot/eval/evaluation_results/*.md
 RagBot/eval/evaluation_results/*.csv
 RagBot/nvidia-files
+lvdn.s3x-explorer-1.0.9.vsix
+
+# KUBERNETES files
+RagBot/vs.yaml
+RagBot/service.yaml
+RagBot/requirements_2.txt
+RagBot/Dockerfile_2
+RagBot/kubefiles
