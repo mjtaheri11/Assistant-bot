@@ -2,6 +2,8 @@ import json
 import random
 import re
 import pathlib
+from dotenv import load_dotenv
+import os 
 
 import requests
 import streamlit as st
@@ -9,14 +11,13 @@ import streamlit as st
 from src.logs import simple_logger, non_generative_agent_logger
 from src.utils import init_session_state
 from src.config import config
-from src.logic import feedback_
-from src.retriever import Retriever
 
 
+load_dotenv()
 NUMBER_OF_SUGGESTED_SESSIONS = 30
 
 CSS_STYLE_FILE = "./src/style.css"
-BASE_URL = "http://185.13.230.222:8689" # "http://172.27.0.6:8686" #
+BASE_URL = os.getenv("BASE_URL_BACKEND") # "http://172.27.0.6:8686" #
 
 def session_create(api_url: str = BASE_URL): 
     """
@@ -41,6 +42,22 @@ def session_create(api_url: str = BASE_URL):
     except requests.exceptions.RequestException as e:
         # Handle any errors that occur during the request
         return None
+
+def request_simple_qa(session_id, query, api_url: str = BASE_URL):
+    payload = {
+        "query": query,
+        "session_id": session_id,  # Assume this is generated or fetched from somewhere
+    }
+
+    response = requests.get(f"{api_url}/v1/faq", params=payload)
+    json_response = response.json()
+    if response.status_code == 200:
+        return {
+            "status": "success",
+            "response": json_response["response"]
+        }
+    else:
+        return {"status": "error", "response": ""}
 
 def chat_request(session_id: str, query: str, api_url: str = BASE_URL):
     # Define the request data
@@ -118,6 +135,10 @@ def clear_text():
     st.session_state["user_input"] = st.session_state["temporal_user_input"]
     st.session_state["temporal_user_input"] = ""
 
+def clear_retriever_text():
+    st.session_state["retriever_user_input"] = st.session_state["temporal_retriever_user_input"]
+    st.session_state["temporal_retriever_user_input"] = ""
+
 
 def encounter_with_chatbox():
     if not st.session_state["query"]:
@@ -182,231 +203,270 @@ def main():
         
 
     with main_column:
-        if st.session_state["first_encounter_with_searchbox"]:
-            st.info(
-                "سلام، من سامانه دستیار دیجیتال نسل چهارم همکاران سیستم هستم. لطفا سوالتون رو در کادر زیر بپرسید.",
-            )    
-            st.session_state["first_encounter_with_searchbox"] = False
+        main_chat_tab, simple_qa_tab = st.tabs(["چت اصلی", "ارزیابی بازیابی"])
+        # --- Main Chat Tab ---
+        with main_chat_tab:
+            if st.session_state["first_encounter_with_searchbox"]:
+                st.info(
+                    "سلام، من سامانه دستیار دیجیتال نسل چهارم همکاران سیستم هستم. لطفا سوالتون رو در کادر زیر بپرسید.",
+                )    
+                st.session_state["first_encounter_with_searchbox"] = False
+                            
+            st.text_input(
+                st.session_state.get("session_id"),
+                placeholder="هر چه می‌خواهد دل تنگت بپرس!",
+                key="temporal_user_input",
+                on_change=clear_text,
+            )
+            progress_bar = st.progress(value=0)
+            with st.container():
+                if st.session_state.get("user_input"):
+                    user_input = st.session_state["user_input"]
+                    st.session_state.user_utterance.append(user_input)
+                    simple_logger(
+                        f"user said: {user_input}",
+                        session_id=st.session_state.get("session_id"),
+                    )
+                    chat_response = chat_request(
+                        st.session_state.get("session_id"), user_input, 
+                    )
+                    message_id, response, query = (
+                        chat_response["message_id"],
+                        chat_response["response"],
+                        chat_response["query"],
+                    )
+                    if chat_response["status"] == config["chat_responder"]["ok_status"]:
+                        response_is_valid = True
                         
-        st.text_input(
-            st.session_state.get("session_id"),
-            placeholder="هر چه می‌خواهد دل تنگت بپرس!",
-            key="temporal_user_input",
-            on_change=clear_text,
-        )
-        progress_bar = st.progress(value=0)
-        with st.container():
-            if st.session_state.get("user_input"):
-                user_input = st.session_state["user_input"]
-                st.session_state.user_utterance.append(user_input)
-                simple_logger(
-                    f"user said: {user_input}",
-                    session_id=st.session_state.get("session_id"),
-                )
-                chat_response = chat_request(
-                    st.session_state.get("session_id"), user_input, 
-                )
-                message_id, response, query = (
-                    chat_response["message_id"],
-                    chat_response["response"],
-                    chat_response["query"],
-                )
-                if chat_response["status"] == config["chat_responder"]["ok_status"]:
-                    response_is_valid = True
+                    progress_bar.progress(value=100, text="Done.")
+                    st.session_state.query.append(query)
+                    st.session_state.response.append(response)
+                    st.session_state.user_input_storage.append(user_input)
+                    st.session_state["user_input"] = ""
+                    st.session_state["have_clicked_on_feedback"] = False
+                    st.session_state["response_is_valid"] = response_is_valid
+                    st.session_state["message_id"].append(message_id)
                     
-                progress_bar.progress(value=100, text="Done.")
-                st.session_state.query.append(query)
-                st.session_state.response.append(response)
-                st.session_state.user_input_storage.append(user_input)
-                st.session_state["user_input"] = ""
-                st.session_state["have_clicked_on_feedback"] = False
-                st.session_state["response_is_valid"] = response_is_valid
-                st.session_state["message_id"].append(message_id)
+                elif clicked_on_sidebar_sessions:
+                    session_id = st.session_state.get("session_id")
+                    st.session_state.user_utterance = [message["query"] for message in history['history'] if history["history"]]
+                    st.session_state.query = [message["paraphrased_query"] for message in history['history'] if history["history"]]
+                    progress_bar.progress(value=100, text="Done.")
+                    st.session_state.response = [message["response"] for message in history['history'] if history["history"]]
+                    st.session_state.user_input_storage = [message["query"] for message in history['history'] if history["history"]]
+                    st.session_state.message_id = [message["message_id"] for message in history['history'] if history["history"]]
+                    st.session_state["have_clicked_on_feedback"] = False
+                    st.session_state["response_is_valid"] = True
+                    progress_bar.progress(value=0)
                 
-            elif clicked_on_sidebar_sessions:
-                session_id = st.session_state.get("session_id")
-                st.session_state.user_utterance = [message["query"] for message in history['history'] if history["history"]]
-                st.session_state.query = [message["paraphrased_query"] for message in history['history'] if history["history"]]
-                progress_bar.progress(value=100, text="Done.")
-                st.session_state.response = [message["response"] for message in history['history'] if history["history"]]
-                st.session_state.user_input_storage = [message["query"] for message in history['history'] if history["history"]]
-                st.session_state.message_id = [message["message_id"] for message in history['history'] if history["history"]]
-                st.session_state["have_clicked_on_feedback"] = False
-                st.session_state["response_is_valid"] = True
-                progress_bar.progress(value=0)
-            
-            elif clicked_on_new_session:
-                st.session_state.user_utterance = []
-                st.session_state.query = []
-                st.session_state.response = []
-                st.session_state.user_input_storage = []
-                st.session_state.message_id = []
-                st.session_state.have_clicked_on_feedback = False
-                st.session_state.response_is_valid = False
-                progress_bar.progress(value=0)
+                elif clicked_on_new_session:
+                    st.session_state.user_utterance = []
+                    st.session_state.query = []
+                    st.session_state.response = []
+                    st.session_state.user_input_storage = []
+                    st.session_state.message_id = []
+                    st.session_state.have_clicked_on_feedback = False
+                    st.session_state.response_is_valid = False
+                    progress_bar.progress(value=0)
 
-            if st.session_state.get("response") and st.session_state.get(
-                "user_utterance",
-            ):
-                for i in reversed(range(len(st.session_state["response"]))):
-                    with st.chat_message("user"):
-                        st.markdown(
-                            st.session_state["user_utterance"][i],
-                            unsafe_allow_html=True,
-                        )
-                    with st.chat_message("assistant"):
-                        help_msg = f"""برای پاسخ به سوال شما کوئری «{st.session_state['query'][i]}» \
-                        جستجو شده است."""
-                        content = (
-                            st.session_state["response"][i]
-                            # .replace("*", "&ast;")
-                            # .replace("#", "&#35;")
-                        )
-                        st.markdown(
-                            re.sub(
-                                r"(\*([0-9]|&ast;|&#35;)*[0-9]+.{0,10}&#35;"
-                                r"|&#35;([0-9]|&ast;|&#35;)\*[0-9]+.{0,10}\*)",
-                                r'<span class="ussd-code" dir="ltr">\1</span>',
-                                content,
-                            ),
-                            unsafe_allow_html=True,
-                            help=help_msg
-                        )
-                        response_is_valid = st.session_state.get(
-                            "response_is_valid",
-                            False,
-                        )
-                        if (
-                            i == len(st.session_state["response"]) - 1
-                            and response_is_valid
-                        ):
-                            feedback_column_placeholder = st.empty()
-                            if feedback_button_clicked():
-                                st.session_state["have_clicked_on_feedback"] = True
-                                user_utterance = st.session_state.get(
-                                    "user_input_storage",
-                                )[i]
-                                paraphrased_query = st.session_state.get("query")[i]
-                                message_id = st.session_state["message_id"][-1]
-                                response = st.session_state.get("response")[i]
-                                # TODO: has bug when you click on a suggested question and then on thumbup/down buttons
-                                like = st.session_state.get("like", False)
-                                dislike = st.session_state.get("dislike", False)
-                                flag = st.session_state.get("flag", False)
-                                if like:
-                                    result = send_feedback(
-                                        message_id,
-                                        "thumb_up",
-                                        st.session_state.get("session_id"),
-                                    )
-                                elif dislike:
-                                    result = send_feedback(
-                                        message_id,
-                                        "thumb_down",
-                                        st.session_state.get("session_id"),
-                                    )
-                                elif flag:
-                                    # todo flag is not included in the redis yet!
-                                    result = send_feedback(
-                                        message_id,
-                                        "flag",
-                                        st.session_state.get("session_id")
-                                    )
-                                    # feedback(paraphrased_query, response, url, "flag")
-                                non_generative_agent_logger(
-                                    session_id=st.session_state.get("session_id"),
-                                    agent="user feedback",
-                                    message="user is clicked on feedback button",
-                                    input_dict={
-                                        "user_utterance": user_utterance,
-                                        "response": response,
-                                    },
-                                    output_dict={
-                                        "like": like,
-                                        "dislike": dislike,
-                                        "flag": flag,
-                                    },
-                                    elapsed_time=-1,
-                                )  # TODO: The elapsed time is not correct, but I didn't have any other option
-                            if st.session_state["have_clicked_on_feedback"]:
-                                if result["message"] == "Feedback received":
-                                    *_, text_col = feedback_column_placeholder.columns(
-                                        [1, 1, 1, 5],
-                                        gap="medium",
-                                    )
-                                    with text_col:
-                                        st.markdown("نظر شما ثبت شد.")
+                if st.session_state.get("response") and st.session_state.get(
+                    "user_utterance",
+                ):
+                    for i in reversed(range(len(st.session_state["response"]))):
+                        with st.chat_message("user"):
+                            st.markdown(
+                                st.session_state["user_utterance"][i],
+                                unsafe_allow_html=True,
+                            )
+                        with st.chat_message("assistant"):
+                            help_msg = f"""برای پاسخ به سوال شما کوئری «{st.session_state['query'][i]}» \
+                            جستجو شده است."""
+                            content = (
+                                st.session_state["response"][i]
+                                # .replace("*", "&ast;")
+                                # .replace("#", "&#35;")
+                            )
+                            st.markdown(
+                                f'<div class="markdown-rtl">{content}</div>',
+                                unsafe_allow_html=True,
+                                help=help_msg
+                            )
+                            response_is_valid = st.session_state.get(
+                                "response_is_valid",
+                                False,
+                            )
+                            if (
+                                i == len(st.session_state["response"]) - 1
+                                and response_is_valid
+                            ):
+                                feedback_column_placeholder = st.empty()
+                                if feedback_button_clicked():
+                                    st.session_state["have_clicked_on_feedback"] = True
+                                    user_utterance = st.session_state.get(
+                                        "user_input_storage",
+                                    )[i]
+                                    paraphrased_query = st.session_state.get("query")[i]
+                                    message_id = st.session_state["message_id"][-1]
+                                    response = st.session_state.get("response")[i]
+                                    # TODO: has bug when you click on a suggested question and then on thumbup/down buttons
+                                    like = st.session_state.get("like", False)
+                                    dislike = st.session_state.get("dislike", False)
+                                    flag = st.session_state.get("flag", False)
+                                    if like:
+                                        result = send_feedback(
+                                            message_id,
+                                            "thumb_up",
+                                            st.session_state.get("session_id"),
+                                        )
+                                    elif dislike:
+                                        result = send_feedback(
+                                            message_id,
+                                            "thumb_down",
+                                            st.session_state.get("session_id"),
+                                        )
+                                    elif flag:
+                                        # todo flag is not included in the redis yet!
+                                        result = send_feedback(
+                                            message_id,
+                                            "flag",
+                                            st.session_state.get("session_id")
+                                        )
+                                        # feedback(paraphrased_query, response, url, "flag")
+                                    non_generative_agent_logger(
+                                        session_id=st.session_state.get("session_id"),
+                                        agent="user feedback",
+                                        message="user is clicked on feedback button",
+                                        input_dict={
+                                            "user_utterance": user_utterance,
+                                            "response": response,
+                                        },
+                                        output_dict={
+                                            "like": like,
+                                            "dislike": dislike,
+                                            "flag": flag,
+                                        },
+                                        elapsed_time=-1,
+                                    )  # TODO: The elapsed time is not correct, but I didn't have any other option
+                                if st.session_state["have_clicked_on_feedback"]:
+                                    if result["message"] == "Feedback received":
+                                        *_, text_col = feedback_column_placeholder.columns(
+                                            [1, 1, 1, 5],
+                                            gap="medium",
+                                        )
+                                        with text_col:
+                                            st.markdown("نظر شما ثبت شد.")
+                                    else:
+                                        *_, text_col = feedback_column_placeholder.columns(
+                                            [1, 1, 1, 5],
+                                            gap="medium",
+                                        )
+                                        with text_col:
+                                            st.markdown("نظر شما قبلا ثبت شده است.")
                                 else:
-                                    *_, text_col = feedback_column_placeholder.columns(
-                                        [1, 1, 1, 5],
+                                    (
+                                        thumb_up_col,
+                                        report_col,
+                                        thumb_down_col,
+                                        text_col,
+                                    ) = feedback_column_placeholder.columns(
+                                        [2, 2, 2, 2],
                                         gap="medium",
                                     )
+                                    with thumb_up_col:
+                                        st.button(
+                                            ":+1:",
+                                            key="like",
+                                            use_container_width=True,
+                                            help="جواب به حل مشکل من کمک کرد",
+                                        )
+                                    with report_col:
+                                        st.button(
+                                            ":triangular_flag_on_post:",
+                                            key="flag",
+                                            use_container_width=True,
+                                            help="این جواب از قوانین تبعیت نمی‌کند",
+                                        )
+                                    with thumb_down_col:
+                                        st.button(
+                                            ":-1:",
+                                            key="dislike",
+                                            use_container_width=True,
+                                            help="جواب به حل مشکل من کمک نکرد",
+                                        )
                                     with text_col:
-                                        st.markdown("نظر شما قبلا ثبت شده است.")
-                            else:
-                                (
-                                    thumb_up_col,
-                                    report_col,
-                                    thumb_down_col,
-                                    text_col,
-                                ) = feedback_column_placeholder.columns(
-                                    [2, 2, 2, 2],
-                                    gap="medium",
-                                )
-                                with thumb_up_col:
-                                    st.button(
-                                        ":+1:",
-                                        key="like",
-                                        use_container_width=True,
-                                        help="جواب به حل مشکل من کمک کرد",
-                                    )
-                                with report_col:
-                                    st.button(
-                                        ":triangular_flag_on_post:",
-                                        key="flag",
-                                        use_container_width=True,
-                                        help="این جواب از قوانین تبعیت نمی‌کند",
-                                    )
-                                with thumb_down_col:
-                                    st.button(
-                                        ":-1:",
-                                        key="dislike",
-                                        use_container_width=True,
-                                        help="جواب به حل مشکل من کمک نکرد",
-                                    )
-                                with text_col:
-                                    st.markdown("نظرت؟")
-                                    
-        with sessions_column:
-            if st.session_state["first_encounter_with_extra_sessions"]:
-                st.success(
-                    "این جا هم یه سری از جلسات قبلی شما هست که میتونید ازشون استفاده کنید.",
+                                        st.markdown("نظرت؟")
+
+            with simple_qa_tab:
+                st.markdown("### پرسش و پاسخ مستقیم")
+                st.info(
+                    "در این بخش می‌توانید یک سوال مشخص بپرسید و اسناد مربوط به آن را مشاهده کنید.")
+
+                # This tab requires a database to be selected
+                st.warning(
+                    f"در حال حاضر در حال استفاده از دستیار دیجیتال برای شرکت همکاران سیستم هستید.")
+
+                # Input for the simple question
+                st.text_input(
+                    st.session_state.get("session_id"),
+                    placeholder="لطفا سوال خود را وارد کنید",
+                    key="temporal_retriever_user_input",
+                    on_change=clear_retriever_text
                 )
-                st.button("گفتگوی جدید", key="new_session", type="primary")
-                previous_sessions = request_previous_sessions()
-                sessions = previous_sessions["sessions"]
-                paraphrased_queries = previous_sessions["paraphrased_queries"]
-                for i, (paraphrased_query , session) in enumerate(zip(paraphrased_queries, sessions)):
-                    st.button(paraphrased_query, key=f"session_button_{i}")
-                    st.session_state[f"session_{i}"] = session
-                    st.session_state[f"suggested_sessions_title_{i}"] = paraphrased_query
-                st.session_state["suggested_sessions"] = sessions
-                st.session_state["suggested_sessions_titles"] = paraphrased_queries
-                st.session_state["first_encounter_with_extra_sessions"] = False
-            else:
-                st.button("جلسه جدید", key="new_session", type="primary")
-                if clicked_on_new_session:
+
+                if st.session_state.get("retriever_user_input"):
+                    with st.spinner("در حال جستجوی اسناد..."):
+                        api_response = request_simple_qa(
+                            query=st.session_state["retriever_user_input"],
+                            session_id=st.session_state.get("session_id")
+                        )
+                        if api_response["status"] == "success":
+                            st.session_state.retriever_user_answer = api_response["response"]
+                        else:
+                            st.session_state.retriever_user_answer = f"خطا در دریافت پاسخ: {api_response['response']}"
+                else:
+                    if st.session_state.get("retriever_user_input") == "":
+                        st.error("لطفا یک سوال وارد کنید.")
+
+                # Display the last question and answer
+                if st.session_state.get("retriever_user_answer"):
+                    st.markdown("---")
+                    st.success(f"**سوال شما:**")
+                    st.markdown(st.session_state.retriever_user_input)
+                    st.success(f"**پاسخ دریافت شده:**")
+                    st.markdown(
+                        st.session_state.retriever_user_answer.replace("\n", "  \n"))
+                    
+            with sessions_column:
+                if st.session_state["first_encounter_with_extra_sessions"]:
+                    st.success(
+                        "این جا هم یه سری از جلسات قبلی شما هست که میتونید ازشون استفاده کنید.",
+                    )
+                    st.button("گفتگوی جدید", key="new_session", type="primary")
                     previous_sessions = request_previous_sessions()
                     sessions = previous_sessions["sessions"]
                     paraphrased_queries = previous_sessions["paraphrased_queries"]
-                    st.session_state[f"session_title_{i}"] = paraphrased_queries
+                    paraphrased_queries = [paraphrased_query if paraphrased_query is not None else "ERROR CODE" for paraphrased_query in paraphrased_queries]
+                    for i, (paraphrased_query , session) in enumerate(zip(paraphrased_queries, sessions)):
+                        st.button(paraphrased_query, key=f"session_button_{i}")
+                        st.session_state[f"session_{i}"] = session
+                        st.session_state[f"suggested_sessions_title_{i}"] = paraphrased_query
+                    st.session_state["suggested_sessions"] = sessions
+                    st.session_state["suggested_sessions_titles"] = paraphrased_queries
+                    st.session_state["first_encounter_with_extra_sessions"] = False
                 else:
-                    sessions = st.session_state["suggested_sessions"]
-                    paraphrased_queries = st.session_state["suggested_sessions_titles"]
-                for i, (paraphrased_query, session) in enumerate(zip(paraphrased_queries, sessions)):
-                    st.button(paraphrased_query, key=f"session_button_{i}")
-                    st.session_state[f"session_{i}"] = session
-                    st.session_state[f"suggested_sessions_title_{i}"] = paraphrased_query 
+                    st.button("جلسه جدید", key="new_session", type="primary")
+                    if clicked_on_new_session:
+                        previous_sessions = request_previous_sessions()
+                        sessions = previous_sessions["sessions"]
+                        paraphrased_queries = previous_sessions["paraphrased_queries"]
+                        st.session_state[f"session_title_{i}"] = paraphrased_queries
+                    else:
+                        sessions = st.session_state["suggested_sessions"]
+                        paraphrased_queries = st.session_state["suggested_sessions_titles"]
+                    for i, (paraphrased_query, session) in enumerate(zip(paraphrased_queries, sessions)):
+                        st.button(paraphrased_query, key=f"session_button_{i}")
+                        st.session_state[f"session_{i}"] = session
+                        st.session_state[f"suggested_sessions_title_{i}"] = paraphrased_query 
 
     with logging_column:
         if st.session_state["enable_show_logs"]:

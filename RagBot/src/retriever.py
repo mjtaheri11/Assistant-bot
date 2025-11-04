@@ -133,10 +133,15 @@ class Retriever(object):
             sorted_documents = []
         return sorted_documents
 
-    async def retrieve_context(self, query, k=config["retriever"]["retrieved_rank2_documents"]):
+    async def retrieve_context(self, query, reverse=False, split=False, k=config["retriever"]["retrieved_rank2_documents"]):
         # TODO: appropriate logger
         documents = await self.retriever_.ainvoke(query)
         documents = [doc.page_content for doc in documents]
         sorted_documents = await self._rerank_documents(query, documents, k)
-        final_documents = '\n\n'.join(sorted_documents)
+        if reverse:
+            sorted_documents = sorted_documents[::-1]
+        if split:
+            final_documents = "\n\n==============\n\n".join(sorted_documents)
+        else:
+            final_documents = '\n\n'.join(sorted_documents)
         return final_documents

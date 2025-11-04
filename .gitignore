@@ -169,8 +169,9 @@ VectorDB-Eval-2
 TempVectorDB
 VectorDB-TEMP
 VectorDB/
-db-cache/
+db-cache*/
 RaaS_vectorDB/
+VectorDB*
 
 saved_models
 VectorDB-bahar-hanieh
@@ -180,23 +181,59 @@ RagBot/pgadmin/
 RagBot/ragbot/VectorDB.zip
 RagBot/pgadmin.tar
 
-# nvidia
-nvidia-*
-VectorDB-legacy/7b2632f6-e995-4037-89f5-54db92961312/link_lists.bin
+RagBot/mydata
+
+# documents 
+knowledge_base/qa-questions
+
+# keyring
+RagBot/cuda-keyring_1.1-1_all.deb
+RagBot/nvidia_*
+RagBot/duckdb-*
+RagBot/torch-*
+all_data_backup.sql
+backup.sql
+data_only_backup.sql
+RagBot/triton-3.1.0-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+RagBot/pg-*
+data_only_backup.sql
+backup.sql
+
+# sql
+*.sql
+
+# nvidia-files
+nvidia-files
 .gitignore
-.gitignore
-.gitignore
-VectorDB-Chunk_Question/chroma.sqlite3
-VectorDB-Chunk_Question/a0d458c0-5d6c-4778-8932-9225e5223d95/data_level0.bin
-VectorDB-legacy/7b2632f6-e995-4037-89f5-54db92961312/length.bin
-VectorDB-Chunk_Question/a0d458c0-5d6c-4778-8932-9225e5223d95/header.bin
-VectorDB-Chunk_Question/a0d458c0-5d6c-4778-8932-9225e5223d95/index_metadata.pickle
-VectorDB-Chunk_Question/a0d458c0-5d6c-4778-8932-9225e5223d95/length.bin
-VectorDB-Chunk_Question/a0d458c0-5d6c-4778-8932-9225e5223d95/link_lists.bin
-VectorDB-legacy/7b2632f6-e995-4037-89f5-54db92961312/index_metadata.pickle
-VectorDB-legacy/7b2632f6-e995-4037-89f5-54db92961312/data_level0.bin
 VectorDB-legacy/7b2632f6-e995-4037-89f5-54db92961312/header.bin
-VectorDB-legacy/chroma.sqlite3
+VectorDB-Chunk_Question/*
+VectorDB_main/*
+VectorDB_ON
+VectorDB_2.zip
+VectorDB_only_chunks/*
+VectorDB_Chunk_Only.zip
+VectorDB-temp/chroma.sqlite3
+VectorDB-temp/
+
+
+# Eval
 RagBot/.deepeval/.temp_test_run_data.json
 RagBot/.deepeval/.deepeval_telemetry.txt
 RagBot/eval/sample.csv
+RagBot/evaluation_results/*.csv
+RagBot/evaluation_results/*.json
+RagBot/eval/*.json
+.deepeval/
+RagBot/eval/evaluation_results/*.json
+RagBot/evaluation_results/*.md
+RagBot/eval/evaluation_results/*.md
+RagBot/eval/evaluation_results/*.csv
+RagBot/nvidia-files
+lvdn.s3x-explorer-1.0.9.vsix
+
+# KUBERNETES files
+RagBot/vs.yaml
+RagBot/service.yaml
+RagBot/requirements_2.txt
+RagBot/Dockerfile_2
+RagBot/kubefiles

@@ -6,6 +6,7 @@ import logging
 import os
 import time
 import traceback
+from dotenv import load_dotenv
 from datetime import datetime
 from typing import List, Optional, Tuple
 
@@ -17,6 +18,7 @@ from starlette.responses import Response
 
 from src.orm import Postgres
 from src.config import config
+from src.retriever import Retriever
 from src.logic import (
     chat_responder_,
     feedback_,
@@ -27,8 +29,9 @@ from src.logic import (
 )
 from src.logs import non_generative_agent_logger, simple_logger
 
+load_dotenv()
 RESPONSE_TEMPLATE_FOR_NO_ANSWER = "در حال حاضر نمی‌توانم به سوال شما پاسخ دهم"
-app = FastAPI(title="Digital Assistant")
+app = FastAPI(title="Digital Assistant", root_path=os.getenv("FASTAPI_ROOT_PATH"))
 
 # Define Prometheus metrics
 REQUEST_COUNT = Counter("api_http_requests_total", "Total API Requests", ["endpoint"])
@@ -98,9 +101,18 @@ class FeedbackRequest(BaseModel):
     tenant_name: Optional[str] = None
     user_code: Optional[str] = None
 
-
 class FeedbackResponse(BaseModel):
     message: str
+
+
+class FaqRequest(BaseModel):
+    query: str
+    session_id: Optional[str] = ""
+    database_index: str
+
+
+class FaqResponse(BaseModel):
+    response: str
 
 
 def get_session_id(request: Request, content_request: ChatRequest):
@@ -123,6 +135,9 @@ def get_user_code(content_request: BaseModel):
             return content_request.user_code
     return ""
 
+async def get_user_code_tenant_name(session_id, postgres_obj: object):
+    user_tenant = await postgres_obj.get_user_code_tenant_name(session_id)
+    return user_tenant["user_code"], user_tenant["tenant_name"]
     
 def validate_query(query):
     if not query.strip():
@@ -133,6 +148,28 @@ def validate_query(query):
 async def metrics():
     return Response(generate_latest(), media_type="text/plain")
 
+@app.get(
+    "/v1/faq",
+    response_model=FaqResponse,
+    responses={
+        200: {},
+        500: {"description": "Unhandled error that should be reported"},
+    },
+)
+async def get_faq(
+    request: Request,
+    query: str = Query(..., alias="query"),
+    session_id: str = Query(..., alias="session_id"),
+):
+    try:
+        retriever = Retriever()
+        context = await retriever.retrieve_context(query, reverse=False, split=True)
+        return FaqResponse(response=context.strip())
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Unhandled error, Please report")
 
 @app.get(
     "/sessions",
@@ -197,15 +234,15 @@ async def get_history(
 async def create_session(create_session_request: Optional[CreateSessionRequest] = None):
     start_time = time.time()
     try:
-        postgres = Postgres()  # Assuming Postgres is your DB class
-        session_id = await postgres.create_session()
-        
-        if create_session_request is None:
+        postgres = Postgres()
+        if not create_session_request:
             tenant_name = ""
             user_code = ""
         else:
             tenant_name = create_session_request.tenant_name
             user_code = create_session_request.user_code
+            
+        session_id = await postgres.create_session(tenant_name=tenant_name, user_code=user_code)
         elapsed_time = time.time() - start_time
         non_generative_agent_logger(
             session_id=session_id.get("session_id"),
@@ -251,8 +288,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
     try:
         postgres = Postgres()
         session_id = get_session_id(request, chat_request)
-        user_code = get_user_code(chat_request)
-        tenant_name = get_tenant_name(chat_request)
+        user_code, tenant_name = await get_user_code_tenant_name(session_id, postgres)
         # if not tenant_name:
         #     tenant_name_user_code_dict = postgres.get_tenant_name(session_id)
         #     tenant_name = tenant_name_user_code_dict["tenant_name"]

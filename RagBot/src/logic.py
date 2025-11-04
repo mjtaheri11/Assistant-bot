@@ -3,6 +3,7 @@ import json
 import random
 from typing import List
 import os
+from dotenv import load_dotenv
 
 import torch
 import numpy as np
@@ -30,13 +31,17 @@ random.seed(SEED)
 template_for_not_answer = "پاسخ به این سوال در محدوده پاسخگویی من نیست"
 template_for_not_context = "این سوال خارج از حوزه کاری همکاران سیستم است. لطفا سوال خود را در رابطه با محصولات و خدمات همکاران سیستم مطرح کنید."
 
-async def get_chat_response(prompt: str, model_name: str) -> str:
+async def get_chat_response(prompt: str) -> str:
     print("Character Length of the prompt: ", len(prompt))
     print("words length of the prompt: ", len(prompt.split()))
+    model_base = os.getenv("OSS_API_BASE")
+    model_name = os.getenv("OSS_LLM_MODEL_NAME")
+    api_key = os.getenv("OSS_API_KEY")
+    print(api_key, "\n", model_base, "\n", model_name)
     llm = ChatOpenAI(
-        openai_api_base="http://vllmserver:8000/v1",
-        openai_api_key="EMPTY",
-        model_name="/models/aya-expanse-32b-gptq-4bit"
+        openai_api_base=model_base,
+        openai_api_key=api_key,
+        model_name=model_name
         )
     
     # llm = ChatOllama(
@@ -87,7 +92,7 @@ async def utterance_paraphraser(history: List[tuple[str, str]], user_utterance: 
         history=serialized_history,
         question=user_utterance,
     )
-    response = await get_chat_response(prompt, config["ollama"]["model_name"])
+    response = await get_chat_response(prompt)
     # import pdb
     # pdb.set_trace()
     # paraphrased_query = json_cleaning(response)
@@ -104,7 +109,7 @@ async def query_responder(query: str, context: str, history: str) -> str:
         history=history,
         question=query,
     )
-    response = await get_chat_response(prompt, config["ollama"]["model_name"])
+    response = await get_chat_response(prompt)
     return response
     # cleaned_response = json_cleaning(response)
     # cleaned_response_dict = json_text_cleaning(cleaned_response, "answer")
@@ -134,7 +139,7 @@ async def prepare_final_context(query: str) -> str:
 async def sql_responder(query: str, table_schemas: List[str]) -> str:
     schema = "\n\n".join(table_schemas)
     prompt = SQL_CONVERTER.format(schema=schema, query=query)
-    response = await get_chat_response(prompt, config["ollama"]["sql_model_name"])
+    response = await get_chat_response(prompt)
     return response
 
 
