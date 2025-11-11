@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 load_dotenv()
 embedding_model = HuggingFaceEmbeddings(
     model_name=config["embedding_model"]["model_name"],
-    model_kwargs={"device": config["embedding_model"]["device"]} # , "trust_remote_code": config["embedding_model"]["trust_remote_code"]},
+    model_kwargs={"device": config["embedding_model"]["device"], "trust_remote_code":True} # , "trust_remote_code": config["embedding_model"]["trust_remote_code"]},
 )
 
 RAAS_VectorDB = os.getenv("RAAS_PATH")
@@ -122,7 +122,7 @@ def create_documents_from_chunks():
         "Sales": "sales.csv",
         "Treasury": "treasury.csv",
         "GL": "voucher.csv",
-        "TaxPayer": "taxPayer.csv",
+        "TaXPayer": "taxPayer.csv",
         "DA": "help.csv",
         "AboutSG": "AboutSG.csv",
         "HCM": "hcm.csv",
