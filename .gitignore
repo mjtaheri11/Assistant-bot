@@ -169,6 +169,7 @@ VectorDB-Eval-2
 TempVectorDB
 VectorDB-TEMP
 VectorDB/
+db-cache.zip
 db-cache/
 RaaS_vectorDB/
 
