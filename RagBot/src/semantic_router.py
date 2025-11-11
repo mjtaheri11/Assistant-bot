@@ -325,7 +325,7 @@ class SemanticRouterPipeline:
         label = self.classifier.predict(self.embedder(sentences))
         prob = self.classifier.model.predict_proba(self.embedder(sentences))
         classes = self.classifier.model.classes_
-        classes_prob = zip(classes, prob[0])
+        classes_prob = list(zip(classes, prob[0]))
         t1 = time()
         logger.info(f"Prediction done in {t1 - t0} seconds")
         logger.info(f"The sentence: {sentences[0]} is classified as: {label}")

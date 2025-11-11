@@ -45,7 +45,7 @@ from src.utils import substitute_sql_parameters
 
 RESPONSE_TEMPLATE_FOR_NO_ANSWER = "متاسفانه، پاسخی به سوال شما یافت نشد."
 MODULE_CLARIFICATION_RESPONSE_TEMPLATE = "لطفا مشخص نمایید سوال شما از کدام یک از ماژول های سیستم است."
-app = FastAPI(title="Digital Assistant", root_path="/backend-testdevel") # should be added to env variables
+app = FastAPI(title="Digital Assistant", root_path="/soroush-test") # should be added to env variables
  
 # Define Prometheus metrics
 REQUEST_COUNT = Counter("api_http_requests_total", "Total API Requests", ["endpoint"])

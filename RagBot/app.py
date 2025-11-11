@@ -215,7 +215,7 @@ def send_feedback(
 
     # Send the POST request with the feedback data
     response = requests.post(
-        f"{api_url}/feedback", json=feedback_data, headers={"Session-ID": session_id}
+        f"{api_url}/v1/feedback", json=feedback_data, headers={"Session-ID": session_id}
     )
     json_response = response.json()
     if response.status_code == 200:
@@ -682,9 +682,10 @@ def main():
                                     "sql_response_type", [False] * len(st.session_state["response"]))[i]
                                 if is_sql:
                                     # IMPROVED: Added custom class for SQL display
-                                    st.markdown(f'<div class="markdown-ltr sql-code-block">\n\n```sql\n{content}\n```\n\n</div>', unsafe_allow_html=True)
+                                    st.markdown(f'<div class="markdown-ltr sql-code-block">\n\n```sql\n{content}\n```\n\n</div>', unsafe_allow_html=True, 
+                                               help=help_msg)
                                 else:
-                                    st.markdown(f'<div class="markdown-rtl">{content}</div>', unsafe_allow_html=True)
+                                    st.markdown(f'<div class="markdown-rtl">{content}</div>', unsafe_allow_html=True, help=help_msg)
                                 if st.session_state.get("do_suggest_modules") and i == len(st.session_state["response"]) - 1:
                                     # Create a number of columns equal to the number of suggested modules
                                     suggested_modules = st.session_state.get(
@@ -751,6 +752,8 @@ def main():
                                                 "session_id"),
                                             agent="user feedback",
                                             message="user is clicked on feedback button",
+                                            user_code="admin",
+                                            tenant_name="admin",
                                             input_dict={
                                                 "user_utterance": user_utterance,
                                                 "response": response,

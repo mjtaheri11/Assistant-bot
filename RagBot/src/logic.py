@@ -5,6 +5,9 @@ from collections import Counter
 import os
 import statistics
 from dotenv import load_dotenv
+### remove this!
+import pdb
+pdb.set_trace = lambda: 1
 
 import torch
 import numpy as np
@@ -82,8 +85,10 @@ def model_selector(use_oss: bool = False):
         model_name = GPT_LLM_MODEL_NAME
         api_base = GPT_API_BASE
         api_key = GPT_API_KEY
-        
-    return model_name, api_base, api_key
+
+    pdb.set_trace()
+    result = model_name, api_base, api_key
+    return result
 
 @observe()
 async def get_chat_response(
@@ -100,9 +105,10 @@ async def get_chat_response(
     print("LLM_API_KEY:", api_key)
     print("LLM_MODEL_NAME:", model_name)
     # Use OpenRouter if available, otherwise fall back to original configuration
-    if api_base and model_name and model_name:
+    if api_base and model_name and api_key:
         if model_name != "/gpt-120":
             extra = {}
+            # model_kwargs = {}
         else:
             extra = {
                 "top_k": 1,
@@ -111,10 +117,10 @@ async def get_chat_response(
                 "sampling_method": "greedy",
                 "reasoning_effort": "medium"
             }
-            model_kwargs={
-                "top_p": 1,
-                "max_completion_tokens": 8000
-            },
+            # model_kwargs={
+            #     "top_p": 1,
+            #     "max_completion_tokens": 8000
+            # },
         llm = ChatOpenAI(
             openai_api_base=api_base,
             model_name=model_name,
@@ -129,7 +135,8 @@ async def get_chat_response(
 
     messages = [SystemMessage(content=prompt)]
     response = await llm.ainvoke(messages)
-    return response.content
+    result = response.content
+    return result
 
 @observe()
 async def get_cache_response(
@@ -143,11 +150,12 @@ async def get_cache_response(
         threshold=threshold,
         knn=knn,
     )
-    print(records)
     if records and records[0]["thumb_up"] > 0:
-        return records[0]["response"], records[0]["url"]
+        result = records[0]["response"], records[0]["url"]
+        
     else:
-        return "", ""
+        result = "", ""
+    return result
 
 @observe()
 def history_serializer(history: List[tuple[str, str]]) -> str:
@@ -174,8 +182,8 @@ async def utterance_paraphraser(history: List[tuple[str, str]], user_utterance: 
             question=user_utterance,
         )
     
-    response = await get_chat_response(prompt)
-    response = json_cleaning_1(response)
+    response_1 = await get_chat_response(prompt)
+    response = json_cleaning_1(response_1)
     return response
 
 @observe()
@@ -210,6 +218,7 @@ async def query_responder(
     
     response = await get_chat_response(prompt)
     response = json_cleaning(response)
+    pdb.set_trace()
     return response
 
 
@@ -224,7 +233,8 @@ async def chitchat_responder(
                              context=context, 
                              history=serialized_history
                              )
-    response = await get_chat_response(prompt)                             
+    response = await get_chat_response(prompt)
+    pdb.set_trace()
     return response
 
     
@@ -236,6 +246,7 @@ async def answer_validator(question: str, context: str, answer: str) -> bool:
         answer=answer,
     )
     response = await get_chat_response(prompt)
+    pdb.set_trace()
     return response
 
 @observe()
@@ -254,8 +265,8 @@ async def is_somewhat_uniform(freq_dict: dict, threshold: float = MODULE_PROPOSE
     
     stdev_freq = statistics.stdev(frequencies)
     cv = stdev_freq / mean_freq
-    
-    return cv <= threshold, mean_freq
+    check_cv = (cv <= threshold, mean_freq)
+    return check_cv
 
 @observe()
 async def retrieve_context_with_metadata(query: str, input_modules: List = None, database_index: str = None) -> List[dict]:
@@ -282,31 +293,32 @@ async def prepare_final_context(query: str, database_index: str = None, input_mo
     print("\n#########")
     if not context_with_metadata:
         return False, [], []
-    
     if input_module:
-        return _handle_single_module_case(context_with_metadata, input_module)
+        result = _handle_single_module_case(context_with_metadata, input_module) 
+        return result 
     proposable_modules = set(config["modules"]["proposable_modules"])
     detected_modules = [result["module"] for result in context_with_metadata]
     module_frequencies = Counter(detected_modules)
-
     if len(module_frequencies) < 2:
         detected_modules_lst = list(module_frequencies.keys())
-        return _handle_single_module_case(context_with_metadata, detected_modules_lst[0])
+        result = _handle_single_module_case(context_with_metadata, detected_modules_lst[0])
+        return result
     
     print(module_frequencies) # temp logs
     needs_clarification, mean_freq = await is_somewhat_uniform(module_frequencies)
     if not needs_clarification:
         max_value = max(module_frequencies.values())
         probable_detected_module = [k for k, v in module_frequencies.items() if v == max_value]
-        return _handle_clear_preference_case(context_with_metadata, probable_detected_module[0])
+        result = _handle_clear_preference_case(context_with_metadata, probable_detected_module[0])
     else:
         # probable_detected_modules = [k for k, v in module_frequencies.items() if v >= mean_freq]
         probable_detected_modules = list(module_frequencies.keys())
-        return _handle_clarification_case(
+        result = _handle_clarification_case(
             context_with_metadata,
             probable_detected_modules,
             proposable_modules
         )
+    return result
 
 @observe()
 def _handle_single_module_case(
@@ -315,7 +327,8 @@ def _handle_single_module_case(
 ) -> Tuple[bool, List[str], str]:
     """Handle case where only one module type is detected."""
     documents = "\n\n".join(context["text"] for context in context_with_metadata)
-    return False, [detected_modules], documents
+    result = False, [detected_modules], documents
+    return result
 
 @observe()
 def _handle_clear_preference_case(
@@ -323,7 +336,8 @@ def _handle_clear_preference_case(
 ) -> Tuple[bool, List[str], List[str]]:
     """Handle case where module preference is clear (no clarification needed)."""
     documents = [doc["text"] for doc in context_with_metadata]
-    return False, [detected_module], documents
+    result = False, [detected_module], documents
+    return result
 
 @observe()
 def _handle_clarification_case(
@@ -338,11 +352,12 @@ def _handle_clarification_case(
     if len(valid_modules) < 2:
         documents = context_with_metadata[0]["text"]
         valid_modules_lst = list(valid_modules)
-        return False, valid_modules_lst, documents
+        result = False, valid_modules_lst, documents 
     else:
         documents = [doc["text"] for doc in context_with_metadata]
         valid_modules_lst = list(valid_modules)
-        return True, valid_modules_lst, documents
+        result = True, valid_modules_lst, documents
+    return result
 
 @observe()
 async def module_proposer():
@@ -393,13 +408,15 @@ async def sql_responder_(
         api_key=api_key
         )
     response = json_cleaning(raw_json_response)
+    pdb.set_trace()
     return response
 
 
 def _get_chitchat_cache_key(utterance: str) -> str:
     """Generates a consistent cache key for chitchat routes."""
     hashed_utterance = hash_string(utterance)
-    return f"chitchat_{hashed_utterance}"
+    result = f"chitchat_{hashed_utterance}"
+    return result
 
 
 async def _determine_final_route(
@@ -415,9 +432,10 @@ async def _determine_final_route(
     BETA_THRESHOLD = ROUTER_CONFIG["beta_threshold"]
     """Determines the final route based on probability thresholds."""
 
-    probabilities = list(probabilities)  # Convert to list to make it subscriptable
+    # probabilities = list(probabilities)  # Convert to list to make it subscriptable
 
     if max_prob > ALPHA_THRESHOLD and ("همکاران" not in utterance) and (top_prediction != "illegal"):
+        pdb.set_trace()
         return top_prediction
 
     # If confidence is low, see if multiple routes are plausible
@@ -435,9 +453,11 @@ async def _determine_final_route(
         plausible_routes = [sorted_probabilities[0][0], sorted_probabilities[1][0]]
 
     # Use an LLM to disambiguate between plausible routes
-    return await get_chat_response(
+    result = await get_chat_response(
         SEMANTIC_ROUTER.format(user_query=utterance, class_list=plausible_routes)
     )
+    pdb.set_trace()
+    return result
 
 @observe()
 async def get_route_for_utterance(utterance: str) -> str:    
@@ -447,16 +467,6 @@ async def get_route_for_utterance(utterance: str) -> str:
     # It's better to instantiate clients once and reuse them
     # rather than creating them in a function that's called frequently.
     cache_client = Cache()
-    semantic_router_client = SemanticRouterPipeline(
-        inference_only=True,
-        embedding_address=config["embedding_model"]["model_name"],
-        classifier_address=ROUTER_CONFIG["address"],
-        model_name=ROUTER_CONFIG["model_name"]
-    )
-
-    """
-    Determines the semantic route for a given utterance, using caching to improve performance.
-    """
     # 1. Check for a direct cached route first (guard clause)
     cached_route = cache_client.get_exact_cache(utterance)
     if cached_route:
@@ -466,6 +476,13 @@ async def get_route_for_utterance(utterance: str) -> str:
     chitchat_key = _get_chitchat_cache_key(utterance)
     if cache_client.get_exact_cache(chitchat_key):
         return CHITCHAT_ROUTE
+    pdb.set_trace()
+    semantic_router_client = SemanticRouterPipeline(
+        inference_only=True,
+        embedding_address=config["embedding_model"]["model_name"],
+        classifier_address=ROUTER_CONFIG["address"],
+        model_name=ROUTER_CONFIG["model_name"]
+    )
 
     # 3. If not cached, perform prediction
     predictions, probabilities, max_prob = semantic_router_client.predict_sentences([utterance])
@@ -485,7 +502,7 @@ async def get_route_for_utterance(utterance: str) -> str:
     # It cached an undefined 'response' variable. Here we cache the route name for consistency.
     # if final_route == CHITCHAT_ROUTE:
     #     cache_client.set_exact_cache(chitchat_key, final_route)
-
+    pdb.set_trace()
     return final_route.strip()
 
 
@@ -494,6 +511,7 @@ async def router_SQL_QA(query: str, context: str):
     # prompt = QUERY_ROUTER.format(query=query, context=context)
     raw_response = await get_chat_response(prompt)
     response = json_cleaning(raw_response)
+    pdb.set_trace()
     return response
 
 @observe()
@@ -515,13 +533,17 @@ async def chat_responder_(
     if not detected_module and use_cache:
         response, url = await get_cache_response(user_utterance)
         if response:
-            return user_utterance, response, "", False, []
+            result_temp = user_utterance, response, "", False, []
+            pdb.set_trace()
+            return result_temp
 
     paraphrased_utterance = await utterance_paraphraser(history, user_utterance)
     if use_cache:
         response, url = await get_cache_response(paraphrased_utterance) 
         if response:
-            return paraphrased_utterance, response, "", False, []
+            result_temp = paraphrased_utterance, response, "", False, []
+            pdb.set_trace()
+            return result_temp
     
     if detected_module:
         do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, input_module=detected_module)
@@ -529,23 +551,32 @@ async def chat_responder_(
         do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index)
 
     if do_clarify:
-        return paraphrased_utterance, "", "", do_clarify, modules
+        result_temp = paraphrased_utterance, "", "", do_clarify, modules
+        pdb.set_trace()
+        return result_temp
 
     route_response = await get_route_for_utterance(paraphrased_utterance)
     if route_response == "sql":
         if not modules:
             modules = ["all"]
-        return paraphrased_utterance, "", "", False, [modules[0]]
+        result_temp = paraphrased_utterance, "", "", False, [modules[0]]
+        pdb.set_trace()
+        return result_temp
     
     if route_response == "chitchat":
         response = await chitchat_responder(paraphrased_utterance, history=history, context=context)
-        return paraphrased_utterance, response, context, False, [] 
+        result_temp = paraphrased_utterance, response, context, False, []
+        pdb.set_trace()
+        return result_temp
     
-    if route_response == "illegal" or route_response =="irrelevant": 
-        return paraphrased_utterance, template_for_not_answer, "", False, []
+    if route_response == "illegal" or route_response =="irrelevant":
+        result_temp = paraphrased_utterance, template_for_not_answer, "", False, []
+        pdb.set_trace()
+        return result_temp
 
     if not context:
-        return paraphrased_utterance, "", "", False, []
+        result_temp = paraphrased_utterance, "", "", False, []
+        return result_temp
 
     response = await query_responder(
         paraphrased_utterance,
@@ -560,8 +591,9 @@ async def chat_responder_(
         response = template_for_not_answer
     if "خارج از حوزه کاری" in response:
         response = template_for_not_context.format(company_name=company_name)
-    
-    return paraphrased_utterance, response, context, do_clarify, modules
+    result_temp = paraphrased_utterance, response, context, do_clarify, modules
+    pdb.set_trace()
+    return result_temp
 
 @observe()
 async def feedback_(
