@@ -7,20 +7,23 @@ from langchain_community.document_loaders import DirectoryLoader, TextLoader
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+import json
 
 from .config import config
 from .make_sentence_chunks import chunk_document
+from dotenv import load_dotenv
 
+load_dotenv()
 embedding_model = HuggingFaceEmbeddings(
     model_name=config["embedding_model"]["model_name"],
-    model_kwargs={"device": config["embedding_model"]["device"], "trust_remote_code": config["embedding_model"]["trust_remote_code"]},
+    model_kwargs={"device": config["embedding_model"]["device"], "trust_remote_code":True} # , "trust_remote_code": config["embedding_model"]["trust_remote_code"]},
 )
 
-
+RAAS_VectorDB = os.getenv("RAAS_PATH")
 def create_vector_database(
     settings: dict,
     database_id: str,
-    collection_path: str = "../RaaS_vectorDB",
+    collection_path: str = RAAS_VectorDB,
     ):
     os.makedirs(collection_path, exist_ok=True)
     company_name = settings.pop("company_name")
@@ -36,7 +39,6 @@ def create_vector_database(
 
     os.makedirs(database_path)
     chunks = chunk_document(settings)
-    
     vdb = Chroma(persist_directory=database_path, embedding_function=embedding_model)
 
     if len(vdb.get()["ids"]) > 0:
@@ -50,6 +52,96 @@ def create_vector_database(
 import pandas as pd
 import os
 from langchain_core.documents import Document
+
+def create_documents_from_qa_and_chunks():
+    directory_path = r"E:\digital_assisstant\Assistant-bot\knowledge_base\qa-questions"
+    all_docs = []
+
+    for filename in os.listdir(directory_path):
+        if filename.endswith('.csv'):
+            file_path = os.path.join(directory_path, filename)
+
+            try:
+                df = pd.read_csv(file_path)
+
+                if 'Question' in df.columns and 'Answer' in df.columns:
+                    for index, row in df.iterrows():
+                        # The text content for the vector store (using develop branch format)
+                        page_content = f"{{'query': {row['Question']}, 'passage':  {row['Answer']}}}"
+
+                        # The metadata, including the source filename
+                        # Keep the module metadata from feature/add-sql-agent if available
+                        metadata = {"source": filename}
+                        if filename in config.get("modules", {}).get("names", {}):
+                            metadata["module"] = config["modules"]["names"][filename]
+
+                        # Create the Document object
+                        doc = Document(page_content=page_content, metadata=metadata)
+
+                        all_docs.append(doc)
+                else:
+                    print(f"⚠️ Warning: Skipping '{filename}' because it lacks 'Question' or 'Answer' columns.")
+
+            except Exception as e:
+                print(f"❌ Error processing file '{filename}': {e}")
+
+    all_chunks_address = r"E:\workspace-markdown-chunker\da-markdown-chunker\all_chunks_extracted.json"
+    dict_module_to_filename = {
+        "4thG-Intro": "intro.csv",
+        "CRM": "crm.csv",
+        "INV": "inventory.csv",
+        "Report_builder": "report_builder.csv",
+        "Sales": "sales.csv",
+        "Treasury_14040231": "treasury.csv",
+        "راهنمای دفتر کل نسل 4": "voucher.csv",
+        "TaxPayer": "taxPayer.csv",
+        "DA-Help": "help.csv",
+        "AboutSG": "AboutSG.csv"
+    }
+    with open(all_chunks_address, "r", encoding="utf-8") as file:
+        lines = json.load(file)
+        for line in lines:
+            content = line[0]
+            module = line[1]
+            metadata = {"source": dict_module_to_filename[module]}
+            if dict_module_to_filename[module] in config.get("modules", {}).get("names", {}):
+                metadata["module"] = config["modules"]["names"][dict_module_to_filename[module]]
+            doc = Document(page_content=content, metadata=metadata)
+            all_docs.append(doc)
+    return all_docs
+
+def create_documents_from_chunks():
+    all_docs = []
+
+    all_chunks_address = r"E:\workspace-markdown-chunker\da-markdown-chunker\all_chunks_extracted_new.json"
+    dict_module_to_filename = {
+        "4thG-Intro": "intro.csv",
+        "CRM": "crm.csv",
+        "INV": "inventory.csv",
+        "ReportBuilder": "report_builder.csv",
+        "Sales": "sales.csv",
+        "Treasury": "treasury.csv",
+        "GL": "voucher.csv",
+        "TaXPayer": "taxPayer.csv",
+        "DA": "help.csv",
+        "AboutSG": "AboutSG.csv",
+        "HCM": "hcm.csv",
+        "Platform": "platform.csv"
+
+    }
+    with open(all_chunks_address, "r", encoding="utf-8") as file:
+        lines = json.load(file)
+        for line in lines:
+            content = line[0]
+            module = line[1]
+            if module.endswith(".md"):
+                module = module[:-3]
+            metadata = {"source": dict_module_to_filename[module]}
+            if dict_module_to_filename[module] in config.get("modules", {}).get("names", {}):
+                metadata["module"] = config["modules"]["names"][dict_module_to_filename[module]]
+            doc = Document(page_content=content, metadata=metadata)
+            all_docs.append(doc)
+    return all_docs
 
 def create_documents_from_csvs(directory_path="../knowledge_base/qa-questions"):
     """
@@ -65,7 +157,7 @@ def create_documents_from_csvs(directory_path="../knowledge_base/qa-questions"):
                         source filename.
     """
     all_docs = []
-    
+   
     # Check if the directory exists
     if not os.path.isdir(directory_path):
         print(f"❌ Error: Directory not found at '{directory_path}'")
@@ -75,28 +167,31 @@ def create_documents_from_csvs(directory_path="../knowledge_base/qa-questions"):
     for filename in os.listdir(directory_path):
         if filename.endswith('.csv'):
             file_path = os.path.join(directory_path, filename)
-            
+           
             try:
                 df = pd.read_csv(file_path)
 
                 if 'Question' in df.columns and 'Answer' in df.columns:
                     for index, row in df.iterrows():
-                        # The text content for the vector store
+                        # The text content for the vector store (using develop branch format)
                         page_content = f"{{'QUESTION': {row['Question']}, 'Answer':  {row['Answer']}}}"
-                        
+                       
                         # The metadata, including the source filename
+                        # Keep the module metadata from feature/add-sql-agent if available
                         metadata = {"source": filename}
-                        
+                        if filename in config.get("modules", {}).get("names", {}):
+                            metadata["module"] = config["modules"]["names"][filename]
+                       
                         # Create the Document object
                         doc = Document(page_content=page_content, metadata=metadata)
-                        
+                       
                         all_docs.append(doc)
                 else:
                     print(f"⚠️ Warning: Skipping '{filename}' because it lacks 'Question' or 'Answer' columns.")
 
             except Exception as e:
                 print(f"❌ Error processing file '{filename}': {e}")
-                
+               
     return all_docs
 
 # --- --- --- Usage Example --- --- ---
@@ -113,13 +208,14 @@ def create_documents_from_csvs(directory_path="../knowledge_base/qa-questions"):
 #     print("\n--- Structure of the First Document ---")
 #     print(documents[0])
 
-
 def main(args):
     collection_path = args.persist_directory
     os.makedirs(collection_path, exist_ok=True)
 
     print(f"Creating a vector DB in {collection_path} ...")
-    chunks = create_documents_from_csvs() # (config["database"]["documents"])
+    # chunks = create_documents_from_csvs() # (config["database"]["documents"])
+    # chunks = create_documents_from_qa_and_chunks()  # (config["database"]["documents"])
+    chunks = create_documents_from_chunks()  # (config["database"]["documents"])
     print(f"Generated {len(chunks)} chunks")
 
     vdb = Chroma(persist_directory=collection_path, embedding_function=embedding_model)
@@ -133,10 +229,8 @@ def main(args):
     vdb.add_documents(chunks)
     print(f"{len(chunks)} documents have been added to the vector DB")
 
-
 if __name__ == "__main__":
     import argparse
-
     parser = argparse.ArgumentParser(description="Let us build an app")
     parser.add_argument(
         "-p",

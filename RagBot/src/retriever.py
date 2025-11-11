@@ -28,7 +28,7 @@ def get_logger():
     return logging.getLogger(__name__)
 
 logger = get_logger()
-torch.cuda.set_per_process_memory_fraction(0.7, device=0)
+# torch.cuda.set_per_process_memory_fraction(0.7, device=config["reranker"]["device"])
 # --- New Qwen Reranker Class ---
 class QwenReranker:
     """
