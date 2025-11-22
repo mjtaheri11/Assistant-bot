@@ -7,7 +7,7 @@ import statistics
 from dotenv import load_dotenv
 ### remove this!
 import pdb
-# pdb.set_trace = lambda: 1
+pdb.set_trace = lambda: 1
 
 import torch
 import numpy as np
