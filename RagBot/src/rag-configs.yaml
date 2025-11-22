@@ -182,4 +182,4 @@ router_model:
   address: /home/jovyan/testing_units/Assistant-bot/saved_models/mlp.joblib
   model_name: mlp
   beta_threshold: 0.3
-  alpha_threshold: 0.7
+  alpha_threshold: 0.99

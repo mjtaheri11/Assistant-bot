@@ -328,7 +328,7 @@ class SemanticRouterPipeline:
         classes_prob = list(zip(classes, prob[0]))
         t1 = time()
         logger.info(f"Prediction done in {t1 - t0} seconds")
-        logger.info(f"The sentence: {sentences[0]} is classified as: {label}")
+        logger.info(f"The sentence: {sentences[0]} is classified as: {label} with prob {max(prob[0])}")
         return label, classes_prob, max(prob[0])
 
 # if __name__ == '__main__':

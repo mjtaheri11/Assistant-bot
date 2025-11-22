@@ -45,7 +45,7 @@ from src.utils import substitute_sql_parameters
 
 RESPONSE_TEMPLATE_FOR_NO_ANSWER = "متاسفانه، پاسخی به سوال شما یافت نشد."
 MODULE_CLARIFICATION_RESPONSE_TEMPLATE = "لطفا مشخص نمایید سوال شما از کدام یک از ماژول های سیستم است."
-app = FastAPI(title="Digital Assistant", root_path="/soroush-test") # should be added to env variables
+app = FastAPI(title="Digital Assistant", root_path="/backend") # should be added to env variables
  
 # Define Prometheus metrics
 REQUEST_COUNT = Counter("api_http_requests_total", "Total API Requests", ["endpoint"])
@@ -70,7 +70,7 @@ class ChatRequest(BaseModel):
     error_payload: Optional[str] = ""
     is_sync: Optional[bool] = True
     sql_mode: Optional[bool] = True  # Toggle between legacy and SQL agent mode
-    use_oss: Optional[bool] = False
+    use_oss: Optional[bool] = True
 
 class ChatResponse(BaseModel):
     message_id: str
@@ -222,7 +222,7 @@ def convert_sql_parameters(sql_query):
     
     # Then add underscore before any numbers that follow @
     # This catches @1, @2, @3, etc. and converts them to @_1, @_2, @_3
-    sql_query = re.sub(r'@(\d+)', r'@_\1', sql_query)
+    sql_query = re.sub(r'@(\d+)', r'@param\1', sql_query)
     
     return sql_query
 
@@ -238,7 +238,7 @@ def add_underscore_to_keys(dictionary):
     Returns:
         dict: New dictionary with underscore-prefixed keys
     """
-    return {f"_{key}": value for key, value in dictionary.items()}
+    return {f"param{key}": value for key, value in dictionary.items()}
 
 
 async def preprocess_vector_db_input(files, target_chunk_size, max_chunk_size, company_name, assistant_name):
@@ -475,6 +475,12 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
         else:
             postgres = Postgres()
             user_code, tenant_name = await get_user_code_tenant_name(chat_request, postgres)
+            session_validation = await postgres.exist_session(session_id)
+            if not session_validation:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Session not found: {session_id}"
+                )
             validate_query(chat_request.query) # excessive request handling, we can remove it as soon as possible
             simple_logger(f"Received chat request", session_id)
             history = await postgres.get_history(
@@ -593,10 +599,10 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                                 )
                                 response_dict = json.loads(response_dict_str)
                                 if "null" not in response_dict_str and response_dict["SQL"] is not None:
-                                    # response_dict["SQL"] = convert_sql_parameters(response_dict["SQL"])
+                                    response_dict["SQL"] = convert_sql_parameters(response_dict["SQL"])
                                     response = response_dict["SQL"]
-                                    # if response_dict["parameters"]:
-                                    #     response_dict["parameters"] = add_underscore_to_keys(response_dict["parameters"])
+                                    if response_dict["parameters"]:
+                                        response_dict["parameters"] = add_underscore_to_keys(response_dict["parameters"])
                                     parameters = response_dict["parameters"]
                                     response_template = response_dict["response_template"]
                                 else:
@@ -670,11 +676,10 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                                 )
                                 response_dict = json.loads(response_dict_str)
                                 if "null" not in response_dict_str and response_dict["SQL"] is not None:
-                                    # response_dict["SQL"] = convert_sql_parameters(response_dict["SQL"])
+                                    response_dict["SQL"] = convert_sql_parameters(response_dict["SQL"])
                                     response = response_dict["SQL"]
-                                    # if response_dict["parameters"]:
-
-                                    #     response_dict["parameters"] = add_underscore_to_keys(response_dict["parameters"])
+                                    if response_dict["parameters"]:
+                                        response_dict["parameters"] = add_underscore_to_keys(response_dict["parameters"])
                                     parameters = response_dict["parameters"]
                                     response_template = response_dict["response_template"]
                                 else:

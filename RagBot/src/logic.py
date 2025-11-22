@@ -7,7 +7,7 @@ import statistics
 from dotenv import load_dotenv
 ### remove this!
 import pdb
-pdb.set_trace = lambda: 1
+# pdb.set_trace = lambda: 1
 
 import torch
 import numpy as np
@@ -134,8 +134,10 @@ async def get_chat_response(
 
 
     messages = [SystemMessage(content=prompt)]
+    pdb.set_trace()
     response = await llm.ainvoke(messages)
     result = response.content
+    pdb.set_trace()
     return result
 
 @observe()
@@ -435,7 +437,6 @@ async def _determine_final_route(
     # probabilities = list(probabilities)  # Convert to list to make it subscriptable
 
     if max_prob > ALPHA_THRESHOLD and ("همکاران" not in utterance) and (top_prediction != "illegal"):
-        pdb.set_trace()
         return top_prediction
 
     # If confidence is low, see if multiple routes are plausible
@@ -456,7 +457,6 @@ async def _determine_final_route(
     result = await get_chat_response(
         SEMANTIC_ROUTER.format(user_query=utterance, class_list=plausible_routes)
     )
-    pdb.set_trace()
     return result
 
 @observe()
@@ -476,7 +476,6 @@ async def get_route_for_utterance(utterance: str) -> str:
     chitchat_key = _get_chitchat_cache_key(utterance)
     if cache_client.get_exact_cache(chitchat_key):
         return CHITCHAT_ROUTE
-    pdb.set_trace()
     semantic_router_client = SemanticRouterPipeline(
         inference_only=True,
         embedding_address=config["embedding_model"]["model_name"],
@@ -502,7 +501,6 @@ async def get_route_for_utterance(utterance: str) -> str:
     # It cached an undefined 'response' variable. Here we cache the route name for consistency.
     # if final_route == CHITCHAT_ROUTE:
     #     cache_client.set_exact_cache(chitchat_key, final_route)
-    pdb.set_trace()
     return final_route.strip()
 
 
@@ -534,7 +532,6 @@ async def chat_responder_(
         response, url = await get_cache_response(user_utterance)
         if response:
             result_temp = user_utterance, response, "", False, []
-            pdb.set_trace()
             return result_temp
 
     paraphrased_utterance = await utterance_paraphraser(history, user_utterance)
@@ -542,9 +539,7 @@ async def chat_responder_(
         response, url = await get_cache_response(paraphrased_utterance) 
         if response:
             result_temp = paraphrased_utterance, response, "", False, []
-            pdb.set_trace()
             return result_temp
-    
     if detected_module:
         do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, input_module=detected_module)
     else:
@@ -552,7 +547,6 @@ async def chat_responder_(
 
     if do_clarify:
         result_temp = paraphrased_utterance, "", "", do_clarify, modules
-        pdb.set_trace()
         return result_temp
 
     route_response = await get_route_for_utterance(paraphrased_utterance)

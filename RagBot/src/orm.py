@@ -133,6 +133,19 @@ class Postgres:
             insert_values=(message_id, session_id),
         )
         return message_fields[0] if message_fields else []
+
+    async def validate_session(self, session_id):
+        sql_validate_query = "SELECT 1 FROM messages WHERE session_id = $1 LIMIT 1;"
+        try:
+            results = await self._execute_query(
+                sql_validate_query,
+                fetch_results=True,
+                insert_values=(session_id),
+            )
+            return len(results) > 0
+        except Exception as ex:
+            print(f"Failed to validate session {session_id}: {ex}")
+            raise
    
     async def create_database(self, company_name=None, assistant_name=None):
         sql_create_database_query = "INSERT INTO public.databases"
