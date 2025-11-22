@@ -152,7 +152,7 @@ class FeedbackResponse(BaseModel):
     message: str
 
 # ================== Utility Functions ==================
-
+    
 def get_session_id(request: Request, content_request: BaseModel):
     """Extract session ID from headers or request body"""
     session_id = request.headers.get("Session-ID")
@@ -553,13 +553,13 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                     )
                     response_dict = json.loads(response_dict_str)
                     if "NULL" not in response_dict_str:
-                        # response_dict["SQL"] = convert_sql_parameters(response_dict["SQL"])
+                        response_dict["SQL"] = convert_sql_parameters(response_dict["SQL"])
                         response = response_dict["SQL"]
-                        # if response_dict["parameters"]:
-                        #     response_dict["parameters"] = add_underscore_to_keys(response_dict["parameters"])
+                        if response_dict["parameters"]:
+                            response_dict["parameters"] = add_underscore_to_keys(response_dict["parameters"])
                         parameters = response_dict["parameters"]
                         response_template = response_dict["response_template"]
-                    
+                     
                     message = "retried table response generated"
                     elapsed_time = time.time() - start_time
                     _ = await postgres.update_on_click_chat_row(message_id, response, elapsed_time)
