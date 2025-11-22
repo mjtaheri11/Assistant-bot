@@ -45,7 +45,7 @@ from src.utils import substitute_sql_parameters
 
 RESPONSE_TEMPLATE_FOR_NO_ANSWER = "متاسفانه، پاسخی به سوال شما یافت نشد."
 MODULE_CLARIFICATION_RESPONSE_TEMPLATE = "لطفا مشخص نمایید سوال شما از کدام یک از ماژول های سیستم است."
-app = FastAPI(title="Digital Assistant", root_path="/backend") # should be added to env variables
+app = FastAPI(title="Digital Assistant", root_path="/eval-test-soroush") # should be added to env variables
  
 # Define Prometheus metrics
 REQUEST_COUNT = Counter("api_http_requests_total", "Total API Requests", ["endpoint"])
@@ -520,6 +520,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         response_template=response_template,
                         parameters=json.dumps(parameters)
                     )
+                elapsed_time = time.time() - start_time
             else:
                 database_id_dict = await postgres.find_database_id(session_id)
                 matched_index, company_name, assistant_name = find_database_path(database_id_dict["database_id"])
