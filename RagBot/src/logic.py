@@ -49,11 +49,19 @@ np.random.seed(SEED)
 torch.cuda.manual_seed_all(SEED)
 random.seed(SEED)
 OSS_LLM_MODEL_NAME = os.getenv("OSS_LLM_MODEL_NAME", "/gpt-120")
-GPT_LLM_MODEL_NAME = os.getenv("GPT_LLM_MODEL_NAME", "/gpt-120")
+GPT_LLM_MODEL_NAME = os.getenv("GPT_LLM_MODEL_NAME", "gpt-4.1-2025-04-14")
+QWEN3_CODER_LLM_MODEL_NAME = os.getenv("QWEN3_CODER_MODEL_NAME", "/Qwen/Qwen3-Coder-30B-A3B-Instruct")
 OSS_API_KEY = os.getenv("OSS_API_KEY", "EMPTY")
 GPT_API_KEY = os.getenv("GPT_API_KEY", "EMPTY")
+QWEN3_CODER_API_KEY = os.getenv("QWEN3_CODER_API_KEY", "EMPTY")
+
+LANGFUSE_SECRET_KEY = os.getenv("LANGFUSE_SECRET_KEY")
+LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY")
+LANGFUSE_BASE_URL = os.getenv("LANGFUSE_BASE_URL")
+
 OSS_API_BASE = os.getenv("OSS_API_BASE", "http://gpt-oss-120b-predictor.admin.svc.cluster.local/v1")
-GPT_API_BASE = os.getenv("GPT_API_BASE", "http://gpt-oss-120b-predictor.admin.svc.cluster.local/v1")
+GPT_API_BASE = os.getenv("GPT_API_BASE", "https://api.openai.com/v1/")
+QWEN3_CODER_API_BASE = os.getenv("QWEN3_CODER_API_BASE", "http://qwen3-coder-30b-predictor.admin.svc.cluster.local/v1")
 
 MODULE_PROPOSER_THRESHOLD = float(os.getenv("MODULE_PROPOSER_THRESHOLD", 0.75))
 
@@ -76,11 +84,15 @@ def hash_string(input_string):
 
     return hex_digest
 
-def model_selector(use_oss: bool = False):
+def model_selector(use_oss: bool = False, use_qwen3_coder: bool = False):
     if use_oss:
         model_name = OSS_LLM_MODEL_NAME
         api_base = OSS_API_BASE
         api_key = OSS_API_KEY
+    elif use_qwen3_coder:
+        model_name = QWEN3_CODER_LLM_MODEL_NAME
+        api_base = QWEN3_CODER_API_BASE
+        api_key = QWEN3_CODER_API_KEY
     else:
         model_name = GPT_LLM_MODEL_NAME
         api_base = GPT_API_BASE
@@ -167,7 +179,7 @@ def history_serializer(history: List[tuple[str, str]]) -> str:
     return serialized_history
 
 @observe()
-async def utterance_paraphraser(history: List[tuple[str, str]], user_utterance: str, assistant_name: str = None) -> str:
+async def utterance_paraphraser(history: List[tuple[str, str]], user_utterance: str, assistant_name: str = None, use_oss:bool = True) -> str:
     serialized_history = history_serializer(history)
     
     if assistant_name:
@@ -183,8 +195,8 @@ async def utterance_paraphraser(history: List[tuple[str, str]], user_utterance: 
             history=serialized_history,
             question=user_utterance,
         )
-    
-    response_1 = await get_chat_response(prompt)
+    model_name, api_base, api_key = model_selector(use_oss, use_qwen3_coder=False)
+    response_1 = await get_chat_response(prompt, model_name, api_key, api_base)
     response = json_cleaning_1(response_1)
     return response
 
@@ -195,7 +207,8 @@ async def query_responder(
     history: str, 
     company_name: str = None, 
     assistant_name: str = None, 
-    answer_type: str = "normal"
+    answer_type: str = "normal", 
+    use_oss: bool = True
     ) -> str:
 
     serialized_history = history_serializer(history)
@@ -217,8 +230,8 @@ async def query_responder(
         question=query,
         conversation_history=serialized_history
     )
-    
-    response = await get_chat_response(prompt)
+    model_name, api_base, api_key = model_selector(use_oss, use_qwen3_coder=False)
+    response = await get_chat_response(prompt, model_name, api_key, api_base)
     response = json_cleaning(response)
     pdb.set_trace()
     return response
@@ -229,13 +242,15 @@ async def chitchat_responder(
     query: str,
     context: str, 
     history: str,
+    use_oss: bool
     ):
     serialized_history = history_serializer(history)
     prompt = CHITCHAT_PROMPT.format(user_question=query, 
                              context=context, 
                              history=serialized_history
                              )
-    response = await get_chat_response(prompt)
+    model_name, api_base, api_key = model_selector(use_oss, use_qwen3_coder=False)
+    response = await get_chat_response(prompt, model_name, api_key, api_base)
     pdb.set_trace()
     return response
 
@@ -247,7 +262,8 @@ async def answer_validator(question: str, context: str, answer: str) -> bool:
         question=question,
         answer=answer,
     )
-    response = await get_chat_response(prompt)
+    model_name, api_base, api_key = model_selector(use_oss, use_qwen3_coder=False)
+    response = await get_chat_response(prompt, model_name, api_key, api_base)
     pdb.set_trace()
     return response
 
@@ -275,13 +291,13 @@ async def retrieve_context_with_metadata(query: str, input_modules: List = None,
     retriever = Retriever()
     
     if input_modules:
-        context_with_metadata = await retriever.retrieve_context(query, module_filter=input_modules)
+        context_with_metadata, query_embedding = await retriever.retrieve_context(query, module_filter=input_modules)
     elif database_index:
         # Support database_index parameter from develop branch
-        context_with_metadata = await retriever.retrieve_context(query, database_index)
+        context_with_metadata, query_embedding = await retriever.retrieve_context(query, database_index)
     else:
-        context_with_metadata = await retriever.retrieve_context(query)
-    return context_with_metadata
+        context_with_metadata, query_embedding = await retriever.retrieve_context(query)
+    return context_with_metadata, query_embedding
 
 @observe()
 async def prepare_final_context(query: str, database_index: str = None, input_module: str = "") -> Union[str, Tuple[bool, List[str], Union[str, List[str]]]]:
@@ -289,22 +305,22 @@ async def prepare_final_context(query: str, database_index: str = None, input_mo
     Unified function supporting both develop branch (simple context) and feature/add-sql-agent (complex module handling)
     """
     
-    context_with_metadata = await retrieve_context_with_metadata(query, database_index=database_index, input_modules=[input_module] if input_module else None)
+    context_with_metadata, query_embedding = await retrieve_context_with_metadata(query, database_index=database_index, input_modules=[input_module] if input_module else None)
     print("#########\n")
     print(context_with_metadata)
     print("\n#########")
     if not context_with_metadata:
-        return False, [], []
+        return False, [], [], query_embedding
     if input_module:
         result = _handle_single_module_case(context_with_metadata, input_module) 
-        return result 
+        return *result, query_embedding 
     proposable_modules = set(config["modules"]["proposable_modules"])
     detected_modules = [result["module"] for result in context_with_metadata]
     module_frequencies = Counter(detected_modules)
     if len(module_frequencies) < 2:
         detected_modules_lst = list(module_frequencies.keys())
         result = _handle_single_module_case(context_with_metadata, detected_modules_lst[0])
-        return result
+        return *result, query_embedding
     
     print(module_frequencies) # temp logs
     needs_clarification, mean_freq = await is_somewhat_uniform(module_frequencies)
@@ -320,7 +336,7 @@ async def prepare_final_context(query: str, database_index: str = None, input_mo
             probable_detected_modules,
             proposable_modules
         )
-    return result
+    return *result, query_embedding
 
 @observe()
 def _handle_single_module_case(
@@ -402,12 +418,12 @@ async def sql_responder_(
         else:
             bo_prompt = SQL_MODIFIER.format(schema=LOGISTICS_SALES_MODIFIED, original_query=query, 
                                           faulty_sql_query=faulty_sql_query, error_message=error_message)
-    model_name, api_base, api_key = model_selector(use_oss)
+    model_name, api_base, api_key = model_selector(use_oss, use_qwen3_coder=False)
     raw_json_response = await get_chat_response(
         bo_prompt, 
         model_name=model_name, 
-        api_base=api_base, 
-        api_key=api_key
+        api_key=api_key,
+        api_base=api_base
         )
     response = json_cleaning(raw_json_response)
     pdb.set_trace()
@@ -425,7 +441,8 @@ async def _determine_final_route(
     utterance: str,
     top_prediction: str,
     probabilities: List[Tuple[str, float]],
-    max_prob: float
+    max_prob: float, 
+    use_oss: bool
 ) -> str:
 
     ROUTER_CONFIG = config["router_model"]
@@ -454,13 +471,14 @@ async def _determine_final_route(
         plausible_routes = [sorted_probabilities[0][0], sorted_probabilities[1][0]]
 
     # Use an LLM to disambiguate between plausible routes
+    model_name, api_base, api_key = model_selector(use_oss, use_qwen3_coder=False)
     result = await get_chat_response(
-        SEMANTIC_ROUTER.format(user_query=utterance, class_list=plausible_routes)
+        SEMANTIC_ROUTER.format(user_query=utterance, class_list=plausible_routes), model_name, api_key, api_base
     )
     return result
 
 @observe()
-async def get_route_for_utterance(utterance: str) -> str:    
+async def get_route_for_utterance(utterance: str, query_embedding, use_oss) -> str:    
     CHITCHAT_ROUTE = "chitchat"
     ROUTER_CONFIG = config["router_model"]
     
@@ -478,17 +496,19 @@ async def get_route_for_utterance(utterance: str) -> str:
         return CHITCHAT_ROUTE
     semantic_router_client = SemanticRouterPipeline(
         inference_only=True,
-        embedding_address=config["embedding_model"]["model_name"],
+        embedding_address=None,
+        embedding_model=ROUTER_CONFIG["embedding_model"],
         classifier_address=ROUTER_CONFIG["address"],
         model_name=ROUTER_CONFIG["model_name"]
     )
 
     # 3. If not cached, perform prediction
-    predictions, probabilities, max_prob = semantic_router_client.predict_sentences([utterance])
+    # top_prediction, probabilities, max_prob = semantic_router_client.predict_sentences([utterance])
+    top_prediction, probabilities, max_prob = semantic_router_client.predict_sentences_input_embedding_and_sentences([utterance], [query_embedding])
 
     # 4. Determine the final route using the logic in the helper function
     final_route = await _determine_final_route(
-        utterance, predictions[0], probabilities, max_prob
+        utterance, top_prediction, probabilities, max_prob, use_oss
     )
 
     # 5. Cache the result for future requests
@@ -507,7 +527,8 @@ async def get_route_for_utterance(utterance: str) -> str:
 @observe()
 async def router_SQL_QA(query: str, context: str):
     # prompt = QUERY_ROUTER.format(query=query, context=context)
-    raw_response = await get_chat_response(prompt)
+    model_name, api_base, api_key = model_selector(use_oss, use_qwen3_coder=False)
+    raw_response = await get_chat_response(prompt, model_name, api_key, api_base)
     response = json_cleaning(raw_response)
     pdb.set_trace()
     return response
@@ -523,6 +544,7 @@ async def chat_responder_(
     does_evaluate: bool = config["database"]["does_evaluate"],
     use_cache: bool = config["database"]["use_cache"],
     detected_module: str = "",
+    use_oss: bool = True
 ) -> Union[tuple[str, str, str, str], tuple[str, str, str, bool, List[str]]]:
     """
     Unified chat responder supporting both develop branch (simple RAG) and feature/add-sql-agent (SQL + module handling)
@@ -534,22 +556,22 @@ async def chat_responder_(
             result_temp = user_utterance, response, "", False, []
             return result_temp
 
-    paraphrased_utterance = await utterance_paraphraser(history, user_utterance)
+    paraphrased_utterance = await utterance_paraphraser(history, user_utterance, use_oss)
     if use_cache:
         response, url = await get_cache_response(paraphrased_utterance) 
         if response:
             result_temp = paraphrased_utterance, response, "", False, []
             return result_temp
     if detected_module:
-        do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, input_module=detected_module)
+        do_clarify, modules, context, query_embedding = await prepare_final_context(paraphrased_utterance, database_index=database_index, input_module=detected_module)
     else:
-        do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index)
+        do_clarify, modules, context, query_embedding = await prepare_final_context(paraphrased_utterance, database_index=database_index)
 
     if do_clarify:
         result_temp = paraphrased_utterance, "", "", do_clarify, modules
         return result_temp
 
-    route_response = await get_route_for_utterance(paraphrased_utterance)
+    route_response = await get_route_for_utterance(paraphrased_utterance, query_embedding, use_oss)
     if route_response == "sql":
         if not modules:
             modules = ["all"]
@@ -558,7 +580,7 @@ async def chat_responder_(
         return result_temp
     
     if route_response == "chitchat":
-        response = await chitchat_responder(paraphrased_utterance, history=history, context=context)
+        response = await chitchat_responder(paraphrased_utterance, history=history, context=context, use_oss=use_oss)
         result_temp = paraphrased_utterance, response, context, False, []
         pdb.set_trace()
         return result_temp
@@ -578,7 +600,8 @@ async def chat_responder_(
         history,
         company_name=company_name,
         assistant_name=assistant_name,
-        answer_type=response_type
+        answer_type=response_type,
+        use_oss=use_oss
         )
 
     if "محدوده دانش من " in response:
