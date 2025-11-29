@@ -3,12 +3,20 @@ import logging
 from dataclasses import dataclass
 from operator import attrgetter
 from typing import List
-
+# import pdb
+# import json
+# pdb.set_trace==1
 import torch
-from FlagEmbedding import FlagReranker
+import aiohttp
+import os
+# from FlagEmbedding import FlagReranker
 from langchain.vectorstores import Chroma
-from langchain_community.embeddings import HuggingFaceEmbeddings
-from transformers import AutoModelForCausalLM, AutoTokenizer
+# from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_openai import OpenAIEmbeddings
+
+# from transformers import AutoModelForCausalLM, AutoTokenizer
+from dotenv import load_dotenv
+load_dotenv()
 
 from .config import config 
 
@@ -108,29 +116,46 @@ class ModelManager:
         return cls._instance
 
     def _initialize(self):
-        self.embedding_model = HuggingFaceEmbeddings(
-            model_name=config["embedding_model"]["model_name"],
-            model_kwargs={"device": config["embedding_model"]["device"]}
-        )
+        if config["embedding_model"]["use_openrouter"]:
+            self.embedding_model = OpenAIEmbeddings(
+                # Use the model name from your config, or hardcode a specific OpenRouter model ID
+                model=config["embedding_model"]["openrouter"],
+
+                # Point to OpenRouter
+                openai_api_base="https://openrouter.ai/api/v1",
+
+                # Get key from environment (ensure OPENROUTER_API_KEY is in your .env)
+                openai_api_key=os.getenv("OPENROUTER_API_KEY", "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"),
+
+                tiktoken_enabled=False,
+                check_embedding_ctx_length=False
+
+                )
+            
+        else:
+            self.embedding_model = HuggingFaceEmbeddings(
+                model_name=config["embedding_model"]["openrouter"],
+                model_kwargs={"device": config["embedding_model"]["device"]}
+            )
 
         # --- Reranker Selection Logic ---
         reranker_choice = config["reranker"]["primary_model"]
         logger.info(f"Initializing primary reranker: {reranker_choice}")
 
-        if reranker_choice == "flag":
-            self.reranker_model = FlagReranker(
-                config["reranker"]["flag_model"]["model_name"],
-                device=config["reranker"]["flag_model"]["device"],
-                use_fp16=True
-            )
-        elif reranker_choice == "qwen":
-            self.reranker_model = QwenReranker(
-                model_name=config["reranker"]["qwen_model"]["model_name"],
-                device=config["reranker"]["qwen_model"]["device"],
-                max_length=config["reranker"]["qwen_model"].get("max_length", 8192)
-            )
-        else:
-            raise ValueError(f"Unsupported reranker model in config: '{reranker_choice}'")
+        # if reranker_choice == "flag":
+        #     self.reranker_model = FlagReranker(
+        #         config["reranker"]["flag_model"]["model_name"],
+        #         device=config["reranker"]["flag_model"]["device"],
+        #         use_fp16=True
+        #     )
+        # elif reranker_choice == "qwen":
+        #     self.reranker_model = QwenReranker(
+        #         model_name=config["reranker"]["qwen_model"]["model_name"],
+        #         device=config["reranker"]["qwen_model"]["device"],
+        #         max_length=config["reranker"]["qwen_model"].get("max_length", 8192)
+        #     )
+        # else:
+        #     raise ValueError(f"Unsupported reranker model in config: '{reranker_choice}'")
 
 
 class Retriever(object):
@@ -147,8 +172,10 @@ class Retriever(object):
         model_manager = ModelManager()
 
         self.embedding_model_ = model_manager.embedding_model
+
+
         # This is now a generic reranker model (either FlagReranker or QwenReranker)
-        self.reranker_model_ = model_manager.reranker_model
+        # self.reranker_model_ = model_manager.reranker_model
 
         self.alpha_threshold_ = self.config_["retriever"]["alpha_threshold"]
 
@@ -193,34 +220,131 @@ class Retriever(object):
         
         return vectordb.as_retriever(search_kwargs=search_kwargs)
     
+    # async def _rerank_documents(self, query, documents, k, reverse=True):
+    #     """
+    #     Reranks documents using the Qwen3-Reranker-4B API service.
+    #     """
+    #     url = "http://qwen3-rr-4b-predictor.admin.svc.cluster.local/v2/rerank"
+    #     headers = {"Content-Type": "application/json"}
+        
+    #     # We set top_n to len(documents) to get scores for ALL docs, 
+    #     # allowing us to apply your specific threshold and 'k+3' logic locally.
+    #     payload = {
+    #         "model": "Qwen3-Reranker-4B",
+    #         "query": query,
+    #         "documents": documents,
+    #         "top_n": len(documents) 
+    #     }
+    #     # with open("payload.json", "w", encoding="utf-8") as file:
+    #     #     json.dump(payload, file)
+
+    #     try:
+    #         async with aiohttp.ClientSession() as session:
+    #             async with session.post(url, headers=headers, json=payload) as response:
+    #                 response.raise_for_status() # Raises error for 4xx/5xx codes
+    #                 data = await response.json()
+                    
+    #     except Exception as e:
+    #         print(f"Error calling reranker service: {e}")
+    #         # Fallback: return empty or original list depending on preference
+    #         return []
+    #     # pdb.set_trace()
+    #     # The API returns a list of results with 'index' and 'relevance_score'
+    #     api_results = data.get("results", [])
+
+    #     # Filter and map API results to your internal FlagDocument structure
+    #     # This maintains the logic: if scores[i] > config threshold
+    #     docs_with_scores_index = [
+    #         FlagDocument(
+    #             document=documents[res["index"]], 
+    #             score=res["relevance_score"], 
+    #             index=res["index"]
+    #         )
+    #         for res in api_results 
+    #         if res["relevance_score"] > config["retriever"]["retriever_threshold"]
+    #     ]
+
+    #     # Sort by score (High to Low)
+    #     docs_scores_sorted = sorted(docs_with_scores_index, key=attrgetter('score'), reverse=True)
+
+    #     # --- Existing Logic Preserved ---
+    #     if docs_with_scores_index:
+    #         final_docs = []
+    #         # Logic: If the k-th item has a good score (> 0.06), extend retrieval to k+3
+    #         if len(docs_scores_sorted) > k and docs_scores_sorted[k-1].score > 0.06:
+    #             final_docs = docs_scores_sorted[:k+3]
+    #         else:
+    #             final_docs = docs_scores_sorted[:k]
+            
+    #         if reverse:
+    #             sorted_documents = [{"text": d.document, "index": d.index} for d in reversed(final_docs)]
+    #         else:
+    #             sorted_documents = [{"text": d.document, "index": d.index} for d in final_docs]
+    #     else:
+    #         sorted_documents = []
+            
+    #     return sorted_documents
+    
+    # async def _rerank_documents(self, query, documents, k, reverse=True):
+    #     """
+    #     Reranks documents using the primary reranker model selected in the config.
+    #     """
+    #     scores = self.reranker_model_.compute_score([[query, doc] for doc in documents], normalize=True)
+    #     if not isinstance(scores, list):
+    #         scores = [scores]
+    #     docs_with_scores_index = [
+    #         FlagDocument(document=documents[i], score=scores[i], index=i)
+    #         for i in range(len(documents)) if scores[i] > config["retriever"]["retriever_threshold"]
+    #     ]
+        
+    #     docs_scores_sorted = sorted(docs_with_scores_index, key=attrgetter('score'), reverse=True)
+        
+    #     if docs_with_scores_index:
+    #         final_docs = []
+    #         if len(docs_scores_sorted) > k and docs_scores_sorted[k-1].score > 0.06:
+    #             final_docs = docs_scores_sorted[:k+3]
+    #         else:
+    #             final_docs = docs_scores_sorted[:k]
+            
+    #         if reverse:
+    #             sorted_documents = [{"text": d.document, "index": d.index} for d in reversed(final_docs)]
+    #         else:
+    #             sorted_documents = [{"text": d.document, "index": d.index} for d in final_docs]
+    #     else:
+    #         sorted_documents = []
+            
+    #     return sorted_documents
+
     async def _rerank_documents(self, query, documents, k, reverse=True):
         """
         Reranks documents using the primary reranker model selected in the config.
         """
-        scores = self.reranker_model_.compute_score([[query, doc] for doc in documents], normalize=True)
-        if not isinstance(scores, list):
-            scores = [scores]
-        docs_with_scores_index = [
-            FlagDocument(document=documents[i], score=scores[i], index=i)
-            for i in range(len(documents)) if scores[i] > config["retriever"]["retriever_threshold"]
-        ]
+        # scores = self.reranker_model_.compute_score([[query, doc] for doc in documents], normalize=True)
+        # if not isinstance(scores, list):
+        #     scores = [scores]
+        # docs_with_scores_index = [
+        #     FlagDocument(document=documents[i], score=scores[i], index=i)
+        #     for i in range(len(documents)) if scores[i] > config["retriever"]["retriever_threshold"]
+        # ]
         
-        docs_scores_sorted = sorted(docs_with_scores_index, key=attrgetter('score'), reverse=True)
+        # docs_scores_sorted = sorted(docs_with_scores_index, key=attrgetter('score'), reverse=True)
         
-        if docs_with_scores_index:
-            final_docs = []
-            if len(docs_scores_sorted) > k and docs_scores_sorted[k-1].score > 0.06:
-                final_docs = docs_scores_sorted[:k+3]
-            else:
-                final_docs = docs_scores_sorted[:k]
+        # if docs_with_scores_index:
+        #     final_docs = []
+        #     if len(documents) > k and documents[k-1].score > 0.06:
+        #         final_docs = docs_scores_sorted[:k+3]
+        #     else:
+        #         final_docs = docs_scores_sorted[:k]
             
-            if reverse:
-                sorted_documents = [{"text": d.document, "index": d.index} for d in reversed(final_docs)]
-            else:
-                sorted_documents = [{"text": d.document, "index": d.index} for d in final_docs]
-        else:
-            sorted_documents = []
-            
+        #     if reverse:
+        #         sorted_documents = [{"text": d.document, "index": d.index} for d in reversed(final_docs)]
+        #     else:
+        #         sorted_documents = [{"text": d.document, "index": d.index} for d in final_docs]
+        # else:
+        #     sorted_documents = []
+        sorted_documents = [{"text": d, "index": i} for i,d in enumerate(documents)]
+        if len(sorted_documents) > k:
+             sorted_documents = sorted_documents[:k]
         return sorted_documents
 
     @staticmethod
@@ -236,23 +360,75 @@ class Retriever(object):
             output_lst.append(item)
         return output_lst
     
+    # async def retrieve_context(self, query, database_index=None, k=None, module_filter=None, reverse=True, split=False):
+    #     """
+    #     Retrieve context with optional module filtering and database selection.
+    #     """
+    #     if k is None:
+    #         k = self.config_["retriever"]["retrieved_rank2_documents"]
+        
+    #     if database_index:
+    #         await self.find_vdb(database_index)
+        
+    #     if module_filter:
+    #         retriever = self._get_retriever(module_filter, database_index)
+    #         documents = await retriever.ainvoke(query)
+    #     else:
+    #         if not hasattr(self, 'retriever_') and database_index:
+    #             await self.find_vdb(database_index)
+    #         documents = await self.retriever_.ainvoke(query)
+
+    #     original_documents = documents
+    #     document_texts = [doc.page_content for doc in documents]
+        
+    #     # Generic call to the reranking method
+    #     # print("document_text len is: %s" % len(document_texts))
+    #     sorted_documents_with_indices = await self._rerank_documents(query, document_texts, k, reverse)
+
+    #     if sorted_documents_with_indices:
+    #         return self.add_module(sorted_documents_with_indices, original_documents)
+    #     else:
+    #         return []
+    
     async def retrieve_context(self, query, database_index=None, k=None, module_filter=None, reverse=True, split=False):
         """
         Retrieve context with optional module filtering and database selection.
+        Returns: (results, query_embedding)
         """
+        # 1. OPTIMIZATION: Generate embedding ONCE here.
+        # This takes ~500ms. We will pass this vector to the DB to avoid re-calculating it.
+        query_embedding = await self.embedding_model_.aembed_query(query)
+
         if k is None:
             k = self.config_["retriever"]["retrieved_rank2_documents"]
         
+        # Ensure the correct Vector DB is loaded
         if database_index:
             await self.find_vdb(database_index)
-        
+        elif not hasattr(self, 'vectordb_') and database_index:
+            # Fallback if not initialized, though the line above covers most cases
+            await self.find_vdb(database_index)
+
+        # 2. Construct the Search Filter (previously handled inside _get_retriever)
+        search_filter = None
         if module_filter:
-            retriever = self._get_retriever(module_filter, database_index)
-            documents = await retriever.ainvoke(query)
-        else:
-            if not hasattr(self, 'retriever_') and database_index:
-                await self.find_vdb(database_index)
-            documents = await self.retriever_.ainvoke(query)
+            if isinstance(module_filter, str):
+                search_filter = {"module": module_filter}
+            elif isinstance(module_filter, list) and len(module_filter) > 0:
+                search_filter = {"module": {"$in": module_filter}}
+
+        # 3. Perform Vector Search
+        # We use 'asimilarity_search_by_vector' instead of 'ainvoke'.
+        # This uses the embedding we calculated in Step 1, avoiding the 500ms overhead of doing it again.
+        
+        # Note: We use the 'retrieved_documents' config for the initial fetch (Candidate Generation)
+        initial_k = self.config_["retriever"]["retrieved_documents"]
+        
+        documents = await self.vectordb_.asimilarity_search_by_vector(
+            embedding=query_embedding,
+            k=initial_k,
+            filter=search_filter
+        )
 
         original_documents = documents
         document_texts = [doc.page_content for doc in documents]
@@ -260,10 +436,12 @@ class Retriever(object):
         # Generic call to the reranking method
         sorted_documents_with_indices = await self._rerank_documents(query, document_texts, k, reverse)
 
+        # 4. Return results AND the embedding
         if sorted_documents_with_indices:
-            return self.add_module(sorted_documents_with_indices, original_documents)
+            results = self.add_module(sorted_documents_with_indices, original_documents)
+            return results, query_embedding
         else:
-            return []
+            return [], query_embedding
             
     async def retrieve_context_by_module(self, query, module_name, database_index=None, k=None):
         return await self.retrieve_context(

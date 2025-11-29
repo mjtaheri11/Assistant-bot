@@ -26,6 +26,9 @@ LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY")
 LANGFUSE_SECRET_KEY = os.getenv("LANGFUSE_SECRET_KEY")
 LANGFUSE_HOST = os.getenv("LANGFUSE_HOST")
 
+print("LANGFUSE_PUBLIC_KEY is: %s" % LANGFUSE_PUBLIC_KEY)
+print("LANGFUSE_SECRET_KEY is: %s" % LANGFUSE_SECRET_KEY)
+print("LANGFUSE_HOST is: %s" % LANGFUSE_HOST)
 from src.orm import Postgres
 from src.config import config
 from src.initiate_vdb import create_vector_database
@@ -70,7 +73,7 @@ class ChatRequest(BaseModel):
     error_payload: Optional[str] = ""
     is_sync: Optional[bool] = True
     sql_mode: Optional[bool] = True  # Toggle between legacy and SQL agent mode
-    use_oss: Optional[bool] = True
+    use_oss: Optional[bool] = False
 
 class ChatResponse(BaseModel):
     message_id: str
@@ -580,7 +583,8 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         detected_module=chat_request.query,
                         database_index=matched_index,
                         company_name=company_name,
-                        assistant_name=assistant_name
+                        assistant_name=assistant_name, 
+                        use_oss=chat_request.use_oss
                     )
                     assert do_clarify == False, "on_click should not return do_clarify=True"
                     assert len(modules) <= 1, "on_click should not return modules"
@@ -642,7 +646,8 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         detected_module="",
                         database_index=matched_index,
                         company_name=company_name,
-                        assistant_name=assistant_name
+                        assistant_name=assistant_name, 
+                        use_oss=chat_request.use_oss
                     )
                     if do_clarify:
                         do_suggest = True

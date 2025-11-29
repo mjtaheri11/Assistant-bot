@@ -1174,7 +1174,7 @@ Example parameter structure:
 - **Column Names:** Use original column names without aliases in SELECT clauses.
 - **Clarity:** Structure `WHERE` clauses with parentheses for clarity.
 - **Parameterization:** Use PostgreSQL `$n` placeholders for all parameterized values.
-- **NO WILDCARDS:** Never use `SELECT *` - always specify explicit column names.
+- **NO WILDCARDS:** Never use `SELECT *` or `COUNT *` or similar statements - always specify explicit column names.
 - **NO TEXT WILDCARDS:** Never use ILIKE, LIKE, or wildcard characters (%, _) for text matching.
 
 ## PROCESSING WORKFLOW [CRITICAL]

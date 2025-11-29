@@ -30,7 +30,7 @@ class Cache:
             self.redis_db = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=0, decode_responses=True) # db=0 for semantic_router cache
         model_manager = ModelManager()
         self.embedding_model = model_manager.embedding_model
-        self.reranker_model = model_manager.reranker_model
+        # self.reranker_model = model_manager.reranker_model
 
         persist_directory = config["cache"].get("persist_directory", "../db-cache")
         self._collection_name = config["cache"]["index_name"]
@@ -291,60 +291,60 @@ class Cache:
         # self._vector_store.persist()
 
 
-# async def temp():
-#     response =  "سلام. من دستیار دیجیتال نسل 4 هستم. می‌توانم در مورد ماژول‌های دفتر کل، انبار، گزارش ساز و خزانه داری به شما کمک کنم. پرسش خود را بپرسید تا در صورت امکان، پاسخ آن را ارائه دهم."
-#     lst_1 = ["سلام. خوبی؟",
-#             "سلام. حالت چطوره",
-#             "سلام خوبی",
-#             "سلام خوبی؟",
-#             "سلام حالت خوبه",
-#             "سلام.",
-#             "سلام",
-#             "سلام خوبی",
-#             "سلام. خوبی",
-#             "درود",
-#             "سلام علیکم",
-#             "سلام و ارادت",
-#             "عرض ادب و احترام",
-#             "سلامعلیکم"
-#             "سلام صبح بخیر",
-#             "صبح بخیر",
-#             "سلام ظهر بخیر",
-#             "ظهر بخیر",
-#             "سلام. صبح بخیر"
-#             ]
+async def temp():
+    response =  "سلام. من دستیار دیجیتال نسل 4 هستم. می‌توانم در مورد ماژول‌های دفتر کل، انبار، گزارش ساز و خزانه داری به شما کمک کنم. پرسش خود را بپرسید تا در صورت امکان، پاسخ آن را ارائه دهم."
+    lst_1 = ["سلام. خوبی؟",
+            "سلام. حالت چطوره",
+            "سلام خوبی",
+            "سلام خوبی؟",
+            "سلام حالت خوبه",
+            "سلام.",
+            "سلام",
+            "سلام خوبی",
+            "سلام. خوبی",
+            "درود",
+            "سلام علیکم",
+            "سلام و ارادت",
+            "عرض ادب و احترام",
+            "سلامعلیکم"
+            "سلام صبح بخیر",
+            "صبح بخیر",
+            "سلام ظهر بخیر",
+            "ظهر بخیر",
+            "سلام. صبح بخیر"
+            ]
     
-#     response_2 = "خواهش میکنم. اگر سوال دیگری بود در خدمتم "
-#     lst_2 = ["خیلی ممنون",
-#             "لطف کردی",
-#             "زحمت دادم. ",
-#             "دمت گرم",
-#             "متشکرم",
-#             "خیلی متشکرم",
-#             "متچکرم",
-#             "ممنون از پاسخت",
-#             "متشکر از پاسخ شما",
-#             "ممنونم که جواب دادی",
-#             "جواب خوبی بود. مرسی",
-#             "مرسی",
-#             "مرسی. ممنون",
-#             "مرسی. متشکر",
-#             "مرسی تشکر.",
-#             "تشکر. ",
-#             "ممنونم",
-#             ]
+    response_2 = "خواهش میکنم. اگر سوال دیگری بود در خدمتم "
+    lst_2 = ["خیلی ممنون",
+            "لطف کردی",
+            "زحمت دادم. ",
+            "دمت گرم",
+            "متشکرم",
+            "خیلی متشکرم",
+            "متچکرم",
+            "ممنون از پاسخت",
+            "متشکر از پاسخ شما",
+            "ممنونم که جواب دادی",
+            "جواب خوبی بود. مرسی",
+            "مرسی",
+            "مرسی. ممنون",
+            "مرسی. متشکر",
+            "مرسی تشکر.",
+            "تشکر. ",
+            "ممنونم",
+            ]
 
-#     print("hello")
-#     cache = Cache()
-#     for query in lst_1:
-#         await cache.increment_thumb_up(query, response, "")
+    print("hello")
+    cache = Cache()
+    for query in lst_1:
+        await cache.increment_thumb_up(query, response, "")
 
-#     for query in lst_2:
-#         await cache.increment_thumb_up(query, response_2, "")
+    for query in lst_2:
+        await cache.increment_thumb_up(query, response_2, "")
 
         
-# if __name__ == "__main__":
-#     asyncio.run(temp())
+if __name__ == "__main__":
+    asyncio.run(temp())
             
     
     
@@ -626,29 +626,29 @@ class Cache:
 #             # If there's an exception, it means the index doesn't exist
 #             return False
 
-#     def create_index(self):
-#         schema = [
-#             TextField(name=self._schema["query_field"]["name"]),
-#             TextField(name=self._schema["answer_field"]["name"]),
-#             TextField(name=self._schema["url_field"]["name"]),
-#             NumericField(name=self._schema["thumb_up_field"]["name"]),
-#             NumericField(name=self._schema["thumb_down_field"]["name"]),
-#             NumericField(name=self._schema["flag_field"]["name"]),
-#             VectorField(
-#                 self._schema["vector_field"]["name"],
-#                 "HNSW",  # or "FLAT" depending on your needs
-#                 {
-#                     "TYPE": "FLOAT64",
-#                     "DIM": len(self.embedding_model.embed_query("test")),
-#                     "DISTANCE_METRIC": "COSINE",
-#                 },
-#             ),
-#         ]
+    # def create_index(self):
+    #     schema = [
+    #         TextField(name=self._schema["query_field"]["name"]),
+    #         TextField(name=self._schema["answer_field"]["name"]),
+    #         TextField(name=self._schema["url_field"]["name"]),
+    #         NumericField(name=self._schema["thumb_up_field"]["name"]),
+    #         NumericField(name=self._schema["thumb_down_field"]["name"]),
+    #         NumericField(name=self._schema["flag_field"]["name"]),
+    #         VectorField(
+    #             self._schema["vector_field"]["name"],
+    #             "HNSW",  # or "FLAT" depending on your needs
+    #             {
+    #                 "TYPE": "FLOAT64",
+    #                 "DIM": len(self.embedding_model.embed_query("test")),
+    #                 "DISTANCE_METRIC": "COSINE",
+    #             },
+    #         ),
+    #     ]
 
-#         definition = IndexDefinition(prefix=["query:"], index_type=IndexType.HASH)
-#         self._connection.ft(self._index_name).create_index(
-#             schema, definition=definition
-#         )
+    #     definition = IndexDefinition(prefix=["query:"], index_type=IndexType.HASH)
+    #     self._connection.ft(self._index_name).create_index(
+    #         schema, definition=definition
+    #     )
 
 #     def _get_list_of_allowed_fields(self) -> List[str]:
 #         return [
