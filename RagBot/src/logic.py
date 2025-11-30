@@ -291,7 +291,7 @@ async def retrieve_context_with_metadata(query: str, input_modules: List = None,
     retriever = Retriever()
     
     if input_modules:
-        context_with_metadata = await retriever.retrieve_context(query, database_index, module_filter=input_modules)
+        context_with_metadata, query_embedding = await retriever.retrieve_context(query, database_index, module_filter=input_modules)
     elif database_index:
         # Support database_index parameter from develop branch
         context_with_metadata, query_embedding = await retriever.retrieve_context(query, database_index)
@@ -575,7 +575,7 @@ async def chat_responder_(
         result_temp = paraphrased_utterance, "", "", do_clarify, modules
         return result_temp
 
-    route_response = await get_route_for_utterance(paraphrased_utterance, query_embedding, use_oss)
+    route_response = await get_route_for_utterance(paraphrased_utterance, query_embedding)
     if route_response == "sql":
         if not modules:
             modules = ["all"]
