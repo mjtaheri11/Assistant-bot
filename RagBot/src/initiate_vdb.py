@@ -6,18 +6,131 @@ import yaml
 from langchain_community.document_loaders import DirectoryLoader, TextLoader
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
+from langchain_openai import OpenAIEmbeddings
+import requests
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 import json
+from typing import List, Any, Optional
+from openai import OpenAI
+from langchain_core.embeddings import Embeddings
+from pydantic import BaseModel, Field, SecretStr, PrivateAttr
 
 from .config import config
 from .make_sentence_chunks import chunk_document
 from dotenv import load_dotenv
 
 load_dotenv()
-embedding_model = HuggingFaceEmbeddings(
-    model_name=config["embedding_model"]["model_name"],
-    model_kwargs={"device": config["embedding_model"]["device"], "trust_remote_code":True} # , "trust_remote_code": config["embedding_model"]["trust_remote_code"]},
-)
+# embedding_model = HuggingFaceEmbeddings(
+#     model_name=config["embedding_model"]["model_name"],
+#     model_kwargs={"device": config["embedding_model"]["device"], "trust_remote_code":True} # , "trust_remote_code": config["embedding_model"]["trust_remote_code"]},
+# )
+
+# embedding_model = OpenAIEmbeddings(
+#     # Use the model name from your config, or hardcode a specific OpenRouter model ID
+#     model=config["embedding_model"]["openrouter"],
+#
+#     # Point to OpenRouter
+#     openai_api_base="https://openrouter.ai/api/v1",
+#
+#     # Get key from environment (ensure OPENROUTER_API_KEY is in your .env)
+#     openai_api_key=os.getenv("OPENROUTER_API_KEY"),
+#
+#     tiktoken_enabled=False,
+#     check_embedding_ctx_length=False
+#
+# )
+
+class OpenRouterEmbeddings(Embeddings, BaseModel):
+    """
+    A custom embedding class that connects to OpenRouter.ai for embeddings.
+    """
+
+    # 1. Define Fields with Pydantic
+    api_key: Optional[str] = Field(default=os.environ.get("OPENROUTER_API_KEY"), description="OpenRouter API Key")
+    model_name: str = Field(default="qwen/qwen3-embedding-4b", description="The OpenRouter model ID")
+    # Note: Qwen embedding models might have different IDs on OpenRouter,
+    # usually 'text-embedding-3-small' (openai) or specific open source ones.
+    # Ensure your model_name supports embeddings!
+
+    # 2. Use PrivateAttr for the client so Pydantic doesn't try to validate it
+    _client: OpenAI = PrivateAttr()
+
+    class Config:
+        """Configuration for Pydantic."""
+        # specific to Pydantic v2 in LangChain
+        arbitrary_types_allowed = True
+        extra = "forbid"
+
+    def __init__(self, **kwargs):
+        """
+        Initialize the embedding class.
+        Attempts to load API Key from environment if not passed explicitly.
+        """
+        super().__init__(**kwargs)
+
+        # Resolve API Key
+        self.api_key = self.api_key or os.environ.get("OPENROUTER_API_KEY")
+
+        if not self.api_key:
+            raise ValueError(
+                "OpenRouter API Key is required. Pass it as an argument or set OPENROUTER_API_KEY env var."
+            )
+
+        # 3. Initialize the client inside __init__
+        self._client = OpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=self.api_key,
+        )
+
+    def _call_api(self, texts: List[str]) -> List[List[float]]:
+        """
+        Internal method to call the OpenRouter API via OpenAI client.
+        Batches requests in groups of 100 to handle large document lists.
+        """
+        all_embeddings = []
+        batch_size = 100
+
+        try:
+            for i in range(0, len(texts), batch_size):
+                batch_texts = texts[i: i + batch_size]
+
+                response = self._client.embeddings.create(
+                    model=self.model_name,
+                    input=batch_texts,
+                    encoding_format="float"
+                )
+
+                # Sort results by index to ensure order matches input within the specific batch
+                # Note: The API returns indices relative to the current batch (0 to batch_size)
+                data = sorted(response.data, key=lambda x: x.index)
+                batch_embeddings = [item.embedding for item in data]
+                all_embeddings.extend(batch_embeddings)
+
+            return all_embeddings
+
+        except Exception as e:
+            print(f"Error calling OpenRouter: {e}")
+            raise
+
+    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        """Embed a list of documents."""
+        # Strip newlines to avoid issues with some models
+        texts = [t.replace("\n", " ") for t in texts]
+        return self._call_api(texts)
+
+    def embed_query(self, text: str) -> List[float]:
+        """Embed a single query text."""
+        text = text.replace("\n", " ")
+        embeddings = self._call_api([text])
+        return embeddings[0]
+    # Optional: Async implementations (Naive wrapper for demonstration)
+    async def aembed_documents(self, texts: List[str]) -> List[List[float]]:
+        return self.embed_documents(texts)
+
+    async def aembed_query(self, text: str) -> List[float]:
+        return self.embed_query(text)
+
+embeddings = OpenRouterEmbeddings()
 
 RAAS_VectorDB = os.getenv("RAAS_PATH")
 def create_vector_database(
@@ -216,9 +329,10 @@ def main(args):
     # chunks = create_documents_from_csvs() # (config["database"]["documents"])
     # chunks = create_documents_from_qa_and_chunks()  # (config["database"]["documents"])
     chunks = create_documents_from_chunks()  # (config["database"]["documents"])
+    # chunks = chunks[:5]
     print(f"Generated {len(chunks)} chunks")
 
-    vdb = Chroma(persist_directory=collection_path, embedding_function=embedding_model)
+    vdb = Chroma(persist_directory=collection_path, embedding_function=embeddings)
 
     if len(vdb.get()["ids"]) > 0:
         print(
