@@ -1,357 +1,503 @@
 import os
 import uuid
+import logging
+from typing import List, Dict
 
 import numpy as np
 import yaml
 from langchain_community.document_loaders import DirectoryLoader, TextLoader
 from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_community.vectorstores import Chroma
-from langchain_openai import OpenAIEmbeddings
-import requests
+from langchain_qdrant import Qdrant
+from qdrant_client import QdrantClient, models
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from typing import Optional
 import json
-from typing import List, Any, Optional
-from openai import OpenAI
-from langchain_core.embeddings import Embeddings
-from pydantic import BaseModel, Field, SecretStr, PrivateAttr
+import pandas as pd
+from langchain_core.documents import Document
 
 from .config import config
-from .make_sentence_chunks import chunk_document
+# from .make_sentence_chunks import chunk_document
 from dotenv import load_dotenv
 
 load_dotenv()
-# embedding_model = HuggingFaceEmbeddings(
-#     model_name=config["embedding_model"]["model_name"],
-#     model_kwargs={"device": config["embedding_model"]["device"], "trust_remote_code":True} # , "trust_remote_code": config["embedding_model"]["trust_remote_code"]},
-# )
 
-# embedding_model = OpenAIEmbeddings(
-#     # Use the model name from your config, or hardcode a specific OpenRouter model ID
-#     model=config["embedding_model"]["openrouter"],
-#
-#     # Point to OpenRouter
-#     openai_api_base="https://openrouter.ai/api/v1",
-#
-#     # Get key from environment (ensure OPENROUTER_API_KEY is in your .env)
-#     openai_api_key=os.getenv("OPENROUTER_API_KEY"),
-#
-#     tiktoken_enabled=False,
-#     check_embedding_ctx_length=False
-#
-# )
+def get_logger():
+    logging.basicConfig(level=logging.INFO)
+    return logging.getLogger(__name__)
 
-class OpenRouterEmbeddings(Embeddings, BaseModel):
-    """
-    A custom embedding class that connects to OpenRouter.ai for embeddings.
-    """
+logger = get_logger()
 
-    # 1. Define Fields with Pydantic
-    api_key: Optional[str] = Field(default=os.environ.get("OPENROUTER_API_KEY"), description="OpenRouter API Key")
-    model_name: str = Field(default="qwen/qwen3-embedding-4b", description="The OpenRouter model ID")
-    # Note: Qwen embedding models might have different IDs on OpenRouter,
-    # usually 'text-embedding-3-small' (openai) or specific open source ones.
-    # Ensure your model_name supports embeddings!
+# Initialize Qdrant client
+QDRANT_URL = os.getenv("QDRANT_API_BASE")
+QDRANT_PORT = os.getenv("QDRANT_API_PORT")
+QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
 
-    # 2. Use PrivateAttr for the client so Pydantic doesn't try to validate it
-    _client: OpenAI = PrivateAttr()
+# Try to connect without SSL first (common for internal cluster communication)
+try:
+    qdrant_client = QdrantClient(
+        host=QDRANT_URL,
+        port=QDRANT_PORT,
+        api_key=QDRANT_API_KEY,
+        timeout=60,
+        prefer_grpc=False,  # Use HTTP instead of gRPC
+        https=False,  # Disable HTTPS for internal cluster communication
+    )
+    print("✅ Connected to Qdrant via HTTP (no SSL)")
+except Exception as e:
+    print(f"⚠️ HTTP connection failed, trying with SSL: {e}")
+    # Fallback to HTTPS if HTTP fails
+    qdrant_client = QdrantClient(
+        url=f"https://{QDRANT_URL}",
+        api_key=QDRANT_API_KEY,
+        timeout=60,
+        verify=False,  # Skip SSL certificate verification if needed
+    )
 
-    class Config:
-        """Configuration for Pydantic."""
-        # specific to Pydantic v2 in LangChain
-        arbitrary_types_allowed = True
-        extra = "forbid"
 
-    def __init__(self, **kwargs):
-        """
-        Initialize the embedding class.
-        Attempts to load API Key from environment if not passed explicitly.
-        """
-        super().__init__(**kwargs)
-
-        # Resolve API Key
-        self.api_key = self.api_key or os.environ.get("OPENROUTER_API_KEY")
-
-        if not self.api_key:
-            raise ValueError(
-                "OpenRouter API Key is required. Pass it as an argument or set OPENROUTER_API_KEY env var."
-            )
-
-        # 3. Initialize the client inside __init__
-        self._client = OpenAI(
-            base_url="https://openrouter.ai/api/v1",
-            api_key=self.api_key,
-        )
-
-    def _call_api(self, texts: List[str]) -> List[List[float]]:
-        """
-        Internal method to call the OpenRouter API via OpenAI client.
-        Batches requests in groups of 100 to handle large document lists.
-        """
-        all_embeddings = []
-        batch_size = 100
-
-        try:
-            for i in range(0, len(texts), batch_size):
-                batch_texts = texts[i: i + batch_size]
-
-                response = self._client.embeddings.create(
-                    model=self.model_name,
-                    input=batch_texts,
-                    encoding_format="float"
-                )
-
-                # Sort results by index to ensure order matches input within the specific batch
-                # Note: The API returns indices relative to the current batch (0 to batch_size)
-                data = sorted(response.data, key=lambda x: x.index)
-                batch_embeddings = [item.embedding for item in data]
-                all_embeddings.extend(batch_embeddings)
-
-            return all_embeddings
-
-        except Exception as e:
-            print(f"Error calling OpenRouter: {e}")
-            raise
-
-    def embed_documents(self, texts: List[str]) -> List[List[float]]:
-        """Embed a list of documents."""
-        # Strip newlines to avoid issues with some models
-        texts = [t.replace("\n", " ") for t in texts]
-        return self._call_api(texts)
-
-    def embed_query(self, text: str) -> List[float]:
-        """Embed a single query text."""
-        text = text.replace("\n", " ")
-        embeddings = self._call_api([text])
-        return embeddings[0]
-    # Optional: Async implementations (Naive wrapper for demonstration)
-    async def aembed_documents(self, texts: List[str]) -> List[List[float]]:
-        return self.embed_documents(texts)
-
-    async def aembed_query(self, text: str) -> List[float]:
-        return self.embed_query(text)
-
-embeddings = OpenRouterEmbeddings()
-
-RAAS_VectorDB = os.getenv("RAAS_PATH")
 def create_vector_database(
-    settings: dict,
     database_id: str,
-    collection_path: str = RAAS_VectorDB,
-    ):
-    os.makedirs(collection_path, exist_ok=True)
-    company_name = settings.pop("company_name")
-    assistant_name = settings.pop("assistant_name")
-    database_path = os.path.join(
-        collection_path,
-        database_id
-        + "."
-        + company_name
-        + "."
-        + assistant_name,
-    )
-
-    os.makedirs(database_path)
-    chunks = chunk_document(settings)
-    vdb = Chroma(persist_directory=database_path, embedding_function=embedding_model)
-
-    if len(vdb.get()["ids"]) > 0:
-        print(
-            f'VectorDB has {len(vdb.get()["ids"])} documents already, deleting them ...'
-        )
-        vdb._collection.delete(vdb.get()["ids"])
-
-    vdb.add_documents(chunks)
-
-import pandas as pd
-import os
-from langchain_core.documents import Document
-
-def create_documents_from_qa_and_chunks():
-    directory_path = r"E:\digital_assisstant\Assistant-bot\knowledge_base\qa-questions"
-    all_docs = []
-
-    for filename in os.listdir(directory_path):
-        if filename.endswith('.csv'):
-            file_path = os.path.join(directory_path, filename)
-
-            try:
-                df = pd.read_csv(file_path)
-
-                if 'Question' in df.columns and 'Answer' in df.columns:
-                    for index, row in df.iterrows():
-                        # The text content for the vector store (using develop branch format)
-                        page_content = f"{{'query': {row['Question']}, 'passage':  {row['Answer']}}}"
-
-                        # The metadata, including the source filename
-                        # Keep the module metadata from feature/add-sql-agent if available
-                        metadata = {"source": filename}
-                        if filename in config.get("modules", {}).get("names", {}):
-                            metadata["module"] = config["modules"]["names"][filename]
-
-                        # Create the Document object
-                        doc = Document(page_content=page_content, metadata=metadata)
-
-                        all_docs.append(doc)
-                else:
-                    print(f"⚠️ Warning: Skipping '{filename}' because it lacks 'Question' or 'Answer' columns.")
-
-            except Exception as e:
-                print(f"❌ Error processing file '{filename}': {e}")
-
-    all_chunks_address = r"E:\workspace-markdown-chunker\da-markdown-chunker\all_chunks_extracted.json"
-    dict_module_to_filename = {
-        "4thG-Intro": "intro.csv",
-        "CRM": "crm.csv",
-        "INV": "inventory.csv",
-        "Report_builder": "report_builder.csv",
-        "Sales": "sales.csv",
-        "Treasury_14040231": "treasury.csv",
-        "راهنمای دفتر کل نسل 4": "voucher.csv",
-        "TaxPayer": "taxPayer.csv",
-        "DA-Help": "help.csv",
-        "AboutSG": "AboutSG.csv"
-    }
-    with open(all_chunks_address, "r", encoding="utf-8") as file:
-        lines = json.load(file)
-        for line in lines:
-            content = line[0]
-            module = line[1]
-            metadata = {"source": dict_module_to_filename[module]}
-            if dict_module_to_filename[module] in config.get("modules", {}).get("names", {}):
-                metadata["module"] = config["modules"]["names"][dict_module_to_filename[module]]
-            doc = Document(page_content=content, metadata=metadata)
-            all_docs.append(doc)
-    return all_docs
-
-def create_documents_from_chunks():
-    all_docs = []
-
-    all_chunks_address = r"E:\workspace-markdown-chunker\da-markdown-chunker\all_chunks_extracted_new.json"
-    dict_module_to_filename = {
-        "4thG-Intro": "intro.csv",
-        "CRM": "crm.csv",
-        "INV": "inventory.csv",
-        "ReportBuilder": "report_builder.csv",
-        "Sales": "sales.csv",
-        "Treasury": "treasury.csv",
-        "GL": "voucher.csv",
-        "TaXPayer": "taxPayer.csv",
-        "DA": "help.csv",
-        "AboutSG": "AboutSG.csv",
-        "HCM": "hcm.csv",
-        "Platform": "platform.csv"
-
-    }
-    with open(all_chunks_address, "r", encoding="utf-8") as file:
-        lines = json.load(file)
-        for line in lines:
-            content = line[0]
-            module = line[1]
-            if module.endswith(".md"):
-                module = module[:-3]
-            metadata = {"source": dict_module_to_filename[module]}
-            if dict_module_to_filename[module] in config.get("modules", {}).get("names", {}):
-                metadata["module"] = config["modules"]["names"][dict_module_to_filename[module]]
-            doc = Document(page_content=content, metadata=metadata)
-            all_docs.append(doc)
-    return all_docs
-
-def create_documents_from_csvs(directory_path="../knowledge_base/qa-questions"):
+    all_documents: List[Document],
+    qdrant_client: QdrantClient,
+    embedding_model,
+    recreate: bool = True,
+    batch_size: int = 100
+) -> str:
     """
-    Reads all CSV files from a directory and converts each question-answer
-    pair into a LangChain Document object with metadata.
+    Creates a new Qdrant collection for the vector database.
+    """
+    from langchain_qdrant import Qdrant
+    
+    collection_name = database_id
+    
+    logger.info(f"Creating Qdrant collection: {collection_name}")
+    logger.info(f"Total documents to add: {len(all_documents)}")
+    
+    if len(all_documents) == 0:
+        raise ValueError("No documents to add to the collection")
+    
+    # Validate documents before processing
+    logger.info("Validating documents...")
+    valid_documents = []
+    for i, doc in enumerate(all_documents):
+        if not hasattr(doc, 'page_content') or not doc.page_content:
+            logger.warning(f"Document {i} has no page_content, skipping")
+            continue
+        if not isinstance(doc.page_content, str):
+            logger.warning(f"Document {i} page_content is not a string: {type(doc.page_content)}, skipping")
+            continue
+        valid_documents.append(doc)
+    
+    logger.info(f"Valid documents: {len(valid_documents)} out of {len(all_documents)}")
+    
+    if len(valid_documents) == 0:
+        raise ValueError("No valid documents to add to the collection")
+    
+    # Get embedding dimension from the model
+    try:
+        logger.info("Determining embedding dimension...")
+        sample_embedding = embedding_model.embed_query("test")
+        vector_size = len(sample_embedding)
+        logger.info(f"✅ Embedding dimension: {vector_size}")
+    except Exception as e:
+        logger.error(f"❌ Failed to get embedding dimension: {e}")
+        raise ValueError(f"Could not determine embedding dimension from model: {e}")
+    
+    # Check if collection exists
+    try:
+        collections = qdrant_client.get_collections().collections
+        collection_exists = any(c.name == collection_name for c in collections)
+        
+        if collection_exists:
+            if recreate:
+                logger.warning(f"Collection '{collection_name}' already exists. Deleting...")
+                qdrant_client.delete_collection(collection_name=collection_name)
+                logger.info(f"✅ Deleted existing collection '{collection_name}'")
+            else:
+                logger.info(f"Collection '{collection_name}' already exists. Appending documents...")
+                vdb = Qdrant(
+                    client=qdrant_client,
+                    collection_name=collection_name,
+                    embeddings=embedding_model,
+                )
+                
+                # Add documents in batches with error handling
+                if len(valid_documents) > batch_size:
+                    logger.info(f"Adding {len(valid_documents)} documents in batches of {batch_size}")
+                    for i in range(0, len(valid_documents), batch_size):
+                        batch = valid_documents[i:i + batch_size]
+                        try:
+                            logger.info(f"Adding batch {i//batch_size + 1}/{(len(valid_documents)-1)//batch_size + 1}")
+                            vdb.add_documents(batch)
+                            logger.info(f"✅ Batch {i//batch_size + 1} completed")
+                        except Exception as batch_error:
+                            logger.error(f"❌ Error adding batch {i//batch_size + 1}: {batch_error}")
+                            # Log problematic documents
+                            for j, doc in enumerate(batch):
+                                logger.error(f"  Doc {j}: {doc.page_content[:100]}...")
+                            raise
+                else:
+                    try:
+                        logger.info(f"Adding {len(valid_documents)} documents")
+                        vdb.add_documents(valid_documents)
+                        logger.info(f"✅ Added {len(valid_documents)} documents")
+                    except Exception as add_error:
+                        logger.error(f"❌ Error adding documents: {add_error}")
+                        # Try to identify problematic document
+                        for i, doc in enumerate(valid_documents):
+                            logger.error(f"  Doc {i}: content_length={len(doc.page_content)}, "
+                                       f"metadata={doc.metadata}")
+                        raise
+                
+                logger.info(f"✅ Added {len(valid_documents)} documents to existing collection")
+                return collection_name
+                
+    except Exception as e:
+        logger.error(f"Error checking existing collection: {e}")
+        raise
+    
+    # Create new collection
+    try:
+        logger.info(f"Creating new collection with vector size {vector_size}...")
+        qdrant_client.create_collection(
+            collection_name=collection_name,
+            vectors_config=models.VectorParams(
+                size=vector_size,
+                distance=models.Distance.COSINE
+            ),
+            optimizers_config=models.OptimizersConfigDiff(
+                indexing_threshold=10000
+            ),
+            on_disk_payload=True
+        )
+        logger.info(f"✅ Created collection '{collection_name}'")
+    except Exception as e:
+        logger.error(f"❌ Failed to create collection: {e}")
+        raise
+    
+    # Initialize Qdrant vector store and add documents
+    try:
+        vdb = Qdrant(
+            client=qdrant_client,
+            collection_name=collection_name,
+            embeddings=embedding_model,
+        )
+        
+        # Add documents in batches
+        if len(valid_documents) > batch_size:
+            logger.info(f"Adding {len(valid_documents)} documents in batches of {batch_size}")
+            for i in range(0, len(valid_documents), batch_size):
+                batch = valid_documents[i:i + batch_size]
+                try:
+                    logger.info(f"Adding batch {i//batch_size + 1}/{(len(valid_documents)-1)//batch_size + 1}")
+                    vdb.add_documents(batch)
+                    logger.info(f"✅ Batch {i//batch_size + 1} completed")
+                except Exception as batch_error:
+                    logger.error(f"❌ Error adding batch {i//batch_size + 1}: {batch_error}")
+                    raise
+        else:
+            vdb.add_documents(valid_documents)
+        
+        logger.info(f"✅ Successfully added {len(valid_documents)} documents to collection '{collection_name}'")
+        
+        # Verify collection
+        collection_info = qdrant_client.get_collection(collection_name=collection_name)
+        logger.info(f"Collection verification: {collection_info.points_count} points indexed")
+        
+    except Exception as e:
+        logger.error(f"❌ Failed to add documents: {e}")
+        raise
+    
+    return collection_name
 
+    
+# ===== CONFIG-BASED VERSION (Uses ModelManager) =====
+def create_vector_database_from_config(
+    database_id: str,
+    all_documents: List[Document],
+    recreate: bool = True,
+    batch_size: int = 100,
+    qdrant_client: Optional[QdrantClient] = None,
+    embedding_model = None
+) -> str:
+    """
+    Creates a new Qdrant collection using the configuration from config.py.
+    This version automatically initializes the embedding model and Qdrant client
+    from the ModelManager singleton.
+    
     Args:
-        directory_path (str): The path to the directory with the CSV files.
-
+        database_id: Unique identifier for the database (used as collection_name)
+        all_documents: List of Document objects to add to the collection
+        recreate: If True, delete existing collection; if False, append to existing
+        batch_size: Number of documents to process at once
+        qdrant_client: Optional custom QdrantClient (uses default if not provided)
+        embedding_model: Optional custom embedding model (uses config default if not provided)
+    
     Returns:
-        list[Document]: A list of LangChain Document objects ready for a
-                        vector store. Each document's metadata contains the
-                        source filename.
+        collection_name: The name of the created collection (same as database_id)
     """
-    all_docs = []
-   
-    # Check if the directory exists
-    if not os.path.isdir(directory_path):
-        print(f"❌ Error: Directory not found at '{directory_path}'")
-        return all_docs
-
-    # Loop through each file in the specified directory
-    for filename in os.listdir(directory_path):
-        if filename.endswith('.csv'):
-            file_path = os.path.join(directory_path, filename)
-           
-            try:
-                df = pd.read_csv(file_path)
-
-                if 'Question' in df.columns and 'Answer' in df.columns:
-                    for index, row in df.iterrows():
-                        # The text content for the vector store (using develop branch format)
-                        page_content = f"{{'QUESTION': {row['Question']}, 'Answer':  {row['Answer']}}}"
-                       
-                        # The metadata, including the source filename
-                        # Keep the module metadata from feature/add-sql-agent if available
-                        metadata = {"source": filename}
-                        if filename in config.get("modules", {}).get("names", {}):
-                            metadata["module"] = config["modules"]["names"][filename]
-                       
-                        # Create the Document object
-                        doc = Document(page_content=page_content, metadata=metadata)
-                       
-                        all_docs.append(doc)
-                else:
-                    print(f"⚠️ Warning: Skipping '{filename}' because it lacks 'Question' or 'Answer' columns.")
-
-            except Exception as e:
-                print(f"❌ Error processing file '{filename}': {e}")
-               
-    return all_docs
-
-# --- --- --- Usage Example --- --- ---
-
-# # 1. Define the path to your knowledge base directory
-# faq_directory = "./knowledge_base/faq_questions"
-
-# # 2. Call the new function to get the list of Document objects
-# documents = create_documents_from_csvs(faq_directory)
-
-# # 3. (Optional) Inspect the first Document object to verify its structure
-# if documents:
-#     print(f"✅ Successfully created {len(documents)} Document objects.")
-#     print("\n--- Structure of the First Document ---")
-#     print(documents[0])
-
-def main(args):
-    collection_path = args.persist_directory
-    os.makedirs(collection_path, exist_ok=True)
-
-    print(f"Creating a vector DB in {collection_path} ...")
-    # chunks = create_documents_from_csvs() # (config["database"]["documents"])
-    # chunks = create_documents_from_qa_and_chunks()  # (config["database"]["documents"])
-    chunks = create_documents_from_chunks()  # (config["database"]["documents"])
-    # chunks = chunks[:5]
-    print(f"Generated {len(chunks)} chunks")
-
-    vdb = Chroma(persist_directory=collection_path, embedding_function=embeddings)
-
-    if len(vdb.get()["ids"]) > 0:
-        print(
-            f'VectorDB has {len(vdb.get()["ids"])} documents already, deleting them ...'
-        )
-        vdb._collection.delete(vdb.get()["ids"])
-
-    vdb.add_documents(chunks)
-    print(f"{len(chunks)} documents have been added to the vector DB")
-
-if __name__ == "__main__":
-    import argparse
-    parser = argparse.ArgumentParser(description="Let us build an app")
-    parser.add_argument(
-        "-p",
-        "--persist_directory",
-        default=config["database"]["persist_directory"],
-        type=str,
-        help="The path of the persist directory",
+    # Get embedding model from ModelManager if not provided
+    if embedding_model is None:
+        from src.retriever import ModelManager    
+        logger.info("Using embedding model from ModelManager (based on config)")
+        model_manager = ModelManager()
+        embedding_model = model_manager.embedding_model
+    
+    # Initialize Qdrant client if not provided
+    if qdrant_client is None:
+        logger.info("Initializing Qdrant client from environment variables")
+        qdrant_host = os.getenv("QDRANT_API_BASE")
+        qdrant_port = os.getenv("QDRANT_API_PORT")
+        qdrant_api_key = os.getenv("QDRANT_API_KEY")
+        
+        try:
+            qdrant_client = QdrantClient(
+                host=qdrant_host,
+                port=qdrant_port,
+                api_key=qdrant_api_key,
+                timeout=60,
+                prefer_grpc=False,
+                https=False,
+            )
+            logger.info("✅ Connected to Qdrant via HTTP (no SSL)")
+        except Exception as e:
+            logger.warning(f"⚠️ HTTP connection failed, trying with SSL: {e}")
+            qdrant_client = QdrantClient(
+                url=f"https://{qdrant_host}:{qdrant_port}",
+                api_key=qdrant_api_key,
+                timeout=60,
+                verify=False,
+            )
+    
+    # Call the standalone function with the configured models
+    return create_vector_database(
+        database_id=database_id,
+        all_documents=all_documents,
+        qdrant_client=qdrant_client,
+        embedding_model=embedding_model,
+        recreate=recreate,
+        batch_size=batch_size
     )
-    args = parser.parse_args()
-    main(args)
+
+
+# ===== HELPER FUNCTIONS =====
+def delete_vector_database(
+    database_id: str,
+    qdrant_client: Optional[QdrantClient] = None
+) -> bool:
+    """
+    Delete a Qdrant collection.
+    
+    Args:
+        database_id: Collection name to delete
+        qdrant_client: Optional QdrantClient instance
+    
+    Returns:
+        True if deleted successfully, False otherwise
+    """
+    if qdrant_client is None:
+        qdrant_host = os.getenv("QDRANT_API_BASE")
+        qdrant_port = os.getenv("QDRANT_API_PORT")
+        qdrant_api_key = os.getenv("QDRANT_API_KEY")
+        
+        try:
+            qdrant_client = QdrantClient(
+                host=qdrant_host,
+                port=qdrant_port,
+                api_key=qdrant_api_key,
+                timeout=60,
+                prefer_grpc=False,
+                https=False,
+            )
+        except Exception as e:
+            logger.error(f"Failed to connect to Qdrant: {e}")
+            return False
+    
+    try:
+        qdrant_client.delete_collection(collection_name=database_id)
+        logger.info(f"✅ Deleted collection '{database_id}'")
+        return True
+    except Exception as e:
+        logger.error(f"❌ Failed to delete collection '{database_id}': {e}")
+        return False
+
+
+def list_vector_databases(
+    qdrant_client: Optional[QdrantClient] = None
+) -> List[str]:
+    """
+    List all available Qdrant collections.
+    
+    Args:
+        qdrant_client: Optional QdrantClient instance
+    
+    Returns:
+        List of collection names
+    """
+    if qdrant_client is None:
+        qdrant_host = os.getenv("QDRANT_API_BASE")
+        qdrant_port = os.getenv("QDRANT_API_PORT")
+        qdrant_api_key = os.getenv("QDRANT_API_KEY")
+        
+        try:
+            qdrant_client = QdrantClient(
+                host=qdrant_host,
+                port=qdrant_port,
+                api_key=qdrant_api_key,
+                timeout=60,
+                prefer_grpc=False,
+                https=False,
+            )
+        except Exception as e:
+            logger.error(f"Failed to connect to Qdrant: {e}")
+            return []
+    
+    try:
+        collections = qdrant_client.get_collections().collections
+        collection_names = [c.name for c in collections]
+        logger.info(f"Found {len(collection_names)} collections")
+        return collection_names
+    except Exception as e:
+        logger.error(f"Failed to list collections: {e}")
+        return []
+
+
+def get_collection_info(
+    database_id: str,
+    qdrant_client: Optional[QdrantClient] = None
+) -> Optional[dict]:
+    """
+    Get information about a specific collection.
+    
+    Args:
+        database_id: Collection name
+        qdrant_client: Optional QdrantClient instance
+    
+    Returns:
+        Dictionary with collection information or None if error
+    """
+    if qdrant_client is None:
+        qdrant_host = os.getenv("QDRANT_API_BASE")
+        qdrant_port = os.getenv("QDRANT_API_PORT")
+        qdrant_api_key = os.getenv("QDRANT_API_KEY")
+        
+        try:
+            qdrant_client = QdrantClient(
+                host=qdrant_host,
+                port=qdrant_port,
+                api_key=qdrant_api_key,
+                timeout=60,
+                prefer_grpc=False,
+                https=False,
+            )
+        except Exception as e:
+            logger.error(f"Failed to connect to Qdrant: {e}")
+            return None
+    
+    try:
+        collection_info = qdrant_client.get_collection(collection_name=database_id)
+        
+        info_dict = {
+            "name": database_id,
+            "points_count": collection_info.points_count,
+            "vectors_count": collection_info.vectors_count,
+            "indexed_vectors_count": collection_info.indexed_vectors_count,
+            "status": collection_info.status,
+            "optimizer_status": collection_info.optimizer_status,
+            "vector_size": collection_info.config.params.vectors.size,
+            "distance": collection_info.config.params.vectors.distance.name
+        }
+        
+        logger.info(f"Collection '{database_id}': {info_dict['points_count']} points")
+        return info_dict
+        
+    except Exception as e:
+        logger.error(f"Failed to get collection info for '{database_id}': {e}")
+        return None
+
+
+def add_documents_to_existing_collection(
+    database_id: str,
+    documents: List[Document],
+    qdrant_client: Optional[QdrantClient] = None,
+    embedding_model = None,
+    batch_size: int = 100
+) -> bool:
+    """
+    Add documents to an existing Qdrant collection.
+    
+    Args:
+        database_id: Existing collection name
+        documents: List of Document objects to add
+        qdrant_client: Optional QdrantClient instance
+        embedding_model: Optional embedding model (uses config default if not provided)
+        batch_size: Number of documents to process at once
+    
+    Returns:
+        True if successful, False otherwise
+    """
+    if len(documents) == 0:
+        logger.warning("No documents to add")
+        return False
+    
+    # Get embedding model if not provided
+    if embedding_model is None:
+        from src.retriever import ModelManager
+        logger.info("Using embedding model from ModelManager")
+        model_manager = ModelManager()
+        embedding_model = model_manager.embedding_model
+    
+    # Initialize Qdrant client if not provided
+    if qdrant_client is None:
+        qdrant_host = os.getenv("QDRANT_API_BASE")
+        qdrant_port = os.getenv("QDRANT_API_PORT")
+        qdrant_api_key = os.getenv("QDRANT_API_KEY")
+        
+        try:
+            qdrant_client = QdrantClient(
+                host=qdrant_host,
+                port=qdrant_port,
+                api_key=qdrant_api_key,
+                timeout=60,
+                prefer_grpc=False,
+                https=False,
+            )
+        except Exception as e:
+            logger.error(f"Failed to connect to Qdrant: {e}")
+            return False
+    
+    # Check if collection exists
+    try:
+        collections = qdrant_client.get_collections().collections
+        collection_exists = any(c.name == database_id for c in collections)
+        
+        if not collection_exists:
+            logger.error(f"Collection '{database_id}' does not exist")
+            return False
+    except Exception as e:
+        logger.error(f"Error checking collection: {e}")
+        return False
+    
+    # Add documents
+    try:
+        vdb = Qdrant(
+            client=qdrant_client,
+            collection_name=database_id,
+            embeddings=embedding_model,
+        )
+        
+        # Add in batches
+        if len(documents) > batch_size:
+            logger.info(f"Adding {len(documents)} documents in batches of {batch_size}")
+            for i in range(0, len(documents), batch_size):
+                batch = documents[i:i + batch_size]
+                vdb.add_documents(batch)
+                logger.info(f"✅ Added batch {i//batch_size + 1}/{(len(documents)-1)//batch_size + 1}")
+        else:
+            vdb.add_documents(documents)
+        
+        logger.info(f"✅ Successfully added {len(documents)} documents to collection '{database_id}'")
+        return True
+        
+    except Exception as e:
+        logger.error(f"❌ Failed to add documents: {e}")
+        return False

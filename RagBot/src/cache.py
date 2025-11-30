@@ -1,15 +1,26 @@
 import asyncio
 import os
+import uuid
 from typing import Any, List, Mapping, Optional, Dict
 
 import numpy as np
-from langchain.vectorstores import Chroma
-from langchain.embeddings import HuggingFaceEmbeddings  # Ensure compatibility
+from qdrant_client import QdrantClient
+from qdrant_client.http import models
+from qdrant_client.http.models import (
+    Distance,
+    VectorParams,
+    PointStruct,
+    Filter,
+    FieldCondition,
+    MatchValue,
+    Range,
+)
 import redis
-# from FlagEmbedding import FlagReranker
+from dotenv import load_dotenv
 
 from .config import config
 from .retriever import ModelManager
+from .initiate_vdb import qdrant_client
 
 REDIS_HOST = os.environ.get("REDIS_HOST", "185.13.230.222")
 REDIS_PORT = os.environ.get("REDIS_PORT", "6380")
@@ -21,60 +32,91 @@ class Cache:
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
             cls._instance = super().__new__(cls, *args, **kwargs)
-            cls._instance._initialize()
+            cls._instance.initialize(**kwargs)
         return cls._instance
 
+    def initialize(
+        self,
+        exact_cache: bool = True,
+        recreate: bool = False
+    ) -> None:
+        """
+        Initialize the cache with a Qdrant client.
 
-    def _initialize(self, exact_cache=True): # should be added to the config 
+        Args:
+            qdrant_client: Pre-configured QdrantClient instance from external code
+            exact_cache: Whether to use Redis for exact caching
+        """
         if exact_cache:
-            self.redis_db = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=0, decode_responses=True) # db=0 for semantic_router cache
+            self.redis_db = redis.Redis(
+                host=REDIS_HOST,
+                port=REDIS_PORT,
+                db=0,
+                decode_responses=True,
+            )
         model_manager = ModelManager()
         self.embedding_model = model_manager.embedding_model
         # self.reranker_model = model_manager.reranker_model
 
-        persist_directory = config["cache"].get("persist_directory", "../db-cache")
+        self._client = qdrant_client
         self._collection_name = config["cache"]["index_name"]
 
-        # # Create a temporary Chroma instance to check collections
-        # try:
-        #     temp_store = Chroma(
-        #         embedding_function=self.embedding_model,
-        #         persist_directory=persist_directory,
-        #     )
-            
-        #     # Access the underlying client
-        #     chroma_client = temp_store._client
-        #     existing_collections = chroma_client.list_collections()
-            
-        #     if existing_collections:
-        #         self._collection_name = existing_collections[0].name
-        #         print(f"Using existing collection: {self._collection_name}")
-        #     else:
-        #         self._collection_name = config["cache"].get("index_name", "default_collection")
-        #         print(f"Creating new collection: {self._collection_name}")
-                
-        # except Exception as e:
-        #     print(f"Could not check existing collections: {e}")
-        #     self._collection_name = config["cache"].get("index_name", "default_collection")
+        # Get embedding dimension from a sample embedding
+        sample_embedding = self.embedding_model.embed_query("sample")
+        self._embedding_dim = len(sample_embedding)
 
-        # Initialize the Chroma vector store
-        self._vector_store = Chroma(
-            collection_name=self._collection_name,
-            embedding_function=self.embedding_model,
-            persist_directory=persist_directory,
-        )
+        # Ensure collection exists
+        self._ensure_collection_exists(recreate=recreate)
 
-    def get_exact_cache(self, query):
+    def _ensure_collection_exists(self, recreate) -> None:
+        """Create the collection if it doesn't exist."""
+        # collections = self._client.get_collections().collections
+        # collection_names = [c.name for c in collections]
+
+        # if self._collection_name not in collection_names:
+        if recreate:
+            qdrant_client.delete_collection(collection_name=self._collection_name)    
+            self._client.create_collection(
+                collection_name=self._collection_name,
+                vectors_config=VectorParams(
+                    size=self._embedding_dim,
+                    distance=Distance.COSINE,
+                ),
+            )
+            # Create payload index for query field to enable filtering
+            self._client.create_payload_index(
+                collection_name=self._collection_name,
+                field_name="query",
+                field_schema=models.PayloadSchemaType.KEYWORD,
+            )
+            # Create payload indices for numeric fields
+            for field in ["thumb_up", "thumb_down", "flag"]:
+                self._client.create_payload_index(
+                    collection_name=self._collection_name,
+                    field_name=field,
+                    field_schema=models.PayloadSchemaType.INTEGER,
+                )
+            
+
+    def get_exact_cache(self, query: str) -> Optional[str]:
+        """Get exact match from Redis cache."""
         route_response_cached = self.redis_db.get(query)
         return route_response_cached
 
-    def set_exact_cache(self, key, value):
+    def set_exact_cache(self, key: str, value: str) -> None:
+        """Set exact match in Redis cache."""
         self.redis_db.set(key, value)
 
-
     def _get_embedding(self, query: str) -> List[float]:
+        """Get embedding vector for a query."""
         return self.embedding_model.embed_query(query)
-        
+
+    def _query_to_point_id(self, query: str) -> str:
+        """
+        Generate a deterministic UUID from query string.
+        This ensures the same query always maps to the same point ID.
+        """
+        return str(uuid.uuid5(uuid.NAMESPACE_DNS, query))
 
     async def _insert_row(
         self,
@@ -85,8 +127,11 @@ class Cache:
         thumb_down: int,
         flag: int,
     ) -> None:
+        """Insert a new row into the Qdrant collection."""
         embedding = self._get_embedding(query)
-        metadata = {
+        point_id = self._query_to_point_id(query)
+
+        payload = {
             "query": query,
             "response": response,
             "url": url,
@@ -94,35 +139,45 @@ class Cache:
             "thumb_down": thumb_down,
             "flag": flag,
         }
-        self._vector_store.add_texts(
-            texts=[query],  # The text is the query itself
-            metadatas=[metadata],
-            embeddings=[embedding],
-            ids=[query],  # Using query as the unique ID
+
+        self._client.upsert(
+            collection_name=self._collection_name,
+            points=[
+                PointStruct(
+                    id=point_id,
+                    vector=embedding,
+                    payload=payload,
+                )
+            ],
         )
-        # self._vector_store.persist()
 
     async def _update_row(
         self,
         query: str,
         mapping: Mapping[str, Any],
     ) -> None:
+        """Update an existing row or insert if not exists."""
         existing_record = await self._get_row(query)
         if existing_record:
-            metadata = existing_record.copy()
-            metadata.update(mapping)
-            # Remove the 'query' field if present, since it's the ID
-            metadata.pop("query", None)
-            # Update the record by re-adding it with the updated metadata
-            self._vector_store.add_texts(
-                texts=[query],
-                metadatas=[metadata],
-                embeddings=[self._get_embedding(query)],
-                ids=[query],
+            # Merge existing payload with new values
+            payload = existing_record.copy()
+            payload.update(mapping)
+
+            embedding = self._get_embedding(query)
+            point_id = self._query_to_point_id(query)
+
+            self._client.upsert(
+                collection_name=self._collection_name,
+                points=[
+                    PointStruct(
+                        id=point_id,
+                        vector=embedding,
+                        payload=payload,
+                    )
+                ],
             )
-            # self._vector_store.persist()
         else:
-            # If the record doesn't exist, insert it with default values
+            # Insert new record with default values
             await self._insert_row(
                 query=query,
                 response=mapping.get("response", ""),
@@ -132,34 +187,46 @@ class Cache:
                 flag=mapping.get("flag", 0),
             )
 
-    async def _get_row(self, query: str) -> Optional[dict[str, Any]]:
-        results = self._vector_store.get(
-            ids=[query],
-            include=["metadatas"],
-        )
-        if results and results["metadatas"]:
-            return results["metadatas"][0]
+    async def _get_row(self, query: str) -> Optional[Dict[str, Any]]:
+        """Retrieve a row by query (used as ID)."""
+        point_id = self._query_to_point_id(query)
+
+        try:
+            points = self._client.retrieve(
+                collection_name=self._collection_name,
+                ids=[point_id],
+                with_payload=True,
+            )
+            if points:
+                return points[0].payload
+        except Exception:
+            pass
         return None
 
     async def _rerank_score(
         self,
         query: str,
         matches: List[Dict],
-        k_rank: int = config["cache"]["num_rank2_documents"],
-    ):
-        
+        k_rank: int = None,
+    ) -> List[Dict]:
+        """Rerank matches using the reranker model."""
+        if k_rank is None:
+            k_rank = config["cache"]["num_rank2_documents"]
+
         documents = [record["query"] for record in matches]
         scores = self.reranker_model.compute_score(
             [[query, doc] for doc in documents], normalize=True
         )
+
         if len(documents) > 1:
             docs_scores = [(matches[i], scores[i]) for i in range(len(documents))]
         else:
             docs_scores = [(matches[i], scores) for i in range(len(documents))]
+
         docs_scores_sorted = sorted(docs_scores, key=lambda x: x[1], reverse=True)[
             :k_rank
         ]
-        returned_matches = [matches[0] for matches in docs_scores_sorted]
+        returned_matches = [match for match, _ in docs_scores_sorted]
         return returned_matches
 
     async def get_embedding_match(
@@ -167,23 +234,46 @@ class Cache:
         query: str,
         threshold: float,
         knn: int,
-    ) -> List[dict]:
+    ) -> List[Dict]:
+        """
+        Find similar documents using embedding similarity.
+
+        Args:
+            query: The query string to match
+            threshold: Maximum distance threshold (lower = more similar)
+            knn: Number of nearest neighbors to retrieve
+
+        Returns:
+            List of matching document metadata
+        """
         embedding = self._get_embedding(query)
-        results = await self._vector_store.asimilarity_search_with_score(query, k=knn)
+
+        # Qdrant returns cosine similarity score (1 = identical, 0 = orthogonal, -1 = opposite)
+        # Convert threshold from distance to similarity: similarity = 1 - distance
+        similarity_threshold = 1 - threshold
+
+        results = self._client.search(
+            collection_name=self._collection_name,
+            query_vector=embedding,
+            limit=knn,
+            with_payload=True,
+            score_threshold=similarity_threshold,
+        )
+
         matches = []
         if len(results) == 1:
-            doc, score = results[0]
-            if score <= threshold:
-                matches = [doc.metadata]
+            # Convert similarity back to distance for threshold comparison
+            distance = 1 - results[0].score
+            if distance <= threshold:
+                matches = [results[0].payload]
         else:
-            for doc, score in results:
-                # Assuming cosine similarity, score ranges between 0 and 2
-                # Convert to cosine distance if necessary
-                # Adjust the threshold comparison based on actual distance metric
-                if score <= threshold:
-                    matches.append(doc.metadata)
+            for result in results:
+                distance = 1 - result.score
+                if distance <= threshold:
+                    matches.append(result.payload)
             if len(matches) > 0:
                 matches = await self._rerank_score(query, matches)
+
         return matches
 
     async def _thumb_up_down_incrementor(
@@ -193,12 +283,13 @@ class Cache:
         url: str,
         field_name: str,
     ) -> None:
+        """Increment a counter field (thumb_up, thumb_down, or flag)."""
         record = await self._get_row(query)
         if record:
             new_value = record.get(field_name, 0) + 1
             await self._update_row(query, {field_name: new_value})
         else:
-            # Insert a new record with default counts and increment the specific field
+            # Insert new record with the specific field incremented
             await self._insert_row(
                 query=query,
                 response=response,
@@ -209,49 +300,84 @@ class Cache:
             )
 
     async def increment_thumb_up(self, query: str, response: str, url: str) -> None:
-        await self._thumb_up_down_incrementor(
-            query,
-            response,
-            url,
-            "thumb_up",
-        )
+        """Increment the thumb_up counter for a query."""
+        await self._thumb_up_down_incrementor(query, response, url, "thumb_up")
 
     async def increment_thumb_down(self, query: str, response: str, url: str) -> None:
-        await self._thumb_up_down_incrementor(
-            query,
-            response,
-            url,
-            "thumb_down",
-        )
+        """Increment the thumb_down counter for a query."""
+        await self._thumb_up_down_incrementor(query, response, url, "thumb_down")
 
     async def increment_flag(self, query: str, response: str, url: str) -> None:
-        await self._thumb_up_down_incrementor(
-            query,
-            response,
-            url,
-            "flag",
-        )
+        """Increment the flag counter for a query."""
+        await self._thumb_up_down_incrementor(query, response, url, "flag")
 
     async def filter_documents(self, filters: Dict[str, Any]) -> List[Dict[str, Any]]:
         """
         Retrieve documents that match the specified metadata filters.
 
         Args:
-            filters (Dict[str, Any]): A dictionary where keys are metadata fields
-                                    and values are the desired values.
+            filters: A dictionary where keys are metadata fields
+                    and values are the desired values or filter conditions.
 
         Returns:
-            List[Dict[str, Any]]: A list of metadata dictionaries for matching documents.
+            List of metadata dictionaries for matching documents.
         """
-        results = self._vector_store.get(
-            where=filters,
-            include=["metadatas"],
-        )
-        matched_docs = []
-        if results and results["metadatas"]:
-            for metadata in results["metadatas"]:
-                matched_docs.append(metadata)
-        return matched_docs
+        must_conditions = []
+
+        for key, value in filters.items():
+            if isinstance(value, dict):
+                # Handle range queries like {"$gte": 0}
+                range_params = {}
+                if "$gte" in value:
+                    range_params["gte"] = value["$gte"]
+                if "$gt" in value:
+                    range_params["gt"] = value["$gt"]
+                if "$lte" in value:
+                    range_params["lte"] = value["$lte"]
+                if "$lt" in value:
+                    range_params["lt"] = value["$lt"]
+
+                if range_params:
+                    must_conditions.append(
+                        FieldCondition(
+                            key=key,
+                            range=Range(**range_params),
+                        )
+                    )
+                elif "$ne" in value:
+                    # For $ne, we need to use must_not (handled separately)
+                    pass
+            else:
+                # Exact match
+                must_conditions.append(
+                    FieldCondition(
+                        key=key,
+                        match=MatchValue(value=value),
+                    )
+                )
+
+        scroll_filter = Filter(must=must_conditions) if must_conditions else None
+
+        # Scroll through all matching documents
+        all_results = []
+        offset = None
+
+        while True:
+            results, next_offset = self._client.scroll(
+                collection_name=self._collection_name,
+                scroll_filter=scroll_filter,
+                with_payload=True,
+                limit=100,
+                offset=offset,
+            )
+
+            all_results.extend([point.payload for point in results])
+
+            if next_offset is None:
+                break
+            offset = next_offset
+
+        return all_results
 
     async def get_documents_with_metadata_field(
         self, field_name: str
@@ -260,564 +386,149 @@ class Cache:
         Retrieve all documents that contain a specific metadata field.
 
         Args:
-            field_name (str): The metadata field to filter by.
+            field_name: The metadata field to filter by.
 
         Returns:
-            List[Dict[str, Any]]: A list of metadata dictionaries for matching documents.
+            List of metadata dictionaries for matching documents.
         """
-        # ChromaDB via LangChain doesn't support direct existence checks.
-        # As a workaround, retrieve documents where the field is not null or set to a default value.
-        # For numeric fields, you might use a range filter.
-        # For string fields, you might check for non-empty strings.
-
-        # Here, we'll assume 'flag' is an integer and retrieve all documents where 'flag' >= 0
         if field_name in ["thumb_up", "thumb_down", "flag"]:
+            # For numeric fields, retrieve where field >= 0
             filters = {field_name: {"$gte": 0}}
         else:
-            # For other fields, adjust accordingly
-            filters = {field_name: {"$ne": None}}
+            # For other fields, we need a different approach
+            # Qdrant doesn't have direct "field exists" filter
+            # Using IsNotNull condition
+            scroll_filter = Filter(
+                must=[
+                    models.IsNotNullCondition(
+                        is_not_null=models.PayloadField(key=field_name)
+                    )
+                ]
+            )
+
+            all_results = []
+            offset = None
+
+            while True:
+                results, next_offset = self._client.scroll(
+                    collection_name=self._collection_name,
+                    scroll_filter=scroll_filter,
+                    with_payload=True,
+                    limit=100,
+                    offset=offset,
+                )
+
+                all_results.extend([point.payload for point in results])
+
+                if next_offset is None:
+                    break
+                offset = next_offset
+
+            return all_results
 
         return await self.filter_documents(filters)
 
     async def delete_document(self, query: str) -> None:
         """
-        Delete a specific document from the ChromaDB dataset based on its query (ID).
+        Delete a specific document from the Qdrant collection based on its query.
 
         Args:
-            query (str): The unique identifier (query) of the document to delete.
+            query: The unique identifier (query) of the document to delete.
         """
         if await self._get_row(query) is not None:
-            self._vector_store.delete(ids=[query])
-        # self._vector_store.persist()
+            point_id = self._query_to_point_id(query)
+            self._client.delete(
+                collection_name=self._collection_name,
+                points_selector=models.PointIdsList(points=[point_id]),
+            )
 
 
+# Example usage and testing
 async def temp():
-    response =  "سلام. من دستیار دیجیتال نسل 4 هستم. می‌توانم در مورد ماژول‌های دفتر کل، انبار، گزارش ساز و خزانه داری به شما کمک کنم. پرسش خود را بپرسید تا در صورت امکان، پاسخ آن را ارائه دهم."
-    lst_1 = ["سلام. خوبی؟",
-            "سلام. حالت چطوره",
-            "سلام خوبی",
-            "سلام خوبی؟",
-            "سلام حالت خوبه",
-            "سلام.",
-            "سلام",
-            "سلام خوبی",
-            "سلام. خوبی",
-            "درود",
-            "سلام علیکم",
-            "سلام و ارادت",
-            "عرض ادب و احترام",
-            "سلامعلیکم"
-            "سلام صبح بخیر",
-            "صبح بخیر",
-            "سلام ظهر بخیر",
-            "ظهر بخیر",
-            "سلام. صبح بخیر"
-            ]
-    
-    response_2 = "خواهش میکنم. اگر سوال دیگری بود در خدمتم "
-    lst_2 = ["خیلی ممنون",
-            "لطف کردی",
-            "زحمت دادم. ",
-            "دمت گرم",
-            "متشکرم",
-            "خیلی متشکرم",
-            "متچکرم",
-            "ممنون از پاسخت",
-            "متشکر از پاسخ شما",
-            "ممنونم که جواب دادی",
-            "جواب خوبی بود. مرسی",
-            "مرسی",
-            "مرسی. ممنون",
-            "مرسی. متشکر",
-            "مرسی تشکر.",
-            "تشکر. ",
-            "ممنونم",
-            ]
+    from qdrant_client import QdrantClient
+    load_dotenv()
 
-    print("hello")
-    cache = Cache()
+    response = "سلام. من دستیار دیجیتال نسل 4 هستم. می‌توانم در مورد ماژول‌های دفتر کل، انبار، گزارش ساز و خزانه داری به شما کمک کنم. پرسش خود را بپرسید تا در صورت امکان، پاسخ آن را ارائه دهم."
+    lst_1 = [
+        "سلام. خوبی؟",
+        "سلام. حالت چطوره",
+        "سلام خوبی",
+        "سلام خوبی؟",
+        "سلام حالت خوبه",
+        "سلام.",
+        "سلام",
+        "سلام خوبی",
+        "سلام. خوبی",
+        "درود",
+        "سلام علیکم",
+        "سلام و ارادت",
+        "عرض ادب و احترام",
+        "سلامعلیکم",
+        "سلام صبح بخیر",
+        "صبح بخیر",
+        "سلام ظهر بخیر",
+        "ظهر بخیر",
+        "سلام. صبح بخیر",
+    ]
+
+    response_2 = "خواهش میکنم. اگر سوال دیگری بود در خدمتم "
+    lst_2 = [
+        "خیلی ممنون",
+        "لطف کردی",
+        "زحمت دادم. ",
+        "دمت گرم",
+        "متشکرم",
+        "خیلی متشکرم",
+        "متچکرم",
+        "ممنون از پاسخت",
+        "متشکر از پاسخ شما",
+        "ممنونم که جواب دادی",
+        "جواب خوبی بود. مرسی",
+        "مرسی",
+        "مرسی. ممنون",
+        "مرسی. متشکر",
+        "مرسی تشکر.",
+        "تشکر. ",
+        "ممنونم",
+    ]
+
+    print("Initializing cache...")
+
+    qdrant_host = os.getenv("QDRANT_API_BASE")
+    qdrant_port = os.getenv("QDRANT_API_PORT")
+    qdrant_api_key = os.getenv("QDRANT_API_KEY")
+    
+    try:
+        qdrant_client = QdrantClient(
+            host=qdrant_host,
+            port=qdrant_port,
+            api_key=qdrant_api_key,
+            timeout=60,
+            prefer_grpc=False,
+            https=False,
+        )
+    except Exception as e:
+        qdrant_client = QdrantClient(
+            url=f"https://{qdrant_host}:{qdrant_port}",
+            api_key=qdrant_api_key,
+            timeout=60,
+            verify=False,
+        )
+
+    # Or for Qdrant Cloud:
+    # qdrant_client = QdrantClient(url="https://your-cluster.qdrant.io", api_key="your-api-key")
+
+    cache = Cache(recreate=True)
+    cache.initialize(qdrant_client)
     for query in lst_1:
         await cache.increment_thumb_up(query, response, "")
 
     for query in lst_2:
         await cache.increment_thumb_up(query, response_2, "")
 
-        
+    print("Done!")
+
+
 if __name__ == "__main__":
     asyncio.run(temp())
-            
     
-    
-# import os
-# from typing import Any, List, Mapping
-
-# import numpy as np
-# import chromadb
-# from chromadb.config import Settings
-# from FlagEmbedding import FlagReranker
-# from langchain_community.embeddings import HuggingFaceEmbeddings
-
-# from config import config
-
-
-# class Cache:
-#     _instance = None
-
-#     def __new__(cls, *args, **kwargs):
-#         if not cls._instance:
-#             cls._instance = super().__new__(cls, *args, **kwargs)
-
-#             cls._instance.embedding_model = HuggingFaceEmbeddings(
-#                 model_name=config["embedding_model"]["model_name"],
-#                 model_kwargs={"device": config["embedding_model"]["device"]},
-#             )
-
-#             cls._instance.reranker_model = FlagReranker(
-#                 config["reranker"]["model_name"],
-#                 device=config["reranker"]["device"],
-#             )
-
-#             # Initialize ChromaDB client with persistence
-#             persist_directory = config["cache"].get("persist_directory", "./cache_db")
-#             cls._instance._client = chromadb.Client(
-#                 Settings(
-#                     persist_directory=persist_directory,
-#                     chroma_db_impl="duckdb+parquet",
-#                 )
-#             )
-#             cls._instance._collection_name = config["cache"]["index_name"]
-#             # Get or create collection
-#             cls._instance._collection = cls._instance._client.get_or_create_collection(
-#                 name=cls._instance._collection_name
-#             )
-
-#         return cls._instance
-
-#     def _get_embedding(self, query: str) -> List[float]:
-#         return self.embedding_model.embed_query(query)
-
-#     def _insert_row(
-#         self,
-#         query: str,
-#         response: str,
-#         url: str,
-#         thumb_up: int,
-#         thumb_down: int,
-#         flag: int,
-#     ) -> None:
-#         embedding = self._get_embedding(query)
-#         metadata = {
-#             "query": query,
-#             "response": response,
-#             "url": url,
-#             "thumb_up": thumb_up,
-#             "thumb_down": thumb_down,
-#             "flag": flag,
-#         }
-#         self._collection.upsert(
-#             ids=[query],
-#             embeddings=[embedding],
-#             metadatas=[metadata],
-#         )
-
-#     def _update_row(
-#         self,
-#         query: str,
-#         mapping: Mapping[str, Any],
-#     ) -> None:
-#         # Get existing metadata
-#         results = self._collection.get(ids=[query], include=["metadatas"])
-#         if results and results["metadatas"]:
-#             metadata = results["metadatas"][0]
-#         else:
-#             metadata = {}
-#         # Update metadata
-#         metadata.update(mapping)
-#         # Update the record
-#         self._collection.update(
-#             ids=[query],
-#             metadatas=[metadata],
-#         )
-
-#     def _get_row(self, query: str) -> dict[str, Any]:
-#         results = self._collection.get(ids=[query], include=["metadatas"])
-#         if results and results["metadatas"]:
-#             return results["metadatas"][0]
-#         else:
-#             return {}
-
-#     def get_embedding_match(
-#         self,
-#         query: str,
-#         threshold: float,
-#         knn: int,
-#     ) -> List[dict]:
-#         embedding = self._get_embedding(query)
-#         results = self._collection.query(
-#             query_embeddings=[embedding],
-#             n_results=knn,
-#             include=["metadatas", "distances"],
-#         )
-#         # Filter results by threshold
-#         matches = []
-#         if results and results["metadatas"]:
-#             for metadata, distance in zip(
-#                 results["metadatas"][0], results["distances"][0]
-#             ):
-#                 if distance <= threshold:
-#                     matches.append(metadata)
-#         return matches
-
-#     def _thumb_up_down_incrementor(
-#         self,
-#         query: str,
-#         response: str,
-#         url: str,
-#         field_name: str,
-#     ) -> None:
-#         # Get existing metadata
-#         results = self._collection.get(ids=[query], include=["metadatas"])
-#         if results and results["metadatas"]:
-#             metadata = results["metadatas"][0]
-#         else:
-#             # Record does not exist, insert a new one
-#             self._insert_row(
-#                 query=query,
-#                 response=response,
-#                 url=url,
-#                 thumb_up=0,
-#                 thumb_down=0,
-#                 flag=0,
-#             )
-#             metadata = {
-#                 "query": query,
-#                 "response": response,
-#                 "url": url,
-#                 "thumb_up": 0,
-#                 "thumb_down": 0,
-#                 "flag": 0,
-#             }
-#         # Increment the field
-#         metadata[field_name] = metadata.get(field_name, 0) + 1
-#         # Update the record
-#         self._collection.update(
-#             ids=[query],
-#             metadatas=[metadata],
-#         )
-
-#     def increment_thumb_up(self, query: str, response: str, url: str) -> None:
-#         self._thumb_up_down_incrementor(
-#             query,
-#             response,
-#             url,
-#             "thumb_up",
-#         )
-
-#     def increment_thumb_down(self, query: str, response: str, url: str) -> None:
-#         self._thumb_up_down_incrementor(
-#             query,
-#             response,
-#             url,
-#             "thumb_down",
-#         )
-
-#     def increment_flag(self, query: str, response: str, url: str) -> None:
-#         self._thumb_up_down_incrementor(
-#             query,
-#             response,
-#             url,
-#             "flag",
-#         )
-
-
-# import os
-# from typing import Any, List, Mapping
-
-# import numpy as np
-# from redis import Redis
-# from redis.commands.search.query import Query
-# from redis.commands.search.document import Document  # type: ignore
-# from FlagEmbedding import FlagReranker
-# from langchain_community.embeddings import HuggingFaceEmbeddings
-# from redis.commands.search.field import VectorField, TextField
-# from redis.commands.search.indexDefinition import IndexDefinition, IndexType
-# from redis.commands.search.field import (
-# NumericField,
-# TextField,
-# VectorField,
-# )
-# from redis.commands.search.indexDefinition import IndexDefinition, IndexType
-
-# from config import config
-
-
-# class Cache:
-#     _instance = None
-#     def __new__(cls, *args, **kwargs):
-#         if not cls._instance:
-#             cls._instance = super().__new__(cls, *args, **kwargs)
-
-#             cls._instance.embedding_model = HuggingFaceEmbeddings(
-#                 model_name=config["embedding_model"]["model_name"],
-#                 model_kwargs={
-#                     "device": config["embedding_model"]["device"]
-#                 },
-#             )
-
-#             cls._instance.reranker_model = FlagReranker(
-#                 config["reranker"]["model_name"],
-#                 device=config["reranker"]["device"],
-#             )
-
-#             cls._instance._connection = Redis(
-#                 # host=config["cache"]["host"],  # TODO: this should be transfer to secret
-#                 # host="127.0.0.1",
-#                 host="172.17.0.2",
-#                 port=config["cache"]["port"],  # # TODO: this should be transfer to secret
-#                 socket_timeout=config["cache"]["socket_timeout"],
-#                 # password="myRedisPassword123!@#",
-#             )
-
-#             cls._instance._index_name = config["cache"]["index_name"]
-
-#             cls._instance._schema = {
-#                 "query_field": {
-#                     "name": config["cache"]["schema"]["query_field_name"],
-#                     "type": str,
-#                 },
-#                 "vector_field": {
-#                     "name": config["cache"]["schema"]["vector_field_name"],
-#                     "type": np.ndarray,
-#                 },
-#                 "answer_field": {
-#                     "name": config["cache"]["schema"]["answer_field_name"],
-#                     "type": str,
-#                 },
-#                 "url_field": {
-#                     "name": config["cache"]["schema"]["url_field_name"],
-#                     "type": str,
-#                 },
-#                 "thumb_up_field": {
-#                     "name": config["cache"]["schema"]["thumb_up_field_name"],
-#                     "type": int,
-#                 },
-#                 "thumb_down_field": {
-#                     "name": config["cache"]["schema"]["thumb_down_field_name"],
-#                     "type": int,
-#                 },
-#                 "flag_field": {
-#                     "name": config["cache"]["schema"]["flag_field_name"],
-#                     "type": int,
-#                 },
-#             }
-
-#             if not cls._instance.index_exists():
-#                 cls._instance.create_index()
-
-#         return cls._instance
-
-
-#     def index_exists(self) -> bool:
-#         try:
-#             self._connection.ft(self._index_name).info()
-#             return True
-#         except Exception:
-#             print("index created")
-#             # If there's an exception, it means the index doesn't exist
-#             return False
-
-    # def create_index(self):
-    #     schema = [
-    #         TextField(name=self._schema["query_field"]["name"]),
-    #         TextField(name=self._schema["answer_field"]["name"]),
-    #         TextField(name=self._schema["url_field"]["name"]),
-    #         NumericField(name=self._schema["thumb_up_field"]["name"]),
-    #         NumericField(name=self._schema["thumb_down_field"]["name"]),
-    #         NumericField(name=self._schema["flag_field"]["name"]),
-    #         VectorField(
-    #             self._schema["vector_field"]["name"],
-    #             "HNSW",  # or "FLAT" depending on your needs
-    #             {
-    #                 "TYPE": "FLOAT64",
-    #                 "DIM": len(self.embedding_model.embed_query("test")),
-    #                 "DISTANCE_METRIC": "COSINE",
-    #             },
-    #         ),
-    #     ]
-
-    #     definition = IndexDefinition(prefix=["query:"], index_type=IndexType.HASH)
-    #     self._connection.ft(self._index_name).create_index(
-    #         schema, definition=definition
-    #     )
-
-#     def _get_list_of_allowed_fields(self) -> List[str]:
-#         return [
-#             self._schema["query_field"]["name"],
-#             self._schema["answer_field"]["name"],
-#             self._schema["url_field"]["name"],
-#             self._schema["thumb_up_field"]["name"],
-#             self._schema["thumb_down_field"]["name"],
-#             self._schema["flag_field"]["name"],
-#         ]
-
-#     def _decode_redis_output(self, field: str, value: bytes | None) -> Any:
-#         if value is None:
-#             return None
-#         else:
-#             field_name = f"{field}_field"
-#             _type = self._schema[field_name]["type"]
-#             return _type(value)
-
-#     def _parse_redis_record(self, record: dict[str, bytes | None]) -> dict[str, Any]:
-#         parsed_output = {
-#             key: self._decode_redis_output(key, value) for key, value in record.items()
-#         }
-#         return parsed_output
-
-#     def _parse_redis_document_object(self, redis_document: Document) -> dict[str, Any]:
-#         document_dict = dict(redis_document.__dict__)
-
-#         del document_dict["id"]
-#         del document_dict["payload"]
-
-#         return {
-#             key: self._decode_redis_output(key, value)
-#             for key, value in document_dict.items()
-#         }
-
-#     def _get_embedding(self, query: str) -> bytes:
-#         return (
-#             np.array(self.embedding_model.embed_query(query))
-#             .astype(np.float64)
-#             .tobytes()
-#         )
-
-#     def _insert_row(
-#         self,
-#         query: str,
-#         response: str,
-#         url: str,
-#         thumb_up: int,
-#         thumb_down: int,
-#         flag: int,
-#     ) -> None:
-#         key_name = f"query:{query}"
-#         self._connection.hset(
-#             name=key_name,
-#             mapping={
-#                 self._schema["query_field"]["name"]: query,
-#                 self._schema["vector_field"]["name"]: self._get_embedding(query),
-#                 self._schema["answer_field"]["name"]: response,
-#                 self._schema["url_field"]["name"]: url,
-#                 self._schema["thumb_up_field"]["name"]: thumb_up,
-#                 self._schema["thumb_down_field"]["name"]: thumb_down,
-#                 self._schema["flag_field"]["name"]: flag,
-#             },
-#          )
-
-#     def _update_row(
-#         self,
-#         query: str,
-#         mapping: Mapping[str | bytes, bytes | float | int | str],
-#     ) -> None:
-#         key_name = f"query:{query}"
-#         self._connection.hset(
-#             name=key_name,
-#             mapping=mapping,
-#         )
-
-#     @staticmethod
-#     def to_none_if_all_none(record):
-#         return None if all(item is None for item in record) else record
-
-
-#     def _get_row(self, query: str) -> dict[str, Any]:
-#         return_value: dict[str, Any] = dict()
-#         key_name = f"query:{query}"
-#         # record = self._connection.hgetall(key_name)
-#         record = self._connection.hmget(
-#             name=key_name,
-#             keys=self._get_list_of_allowed_fields(),
-#         )
-#         if self.to_none_if_all_none(record):
-#             record_dict = {
-#                 key: value
-#                 for key, value in zip(self._get_list_of_allowed_fields(), record)
-#             }
-#             return_value = self._parse_redis_record(record_dict)
-#         return return_value
-
-#     def get_embedding_match(
-#         self,
-#         query: str,
-#         threshold: float,
-#         knn: int,
-#     ) -> List[dict]:
-#         # reference: https://redis.readthedocs.io/en/latest/examples/search_vector_similarity_examples.html#Searching
-#         vector_similarity_search_dialect = 2
-#         query_vector = self._get_embedding(query)
-#         query = (
-#             Query("@vector:[VECTOR_RANGE $radius $vector]=>{$YIELD_DISTANCE_AS: dist}")
-#             .sort_by("dist")
-#             .return_fields(*self._get_list_of_allowed_fields())
-#             .dialect(vector_similarity_search_dialect)
-#         )
-#         # Query(f"*=>[KNN {knn} @vector $vector AS dist]")
-
-#         hits = self._connection.ft(self._index_name).search(
-#             query,
-#             query_params={
-#                 "vector": query_vector,  # type: ignore [dict-item]
-#                 "radius": threshold,
-#             },
-#         )
-#         records = hits.docs[:knn]
-#         # TODO: add reranking part
-#         return [self._parse_redis_document_object(record) for record in records]
-
-#     def _thumb_up_down_incrementor(
-#         self,
-#         query: str,
-#         response: str,
-#         url: str,
-#         field_name: str,
-#     ) -> None:
-#         update_value = 1
-#         record = self._get_row(query)
-#         if record:
-#             new_value = record[field_name] + update_value
-#             self._update_row(query, {field_name: new_value})
-#         else:
-#             self._insert_row(
-#                 query=query,
-#                 response=response,
-#                 url=url,
-#                 thumb_up=0,
-#                 thumb_down=0,
-#                 flag=0,
-#             )
-#             self._update_row(query, {field_name: update_value})
-
-#     def increment_thumb_up(self, query: str, response: str, url: str) -> None:
-#         self._thumb_up_down_incrementor(
-#             query,
-#             response,
-#             url,
-#             self._schema["thumb_up_field"]["name"],
-#         )
-
-#     def increment_thumb_down(self, query: str, response: str, url: str) -> None:
-#         self._thumb_up_down_incrementor(
-#             query,
-#             response,
-#             url,
-#             self._schema["thumb_down_field"]["name"],
-#         )
-
-#     def increment_flag(self, query: str, response: str, url: str) -> None:
-#         self._thumb_up_down_incrementor(
-#             query,
-#             response,
-#             url,
-#             self._schema["flag_field"]["name"],
-#         )

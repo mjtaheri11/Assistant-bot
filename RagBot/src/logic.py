@@ -291,7 +291,7 @@ async def retrieve_context_with_metadata(query: str, input_modules: List = None,
     retriever = Retriever()
     
     if input_modules:
-        context_with_metadata, query_embedding = await retriever.retrieve_context(query, module_filter=input_modules)
+        context_with_metadata = await retriever.retrieve_context(query, database_index, module_filter=input_modules)
     elif database_index:
         # Support database_index parameter from develop branch
         context_with_metadata, query_embedding = await retriever.retrieve_context(query, database_index)
@@ -439,36 +439,42 @@ def _get_chitchat_cache_key(utterance: str) -> str:
 
 async def _determine_final_route(
     utterance: str,
-    top_prediction: str,
-    probabilities: List[Tuple[str, float]],
-    max_prob: float, 
-    use_oss: bool
+    use_joblib: bool = True
 ) -> str:
 
     ROUTER_CONFIG = config["router_model"]
-
     ALPHA_THRESHOLD = ROUTER_CONFIG["alpha_threshold"]
     BETA_THRESHOLD = ROUTER_CONFIG["beta_threshold"]
     """Determines the final route based on probability thresholds."""
+    if use_joblib:
+        semantic_router_client = SemanticRouterPipeline(
+            inference_only=True,
+            embedding_address=config["embedding_model"]["model_name"],
+            classifier_address=ROUTER_CONFIG["address"],
+            model_name=ROUTER_CONFIG["model_name"]
+        )
+        predictions, probabilities, max_prob = semantic_router_client.predict_sentences([utterance])
+        top_prediction = predictions[0]
+        probabilities = list(probabilities)  # Convert to list to make it subscriptable
 
-    # probabilities = list(probabilities)  # Convert to list to make it subscriptable
+        if max_prob > ALPHA_THRESHOLD and ("همکاران" not in utterance) and (top_prediction != "illegal"):
+            return top_prediction
 
-    if max_prob > ALPHA_THRESHOLD and ("همکاران" not in utterance) and (top_prediction != "illegal"):
-        return top_prediction
+        # If confidence is low, see if multiple routes are plausible
+        if "همکاران" not in utterance:
+            plausible_routes = [
+                route for route, prob in probabilities if prob > BETA_THRESHOLD
+            ]
+        else:
+            plausible_routes = [route for route, prob in probabilities]
 
-    # If confidence is low, see if multiple routes are plausible
-    if "همکاران" not in utterance:
-        plausible_routes = [
-            route for route, prob in probabilities if prob > BETA_THRESHOLD
-        ]
+        if len(plausible_routes) < 2:
+            # Fallback if no route meets the beta threshold
+            # Get the top two routes by probability
+            sorted_probabilities = sorted(probabilities, key=lambda x: x[1], reverse=True)
+            plausible_routes = [sorted_probabilities[0][0], sorted_probabilities[1][0]]
     else:
-        plausible_routes = [route for route, prob in probabilities]
-
-    if len(plausible_routes) < 2:
-        # Fallback if no route meets the beta threshold
-        # Get the top two routes by probability
-        sorted_probabilities = sorted(probabilities, key=lambda x: x[1], reverse=True)
-        plausible_routes = [sorted_probabilities[0][0], sorted_probabilities[1][0]]
+        plausible_routes = ['chitchat', 'illegal', 'irrelevant', 'sql', 'qa']
 
     # Use an LLM to disambiguate between plausible routes
     model_name, api_base, api_key = model_selector(use_oss, use_qwen3_coder=False)
@@ -478,13 +484,17 @@ async def _determine_final_route(
     return result
 
 @observe()
-async def get_route_for_utterance(utterance: str, query_embedding, use_oss) -> str:    
+async def get_route_for_utterance(utterance: str, use_joblib: bool = False) -> str:    
     CHITCHAT_ROUTE = "chitchat"
     ROUTER_CONFIG = config["router_model"]
     
     # It's better to instantiate clients once and reuse them
     # rather than creating them in a function that's called frequently.
     cache_client = Cache()
+
+    """
+    Determines the semantic route for a given utterance, using caching to improve performance.
+    """
     # 1. Check for a direct cached route first (guard clause)
     cached_route = cache_client.get_exact_cache(utterance)
     if cached_route:
@@ -502,16 +512,10 @@ async def get_route_for_utterance(utterance: str, query_embedding, use_oss) -> s
         model_name=ROUTER_CONFIG["model_name"]
     )
 
-    # 3. If not cached, perform prediction
-    # top_prediction, probabilities, max_prob = semantic_router_client.predict_sentences([utterance])
-    top_prediction, probabilities, max_prob = semantic_router_client.predict_sentences_input_embedding_and_sentences([utterance], [query_embedding])
+    # 3. Determine the final route using the logic in the helper function
+    final_route = await _determine_final_route(utterance, use_joblib)
 
-    # 4. Determine the final route using the logic in the helper function
-    final_route = await _determine_final_route(
-        utterance, top_prediction, probabilities, max_prob, use_oss
-    )
-
-    # 5. Cache the result for future requests
+    # 4. Cache the result for future requests
     # Note: The original code had a commented-out line to cache all routes.
     # This version explicitly caches the final determined route.
     # cache_client.set_exact_cache(utterance, final_route)
@@ -537,7 +541,7 @@ async def router_SQL_QA(query: str, context: str):
 async def chat_responder_(
     history: List[tuple[str, str]],
     user_utterance: str,
-    database_index: str = config["database"]["persist_directory"],
+    database_index: str = config["database"]["collection_name"],
     company_name: str = config["database"]["company_name"],
     assistant_name: str = config["database"]["assistant_name"],
     response_type: str = config["database"]["response_type"],

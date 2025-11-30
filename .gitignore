@@ -169,6 +169,7 @@ VectorDB-Eval-2
 TempVectorDB
 VectorDB-TEMP
 VectorDB/
+db-cache.zip
 db-cache/
 RaaS_vectorDB/
 
@@ -179,12 +180,54 @@ RagBot/ollama/
 RagBot/pgadmin/
 RagBot/ragbot/VectorDB.zip
 RagBot/pgadmin.tar
+
 RagBot/mydata
 
-# nvidia-files 
+# documents 
+knowledge_base/qa-questions
+
+# keyring
+RagBot/cuda-keyring_1.1-1_all.deb
 RagBot/nvidia_*
+RagBot/duckdb-*
+RagBot/torch-*
+all_data_backup.sql
+backup.sql
+data_only_backup.sql
+RagBot/triton-3.1.0-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+RagBot/pg-*
+data_only_backup.sql
+backup.sql
+
+# sql
 *.sql
-cuda-*
-torch-*
-triton-*
-duckdb-*
+
+# nvidia-files
+nvidia-files
+.gitignore
+/VectorDB*
+/VectorDB*.zip
+/db-cache*
+
+# Eval
+RagBot/.deepeval/.temp_test_run_data.json
+RagBot/.deepeval/.deepeval_telemetry.txt
+RagBot/eval/sample.csv
+RagBot/evaluation_results/*.csv
+RagBot/evaluation_results/*.json
+RagBot/eval/*.json
+.deepeval/
+RagBot/eval/evaluation_results/*.json
+RagBot/evaluation_results/*.md
+RagBot/eval/evaluation_results/*.md
+RagBot/eval/evaluation_results/*.csv
+RagBot/nvidia-files
+lvdn.s3x-explorer-1.0.9.vsix
+
+# KUBERNETES files
+RagBot/vs.yaml
+RagBot/service.yaml
+RagBot/requirements_2.txt
+RagBot/Dockerfile_2
+RagBot/kubefiles
+RagBot/temp*.md
