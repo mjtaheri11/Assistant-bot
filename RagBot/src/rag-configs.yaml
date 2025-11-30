@@ -84,20 +84,20 @@ cache:
   redis_result_num_documents: 5
   socket_timeout: 10
   index_name: Hamzan
-  persist_directory: /home/jovyan/Assistant-bot/db-cache
+  persist_directory: /home/jovyan/testing_units/Assistant-bot/db-cache
   num_rank2_documents: 5
   embedding_model:
-    model_name: /home/jovyan/.cache/huggingface/hub/models--intfloat--multilingual-e5-large/snapshots/0dc5580a448e4284468b8909bae50fa925907bc5
-    # model_name: ../saved_models/models--intfloat--multilingual-e5-large/snapshots/0dc5580a448e4284468b8909bae50fa925907bc5
+#    model_name: /home/jovyan/.cache/huggingface/hub/models--intfloat--multilingual-e5-large/snapshots/0dc5580a448e4284468b8909bae50fa925907bc5
+    model_name: ../saved_models/models--intfloat--multilingual-e5-large/snapshots/0dc5580a448e4284468b8909bae50fa925907bc5
 
-    device: cuda
+    device: cpu
 
   # configurations for reranker
   reranker:
-    # model_name: # ../saved_models/models--BAAI--bge-reranker-v2-m3/snapshots/12e974610ba9083ed95f3edf08d7e899581f4de4
+    model_name: # ../saved_models/models--BAAI--bge-reranker-v2-m3/snapshots/12e974610ba9083ed95f3edf08d7e899581f4de4
     # model_name: /home/user01/.cache/huggingface/hub/models--BAAI--bge-reranker-v2-gemma/snapshots/1787044f8b6fb740a9de4557c3a12377f84d9e17
-    model_name: /home/jovyan/.cache/huggingface/hub/models--BAAI--bge-reranker-v2-m3/snapshots/953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e/
-    device: cuda
+#    model_name: BAAI/bge-reranker-v2-m3
+    device: cpu
     cutoff: 10
     
   schema:
@@ -117,35 +117,34 @@ streamlit:
 
 # configurations for embedding model
 embedding_model:
-  # model_name: ../saved_models/models--intfloat--multilingual-e5-large/snapshots/0dc5580a448e4284468b8909bae50fa925907bc5
-  # model_name: intfloat/multilingual-e5-large
   openrouter: "qwen/qwen3-embedding-4b"
-  use_openrouter: true
-  model_name: /home/jovyan/.cache/huggingface/hub/models--intfloat--multilingual-e5-large/snapshots/0dc5580a448e4284468b8909bae50fa925907bc5
+  model_name: ../saved_models/models--intfloat--multilingual-e5-large/snapshots/0dc5580a448e4284468b8909bae50fa925907bc5
+  # model_name: intfloat/multilingual-e5-large
+#  model_name: /home/jovyan/.cache/huggingface/hub/models--intfloat--multilingual-e5-large/snapshots/0dc5580a448e4284468b8909bae50fa925907bc5
   # model_name: /home/user01/.cache/huggingface/hub/models--jinaai--jina-embeddings-v3/snapshots/30996fea06f69ecd8382ee4f11e29acaf6b5405e
-  device: cuda
+  device: cpu
 
 # configurations for reranker
 reranker:
   primary_model: flag
   flag_model: 
-      # model_name: ../saved_models/models--BAAI--bge-reranker-v2-m3
-      model_name: /home/jovyan/.cache/huggingface/hub/models--BAAI--bge-reranker-v2-m3/snapshots/953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e/
-      device: cuda
+      model_name: ../saved_models/models--BAAI--bge-reranker-v2-m3
+#      model_name: BAAI/bge-reranker-v2-m3
+      device: cpu
   
   qwen_model: 
       model_name: ../saved_models/qwen3-reranker
-      device: cuda
+      device: cpu
       max_length: 8192
 
-  model_name: /home/jovyan/.cache/huggingface/hub/models--BAAI--bge-reranker-v2-m3/snapshots/953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e/
-  # model_name: BAAI/bge-reranker-v2-m3
-  device: cuda
+  model_name: ../saved_models/models--BAAI--bge-reranker-v2-m3/snapshots/12e974610ba9083ed95f3edf08d7e899581f4de4
+#  model_name: BAAI/bge-reranker-v2-m3
+  device: cpu
 
 # configurations for retriever
 retriever:
-  retrieved_documents: 5 # initiate_vdb.py
-  retrieved_rank2_documents: 5
+  retrieved_documents: 40 # initiate_vdb.py
+  retrieved_rank2_documents: 7
   alpha_threshold: 0.9
   expansion: false
   rerank: true
@@ -181,9 +180,7 @@ followup_query_generator:
   number_of_suggested_queries: 3
 
 router_model:
-  address: /home/jovyan/Assistant-bot/RagBot/saved_models/svm.joblib
-  openrouter: "qwen/qwen3-embedding-4b"
-  embedding_model: "qwen3-embedding-4b"
-  model_name: svm
+  address: /home/jovyan/testing_units/Assistant-bot/saved_models/mlp.joblib
+  model_name: mlp
   beta_threshold: 0.3
   alpha_threshold: 0.7
