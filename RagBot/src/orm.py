@@ -189,7 +189,21 @@ class Postgres:
             is_insert=True,
             fetch_results=True
         )
-        output = {"database_id": str(database_id[0])}
+        if database_id[0]:
+            output = {"database_id": str(database_id[0])}
+        else:
+            output = {"database_id": database_id[0]}
+        return output
+
+    async def find_company_assistant_names(self, database_id):
+        sql_query_find_dbid = "SELECT company_name, assistant_name FROM public.databases WHERE database_id = $1"
+        results = await self._execute_query(
+            sql_query_find_dbid,
+            insert_values=(database_id,),
+            is_insert=True,
+            fetch_results=True
+        )
+        output = {"company_name": results[0], "assistant_name": results[1]}
         return output
 
     async def create_session(self, database_id=None, tenant_name="", user_code=""):
@@ -545,3 +559,13 @@ class Postgres:
         choices = [record[0] for record in records]
        
         return choices
+
+    async def delete_database(self, database_id):
+        delete_database_query = "delete from public.databases where database_id = $1;"
+        _ = await self._execute_query(
+                delete_database_query,
+                fetch_results=True,
+                insert_values=(database_id),
+            )                    
+        return True
+   

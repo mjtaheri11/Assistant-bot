@@ -3,8 +3,8 @@ import re
 import json
 import requests
 import streamlit as st
-from src.config import config
 
+from src.config import config
 from src.logs import non_generative_agent_logger, simple_logger
 from src.utils import init_session_state
 from dotenv import load_dotenv
@@ -362,8 +362,8 @@ def main():
     if st.session_state.get("form_submitted", False):
         form_submitted = True
 
-    number_of_columns = [3, 5, 1, 2]
-    logging_column, main_column, _, sessions_column = st.columns(
+    number_of_columns = [1, 2, 1, 5, 2]
+    logging_column, sessions_column, _, main_column, _ = st.columns(
         number_of_columns,
         gap="small",
     )
@@ -682,8 +682,7 @@ def main():
                                     "sql_response_type", [False] * len(st.session_state["response"]))[i]
                                 if is_sql:
                                     # IMPROVED: Added custom class for SQL display
-                                    st.markdown(f'<div class="markdown-ltr sql-code-block">\n\n```sql\n{content}\n```\n\n</div>', unsafe_allow_html=True, 
-                                               help=help_msg)
+                                    st.markdown(f'<div class="markdown-ltr sql-code-block">\n\n```sql\n{content}\n```\n\n</div>', unsafe_allow_html=True, help=help_msg)
                                 else:
                                     st.markdown(f'<div class="markdown-rtl">{content}</div>', unsafe_allow_html=True, help=help_msg)
                                 if st.session_state.get("do_suggest_modules") and i == len(st.session_state["response"]) - 1:

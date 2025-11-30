@@ -205,15 +205,9 @@ backup.sql
 # nvidia-files
 nvidia-files
 .gitignore
-VectorDB-legacy/7b2632f6-e995-4037-89f5-54db92961312/header.bin
-VectorDB-Chunk_Question/*
-VectorDB_main/*
-VectorDB_ON
-VectorDB_2.zip
-VectorDB_only_chunks/*
-VectorDB_Chunk_Only.zip
-VectorDB-temp/chroma.sqlite3
-VectorDB-temp/
+/VectorDB*
+/VectorDB*.zip
+/db-cache*
 
 # Eval
 RagBot/.deepeval/.temp_test_run_data.json
@@ -236,3 +230,4 @@ RagBot/service.yaml
 RagBot/requirements_2.txt
 RagBot/Dockerfile_2
 RagBot/kubefiles
+RagBot/temp*.md

@@ -252,19 +252,19 @@ class SoleChunker(HierarchicalChunker):
 
 
 
-if __name__ == '__main__':
-    files_to_chunk = [
-                      r"E:\QA\resources\4thG-Intro\4thG-Intro_new.md",
-                      r"E:\QA\resources\AboutSG\AboutSG_new.md",
-                      r"E:\QA\resources\CRM\CRM_new.md",
-                      r"E:\QA\resources\DA-Help\DA-Help_new.md",
-                      r"E:\QA\resources\INV\INV_new.md",
-                      r"E:\QA\resources\Report_builder\report_builder_corrected.md",
-                      r"E:\QA\resources\Sales\Sales_new.md",
-                      r"E:\QA\resources\TaxPayer\TaxPayer_new.md",
-                      r"E:\QA\resources\Treasury_14040231\Treasury_14040231_new.md",
-                      r"E:\QA\resources\راهنمای دفتر کل نسل 4\راهنمای دفتر کل نسل 4 (1).md",
-                      ]
+# if __name__ == '__main__':
+#     files_to_chunk = [
+#                       r"E:\QA\resources\4thG-Intro\4thG-Intro_new.md",
+#                       r"E:\QA\resources\AboutSG\AboutSG_new.md",
+#                       r"E:\QA\resources\CRM\CRM_new.md",
+#                       r"E:\QA\resources\DA-Help\DA-Help_new.md",
+#                       r"E:\QA\resources\INV\INV_new.md",
+#                       r"E:\QA\resources\Report_builder\report_builder_corrected.md",
+#                       r"E:\QA\resources\Sales\Sales_new.md",
+#                       r"E:\QA\resources\TaxPayer\TaxPayer_new.md",
+#                       r"E:\QA\resources\Treasury_14040231\Treasury_14040231_new.md",
+#                       r"E:\QA\resources\راهنمای دفتر کل نسل 4\راهنمای دفتر کل نسل 4 (1).md",
+#                       ]
 
     # file_address = r"E:\QA\resources\راهنمای دفتر کل نسل 4\راهنمای دفتر کل نسل 4 (1).md"
     # file_address = r"E:\QA\resources\DA-Help\DA-Help.md"

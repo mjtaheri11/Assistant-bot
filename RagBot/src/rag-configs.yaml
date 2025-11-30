@@ -7,31 +7,19 @@ database:
   assistant_name: "digital assistant"
   use_cache: True
   dbname: my-vdb
+  collection_name: "default_collection"
   documents:
-    ../knowledge_base/new-KB/4thG-Intro.docx:
-      target_chunk_size: 500
-      max_chunk_size: 1000
-      sentence_overlap: 1
-    ../knowledge_base/new-KB/AboutSG.docx:
-      target_chunk_size: 500
-      max_chunk_size: 1000
-      sentence_overlap: 1
-    ../knowledge_base/new-KB/DA-Help.docx:
-      target_chunk_size: 500
-      max_chunk_size: 1000
-      sentence_overlap: 1
-    ../knowledge_base/new-KB/GL_CompleteDoc_14031018.docx:
-      target_chunk_size: 500
-      max_chunk_size: 1000
-      sentence_overlap: 1
-    ../knowledge_base/new-KB/INV UM 20241204-07.docx:
-      target_chunk_size: 500
-      max_chunk_size: 1000
-      sentence_overlap: 1
-    ../knowledge_base/new-KB/ReportBuilder_Help_14030925.docx:
-      target_chunk_size: 500
-      max_chunk_size: 1000
-      sentence_overlap: 1
+    4thg-intro: معرفی سیستم یکپارچه نسل 4
+    crm: مدیریت ارتباط با مشتری
+    da: راهنمای استفاده از دستیار دیجیتال
+    gl: دفتر کل
+    hcm: جبران خدمات
+    inv: انبار
+    platform: امکانات عمومی کاربر
+    reportbuilder: گزارش ساز
+    sales: فروش
+    taxpayer: مودیان مالیاتی
+    treasury: خزانه داری
 
 # Configurations for logging
 logging:
@@ -39,40 +27,43 @@ logging:
   file: app.log
   max_size: 10*1024*1024
 
+
 api:
   port: 8686
 
+
 modules:
-  names:
-    sales.csv: فروش
-    taxPayer.csv: مودیان
-    treasury.csv: خزانه داری
-    voucher.csv: دفتر کل 
-    report_builder.csv: گزارش ساز
-    inventory.csv: انبار
-    intro.csv: مقدمه
-    help.csv: راهنما
-    crm.csv: مدیریت ارتباط با مشتری
-    AboutSG.csv: درباره همکاران سیستم
-    platform.csv: پلتفرم
-    hcm.csv: جبران خدمات
+  names: 
+    sales: فروش
+    hcm: جبران خدمات
+    da: دستیار دیجیتال
+    taxpayer: مودیان
+    treasury: خزانه داری
+    gl: دفتر کل
+    reportbuilder: گزارش ساز
+    inv: انبار
+    4thg-intro: مقدمه
+    help: راهنما
+    crm: مدیریت ارتباط با مشتری
+    aboutsg: درباره همکاران سیستم
+    platform: پلتفرم
   
   proposable_modules:
-    - فروش
-    - مودیان
+    - انبار
+    - جبران خدمات
     - خزانه داری
     - دفتر کل
-    - گزارش ساز
-    - انبار
+    - فروش
     - مدیریت ارتباط با مشتری
-    - جبران خدمات
-
+    - مودیان مالیاتی
+    - گزارش ساز
 
 postgres:
   address: 172.26.0.6 # 172.26.0.5 # postgres # 172.26.0.6 # postgres # 172.20.0.6 # 192.168.208.2
   database: chatbot
   max_user_input_character_length: 200
   history_length: 3
+
 
 cache:
   # host: redis-stack
@@ -84,13 +75,13 @@ cache:
   redis_result_num_documents: 5
   socket_timeout: 10
   index_name: Hamzan
-  persist_directory: /home/jovyan/testing_units/Assistant-bot/db-cache
+  persist_directory: ../db-cache
+  index_name: default_cache
   num_rank2_documents: 5
   embedding_model:
 #    model_name: /home/jovyan/.cache/huggingface/hub/models--intfloat--multilingual-e5-large/snapshots/0dc5580a448e4284468b8909bae50fa925907bc5
     model_name: ../saved_models/models--intfloat--multilingual-e5-large/snapshots/0dc5580a448e4284468b8909bae50fa925907bc5
-
-    device: cpu
+    device: cuda
 
   # configurations for reranker
   reranker:
@@ -110,48 +101,58 @@ cache:
     thumb_down_field_name: thumb_down
     flag_field_name: flag
 
+
 # Configurations for streamlit
 streamlit:
   host: 0.0.0.0
   port: 8505
 
+
 # configurations for embedding model
 embedding_model:
-  openrouter: "qwen/qwen3-embedding-4b"
-  model_name: ../saved_models/models--intfloat--multilingual-e5-large/snapshots/0dc5580a448e4284468b8909bae50fa925907bc5
-  # model_name: intfloat/multilingual-e5-large
-#  model_name: /home/jovyan/.cache/huggingface/hub/models--intfloat--multilingual-e5-large/snapshots/0dc5580a448e4284468b8909bae50fa925907bc5
-  # model_name: /home/user01/.cache/huggingface/hub/models--jinaai--jina-embeddings-v3/snapshots/30996fea06f69ecd8382ee4f11e29acaf6b5405e
-  device: cpu
+  model_path: ../saved_models/models--intfloat--multilingual-e5-large/snapshots/0dc5580a448e4284468b8909bae50fa925907bc5
+  device: cuda
+  # Type: "triton" or "local"
+  type: triton
+  # Triton Embedding Configuration
+  model_name: "e5"  # Model name in Triton server
+  triton_url: http://triton-server.admin.svc.cluster.local
+  tokenizer_path: ../saved_models/models--intfloat--multilingual-e5-large/snapshots/0dc5580a448e4284468b8909bae50fa925907bc5
+  max_length: 8192
+  timeout: 30
+  batch_size: 32
+  type: "openrouter"
 
 # configurations for reranker
 reranker:
-  primary_model: flag
+  # primary_model: flag
+  # type: triton
+  type: service
+  # model_name: bge  # Same model serving both embedding and reranking
+  model_name: Qwen3-Reranker-4B
+  triton_url: http://triton-server.admin.svc.cluster.local
+  max_length: 8192
+  api_type: custom_v2 # legacy OR openrouter
+  api_url: http://qwen3-rr-4b-predictor.admin.svc.cluster.local/v2/rerank 
+  batch_size: 32
   flag_model: 
-      model_name: ../saved_models/models--BAAI--bge-reranker-v2-m3
-#      model_name: BAAI/bge-reranker-v2-m3
-      device: cpu
+      model_path: ../saved_models/models--BAAI--bge-reranker-v2-m3
+      device: cuda
   
   qwen_model: 
-      model_name: ../saved_models/qwen3-reranker
-      device: cpu
+      model_path: ../saved_models/qwen3-reranker
+      device: cuda
       max_length: 8192
 
-  model_name: ../saved_models/models--BAAI--bge-reranker-v2-m3/snapshots/12e974610ba9083ed95f3edf08d7e899581f4de4
-#  model_name: BAAI/bge-reranker-v2-m3
-  device: cpu
 
 # configurations for retriever
 retriever:
-  retrieved_documents: 40 # initiate_vdb.py
+  retrieved_documents: 40
   retrieved_rank2_documents: 7
-  alpha_threshold: 0.9
-  expansion: false
-  rerank: true
-  chunk_size: 800
-  max_chunk_size: 1200
-  sentence_overlap: 1
-  retriever_threshold: 0.002
+  retriever_threshold: 0.0
+  alpha_threshold: 0.5
+  use_reranker: False
+  
 
 # Evaluations configurations
 evaluation:
@@ -169,6 +170,7 @@ evaluation:
   retrieved_documents: 12
   retrieved_rank2_documents: 5
 
+
 chat_responder:
   ok_status: "success"
   doubtful_status: "DOUBTFUL"
@@ -178,6 +180,7 @@ chat_responder:
 
 followup_query_generator:
   number_of_suggested_queries: 3
+
 
 router_model:
   address: /home/jovyan/testing_units/Assistant-bot/saved_models/mlp.joblib
