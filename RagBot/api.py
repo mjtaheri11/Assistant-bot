@@ -50,7 +50,6 @@ from src.logic import (
     sql_responder_,
     utterance_paraphraser,
     module_proposer,
-    router_SQL_QA,
 )
 from src.logs import non_generative_agent_logger, simple_logger
 from src.utils import substitute_sql_parameters
@@ -60,7 +59,7 @@ from qdrant_client import QdrantClient, models
 
 RESPONSE_TEMPLATE_FOR_NO_ANSWER = "متاسفانه، پاسخی به سوال شما یافت نشد."
 MODULE_CLARIFICATION_RESPONSE_TEMPLATE = "لطفا مشخص نمایید سوال شما از کدام یک از ماژول های سیستم است."
-app = FastAPI(title="Digital Assistant", root_path="/eval-test-soroush") # should be added to env variables
+app = FastAPI(title="Digital Assistant", root_path=os.getenv("FASTAPI_ROOT_PATH")) # should be added to env variables
  
 # Define Prometheus metrics
 REQUEST_COUNT = Counter("api_http_requests_total", "Total API Requests", ["endpoint"])
@@ -1075,7 +1074,7 @@ def get_qdrant_client():
     qdrant_host = os.getenv("QDRANT_API_BASE")
     qdrant_port = os.getenv("QDRANT_API_PORT")
     qdrant_api_key = os.getenv("QDRANT_API_KEY")
-    
+
     try:
         client = QdrantClient(
             host=qdrant_host,
@@ -1090,7 +1089,7 @@ def get_qdrant_client():
     except Exception as e:
         logger.warning(f"⚠️ HTTP connection failed, trying with SSL: {e}")
         return QdrantClient(
-            url=f"https://{qdrant_host}:{qdrant_port}",
+            url=f"http://{qdrant_host}:{qdrant_port}",
             api_key=qdrant_api_key,
             timeout=60,
             verify=False,

@@ -29,11 +29,11 @@ def _initialize_qdrant_client() -> QdrantClient:
     Internal helper to create the QdrantClient.
     Handles the logic of trying HTTP first, then falling back to HTTPS.
     """
-    url = os.getenv("QDRANT_API_BASE")
-    port = os.getenv("QDRANT_API_PORT")
-    api_key = os.getenv("QDRANT_API_KEY")
+    qdrant_host = os.getenv("QDRANT_API_BASE")
+    qdrant_port = os.getenv("QDRANT_API_PORT")
+    qdrant_api_key = os.getenv("QDRANT_API_KEY")
 
-    if not url:
+    if not qdrant_host:
         # If no URL is set, we might want to return None or raise an error depending on strictness
         # For now, we return None and let the functions handle it if they need it.
         logger.warning("QDRANT_API_BASE not set. Client will be None.")
@@ -42,19 +42,23 @@ def _initialize_qdrant_client() -> QdrantClient:
     # Try HTTP first (common for internal cluster communication)
     try:
         client = QdrantClient(
-            url=url,
-            port=port,
-            api_key=api_key,
+            host=qdrant_host,
+            port=qdrant_port,
+            api_key=qdrant_api_key,
             timeout=60,
             prefer_grpc=False,
-            # https=False,
+            https=False,
         )
-        # Lightweight check
-        client.get_collections()
-        print("✅ Connected to Qdrant via HTTP (no SSL)")
+        logger.info("✅ Connected to Qdrant via HTTP (no SSL)")
         return client
     except Exception as e:
-        print(f"⚠️ HTTP connection failed, trying with SSL: {e}")
+        logger.warning(f"⚠️ HTTP connection failed, trying with SSL: {e}")
+        return QdrantClient(
+            url=f"http://{qdrant_host}:{qdrant_port}",
+            api_key=qdrant_api_key,
+            timeout=60,
+            verify=False,
+        )
 
     # Fallback to HTTPS
     try:

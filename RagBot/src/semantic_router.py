@@ -503,11 +503,12 @@ class SemanticRouterPipeline:
         prob = self.classifier.model.predict_proba(sentences_vectors)
         classes = self.classifier.model.classes_
         classes_prob = list(zip(classes, prob[0]))
+        sorted_classes_prob = sorted(classes_prob, key=lambda x: x[1], reverse=True)
         label = classes[np.argmax(prob[0])]
         t1 = time()
         logger.info(f"Prediction done in {t1 - t0} seconds")
         logger.info(f"The sentence: {sentences[0]} is classified as: {label}")
-        return label, classes_prob, max(prob[0])
+        return sorted_classes_prob, classes_prob, max(prob[0])
 
 if __name__ == '__main__':
     dataset_address = (Path(__file__).parent / "resources" / "generated_questions" / "output.xlsx").as_posix()

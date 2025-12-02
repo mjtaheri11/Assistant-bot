@@ -3,11 +3,13 @@ import re
 import json
 import requests
 import streamlit as st
+import time
 
 from src.config import config
 from src.logs import non_generative_agent_logger, simple_logger
 from src.utils import init_session_state
 from dotenv import load_dotenv
+
 
 load_dotenv()
 
@@ -16,7 +18,140 @@ NUMBER_OF_SUGGESTED_DATABASE = 10
 BASE_URL = os.getenv("BASE_URL_BACKEND")
 
 CSS_STYLE_FILE = "./src/style.css"
-# "http://172.27.0.6:8686" #
+validation_template_response = ":قابل اجرا بودن کوئری روی پلتفرم"
+
+def validate_execution(query):
+    import json
+    from playwright.sync_api import sync_playwright
+    
+    try:
+        with sync_playwright() as p:
+            # Launch the browser in visible mode (headless=False) to see the interaction
+            try:
+                browser = p.chromium.launch(headless=True)
+            except Exception as e:
+                return f"خطا در راه‌اندازی مرورگر: {e}"
+            
+            try:
+                context = browser.new_context(
+                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"
+                )
+                page = context.new_page()
+            except Exception as e:
+                browser.close()
+                return f"خطا در ایجاد صفحه مرورگر: {e}"
+
+            # --- LOGIN FLOW ---
+            try:
+                # 1. Open the URL
+                login_url = "http://aiconnect-dev.uat.mars.abramad.com/~shell/main/auth/ai-dev"
+                print(f"Navigating to Login: {login_url}...")
+                page.goto(login_url)
+            except Exception as e:
+                browser.close()
+                return f"خطا در باز کردن صفحه ورود: {e}"
+
+            # 2. Fill User 'admin'
+            print("Filling username...")
+            try:
+                page.wait_for_selector("input.ng-touched", timeout=1000)
+                page.fill("input.ng-touched", "pegah")
+            except Exception as e:
+                print(f"Could not find 'input.ng-touched' immediately: {e}")
+                print("Attempting to fill the first available input as fallback...")
+                browser.close()
+                return "خطا هنگام پر کردن نام کاربری"
+
+            # 3. Fill Password 'admin'
+            print("Filling password...")
+            try:
+                page.fill(".relative-field > input:nth-child(1)", "Aa123456")
+            except Exception as e:
+                browser.close()
+                return f"خطا هنگام پر کردن رمز عبور: {e}"
+
+            # 4. Press the submit button
+            print("Clicking submit button...")
+            try:
+                page.click(".form__submit-btn")
+            except Exception as e:
+                browser.close()
+                return f"خطا هنگام کلیک روی دکمه ورود: {e}"
+
+            # 5. Wait 2 seconds for login to process
+            print("Waiting 1.5 seconds...")
+            page.wait_for_timeout(1500)
+
+            # --- POST REQUEST FLOW ---
+
+            # 6. Navigate to the specific URL (ensures we are on the right page)
+            try:
+                target_url = "http://aiconnect-dev.uat.mars.abramad.com/~shell/main/auth/ai-dev"
+                print(f"Navigating to Target: {target_url}...")
+                page.goto(target_url)
+            except Exception as e:
+                browser.close()
+                return f"خطا در باز کردن صفحه هدف: {e}"
+
+            # 7. Extract cookies and perform the POST request
+            print("Extracting cookies...")
+            try:
+                cookies = context.cookies()
+                # Format cookies into a single header string: "key1=value1; key2=value2"
+                cookie_header = "; ".join([f"{c['name']}={c['value']}" for c in cookies])
+                print(f"Cookies retrieved: {cookie_header[:50]}...")  # Print first 50 chars for verification
+            except Exception as e:
+                browser.close()
+                return f"خطا در استخراج کوکی‌ها: {e}"
+
+            post_url = "http://aiconnect-dev.uat.mars.abramad.com/aiconnect/api/dev/parse"
+
+            payload = {
+                "query": query
+            }
+
+            # Include the extracted cookies explicitly in the headers
+            post_headers = {
+                "Accept": "application/json, text/plain, */*",
+                "Content-Type": "application/json",
+                # "Idempotency-Key": "97ad29db-b327-d352-6222-d5b9b2224638",
+                "Origin": "http://aiconnect-dev.uat.mars.abramad.com",
+                "Referer": "http://aiconnect-dev.uat.mars.abramad.com/main/auth/ai-dev",
+                "Cookie": cookie_header
+            }
+
+            print(f"Sending POST request to {post_url}...")
+            try:
+                # We use page.request here, but since we are explicitly passing the Cookie header,
+                # it ensures the specific tokens we extracted are sent.
+                response = page.request.post(post_url, data=payload, headers=post_headers)
+
+                print(f"Status Code: {response.status}")
+                print("\nResponse Body:")
+                
+                if response.status == 200:
+                    try:
+                        response_data = response.json()
+                        print(json.dumps(response_data, indent=2))
+                        browser.close()
+                        return f"عملیات با موفقیت انجام شد. کد وضعیت: {response.status}"
+                    except Exception:
+                        response_text = response.text()
+                        print(response_text)
+                        browser.close()
+                        return f"عملیات با موفقیت انجام شد. کد وضعیت: {response.status}"
+                else:
+                    browser.close()
+                    return f"خطا در درخواست API. کد وضعیت: {response.status}"
+
+            except Exception as e:
+                print(f"API Request failed: {e}")
+                browser.close()
+                return f"خطا در ارسال درخواست به API: {e}"
+
+    except Exception as e:
+        return f"خطای غیرمنتظره: {e}"
+
 
 def session_create(database_id: str = None, api_url: str = BASE_URL):
     """
@@ -499,7 +634,7 @@ def main():
                     """, unsafe_allow_html=True)
                 
                 # IMPROVED: Compact layout for all controls
-                col1, col2, col3 = st.columns([6, 2, 2], gap="small")
+                col1, col2, col3, col4 = st.columns([6, 2, 2, 2], gap="small")
 
                 with col1:
                     # IMPROVED: Radio buttons moved to same row, more compact
@@ -532,7 +667,16 @@ def main():
                         key="temporal_model_selector",
                         label_visibility="collapsed"
                     )
-                
+
+                with col4:
+                    st.markdown(
+                        f'<div class="markdown-rtl">اجرای کوئری</div>', unsafe_allow_html=True)
+                    st.selectbox(
+                        '<div class="markdown-rtl">اجرای کوئری</div>',
+                        ["بله", "خیر"],
+                        key="temporal_evaluate_sql",
+                        label_visibility="collapsed"
+                    ) 
                 
                 # Text input on its own row
                 st.text_input(
@@ -545,6 +689,9 @@ def main():
                     st.session_state["temporal_sql_mode"])
                 st.session_state["model_selector"] = boolean_mapper(
                     st.session_state["temporal_model_selector"]
+                )
+                st.session_state["evaluate_sql"] = boolean_mapper(
+                    st.session_state["temporal_evaluate_sql"]
                 )
                 progress_bar = st.progress(value=0)
                 with st.container():
@@ -681,7 +828,12 @@ def main():
                                 is_sql = st.session_state.get(
                                     "sql_response_type", [False] * len(st.session_state["response"]))[i]
                                 if is_sql:
-                                    # IMPROVED: Added custom class for SQL display
+                                    # if st.session_state["evaluate_sql"]:
+                                    #     sql_content_dict = json.loads(content)
+                                    #     import pdb
+                                    #     pdb.set_trace()
+                                    #     validation_response = validate_execution(sql_content_dict["sql"])
+                                    #     content = content + "\n" + validation_template_response + "\n" + validation_response
                                     st.markdown(f'<div class="markdown-ltr sql-code-block">\n\n```sql\n{content}\n```\n\n</div>', unsafe_allow_html=True, help=help_msg)
                                 else:
                                     st.markdown(f'<div class="markdown-rtl">{content}</div>', unsafe_allow_html=True, help=help_msg)
