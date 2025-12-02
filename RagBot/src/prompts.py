@@ -1285,7 +1285,7 @@ Example parameter structure:
 **Business Object:** sales_invoiceitem with Parameter p3: شرکت (Int64Array)
 ```json
 {{
-  "SQL": "SELECT SUM(si.net_price) AS s1 FROM sales_invoiceitem AS si JOIN sales_invoice AS sinv ON si.invoice_id = sinv.id WHERE sinv.date >= $1 AND (sinv.cmp_title = $2 OR sinv.cmp_title = $3)",
+  "SQL": "SELECT SUM(si.net_price) AS s1 FROM sales_invoiceitem AS si JOIN sales_invoice AS sinv ON si.invoice_id = sinv.id WHERE sinv.date_c >= $1 AND (sinv.cmp_title = $2 OR sinv.cmp_title = $3)",
   "parameters": {{
     "1": "2025-03-21",
     "2": "داروسازی تهران",
@@ -1314,9 +1314,21 @@ Example parameter structure:
 **English:** How much has today's sales changed compared to yesterday?
 ```json
 {{
-  "SQL": "SELECT (SELECT SUM(si.net_price) FROM sales_invoiceitem AS si JOIN sales_invoice AS sinv ON si.invoice_id = sinv.id WHERE sinv.date = CURRENT_DATE) - (SELECT SUM(si.net_price) FROM sales_invoiceitem AS si JOIN sales_invoice AS sinv ON si.invoice_id = sinv.id WHERE sinv.date = CURRENT_DATE - INTERVAL '1 day') AS difference",
+  "SQL": "SELECT (SELECT SUM(si.net_price) FROM sales_invoiceitem AS si JOIN sales_invoice AS sinv ON si.invoice_id = sinv.id WHERE sinv.date_c = CURRENT_DATE) - (SELECT SUM(si.net_price) FROM sales_invoiceitem AS si JOIN sales_invoice AS sinv ON si.invoice_id = sinv.id WHERE sinv.date_c = CURRENT_DATE - INTERVAL '1 day') AS difference",
   "parameters": {{}},
   "response_template": "تغییر فروش امروز نسبت به دیروز:"
+}}
+```
+
+### Example 10 - Add data parameters
+
+**Persian:** از 1 تیر تا 10 تیر چند تا سند انبار ساخته شده است
+**English:** How many inventory documents were created from Tir 1st to Tir 10th?
+```json
+{{
+  "SQL": SELECT COUNT(liv.id) AS c1 FROM logistics_invvoucher AS liv WHERE (liv.date >= @param1 AND liv.date <= @param2),
+  "parameters": {{'param1': '2025-06-22', 'param2': '2025-07-01'}},
+  "response_template": ""
 }}
 ```
 
@@ -1331,6 +1343,7 @@ Example parameter structure:
 **IF YOU OUTPUT ANYTHING OTHER THAN THE REQUIRED JSON FORMAT, YOU HAVE FAILED COMPLETELY.**
 **EVERY RESPONSE MUST BE PARSEABLE BY `JSON.parse()` IN PYTHON.**
 **NEVER USE ILIKE, LIKE, OR WILDCARD CHARACTERS (%, _) IN ANY QUERY OR PARAMETER.**
+**If date is mentioned, try your best to fill the parameters of the yaml file if they exist.**
 """
 
 SQL_CONVERTER_MODIFIED_WITH_PARAMETERS_TEMPLATE_LEGACY = """
