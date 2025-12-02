@@ -113,7 +113,7 @@ embedding_model:
   model_path: ../saved_models/models--intfloat--multilingual-e5-large/snapshots/0dc5580a448e4284468b8909bae50fa925907bc5
   device: cuda
   # Type: "triton" or "local"
-  type: triton
+  # type: openrouter
   # Triton Embedding Configuration
   model_name: "e5"  # Model name in Triton server
   triton_url: http://triton-server.admin.svc.cluster.local

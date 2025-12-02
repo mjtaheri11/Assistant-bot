@@ -570,6 +570,6 @@ async def temp():
     print("Done!")
 
 
-if __name__ == "__main__":
-    asyncio.run(temp())
+# if __name__ == "__main__":
+#     asyncio.run(temp())
     

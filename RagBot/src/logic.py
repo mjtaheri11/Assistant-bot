@@ -4,8 +4,6 @@ import os
 import statistics
 from dotenv import load_dotenv
 ### remove this!
-import pdb
-pdb.set_trace = lambda: 1
 
 import torch
 import numpy as np
@@ -92,7 +90,7 @@ def model_selector(use_oss: bool = False, use_qwen3_coder: bool = False):
         api_base = GPT_API_BASE
         api_key = GPT_API_KEY
 
-    pdb.set_trace()
+    
     result = model_name, api_base, api_key
     return result
 
@@ -135,10 +133,10 @@ async def get_chat_response(
 
 
     messages = [SystemMessage(content=prompt)]
-    pdb.set_trace()
+    
     response = await llm.ainvoke(messages)
     result = response.content
-    pdb.set_trace()
+    
     return result
 
 @observe()
@@ -222,7 +220,7 @@ async def query_responder(
     model_name, api_base, api_key = model_selector(use_oss, use_qwen3_coder=False)
     response = await get_chat_response(prompt, model_name, api_key, api_base)
     response = json_cleaning(response)
-    pdb.set_trace()
+    
     return response
 
 
@@ -240,7 +238,7 @@ async def chitchat_responder(
                              )
     model_name, api_base, api_key = model_selector(use_oss, use_qwen3_coder=False)
     response = await get_chat_response(prompt, model_name, api_key, api_base)
-    pdb.set_trace()
+    
     return response
 
     
@@ -413,7 +411,7 @@ async def sql_responder_(
         api_base=api_base
         )
     response = json_cleaning(raw_json_response)
-    pdb.set_trace()
+    
     return response
 
 
@@ -438,14 +436,15 @@ async def _determine_final_route(
     if use_joblib:
         semantic_router_client = SemanticRouterPipeline(
             inference_only=True,
-            embedding_address=config["embedding_model"]["model_name"],
+            embedding_model=router_config["embedding_model"],
             classifier_address=router_config["address"],
             model_name=router_config["model_name"]
         )
         predictions, probabilities, max_prob = semantic_router_client.predict_sentences_input_embedding_and_sentences([utterance], [query_embedding])
-        top_prediction = predictions[0]
+        top_prediction = predictions[0][0]
         probabilities = list(probabilities)  # Convert to list to make it subscriptable
-
+        import pdb
+        pdb.set_trace()
         if max_prob > alpha_threshold and ("همکاران" not in utterance) and (top_prediction != "illegal"):
             return top_prediction
 
@@ -466,10 +465,12 @@ async def _determine_final_route(
         plausible_routes = ['chitchat', 'illegal', 'irrelevant', 'sql', 'qa']
 
     # Use an LLM to disambiguate between plausible routes
-    model_name, api_base, api_key = model_selector(use_oss, use_qwen3_coder=False)
+    model_name, api_base, api_key = model_selector(True, use_qwen3_coder=False)
     result = await get_chat_response(
         SEMANTIC_ROUTER.format(user_query=utterance, class_list=plausible_routes), model_name, api_key, api_base
     )
+    import pdb
+    pdb.set_trace()
     return result
 
 @observe()
@@ -551,18 +552,18 @@ async def chat_responder_(
         if not modules:
             modules = ["all"]
         result_temp = paraphrased_utterance, "", "", False, [modules[0]]
-        pdb.set_trace()
+        
         return result_temp
     
     if route_response == "chitchat":
         response = await chitchat_responder(paraphrased_utterance, history=history, context=context, use_oss=use_oss)
         result_temp = paraphrased_utterance, response, context, False, []
-        pdb.set_trace()
+        
         return result_temp
     
     if route_response == "illegal" or route_response =="irrelevant":
         result_temp = paraphrased_utterance, template_for_not_answer, "", False, []
-        pdb.set_trace()
+        
         return result_temp
 
     if not context:
@@ -584,7 +585,7 @@ async def chat_responder_(
     if "خارج از حوزه کاری" in response:
         response = template_for_not_context.format(company_name=company_name)
     result_temp = paraphrased_utterance, response, context, do_clarify, modules
-    pdb.set_trace()
+
     return result_temp
 
 @observe()

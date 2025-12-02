@@ -627,6 +627,7 @@ Questions requesting specific data, statistics, reports, or information from the
 - "آخرین تراکنش‌های حساب ۱۱۰" (Latest transactions for account 110)
 - "میانگین فروش روزانه ماه جاری" (Average daily sales this month)
 - "بالاترین مبلغ فاکتور در سال" (Highest invoice amount this year)
+- "چنتا سند انبار دارم" (How many inventory documents do I have)
 
 **Keywords:** تعداد، فهرست، لیست، گزارش، آمار، اطلاعات، داده‌ها، مانده، موجودی، مجموع، چقدر، چند، نمایش، میانگین، بالاترین، کمترین
 
