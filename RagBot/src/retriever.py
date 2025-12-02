@@ -1,8 +1,7 @@
 import os
-import asyncio
 import logging
 from dataclasses import dataclass
-from operator import attrgetter
+from typing import Tuple
 import requests
 import numpy as np
 
@@ -25,8 +24,8 @@ def get_logger():
     logging.basicConfig(level=logging.INFO)
     return logging.getLogger(__name__)
 
+HEADER_KEY_APPLICATION_JSON = "application/json"
 logger = get_logger()
-torch.cuda.set_per_process_memory_fraction(0.7, device=0)
 
 class TritonEmbeddings(Embeddings):
     """
@@ -65,8 +64,9 @@ class TritonEmbeddings(Embeddings):
         self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
         
         logger.info(f"✅ Initialized Triton embedding client for model '{model_name}' at {self.triton_url}")
-    
-    def _clean_text(self, text: str) -> str:
+
+    @staticmethod
+    def _clean_text(text: str) -> str:
         """
         Clean and validate text before tokenization.
         """
@@ -157,8 +157,9 @@ class TritonEmbeddings(Embeddings):
         except Exception as e:
             logger.error(f"Error validating inputs: {e}")
             return False
-    
-    def _prepare_triton_request(self, tokenized_inputs: Dict[str, np.ndarray]) -> Dict:
+
+    @staticmethod
+    def _prepare_triton_request(tokenized_inputs: Dict[str, np.ndarray]) -> Dict:
         """
         Prepare Triton inference request payload.
         """
@@ -187,8 +188,9 @@ class TritonEmbeddings(Embeddings):
         
         logger.debug(f"Prepared Triton request: batch_size={batch_size}, seq_length={seq_length}")
         return payload
-    
-    def _parse_triton_response(self, response_json: Dict, expected_batch_size: int) -> np.ndarray:
+
+    @staticmethod
+    def _parse_triton_response(response_json: Dict, expected_batch_size: int) -> np.ndarray:
         """
         Parse Triton inference response and extract embeddings.
         """
@@ -254,7 +256,7 @@ class TritonEmbeddings(Embeddings):
             response = requests.post(
                 self.infer_url,
                 json=payload,
-                headers={"Content-Type": "application/json"},
+                headers={"Content-Type": HEADER_KEY_APPLICATION_JSON},
                 timeout=self.timeout
             )
             
@@ -380,13 +382,14 @@ class OpenRouterEmbeddings(Embeddings):
         
         self.headers = {
             "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json",
+            "Content-Type": HEADER_KEY_APPLICATION_JSON,
             "HTTP-Referer": kwargs.get("app_name", "langchain-app"),  # Optional app identifier
         }
         
         logger.info(f"✅ Initialized OpenRouter embedding client for model '{model_name}'")
-    
-    def _clean_text(self, text: str) -> str:
+
+    @staticmethod
+    def _clean_text(text: str) -> str:
         """
         Clean and validate text before sending to API.
         """
@@ -469,8 +472,9 @@ class OpenRouterEmbeddings(Embeddings):
                 raise
         
         raise Exception(f"Failed after {self.max_retries} attempts")
-    
-    def _parse_response(self, response: Dict[str, Any], expected_count: int) -> List[List[float]]:
+
+    @staticmethod
+    def _parse_response(response: Dict[str, Any], expected_count: int) -> List[List[float]]:
         """
         Parse OpenRouter API response.
         
@@ -596,8 +600,9 @@ class TritonBGEReranker:
         self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
         
         logger.info(f"✅ Initialized Triton BGE reranker client for model '{model_name}' at {self.triton_url}")
-    
-    def _prepare_pairs(self, query: str, documents: List[str]) -> List[str]:
+
+    @staticmethod
+    def _prepare_pairs(query: str, documents: List[str]) -> List[str]:
         """
         Prepare query-document pairs for reranking.
         BGE reranker expects concatenated pairs: [query, document]
@@ -622,8 +627,9 @@ class TritonBGEReranker:
             "input_ids": encoded["input_ids"].astype(np.int64),
             "attention_mask": encoded["attention_mask"].astype(np.int64)
         }
-    
-    def _prepare_triton_request(self, tokenized_inputs: Dict[str, np.ndarray]) -> Dict:
+
+    @staticmethod
+    def _prepare_triton_request(tokenized_inputs: Dict[str, np.ndarray]) -> Dict:
         """
         Prepare Triton inference request payload.
         """
@@ -645,8 +651,9 @@ class TritonBGEReranker:
                 }
             ]
         }
-    
-    def _parse_triton_response(self, response_json: Dict, batch_size: int) -> np.ndarray:
+
+    @staticmethod
+    def _parse_triton_response(response_json: Dict, batch_size: int) -> np.ndarray:
         """
         Parse Triton inference response and extract relevance scores.
         """
@@ -690,7 +697,7 @@ class TritonBGEReranker:
             response = requests.post(
                 self.infer_url,
                 json=payload,
-                headers={"Content-Type": "application/json"},
+                headers={"Content-Type": HEADER_KEY_APPLICATION_JSON},
                 timeout=self.timeout
             )
             response.raise_for_status()
@@ -773,8 +780,9 @@ class RerankerServiceClient:
             self.api_type = APIType(api_type)
         else:
             self.api_type = api_type
-            
-    def _detect_api_type(self, url: str) -> APIType:
+
+    @staticmethod
+    def _detect_api_type(url: str) -> APIType:
         """Detect API type based on URL patterns."""
         if "/v2/rerank" in url:
             return APIType.CUSTOM_V2
@@ -785,7 +793,7 @@ class RerankerServiceClient:
             
     def _get_headers(self) -> Dict[str, str]:
         """Get appropriate headers based on API type."""
-        headers = {"Content-Type": "application/json"}
+        headers = {"Content-Type": HEADER_KEY_APPLICATION_JSON}
         
         if self.api_type == APIType.OPENROUTER and self.api_key:
             # OpenRouter typically uses different header format
@@ -1059,7 +1067,7 @@ class QwenReranker:
         scores = log_softmax_scores[:, 1].exp().tolist()
         return scores
 
-    def compute_score(self, query_doc_pairs: List[List[str]], normalize: bool = True) -> List[float]:
+    def compute_score(self, query_doc_pairs: List[List[str]]) -> List[float]:
         if not query_doc_pairs:
             return []
         
@@ -1318,8 +1326,9 @@ class Retriever(object):
                 )
         
         return vectordb.as_retriever(search_kwargs=search_kwargs)
-    
-    def _documents_to_standard_format(self, documents, reverse=False):
+
+    @staticmethod
+    def _documents_to_standard_format(documents, reverse=False):
         """
         Convert Document objects to a standardized dictionary format.
         This ensures consistent output whether reranking is used or not.
@@ -1397,7 +1406,7 @@ class Retriever(object):
             return []
     
     async def retrieve_context(self, query, collection_name=None, k=None, 
-                              module_filter=None, reverse=True, use_reranker=None):
+                              module_filter=None, reverse=True, use_reranker=None) -> Tuple[List, List]:
         """
         Retrieve context with optional reranking.
         
@@ -1504,7 +1513,7 @@ class Retriever(object):
                 if offset is None:
                     break
             
-            return sorted(list(modules))
+            return sorted(modules)
             
         except Exception as e:
             logger.error(f"Error getting available modules: {e}")

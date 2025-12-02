@@ -27,7 +27,7 @@ MAX_TOKEN_SIZE = 8192
 
 
 SUPPORTED_FILE_EXTENSIONS = ['.docx', '.doc', '.md']
-tokenizer = AutoTokenizer.from_pretrained('../saved_models/Qwen3-Embedding-4B', padding_side='left')
+tokenizer = AutoTokenizer.from_pretrained('Qwen/Qwen3-Embedding-4B', padding_side='left')
 
 
 # ============================================================================

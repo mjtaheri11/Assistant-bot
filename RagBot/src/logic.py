@@ -1,7 +1,5 @@
 import random
-from typing import List
 import json
-from collections import Counter
 import os
 import statistics
 from dotenv import load_dotenv
@@ -20,24 +18,20 @@ from .prompts import (
     RAG_EXPLANATORY_SYSTEM_PROMPT,
     RAG_NORMAL_SYSTEM_PROMPT,
     UTTERANCE_PARAPHRASER_PROMPT,
-    SQL_CONVERTER_MODIFIED_WITH_PARAMETERS,
     CHITCHAT_PROMPT,
     SQL_CONVERTER_MODIFIED_WITH_PARAMETERS_TEMPLATE,
     SQL_MODIFIER,
     ANSWER_VALIDATOR_PROMPT,
     SEMANTIC_ROUTER
-    # SQL_CONVERTER,
 )
 from .retriever import Retriever
 from .config import config
 from .cache import Cache
-from .logs import simple_logger, logger_no_session_id
-from .utils import json_cleaning, json_text_cleaning, json_cleaning_1
+from .utils import json_cleaning, json_cleaning_1
 from .business_objects import LOGISTICS_SALES_MODIFIED, FINANCIAL_BO_MODIFIED
 from .semantic_router import SemanticRouterPipeline
 from langchain.chat_models import ChatOpenAI
-from langfuse import observe, get_client
-import logging
+from langfuse import observe
 import hashlib
 
 # Load environment variables from .env file
@@ -120,7 +114,6 @@ async def get_chat_response(
     if api_base and model_name and api_key:
         if model_name != "/gpt-120":
             extra = {}
-            # model_kwargs = {}
         else:
             extra = {
                 "top_k": 1,
@@ -129,10 +122,6 @@ async def get_chat_response(
                 "sampling_method": "greedy",
                 "reasoning_effort": "medium"
             }
-            # model_kwargs={
-            #     "top_p": 1,
-            #     "max_completion_tokens": 8000
-            # },
         llm = ChatOpenAI(
             openai_api_base=api_base,
             model_name=model_name,
@@ -204,7 +193,7 @@ async def utterance_paraphraser(history: List[tuple[str, str]], user_utterance: 
 async def query_responder(
     query: str, 
     context: str, 
-    history: str, 
+    history: List[tuple[str, str]],
     company_name: str = None, 
     assistant_name: str = None, 
     answer_type: str = "normal", 
@@ -215,15 +204,15 @@ async def query_responder(
     
     # Use develop branch format with multiple prompt types
     if answer_type == "concise":
-        RAG_SYSTEM_PROMPT = RAG_CONCISE_SYSTEM_PROMPT
+        rag_system_prompt = RAG_CONCISE_SYSTEM_PROMPT
     elif answer_type == "normal":
-        RAG_SYSTEM_PROMPT = RAG_NORMAL_SYSTEM_PROMPT
+        rag_system_prompt = RAG_NORMAL_SYSTEM_PROMPT
     elif answer_type == "explanatory":
-        RAG_SYSTEM_PROMPT = RAG_EXPLANATORY_SYSTEM_PROMPT
+        rag_system_prompt = RAG_EXPLANATORY_SYSTEM_PROMPT
     else:
-        RAG_SYSTEM_PROMPT = RAG_NORMAL_SYSTEM_PROMPT
+        rag_system_prompt = RAG_NORMAL_SYSTEM_PROMPT
         
-    prompt = RAG_SYSTEM_PROMPT.format(
+    prompt = rag_system_prompt.format(
         context=context,
         company_name=company_name,
         assistant_name=assistant_name,
@@ -241,7 +230,7 @@ async def query_responder(
 async def chitchat_responder(
     query: str,
     context: str, 
-    history: str,
+    history: List[tuple[str, str]],
     use_oss: bool
     ):
     serialized_history = history_serializer(history)
@@ -256,7 +245,7 @@ async def chitchat_responder(
 
     
 @observe()
-async def answer_validator(question: str, context: str, answer: str) -> bool:
+async def answer_validator(question: str, context: str, answer: str, use_oss: bool) -> str:
     prompt = ANSWER_VALIDATOR_PROMPT.format(
         context=context,
         question=question,
@@ -264,11 +253,10 @@ async def answer_validator(question: str, context: str, answer: str) -> bool:
     )
     model_name, api_base, api_key = model_selector(use_oss, use_qwen3_coder=False)
     response = await get_chat_response(prompt, model_name, api_key, api_base)
-    pdb.set_trace()
     return response
 
 @observe()
-async def is_somewhat_uniform(freq_dict: dict, threshold: float = MODULE_PROPOSER_THRESHOLD) -> bool:
+async def is_somewhat_uniform(freq_dict: dict, threshold: float = MODULE_PROPOSER_THRESHOLD) -> tuple[bool, float]:
     """
     Checks if the frequency distribution in a dictionary is somewhat uniform
     based on the Coefficient of Variation (CV).
@@ -276,22 +264,22 @@ async def is_somewhat_uniform(freq_dict: dict, threshold: float = MODULE_PROPOSE
     assert len(freq_dict) > 1, "Frequency dictionary must contain more than one item."
     
     frequencies = list(freq_dict.values())
-    mean_freq = statistics.mean(frequencies)
-    
-    if mean_freq == 0:
-        return True, mean_freq
-    
-    stdev_freq = statistics.stdev(frequencies)
-    cv = stdev_freq / mean_freq
-    check_cv = (cv <= threshold, mean_freq)
-    return check_cv
+    mean_freq = float(statistics.mean(frequencies))
+    if mean_freq <= 1e-5:
+        final_result = (True, mean_freq)
+    else:
+        stdev_freq = statistics.stdev(frequencies)
+        cv = stdev_freq / mean_freq
+        final_result = (cv <= threshold, mean_freq)
+    return final_result
 
 @observe()
-async def retrieve_context_with_metadata(query: str, input_modules: List = None, database_index: str = None) -> List[dict]:
+async def retrieve_context_with_metadata(query: str, input_modules: List = None, database_index: str = None) -> Tuple[List,List]:
     retriever = Retriever()
     
     if input_modules:
-        context_with_metadata, query_embedding = await retriever.retrieve_context(query, database_index, module_filter=input_modules)
+        context_with_metadata, query_embedding = await retriever.retrieve_context(query, database_index,
+                                                                                  module_filter=input_modules)
     elif database_index:
         # Support database_index parameter from develop branch
         context_with_metadata, query_embedding = await retriever.retrieve_context(query, database_index)
@@ -300,7 +288,7 @@ async def retrieve_context_with_metadata(query: str, input_modules: List = None,
     return context_with_metadata, query_embedding
 
 @observe()
-async def prepare_final_context(query: str, database_index: str = None, input_module: str = "") -> Union[str, Tuple[bool, List[str], Union[str, List[str]]]]:
+async def prepare_final_context(query: str, database_index: str = None, input_module: str = ""):
     """
     Unified function supporting both develop branch (simple context) and feature/add-sql-agent (complex module handling)
     """
@@ -323,13 +311,12 @@ async def prepare_final_context(query: str, database_index: str = None, input_mo
         return *result, query_embedding
     
     print(module_frequencies) # temp logs
-    needs_clarification, mean_freq = await is_somewhat_uniform(module_frequencies)
+    needs_clarification, _ = await is_somewhat_uniform(module_frequencies)
     if not needs_clarification:
         max_value = max(module_frequencies.values())
         probable_detected_module = [k for k, v in module_frequencies.items() if v == max_value]
         result = _handle_clear_preference_case(context_with_metadata, probable_detected_module[0])
     else:
-        # probable_detected_modules = [k for k, v in module_frequencies.items() if v >= mean_freq]
         probable_detected_modules = list(module_frequencies.keys())
         result = _handle_clarification_case(
             context_with_metadata,
@@ -388,7 +375,7 @@ async def sql_responder_(
     faulty_sql_query: str = "", 
     error_message: str = "", 
     do_retry: bool = False,
-    parameters: dict = {},
+    parameters = None,
     use_oss: bool = False
     ):
     """
@@ -396,6 +383,8 @@ async def sql_responder_(
     """
     
     # Use feature/add-sql-agent logic with detected_module
+    if parameters is None:
+        parameters = {}
     if detected_module.strip() == "دفتر کل" or detected_module.strip() == "دفترکل":
         if not do_retry:
             bo_prompt = SQL_CONVERTER_MODIFIED_WITH_PARAMETERS_TEMPLATE.format(schema=FINANCIAL_BO_MODIFIED, query=query)
@@ -405,7 +394,6 @@ async def sql_responder_(
                                           faulty_sql_query=faulty_sql_query, error_message=error_message)
     elif detected_module.strip() == "انبار" or detected_module.strip() == "فروش":
         if not do_retry:
-            faulty_sql_query = json.dumps({"SQL": faulty_sql_query, "parameters": parameters})
             bo_prompt = SQL_CONVERTER_MODIFIED_WITH_PARAMETERS_TEMPLATE.format(schema=LOGISTICS_SALES_MODIFIED, query=query)
         else:
             bo_prompt = SQL_MODIFIER.format(schema=LOGISTICS_SALES_MODIFIED, original_query=query, 
@@ -413,7 +401,6 @@ async def sql_responder_(
     else:
         if not do_retry:
             all_schema = LOGISTICS_SALES_MODIFIED + "\n" + FINANCIAL_BO_MODIFIED
-            faulty_sql_query = json.dumps({"SQL": faulty_sql_query, "parameters": parameters})
             bo_prompt = SQL_CONVERTER_MODIFIED_WITH_PARAMETERS_TEMPLATE.format(schema=all_schema, query=query)
         else:
             bo_prompt = SQL_MODIFIER.format(schema=LOGISTICS_SALES_MODIFIED, original_query=query, 
@@ -439,31 +426,33 @@ def _get_chitchat_cache_key(utterance: str) -> str:
 
 async def _determine_final_route(
     utterance: str,
-    use_joblib: bool = True
+    query_embedding: List,
+    use_joblib: bool = True,
+    use_oss: bool = False,
 ) -> str:
 
-    ROUTER_CONFIG = config["router_model"]
-    ALPHA_THRESHOLD = ROUTER_CONFIG["alpha_threshold"]
-    BETA_THRESHOLD = ROUTER_CONFIG["beta_threshold"]
+    router_config = config["router_model"]
+    alpha_threshold = router_config["alpha_threshold"]
+    beta_threshold = router_config["beta_threshold"]
     """Determines the final route based on probability thresholds."""
     if use_joblib:
         semantic_router_client = SemanticRouterPipeline(
             inference_only=True,
             embedding_address=config["embedding_model"]["model_name"],
-            classifier_address=ROUTER_CONFIG["address"],
-            model_name=ROUTER_CONFIG["model_name"]
+            classifier_address=router_config["address"],
+            model_name=router_config["model_name"]
         )
-        predictions, probabilities, max_prob = semantic_router_client.predict_sentences([utterance])
+        predictions, probabilities, max_prob = semantic_router_client.predict_sentences_input_embedding_and_sentences([utterance], [query_embedding])
         top_prediction = predictions[0]
         probabilities = list(probabilities)  # Convert to list to make it subscriptable
 
-        if max_prob > ALPHA_THRESHOLD and ("همکاران" not in utterance) and (top_prediction != "illegal"):
+        if max_prob > alpha_threshold and ("همکاران" not in utterance) and (top_prediction != "illegal"):
             return top_prediction
 
         # If confidence is low, see if multiple routes are plausible
         if "همکاران" not in utterance:
             plausible_routes = [
-                route for route, prob in probabilities if prob > BETA_THRESHOLD
+                route for route, prob in probabilities if prob > beta_threshold
             ]
         else:
             plausible_routes = [route for route, prob in probabilities]
@@ -484,9 +473,9 @@ async def _determine_final_route(
     return result
 
 @observe()
-async def get_route_for_utterance(utterance: str, use_joblib: bool = False) -> str:    
-    CHITCHAT_ROUTE = "chitchat"
-    ROUTER_CONFIG = config["router_model"]
+async def get_route_for_utterance(utterance: str, query_embedding, use_oss: bool = False) -> str:
+    use_joblib = True
+    chitchat_route = "chitchat"
     
     # It's better to instantiate clients once and reuse them
     # rather than creating them in a function that's called frequently.
@@ -503,17 +492,10 @@ async def get_route_for_utterance(utterance: str, use_joblib: bool = False) -> s
     # 2. Check for the specific chitchat cache (from original logic)
     chitchat_key = _get_chitchat_cache_key(utterance)
     if cache_client.get_exact_cache(chitchat_key):
-        return CHITCHAT_ROUTE
-    semantic_router_client = SemanticRouterPipeline(
-        inference_only=True,
-        embedding_address=None,
-        embedding_model=ROUTER_CONFIG["embedding_model"],
-        classifier_address=ROUTER_CONFIG["address"],
-        model_name=ROUTER_CONFIG["model_name"]
-    )
+        return chitchat_route
 
     # 3. Determine the final route using the logic in the helper function
-    final_route = await _determine_final_route(utterance, use_joblib)
+    final_route = await _determine_final_route(utterance, query_embedding, use_joblib, use_oss)
 
     # 4. Cache the result for future requests
     # Note: The original code had a commented-out line to cache all routes.
@@ -527,16 +509,6 @@ async def get_route_for_utterance(utterance: str, use_joblib: bool = False) -> s
     #     cache_client.set_exact_cache(chitchat_key, final_route)
     return final_route.strip()
 
-
-@observe()
-async def router_SQL_QA(query: str, context: str):
-    # prompt = QUERY_ROUTER.format(query=query, context=context)
-    model_name, api_base, api_key = model_selector(use_oss, use_qwen3_coder=False)
-    raw_response = await get_chat_response(prompt, model_name, api_key, api_base)
-    response = json_cleaning(raw_response)
-    pdb.set_trace()
-    return response
-
 @observe()
 async def chat_responder_(
     history: List[tuple[str, str]],
@@ -545,7 +517,6 @@ async def chat_responder_(
     company_name: str = config["database"]["company_name"],
     assistant_name: str = config["database"]["assistant_name"],
     response_type: str = config["database"]["response_type"],
-    does_evaluate: bool = config["database"]["does_evaluate"],
     use_cache: bool = config["database"]["use_cache"],
     detected_module: str = "",
     use_oss: bool = True
@@ -555,14 +526,14 @@ async def chat_responder_(
     """
     # If sql_mode is True, use the new SQL agent logic
     if not detected_module and use_cache:
-        response, url = await get_cache_response(user_utterance)
+        response, _ = await get_cache_response(user_utterance)
         if response:
             result_temp = user_utterance, response, "", False, []
             return result_temp
 
-    paraphrased_utterance = await utterance_paraphraser(history, user_utterance, use_oss)
+    paraphrased_utterance = await utterance_paraphraser(history, user_utterance, use_oss=use_oss)
     if use_cache:
-        response, url = await get_cache_response(paraphrased_utterance) 
+        response, _ = await get_cache_response(paraphrased_utterance)
         if response:
             result_temp = paraphrased_utterance, response, "", False, []
             return result_temp
@@ -575,7 +546,7 @@ async def chat_responder_(
         result_temp = paraphrased_utterance, "", "", do_clarify, modules
         return result_temp
 
-    route_response = await get_route_for_utterance(paraphrased_utterance, query_embedding)
+    route_response = await get_route_for_utterance(paraphrased_utterance, query_embedding, use_oss)
     if route_response == "sql":
         if not modules:
             modules = ["all"]
