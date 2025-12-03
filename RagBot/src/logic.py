@@ -474,9 +474,9 @@ async def _determine_final_route(
     return result
 
 @observe()
-async def get_route_for_utterance(utterance: str, query_embedding, use_oss: bool = False) -> str:
-    use_joblib = True
-    chitchat_route = "chitchat"
+async def get_route_for_utterance(utterance: str, query_embedding: List, use_joblib: bool = False) -> str:    
+    CHITCHAT_ROUTE = "chitchat"
+    ROUTER_CONFIG = config["router_model"]
     
     # It's better to instantiate clients once and reuse them
     # rather than creating them in a function that's called frequently.

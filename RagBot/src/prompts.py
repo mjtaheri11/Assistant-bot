@@ -1171,8 +1171,8 @@ Example parameter structure:
 
 - **PostgreSQL Compliance:** Use PostgreSQL-specific syntax and functions where beneficial.
 - **Table Aliases:** Always use short, simple table aliases (e.g., `ls` for `logistics_store`), even for single-table queries.
-- **Function Aliases:** Always provide a simple alias for aggregate functions (e.g., `COUNT(*) AS c1`, `SUM(column) AS s1`).
-- **Column Names:** Use original column names without aliases in SELECT clauses.
+- **Function Aliases:** Always provide a simple alias for aggregate functions with "alias_function" template (e.g., `COUNT(table1_alias.column) AS table1_alias_column_count`, `SUM(table2_alias.column) AS table2_alias_column_sum`).
+- **Column Aliases:** Use aliases for column names and table in SELECT clauses.
 - **Clarity:** Structure `WHERE` clauses with parentheses for clarity.
 - **Parameterization:** Use PostgreSQL `$n` placeholders for all parameterized values.
 - **NO WILDCARDS:** Never use `SELECT *` or `COUNT *` or similar statements - always specify explicit column names.
