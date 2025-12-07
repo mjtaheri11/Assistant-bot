@@ -13,13 +13,15 @@ from io import BytesIO
 from typing import List, Any, Optional, Tuple, Dict
 
 import asyncpg
-from fastapi import FastAPI, HTTPException, Request, Query, File, Form, UploadFile
+from fastapi import FastAPI, HTTPException, Request, Query, File, Form, UploadFile, Depends
 from fastapi.responses import JSONResponse
 from prometheus_client import Counter, Histogram, generate_latest
 from pydantic import BaseModel, Field
 from starlette.responses import Response
 from langfuse import observe, get_client
 from dotenv import load_dotenv
+from contextlib import asynccontextmanager
+from openai import AsyncOpenAI
 from src.shear_parser import convert_word_to_markdown, SoleChunker
 import tempfile
 from pathlib import Path
@@ -58,9 +60,41 @@ from src.utils import substitute_sql_parameters
 from langchain.schema import Document
 from qdrant_client import QdrantClient, models
 
+llm_clients = {}
+
+async def get_client_llm():
+    return llm_clients
+    
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # --- Startup ---
+    
+    # Initialize the Standard OpenAI Client
+    llm_clients["gpt"] = AsyncOpenAI(
+        base_url=os.getenv("GPT_API_BASE"), 
+        api_key=os.getenv("GPT_API_KEY")
+    )
+    
+    # Initialize the Local Client (e.g., Ollama, vLLM, LocalAI)
+    # Note: 'base_url' points to your local server
+    # Note: 'api_key' is required by the SDK but often ignored by local servers
+    llm_clients["oss"] = AsyncOpenAI(
+        base_url=os.getenv("OSS_API_BASE"), 
+        api_key=os.getenv("OSS_API_KEY") 
+    )
+    
+    print("Clients initialized.")
+    yield
+    
+    # --- Shutdown ---
+    # Close both connections cleanly
+    await llm_clients["oss"].close()
+    await llm_clients["gpt"].close()
+    print("Clients closed.")
+
 RESPONSE_TEMPLATE_FOR_NO_ANSWER = "متاسفانه، پاسخی به سوال شما یافت نشد."
 MODULE_CLARIFICATION_RESPONSE_TEMPLATE = "لطفا مشخص نمایید سوال شما از کدام یک از ماژول های سیستم است."
-app = FastAPI(title="Digital Assistant", root_path=os.getenv("FASTAPI_ROOT_PATH")) # should be added to env variables
+app = FastAPI(title="Digital Assistant", lifespan=lifespan, root_path=os.getenv("FASTAPI_ROOT_PATH")) # should be added to env variables
  
 # Define Prometheus metrics
 REQUEST_COUNT = Counter("api_http_requests_total", "Total API Requests", ["endpoint"])
@@ -654,7 +688,7 @@ async def create_session(create_session_request: Optional[CreateSessionRequest] 
     },
 )
 @observe()
-async def chat_responder(chat_request: ChatRequest, request: Request):
+async def chat_responder(chat_request: ChatRequest, request: Request, clients: dict = Depends(get_client_llm)):
     REQUEST_COUNT.labels(endpoint="/v1/chat").inc()
     start_time = time.time()
     is_sql = False
@@ -760,6 +794,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                     
                     _ = await postgres.remove_previous_response(history[-1]["message_id"])
                     response_dict_str = await sql_responder_(
+                        clients,
                         paraphrased_utterance,
                         selected_module,
                         faulty_sql_query,
@@ -794,13 +829,14 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                     )
                     
                     paraphrased_utterance, response, context, do_clarify, modules = await chat_responder_(
+                        clients,
                         selected_history,
                         chat_request.query,
                         detected_module=chat_request.query,
                         database_index=matched_index,
                         company_name=company_name,
                         assistant_name=assistant_name, 
-                        use_oss=chat_request.use_oss
+                        use_oss=chat_request.use_oss, 
                     )
                     assert do_clarify == False, "on_click should not return do_clarify=True"
                     assert len(modules) <= 1, "on_click should not return modules"
@@ -811,6 +847,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                                 is_sql = True                           
                                 agent = "sql_responder"
                                 response_dict_str = await sql_responder_(
+                                    clients, 
                                     paraphrased_utterance,
                                     chat_request.query,
                                     "",
@@ -860,13 +897,14 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                     )
                     
                     paraphrased_utterance, response, context, do_clarify, modules = await chat_responder_(
+                        clients,
                         selected_history,
                         chat_request.query,
                         detected_module="",
                         database_index=matched_index,
                         company_name=company_name,
                         assistant_name=assistant_name, 
-                        use_oss=chat_request.use_oss
+                        use_oss=chat_request.use_oss, 
                     )
                     if do_clarify:
                         do_suggest = True
@@ -893,6 +931,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                                 agent = "sql_responder"
                                 is_sql = True
                                 response_dict_str = await sql_responder_(
+                                    clients,
                                     paraphrased_utterance,
                                     selected_module,
                                     "",
@@ -900,6 +939,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                                     chat_request.do_retry,
                                     use_oss=chat_request.use_oss
                                 )
+                               
                                 response_dict = json.loads(response_dict_str)
                                 if "null" not in response_dict_str and response_dict["SQL"] is not None:
                                     response_dict["SQL"] = convert_sql_parameters(response_dict["SQL"])
@@ -1020,7 +1060,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
     },
 )
 @observe()
-async def sql_responder_endpoint(sql_request: SQLRequest, request: Request):
+async def sql_responder_endpoint(clients, sql_request: SQLRequest, request: Request):
     REQUEST_COUNT.labels(endpoint="/v1/chat/sql").inc()
     start_time = time.time()
 
@@ -1030,7 +1070,7 @@ async def sql_responder_endpoint(sql_request: SQLRequest, request: Request):
         # Handle both legacy (table_schemas) and new (session-based) approaches
         if sql_request.table_schemas:
             # Legacy approach: direct SQL generation from schemas
-            response = await sql_responder_(sql_request.query, sql_request.table_schemas)
+            response = await sql_responder_(clients, sql_request.query, sql_request.table_schemas)
             return SQLResponse(response=response, do_suggest=False, choices=[], message_id="")
         
         # New approach: session-based with module detection
@@ -1043,6 +1083,7 @@ async def sql_responder_endpoint(sql_request: SQLRequest, request: Request):
             detected_module = sql_request.query
             is_sql = True
             response = await sql_responder_(
+                clients,
                 user_question,
                 detected_module,
                 use_oss=chat_request.use_oss

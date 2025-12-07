@@ -1,3 +1,383 @@
+LOGISTICS_MODIFIED = """
+    ## logistics_partaltunit
+    - **Title**: واحد فرعی کالا 
+    - **Context**: logistics
+    - **Parameters**: None
+    - **Attributes**:
+      - **String Type**:
+        - title: عنوان واحد فرعی کالا 
+        - major_unit_title: واحد سنجش اصلی 
+      - **Float64 Type**: 
+        - coeff: ضریب 
+    - **Relations**: None
+
+        
+    ## logistics_storagetype:
+    - **Title**: نوع انبار
+    - **Context**: logistics
+    - **Parameters**:
+      - logistics_storagetype_p1: شرکت (Int64Array - multiselect from companies dataview)
+    - **Attributes**:
+      - **String Type**:
+        - code: کد نوع انبار
+        - title: عنوان نوع انبار
+        - company_title: شرکت
+    - **Relations**: None
+
+    
+    ## logistics_units
+    - **Title**: واحد سنجش (Unit of Measure)
+    - **Context**: logistics
+    - **Parameters**: None
+    - **Attributes**:
+      - **String Type**:
+        - title: عنوان واحد سنجش
+      - Int64 Type:
+        - dimension: بعد 
+    - **Relations**: None
+
+
+    ## logistics_store
+    - **Title**: انبار
+    - **Context**: logistics
+    - **Parameters**:
+      - logistics_store_p1: شرکت (Int64Array - multiselect from companies dataview)
+    - **Attributes**:
+      - **String Type**:
+        - code: کد انبار 
+        - title: عنوان انبار 
+        - storage_type_title: عنوان نوع انبار 
+        - state: استان 
+        - company_title: شرکت
+    - **Relations**:
+      - logistics_plants: مرکز نگهداری (foreign key: plant_id to logistics_plants.id)
+
+
+    ## logistics_partaccountcategory
+    - **Title**: طبقه حساب کالا 
+    - **Context**: logistics
+    - **Parameters**:
+      - logistics_partaccountcategory_p1: شرکت (Int64Array - multiselect from companies dataview)
+    - **Attributes**:
+      - **String Type**: 
+        - code: کد طبقه حساب کالا 
+        - title: عنوان طبقه حساب کالا 
+        - pricing_method: روش قیمت گذاری 
+        - company_title: شرکت 
+    - **Relations**: None
+
+
+    ## logistics_plants
+    - **Title**: مرکز نگهداری 
+    - **Context**: logistics
+    - **Parameters**: 
+      - logistics_plants_p1: شرکت (Int64Array - multiselect from companies dataview)
+    - **Attributes**:
+      - **String Type**:
+        - code: کد مرکز نگهداری 
+        - title: عنوان مرکز نگهداری 
+        - branch_title: عنوان شعبه 
+        - state: استان 
+        - company_title: شرکت 
+    - **Relations**: None
+
+
+    ## logistics_invvoucher
+    - **Title**: سند انبار 
+    - **Context**: logistics
+    - **Parameters**:
+      - logistics_invvoucher_p1: از تاریخ سند انبار (Date)
+      - logistics_invvoucher_p2: تا تاریخ سند انبار (Date)
+      - logistics_invvoucher_p3: شرکت (Int64Array - multiselect from companies dataview)
+    - **Attributes**:
+      - **Date Type**: 
+        - date: تاریخ سند
+        - production_date: تاریخ تولید
+        - waybill_date: تاریخ بارنامه 
+      - **String Type**: 
+        - number: شماره سند 
+        - description: شرح سربرگ 
+        - sl_title: معین 
+        - state: وضعیت 
+        - fy_title: دوره مالی 
+        - extra_field1: فیلد اضافه 1 
+        - extra_field2: فیلد اضافه 2 
+        - extra_field3: فیلد اضافه 3 
+        - extra_field4: فیلد اضافه 4 
+        - extra_field5: فیلد اضافه 5 
+        - supplier_title: تامین کننده 
+        - contractor_title: پیمانکار 
+        - cost_center_title: مرکز هزینه 
+        - project_title: پروژه 
+        - customer_title: مشتری 
+        - carrier_title: موسسه حمل 
+        - consignment_party_title: طرف حساب امانی 
+        - employee_title: کارمند 
+        - sales_person_title: کارمند فروش 
+        - purchase_order_no: شماره سفارش خرید 
+        - purchase_invoice_no: شماره فاکتور خرید 
+        - deliver_to: تحویل گیرنده 
+        - cottage_no: شماره کوتاژ 
+        - customs_green_sheet: شماره برگ سبز 
+        - asn_no: ASN NO 
+        - sales_order_no: شماره سفارش فروش 
+        - sales_invoice_no: شماره فاکتور خرید 
+        - sale_organization: مرکز فروش 
+        - shopping_store: فروشگاه 
+        - delivery_person: تحویل دهنده 
+        - weighbridge_no: شماره برگه باسکول 
+        - production_order_no: شماره دستور تولید 
+        - production_plan_no: شماره سفارش تولید 
+        - production_operation_no: شماره عملیات تولید 
+        - production_shift: شیفت تولید 
+        - qc_inspection_no: شماره بازرسی کیفیت 
+        - qc_check_list_no: شماره چک لیست 
+        - qc_lab_no: شماره آزمایشگاه 
+        - conditional_approval: تایید ارفاقی 
+        - inspection_result: نتیجه بازرسی 
+        - coa_no: شماره COA 
+        - transporter_name: نام راننده 
+        - vehicle_no: نام خودرو 
+        - license_plate_no: شماره پلاک 
+        - waybill_no: شماره بارنامه 
+        - transporter_phone_no: تلفن راننده 
+        - company_title: شرکت 
+    - **Relations**:
+      - logistics_voucherspecification: الگوی سند انبار (foreign key: voucher_specification_id to logistics_voucherspecification.id)
+      - logistics_store: انبار (foreign key: store_id to logistics_store.id)
+      - logistics_counterstore: انبار مقابل (foreign key: counter_part_store_id to logistics_store.id)
+
+
+    ## logistics_parts
+    - **Title**: کالا 
+    - **Context**: logistics
+    - **Parameters**: 
+      - logistics_parts_p1: شرکت (Int64Array - multiselect from companies dataview)
+    - **Attributes**:
+      - **String Type**:
+        - code: کد کالا 
+        - title: عنوان کالا 
+        - major_unit_title: واحد سنجش اصلی 
+        - secondary_unit_title: واحد سنجش دوم 
+        - part_account_category_title: طبقه حساب کالا 
+        - part_type: نوع کالا 
+        - part_usage: نوع کارکرد کالا 
+        - company_title: شرکت 
+    - **Relations**:
+      - logistics_partaltunit: واحد فرعی کالا (foreign key: id to logistics_partaltunit.part_id)
+      - logistics_partstoragetype: نوع انبار کالا (foreign key: id to logistics_partstoragetype.part_id)
+
+
+    ## logistics_voucherspecification
+    - **Title**: الگوی سند انبار
+    - **Context**: logistics
+    - **Parameters**: 
+      - logistics_voucherspecification_p1: شرکت (Int64Array - multiselect from companies dataview)
+    - **Attributes**:
+      - **String Type**: 
+        - code: کد الگو 
+        - title: عنوان الگو 
+        - voucher_type: نوع سند 
+        - direction: جهت سند 
+        - purchase_type: نوع خرید 
+        - type_of_effect: نوع تاثیر بر موجودی 
+        - counter_part_type: نوع طرف مقابل 
+        - company_title: شرکت 
+    - **Relations**: None
+
+
+    ## logistics_invvoucheritem
+    - **Title**: قلم سند انبار 
+    - **Context**: logistics
+    - **Parameters**: 
+      - logistics_invvoucheritem_p1: شرکت (Int64Array - multiselect from companies dataview)
+    - **Attributes**:
+      - **Decimal Type**: 
+        - quantity: مقدار 
+        - major_quantity: مقدار به واحد اصلی 
+        - second_unit_quantity: مقدار به واحد دوم 
+        - remained_major_quantity: مانده استفاده نشده به واحد اصلی 
+        - remained_second_unit_quantity: مانده استفاده نشده به واحد دوم 
+      - **String Type**:
+        - row_number: شماره ردیف  
+        - sl_title: معین 
+        - extra_field1: فیلد اضافه 1 
+        - extra_field2: فیلد اضافه 2 
+        - extra_field3: فیلد اضافه 3 
+        - extra_field4: فیلد اضافه 4 
+        - extra_field5: فیلد اضافه 5 
+        - supplier_title: تامین کننده 
+        - contractor_title: پیمانکار 
+        - cost_center_title: مرکز هزینه 
+        - project_title: پروژه 
+        - customer_title: مشتری 
+        - carrier_title: موسسه حمل 
+        - consignment_party_title: طرف حساب امانی 
+        - employee_title: کارمند 
+        - sales_person_title: کارمند فروش 
+        - purchase_order_no: شماره سفارش خرید 
+        - purchase_invoice_no: شماره فاکتور خرید 
+        - deliver_to: تحویل گیرنده 
+        - cottage_no: شماره کوتاژ 
+        - customs_green_sheet: شماره برگ سبز 
+        - asn_no: ASN NO 
+        - sales_order_no: شماره سفارش فروش 
+        - sales_invoice_no: شماره فاکتور خرید 
+        - sale_organization: مرکز فروش 
+        - shopping_store: فروشگاه 
+        - delivery_person: تحویل دهنده 
+        - weighbridge_no: شماره برگه باسکول 
+        - production_order_no: شماره دستور تولید 
+        - production_plan_no: شماره سفارش تولید 
+        - production_operation_no: شماره عملیات تولید 
+        - production_shift: شیفت تولید 
+        - qc_inspection_no: شماره بازرسی کیفیت 
+        - qc_check_list_no: شماره چک لیست 
+        - qc_lab_no: شماره آزمایشگاه 
+        - conditional_approval: تایید ارفاقی 
+        - inspection_result: نتیجه بازرسی 
+        - coa_no: شماره COA 
+        - transporter_name: نام راننده 
+        - vehicle_no: نام خودرو 
+        - license_plate_no: شماره پلاک 
+        - waybill_no: شماره بارنامه 
+        - transporter_phone_no: تلفن راننده 
+        - company_title: شرکت 
+      - **Date Type**:
+        - production_date: تاریخ تولید
+        - waybill_date: تاریخ بارنامه  
+    - **Relations**:
+      - logistics_invvoucher: سند انبار (foreign key: inventory_voucher_id to logistics_invvoucher.id)
+      - logistics_part: کالا (foreign key: part_id to logistics_parts.id)
+      - logistics_unit: واحد سنجش (foreign key: unit_id to logistics_units.id)
+
+
+    ## logistics_invitemprice
+    - **Title**: قلم قیمت 
+    - **Context**: logistics
+    - **Parameters**: 
+      - logistics_invitemprice_p1: حوزه قیمت‌گذاری (Int64 - from dataview)
+      - logistics_invitemprice_p2: شرکت (Int64Array - multiselect from companies dataview)
+    - **Attributes**:
+      - **Date Type**: 
+        - date: تاریخ 
+      - **Decimal Type**: 
+        - fee: فی 
+        - price: مبلغ 
+        - major_fee: فی به واحد اصلی 
+        - major_price: مبلغ به واحد اصلی 
+      - **String Type**:
+        - price_type: نوع قیمت 
+        - currency_title: عنوان ارز 
+        - acc_voucher_number: شماره سند حسابداری 
+        - company_title: شرکت 
+    - **Relations**:
+      - logistics_invvoucheritem: قلم سند انبار (foreign key: inventory_voucher_item_id to logistics_invvoucheritem.id)
+
+
+    ## logistics_invstockpricing
+    - **Title**: گردش مبلغی
+    - **Context**: logistics
+    - **Parameters**: 
+      - logistics_invstockpricing_p1 (Date): از تاریخ قیمت سند انبار
+      - logistics_invstockpricing_p2 (Date): تا تاریخ قیمت سند انبار
+      - logistics_invstockpricing_p3: شرکت (Int64Array - multiselect from companies dataview)
+    - **Attributes**:
+      - **Decimal Type**: 
+        - fee: فی 
+        - price: مبلغ 
+        - price_in_functional_currency: مبلغ به ارز عملیاتی 
+        - total_fee: فی نهایی 
+        - total_price: مبلغ نهایی 
+        - major_fee: فی به واحد اصلی 
+        - major_unit_quantity: مقدار واحد اصلی 
+        - quantity: مقدار ثبت سند 
+        - second_unit_quantity: مقدار واحد دوم 
+      - **String Type**:
+        - company_title: عنوان شرکت 
+        - branch_title: عنوان شعبه 
+        - plant_code: کد مرکز نگهداری 
+        - plant_title: عنوان مرکز نگهداری 
+        - store_code: کد انبار 
+        - store_title: عنوان انبار 
+        - storage_type: نوع انبار 
+        - pricing_area_title: عنوان حوزه قیمت گذاری 
+        - part_code: کد کالا 
+        - part_title: عنوان کالا 
+        - part_type: نوع کالا 
+        - part_usage: نوع کارکرد کالا 
+        - part_account_category: طبقه حساب کالا 
+        - major_unit: واحد اصلی 
+        - second_unit: واحد دوم 
+        - inv_voucher_unit: واحد ثبت سند 
+        - inventory_voucher_specification_title: عنوان الگوی سند 
+        - inventory_voucher_type: نوع سند
+        - type_of_effect: نوع تاثیر بر موجودی 
+        - counter_part_title: طرف مقابل 
+        - inv_voucher_state: وضعیت سند انبار 
+        - currency: ارز 
+        - functional_currency: ارز عملیاتی 
+        - itemprice_vouchering_state: وضعیت سند حسابداری 
+        - item_pricing_state: وضعیت قیمت گذاری 
+        - price_type: نوع قیمت 
+        - acc_voucher_number: شماره سند حسابداری 
+    - **Relations**:
+      - logistics_invitemprice: قلم قیمت (foreign key: inventory_voucher_item_price_id to logistics_invitemprice.id)
+      - logistics_invitempricefactor: جزییات مبلغی (foreign key: inventory_voucher_item_price_id to logistics_invitempricefactor.inventory_voucher_item_price_id)
+
+
+    ## logistics_storagetype
+    - **Title**: نوع انبار 
+    - **Context**: logistics
+    - **Parameters**: 
+      - logistics_storagetype_p1 (Int64Array_Dataview): شرکت
+    - **Attributes**:
+      - **Str Type**: 
+        - code: کد نوع انبار 
+        - title: عنوان نوع انبار 
+        - company_title: شرکت 
+    - **Relations**: None
+
+
+    ## logistics_partstoragetype
+    - **Title**: نوع انبار کالا 
+    - **Context**: logistics
+    - **Parameters**: None
+    - **Attributes**: None
+    - **Relations**:
+      - logistics_storagetype: نوع انبار (foreign key: storage_type_id to logistics_storagetype.id)
+
+
+    ## logistics_invitempricefactor
+    - **Title**: جزییات مبلغی
+    - **Context**: logistics
+    - **Parameters**:
+      - logistics_invitempricefactor_p1 (Date): از تاریخ قیمت سند انبار
+      - logistics_invitempricefactor_p2 (Date): تا تاریخ قیمت سند انبار
+      - logistics_invitempricefactor_p3: شرکت (Int64Array - multiselect from companies dataview)
+    - **Attributes**:
+      - **Date Type**:
+        - date_c: تاریخ سند 
+      - **Decimal Type**: 
+        - td_in_functional_currency: مالیات و عوارض 
+        - discount_in_functional_currency: تخفیف 
+        - tf_in_functional_currency: کرایه حمل 
+        - fee: فی 
+        - major_fee: فی به واحد اصلی 
+        - price: مبلغ 
+        - price_in_reporting_currency1: مبلغ به ارز گزارشگری1 
+        - price_in_reporting_currency2: مبلغ به ارز گزارشگری2 
+      - **String Type**:
+        - transfer_fee_title: ارز کرایه حمل
+        - reporting1_currency: ارز گزارشگری 1
+        - reporting2_currency: ارز گزارشگری 2
+        - voucher_number: شماره سند حسابداری
+        - inv_voucher_number: شماره سند انبار
+        - company_title: شرکت
+    - **Relations**: None
+
+"""
+
 LOGISTICS_SALES_MODIFIED = """
 logistics_partaltunit:
   title: "واحد فرعی کالا"
