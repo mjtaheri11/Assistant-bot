@@ -50,6 +50,7 @@ from src.logic import (
     sql_responder_,
     utterance_paraphraser,
     module_proposer,
+    parameters_responder
 )
 from src.logs import non_generative_agent_logger, simple_logger
 from src.utils import substitute_sql_parameters
@@ -205,6 +206,10 @@ def find_module_name(original_filename):
     module = config["modules"]["names"][main_filename]
     return module
     
+def finalize_parameters(a_dict, b_dict):
+    # concatenation = {"parameters": a_dict["parameters"] | b_dict["parameters"]}
+    concatenation = (a_dict | b_dict) | {"parameters": a_dict.get("parameters", {}) | b_dict.get("parameters", {})}
+    return concatenation
 
 # ============================================================================
 # PIPELINE INTEGRATION
@@ -769,8 +774,11 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         response = response_dict["SQL"]
                         if response_dict["parameters"]:
                             response_dict["parameters"] = add_underscore_to_keys(response_dict["parameters"])
-                        parameters = response_dict["parameters"]
-                        response_template = response_dict["response_template"]
+                        bo_parameters_with_template = await parameters_responder(paraphrased_utterance, response, selected_module)
+                        bo_parameters_with_template_dict = json.loads(bo_parameters_with_template)
+                        parameters_dict = finalize_parameters(response_dict, bo_parameters_with_template_dict)
+                        parameters = parameters_dict["parameters"]
+                        response_template = bo_parameters_with_template["response_template"]
                      
                     message = "retried table response generated"
                     elapsed_time = time.time() - start_time
@@ -778,7 +786,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
 
                 elif chat_request.on_click:
                     # Handle on_click logic
-
+                    selected_module = chat_request.query
                     do_suggest = False
                     message_id = await postgres.insert_chat_row(
                         session_id=session_id,
@@ -816,8 +824,11 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                                     response = response_dict["SQL"]
                                     if response_dict["parameters"]:
                                         response_dict["parameters"] = add_underscore_to_keys(response_dict["parameters"])
-                                    parameters = response_dict["parameters"]
-                                    response_template = response_dict["response_template"]
+                                    bo_parameters_with_template = await parameters_responder(paraphrased_utterance, response, selected_module)
+                                    bo_parameters_with_template_dict = json.loads(bo_parameters_with_template)
+                                    parameters_dict = finalize_parameters(response_dict, bo_parameters_with_template_dict)
+                                    parameters = parameters_dict["parameters"]
+                                    response_template = bo_parameters_with_template["response_template"]
                                 else:
                                     is_sql = False
                                     response = RESPONSE_TEMPLATE_FOR_NO_ANSWER
@@ -878,11 +889,12 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                     else:
                         if not response:
                             if chat_request.sql_mode and modules:
+                                selected_module = modules[0]
                                 agent = "sql_responder"
                                 is_sql = True
                                 response_dict_str = await sql_responder_(
                                     paraphrased_utterance,
-                                    modules[0],
+                                    selected_module,
                                     "",
                                     "",
                                     chat_request.do_retry,
@@ -894,8 +906,11 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                                     response = response_dict["SQL"]
                                     if response_dict["parameters"]:
                                         response_dict["parameters"] = add_underscore_to_keys(response_dict["parameters"])
-                                    parameters = response_dict["parameters"]
-                                    response_template = response_dict["response_template"]
+                                    bo_parameters_with_template = await parameters_responder(paraphrased_utterance, response, selected_module)
+                                    bo_parameters_with_template_dict = json.loads(bo_parameters_with_template)
+                                    parameters_dict = finalize_parameters(response_dict, bo_parameters_with_template_dict)
+                                    parameters = parameters_dict["parameters"]
+                                    response_template = parameters_dict["response_template"]
                                 else:
                                     is_sql = False
                                     response = RESPONSE_TEMPLATE_FOR_NO_ANSWER

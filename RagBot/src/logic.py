@@ -2,12 +2,16 @@ import random
 import json
 import os
 import statistics
+import yaml
 from dotenv import load_dotenv
+from datetime import datetime
+from zoneinfo import ZoneInfo  # Python 3.9+
 ### remove this!
 
-import torch
 import numpy as np
 from langchain.schema import SystemMessage
+import torch
+import sqlglot
 
 from collections import Counter
 from typing import List, Tuple, Union, Set
@@ -20,7 +24,8 @@ from .prompts import (
     SQL_CONVERTER_MODIFIED_WITH_PARAMETERS_TEMPLATE,
     SQL_MODIFIER,
     ANSWER_VALIDATOR_PROMPT,
-    SEMANTIC_ROUTER
+    SEMANTIC_ROUTER,
+    BUSINESS_OBJECT_PARAMETER_EXTRACTOR_PROMPT
 )
 from .retriever import Retriever
 from .config import config
@@ -61,6 +66,248 @@ template_for_chitchat_answers = """من اینجا هستم تا تنها به �
 template_for_not_answer = "پاسخ به این سوال در محدوده پاسخگویی من نیست."
 template_for_not_context = """این سوال خارج از حوزه کاری {company_name} است. لطفا سوال خود را در رابطه با محصولات و خدمات {company_name} مطرح کنید. برای اطلاعات بیشتر به 'https://systemgroup.net' مراجعه کنید"""
 template_for_doubtful_answer = "سوال شما را به خوبی متوجه نشدم. لطفا سوال خود را به صورت دقیق تر بپرسید تا بتوانم بهتر کمک کنم."
+
+import sqlglot
+from sqlglot import exp
+
+def extract_tables_robust(sql: str, dialect: str = None) -> dict:
+    """
+    Robustly extract table names from SQL, handling aliases, CTEs, and subqueries.
+    
+    Args:
+        sql: The SQL query string
+        dialect: SQL dialect (e.g., 'postgres', 'mysql', 'tsql', 'oracle')
+    
+    Returns:
+        Dictionary with 'tables' (real tables) and 'ctes' (CTE names)
+    """
+    try:
+        parsed = sqlglot.parse(sql, dialect=dialect)
+        real_tables = set()
+        cte_names = set()
+        subquery_aliases = set()
+        
+        for statement in parsed:
+            # First, collect CTE names so we can exclude them
+            for cte in statement.find_all(exp.CTE):
+                cte_names.add(cte.alias)
+            
+            # Collect subquery aliases
+            for subquery in statement.find_all(exp.Subquery):
+                if subquery.alias:
+                    subquery_aliases.add(subquery.alias)
+            
+            # Now extract all table references
+            for table in statement.find_all(exp.Table):
+                table_name = table.name
+                
+                # Skip if it's a CTE reference or subquery alias
+                if table_name in cte_names or table_name in subquery_aliases:
+                    continue
+                
+                # Build full table name with catalog/schema if present
+                parts = []
+                if table.catalog:
+                    parts.append(table.catalog)
+                if table.db:
+                    parts.append(table.db)
+                parts.append(table_name)
+                
+                full_name = ".".join(parts)
+                real_tables.add(full_name)
+        
+        return {
+            "tables": list(real_tables),
+            "ctes": list(cte_names),
+            "aliases_found": True  # sqlglot automatically resolves aliases
+        }
+        
+    except Exception as e:
+        return {"error": str(e), "tables": [], "ctes": []}
+
+
+def extract_tables_simple(sql: str, dialect: str = None) -> list[str]:
+    """Simple wrapper that returns just the table names."""
+    result = extract_tables_robust(sql, dialect)
+    return result.get("tables", [])
+
+
+def calculate_date_context() -> dict:
+    """
+    Calculate all date context values from the current system datetime.
+    
+    Returns:
+        Dictionary with all pre-calculated date context values based on current datetime
+    """
+    from datetime import datetime, timedelta
+    from dateutil.relativedelta import relativedelta
+    
+    # Get current datetime from system
+    ref_dt = datetime.now()
+    ref_date = ref_dt.date()
+    reference_datetime_str = ref_dt.strftime('%Y-%m-%d %H:%M:%S')
+    
+    # Calculate basic relative dates
+    today_date = ref_date.strftime('%Y-%m-%d')
+    yesterday_date = (ref_date - timedelta(days=1)).strftime('%Y-%m-%d')
+    last_week_date = (ref_date - timedelta(days=7)).strftime('%Y-%m-%d')
+    last_month_date = (ref_date - relativedelta(months=1)).strftime('%Y-%m-%d')
+    last_year_date = (ref_date - relativedelta(years=1)).strftime('%Y-%m-%d')
+    
+    # Calculate Persian year from Gregorian date
+    year = ref_date.year
+    month = ref_date.month
+    day = ref_date.day
+    
+    # Determine Persian year
+    # Persian new year (Nowruz) is around March 20-21
+    # Persian year = Gregorian year - 621 (approximately)
+    if month > 3 or (month == 3 and day >= 21):
+        persian_year = year - 621
+    else:
+        persian_year = year - 622
+    
+    # Calculate Persian year start and end in Gregorian
+    # Persian year starts on March 20 or 21 depending on the year
+    def get_persian_year_start(p_year):
+        g_year = p_year + 621
+        # Simplified: using March 21 for most years, March 20 for leap adjustments
+        if p_year in [1403]:  # Known years with March 20 start
+            return f"{g_year}-03-20"
+        return f"{g_year}-03-21"
+    
+    def get_persian_year_end(p_year):
+        g_year = p_year + 621 + 1  # End is in the next Gregorian year
+        if p_year in [1402]:  # Known years with March 19 end
+            return f"{g_year}-03-19"
+        return f"{g_year}-03-20"
+    
+    persian_year_start = get_persian_year_start(persian_year)
+    persian_year_end = get_persian_year_end(persian_year)
+    prev_persian_year = persian_year - 1
+    prev_persian_year_start = get_persian_year_start(prev_persian_year)
+    prev_persian_year_end = get_persian_year_end(prev_persian_year)
+    
+    return {
+        'current_datetime': reference_datetime_str,
+        'today_date': today_date,
+        'yesterday_date': yesterday_date,
+        'last_week_date': last_week_date,
+        'last_month_date': last_month_date,
+        'last_year_date': last_year_date,
+        'persian_year': str(persian_year),
+        'persian_year_start': persian_year_start,
+        'persian_year_end': persian_year_end,
+        'prev_persian_year': str(prev_persian_year),
+        'prev_persian_year_start': prev_persian_year_start,
+        'prev_persian_year_end': prev_persian_year_end,
+        'current_hour': str(ref_dt.hour),
+        'current_minute': str(ref_dt.minute),
+    }
+
+def format_sql_prompt(query: str, schema: str, target_prompt: str = SQL_CONVERTER_MODIFIED_WITH_PARAMETERS_TEMPLATE) -> str:
+    """
+    Format the SQL converter prompt with all date context values using current datetime.
+    
+    Args:
+        query: The natural language query in Persian
+        schema: The business object schema
+    
+    Returns:
+        Formatted prompt string with all placeholders filled using current datetime
+    """
+    # Calculate date context from current datetime
+    date_context = calculate_date_context()
+    
+    # Add query and schema to context
+    date_context['query'] = query
+    date_context['schema'] = schema
+    
+    # Format the prompt
+    return target_prompt.format(**date_context)
+
+def format_sql_modifier_prompt(
+    schema: str,
+    original_query: str,
+    faulty_sql_query: str,
+    faulty_parameters: str,
+    error_message: str
+) -> str:
+    """
+    Format the SQL modifier prompt with all date context values using current datetime.
+    
+    Args:
+        schema: The business object schema
+        original_query: The original natural language query in Persian
+        faulty_sql_query: The SQL query that produced an error
+        faulty_parameters: The parameters used with the faulty query
+        error_message: The error message received
+    
+    Returns:
+        Formatted prompt string with all placeholders filled using current datetime
+    """
+    # Calculate date context from current datetime
+    date_context = calculate_date_context()
+    
+    # Add all required fields to context
+    date_context['schema'] = schema
+    date_context['original_query'] = original_query
+    date_context['faulty_sql_query'] = faulty_sql_query
+    date_context['faulty_parameters'] = faulty_parameters
+    date_context['error_message'] = error_message
+    
+    # Format the prompt
+    return SQL_MODIFIER.format(**date_context)
+
+def subselect_yaml(
+    data: dict,
+    selections: dict[str, list[str] | None],
+    output_format: str = "dict"
+) -> Union[dict, str]:
+    """
+    Subselect specific keys from multiple tables in YAML data.
+    
+    Args:
+        data: The full YAML data dict
+        selections: Dict mapping table names to list of keys to extract.
+                   Use None or empty list to extract the entire table.
+                   Example: {
+                       'sales_pricelistitem': ['parameters'],
+                       'sales_invoice': ['attributes', 'relations'],
+                       'sales_product': None  # extracts entire table
+                   }
+        output_format: 'dict' to return Python dict, 'yaml' to return YAML string
+    
+    Returns:
+        dict or str: Extracted data as dict or YAML string
+    
+    Raises:
+        KeyError: If a specified table is not found in data
+        ValueError: If output_format is invalid
+    """
+    if output_format not in ("dict", "yaml"):
+        raise ValueError(f"output_format must be 'dict' or 'yaml', got '{output_format}'")
+    
+    result = {}
+    
+    for table, keys in selections.items():
+        if table not in data:
+            raise KeyError(f"Table '{table}' not found in data")
+        
+        # If keys is None or empty, extract entire table
+        if not keys:
+            result[table] = data[table]
+        else:
+            result[table] = {}
+            for key in keys:
+                if key in data[table]:
+                    result[table][key] = data[table][key]
+                # Optionally warn if key not found (silent skip for now)
+    
+    if output_format == "yaml":
+        return yaml.dump(result, allow_unicode=True, default_flow_style=False, sort_keys=False)
+    
+    return result
 
 def hash_string(input_string):
     """Hashes a string using the SHA-256 algorithm."""
@@ -365,6 +612,27 @@ def _handle_clarification_case(
 @observe()
 async def module_proposer():
     return ["انبار و فروش", "دفتر کل"]
+    
+def get_schema_for_module(detected_module: str) -> str:
+    """
+    Returns the appropriate schema based on the detected module.
+    
+    Args:
+        detected_module: The detected module name (e.g., 'دفتر کل', 'انبار', 'فروش')
+    
+    Returns:
+        The corresponding schema string for the module.
+    """
+    module = detected_module.strip()
+    
+    if module in ("دفتر کل", "دفترکل"):
+        return FINANCIAL_BO_MODIFIED
+    elif module in ("انبار", "فروش"):
+        return LOGISTICS_SALES_MODIFIED
+    else:
+        # Fallback: combine both schemas
+        return LOGISTICS_SALES_MODIFIED + "\n" + FINANCIAL_BO_MODIFIED
+
 
 @observe()
 async def sql_responder_(
@@ -373,48 +641,57 @@ async def sql_responder_(
     faulty_sql_query: str = "", 
     error_message: str = "", 
     do_retry: bool = False,
-    parameters = None,
+    parameters: dict = None,
     use_oss: bool = False
-    ):
+):
     """
-    Unified SQL responder supporting both simple schema list and module-based schema selection
+    Unified SQL responder supporting both simple schema list and module-based schema selection.
     """
-    
-    # Use feature/add-sql-agent logic with detected_module
     if parameters is None:
         parameters = {}
-    if detected_module.strip() == "دفتر کل" or detected_module.strip() == "دفترکل":
-        if not do_retry:
-            bo_prompt = SQL_CONVERTER_MODIFIED_WITH_PARAMETERS_TEMPLATE.format(schema=FINANCIAL_BO_MODIFIED, query=query)
-        else:
-            faulty_sql_query = json.dumps({"SQL": faulty_sql_query, "parameters": parameters})
-            bo_prompt = SQL_MODIFIER.format(schema=FINANCIAL_BO_MODIFIED, original_query=query, 
-                                          faulty_sql_query=faulty_sql_query, error_message=error_message)
-    elif detected_module.strip() == "انبار" or detected_module.strip() == "فروش":
-        if not do_retry:
-            bo_prompt = SQL_CONVERTER_MODIFIED_WITH_PARAMETERS_TEMPLATE.format(schema=LOGISTICS_SALES_MODIFIED, query=query)
-        else:
-            bo_prompt = SQL_MODIFIER.format(schema=LOGISTICS_SALES_MODIFIED, original_query=query, 
-                                          faulty_sql_query=faulty_sql_query, error_message=error_message)
+    
+    schema = get_schema_for_module(detected_module)
+    
+    if not do_retry:
+        bo_prompt = format_sql_prompt(query, schema=schema)
     else:
-        if not do_retry:
-            all_schema = LOGISTICS_SALES_MODIFIED + "\n" + FINANCIAL_BO_MODIFIED
-            bo_prompt = SQL_CONVERTER_MODIFIED_WITH_PARAMETERS_TEMPLATE.format(schema=all_schema, query=query)
-        else:
-            bo_prompt = SQL_MODIFIER.format(schema=LOGISTICS_SALES_MODIFIED, original_query=query, 
-                                          faulty_sql_query=faulty_sql_query, error_message=error_message)
+        faulty_sql_query_json = json.dumps({"SQL": faulty_sql_query, "parameters": parameters})
+        bo_prompt = format_modifier_prompt(
+            schema=schema,
+            original_query=query,
+            faulty_sql_query=faulty_sql_query_json,
+            faulty_parameters=parameters,  # Fixed: was undefined 'faulty_parameters'
+            error_message=error_message
+        )
+    
     model_name, api_base, api_key = model_selector(use_oss, use_qwen3_coder=False)
     raw_json_response = await get_chat_response(
         bo_prompt, 
         model_name=model_name, 
         api_key=api_key,
         api_base=api_base
-        )
+    )
     response = json_cleaning(raw_json_response)
-    
     return response
 
+@observe()
+async def parameters_responder(
+    paraphrased_utterance, 
+    sql_query,
+    detected_module: str = ""
+    ):
 
+    sql_proposed_tables = extract_tables_simple(sql_query)
+    schema = get_schema_for_module(detected_module)
+    yaml_schema = yaml.safe_load(schema)
+    selections = {table: ['parameters'] for table in sql_proposed_tables}
+    bo_parameters_schema = subselect_yaml(yaml_schema, selections, "yaml")
+    prompt = format_sql_prompt(paraphrased_utterance, bo_parameters_schema, BUSINESS_OBJECT_PARAMETER_EXTRACTOR_PROMPT)
+    raw_json_response = await get_chat_response(prompt)
+    response = json_cleaning(raw_json_response)
+    return response
+
+@observe()
 def _get_chitchat_cache_key(utterance: str) -> str:
     """Generates a consistent cache key for chitchat routes."""
     hashed_utterance = hash_string(utterance)
@@ -443,8 +720,7 @@ async def _determine_final_route(
         predictions, probabilities, max_prob = semantic_router_client.predict_sentences_input_embedding_and_sentences([utterance], [query_embedding])
         top_prediction = predictions[0][0]
         probabilities = list(probabilities)  # Convert to list to make it subscriptable
-        import pdb
-        pdb.set_trace()
+
         if max_prob > alpha_threshold and ("همکاران" not in utterance) and (top_prediction != "illegal"):
             return top_prediction
 
@@ -469,8 +745,6 @@ async def _determine_final_route(
     result = await get_chat_response(
         SEMANTIC_ROUTER.format(user_query=utterance, class_list=plausible_routes), model_name, api_key, api_base
     )
-    import pdb
-    pdb.set_trace()
     return result
 
 @observe()
