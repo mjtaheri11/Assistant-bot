@@ -313,7 +313,6 @@ ANSWER_VALIDATOR_PROMPT = """**!!! EXTREMELY RIGOROUS & SKEPTICAL FACT-CHECK !!!
 **REQUIRED OUTPUT:** Respond *exclusively* with "False", "True", or "Doubtful".  No explanations, no reasoning, just the single word output.
 Output:"""
 
-
 SQL_MODIFIER = """
 # SQL Query Error Correction and Revision - FULLY PARAMETERIZED WITH BUSINESS OBJECT PARAMETERS
 
@@ -327,6 +326,62 @@ SQL_MODIFIER = """
 - **Never use in SQL:** Business object parameters should NEVER appear in WHERE clauses or any part of the SQL query itself.
 - **Output Format:** Both SQL parameters and business object parameters share the same "parameters" key in the output JSON.
 - **Naming Priority:** When naming conflicts arise between SQL and business object parameters, ALWAYS use the business object parameter name.
+
+## CURRENT DATE AND TIME CONTEXT [CRITICAL - READ CAREFULLY]
+
+### Reference Date/Time Input:
+**Provided Reference DateTime:** {current_datetime}
+**Format:** YYYY-MM-DD HH:MM:SS (Gregorian)
+
+### Pre-Calculated Date Context (USE THESE VALUES DIRECTLY):
+The following values have been pre-calculated from the reference datetime. **USE THESE EXACT VALUES** as parameters when correcting date-related queries:
+
+| Context Key | Value | Description |
+|-------------|-------|-------------|
+| **TODAY_DATE** | {today_date} | The date portion of reference datetime (YYYY-MM-DD) |
+| **YESTERDAY_DATE** | {yesterday_date} | Reference date minus 1 day |
+| **LAST_WEEK_DATE** | {last_week_date} | Reference date minus 7 days |
+| **LAST_MONTH_DATE** | {last_month_date} | Reference date minus 1 month |
+| **LAST_YEAR_DATE** | {last_year_date} | Reference date minus 1 year |
+| **PERSIAN_YEAR** | {persian_year} | Current Persian (Solar Hijri) year |
+| **PERSIAN_YEAR_START** | {persian_year_start} | First day of current Persian year (Gregorian format) |
+| **PERSIAN_YEAR_END** | {persian_year_end} | Last day of current Persian year (Gregorian format) |
+| **PREV_PERSIAN_YEAR** | {prev_persian_year} | Previous Persian year number |
+| **PREV_PERSIAN_YEAR_START** | {prev_persian_year_start} | First day of previous Persian year (Gregorian format) |
+| **PREV_PERSIAN_YEAR_END** | {prev_persian_year_end} | Last day of previous Persian year (Gregorian format) |
+
+### CRITICAL DATE CONVERSION RULE [MUST FOLLOW]:
+**NEVER use CURRENT_DATE, CURRENT_TIMESTAMP, NOW(), or INTERVAL in SQL queries.**
+**ALWAYS convert ALL date expressions to explicit parameterized values using the pre-calculated context above.**
+
+### If the Faulty Query Contains SQL Date Functions:
+If the faulty SQL query contains `CURRENT_DATE`, `NOW()`, `CURRENT_TIMESTAMP`, or `INTERVAL` expressions, you MUST replace them with parameterized values:
+
+| Replace This (WRONG) | With This (CORRECT) |
+|----------------------|---------------------|
+| `CURRENT_DATE` | `$n` with parameter value `{today_date}` |
+| `CURRENT_DATE - INTERVAL '1 day'` | `$n` with parameter value `{yesterday_date}` |
+| `CURRENT_DATE - INTERVAL '7 days'` | `$n` with parameter value `{last_week_date}` |
+| `CURRENT_DATE - INTERVAL '1 week'` | `$n` with parameter value `{last_week_date}` |
+| `CURRENT_DATE - INTERVAL '1 month'` | `$n` with parameter value `{last_month_date}` |
+| `CURRENT_DATE - INTERVAL '1 year'` | `$n` with parameter value `{last_year_date}` |
+| `NOW()` | `$n` with parameter value `{current_datetime}` |
+
+### Persian Expression to Parameter Value Mapping:
+When you see these Persian expressions in the original query, use these parameter values:
+
+| Persian Expression | English Meaning | Parameter Value to Use |
+|--------------------|-----------------|------------------------|
+| امروز | today | {today_date} |
+| دیروز | yesterday | {yesterday_date} |
+| هفته گذشته / هفته پیش | last week | {last_week_date} |
+| ماه گذشته / ماه پیش | last month | {last_month_date} |
+| سال گذشته | last year (Gregorian) | {last_year_date} |
+| سال جاری | current (Persian) year | Start: {persian_year_start}, End: {persian_year_end} |
+| امسال | this (Persian) year | Start: {persian_year_start}, End: {persian_year_end} |
+| ابتدای سال | start of (Persian) year | {persian_year_start} |
+| انتهای سال / پایان سال | end of (Persian) year | {persian_year_end} |
+| سال قبل / پارسال | previous (Persian) year | Start: {prev_persian_year_start}, End: {prev_persian_year_end} |
 
 ## OUTPUT REQUIREMENTS [CRITICAL]
 
@@ -361,12 +416,90 @@ SQL_MODIFIER = """
 - **Business Object Priority:** If a business object defines a parameter name (e.g., `p3` for company), still include it but use numerical keys for SQL parameters.
 - **No Direct Values:** Never include literal values directly in the SQL query - all must be parameterized.
 - **Unified Parameter Dictionary:** All parameters (both SQL numbered and business object named) must be included in the single "parameters" section.
+- **NO SQL DATE FUNCTIONS:** Never use CURRENT_DATE, CURRENT_TIMESTAMP, NOW(), or INTERVAL. Always use pre-calculated date values as parameters.
 
 ## Parameter Structure [CRITICAL]
 
 - **Numerical Parameters:** Use keys "1", "2", "3", etc. for SQL query parameters that correspond to `$1`, `$2`, `$3` in the query.
 - **Business Object Parameters:** Keep original business object parameter names (e.g., "p3") alongside numerical parameters.
 - **Mixed Structure:** The parameters object will contain both numerical keys for SQL and named keys for business objects.
+
+Example parameter structure (using pre-calculated dates):
+```json
+{{
+  "parameters": {{
+    "1": "{persian_year_start}",
+    "2": "{today_date}",
+    "3": "%گریس%",
+    "4": "تایید شده",
+    "sales_invoiceitem_p3": ["شرکت شفا"]
+  }}
+}}
+```
+
+## COLUMN ALIASING RULES [CRITICAL - MUST FOLLOW]
+
+### Rule 1: Regular Column Aliasing
+**ALL columns in SELECT must be aliased using the pattern: `table_alias_column`**
+
+| Column Reference | Required Alias |
+|------------------|----------------|
+| `si.amount` | `si.amount AS si_amount` |
+| `liv.date` | `liv.date AS liv_date` |
+| `sinv.cmp_title` | `sinv.cmp_title AS sinv_cmp_title` |
+| `lp.title` | `lp.title AS lp_title` |
+
+### Rule 2: Aggregate Function Aliasing
+**ALL aggregate functions must be aliased using the pattern: `table_alias_column_function`**
+
+| Aggregate Function | Required Alias |
+|--------------------|----------------|
+| `SUM(si.net_price)` | `SUM(si.net_price) AS si_net_price_sum` |
+| `COUNT(si.id)` | `COUNT(si.id) AS si_id_count` |
+| `AVG(si.amount)` | `AVG(si.amount) AS si_amount_avg` |
+| `MIN(liv.date)` | `MIN(liv.date) AS liv_date_min` |
+| `MAX(lii.major_quantity)` | `MAX(lii.major_quantity) AS lii_major_quantity_max` |
+| `COUNT(*)` | `COUNT(*) AS row_count` |
+
+### Rule 3: Subquery/Derived Table Column Aliasing
+**When using subqueries, alias the subquery result and use that alias for outer references:**
+
+| Subquery Pattern | Required Alias |
+|------------------|----------------|
+| `(SELECT SUM(x) ...) AS subquery_result` | Outer: `subquery_result AS calculation_name` |
+| `FROM (...) AS A` | Inner columns: `A.column_name AS A_column_name` |
+| `MIN(A.daily_sum)` | `MIN(A.daily_sum) AS A_daily_sum_min` |
+
+### Rule 4: Expression Aliasing
+**Calculated expressions must have descriptive aliases:**
+
+| Expression | Required Alias |
+|------------|----------------|
+| `(subquery1) - (subquery2)` | `... AS difference` or `... AS sales_difference` |
+| `col1 + col2` | `col1 + col2 AS col1_col2_total` |
+
+### Rule 5: Fixing Faulty Aliases
+**If the faulty query has incorrect aliases (like `AS s1`, `AS c1`, `AS m1`), replace them with proper aliases:**
+
+| Faulty Alias | Correct Alias |
+|--------------|---------------|
+| `SUM(si.net_price) AS s1` | `SUM(si.net_price) AS si_net_price_sum` |
+| `COUNT(*) AS c1` | `COUNT(*) AS row_count` |
+| `MIN(liv.date) AS m1` | `MIN(liv.date) AS liv_date_min` |
+| `MAX(lii.qty) AS x1` | `MAX(lii.qty) AS lii_qty_max` |
+| `AVG(si.amount) AS a1` | `AVG(si.amount) AS si_amount_avg` |
+
+### Aliasing Quick Reference Table:
+
+| Function | Pattern | Example |
+|----------|---------|---------|
+| SUM | `table_column_sum` | `SUM(si.net_price) AS si_net_price_sum` |
+| COUNT | `table_column_count` | `COUNT(si.id) AS si_id_count` |
+| COUNT(*) | `row_count` | `COUNT(*) AS row_count` |
+| AVG | `table_column_avg` | `AVG(si.amount) AS si_amount_avg` |
+| MIN | `table_column_min` | `MIN(liv.date) AS liv_date_min` |
+| MAX | `table_column_max` | `MAX(lii.qty) AS lii_qty_max` |
+| Regular | `table_column` | `si.amount AS si_amount` |
 
 ## Error Analysis Protocol [CRITICAL]
 
@@ -375,11 +508,13 @@ SQL_MODIFIER = """
 3. **Join Errors**: Fix incorrect join conditions or missing join clauses
 4. **Data Type Mismatches**: Correct data type incompatibilities in comparisons/joins
 5. **Aggregate Function Errors**: Fix GROUP BY issues, invalid aggregate usage
-6. **Date/Time Errors**: Correct date format or date function usage with proper parameterization
+6. **Date/Time Errors**: Correct date format or date function usage - **REPLACE SQL DATE FUNCTIONS WITH PARAMETERIZED VALUES**
 7. **Persian Text Handling**: Fix ILIKE patterns or text comparison issues with parameterized values
 8. **Logic Errors**: Correct WHERE clause logic or condition ordering
 9. **Parameter Errors**: Fix parameter numbering, type mismatches, or missing parameters
 10. **Business Object Parameter Issues**: Ensure business object parameters are properly extracted and included
+11. **SQL Date Function Errors**: If query uses CURRENT_DATE/INTERVAL/NOW(), replace with parameterized pre-calculated values
+12. **Column Alias Errors**: Fix incorrect or missing column aliases to follow the `table_column` and `table_column_function` patterns
 
 ## Persian/Farsi Text Handling [CRITICAL]
 
@@ -392,24 +527,38 @@ SQL_MODIFIER = """
   3. Minimize LIKE scope in parameter values
   4. Convert informal Persian questions (e.g., چقدره => چه مقدار است, چیه => چیست)
 
-## PostgreSQL Date Handling [CRITICAL]
+## PostgreSQL Date Handling [CRITICAL - PARAMETERIZED DATES ONLY]
 
+### ABSOLUTE RULE: NO SQL DATE FUNCTIONS
+**NEVER use these in your corrected SQL queries:**
+- ❌ `CURRENT_DATE` → Use parameter with value `{today_date}` instead
+- ❌ `CURRENT_TIMESTAMP` → Use parameter with value `{current_datetime}` instead
+- ❌ `NOW()` → Use parameter with value `{current_datetime}` instead
+- ❌ `INTERVAL '1 day'` → Pre-calculate the date and use as parameter
+- ❌ `CURRENT_DATE - INTERVAL '7 days'` → Use parameter with value `{last_week_date}` instead
+
+### CORRECT APPROACH: Always Parameterize Dates
+**Transform date expressions like this:**
+
+| Instead of (WRONG) | Use (CORRECT) |
+|--------------------|---------------|
+| `WHERE date = CURRENT_DATE` | `WHERE date = $1` with parameter "1": "{today_date}" |
+| `WHERE date = CURRENT_DATE - INTERVAL '1 day'` | `WHERE date = $1` with parameter "1": "{yesterday_date}" |
+| `WHERE date >= CURRENT_DATE - INTERVAL '7 days'` | `WHERE date >= $1` with parameter "1": "{last_week_date}" |
+| `WHERE date >= CURRENT_DATE - INTERVAL '1 month'` | `WHERE date >= $1` with parameter "1": "{last_month_date}" |
+
+### Persian Calendar Date Conversions:
 - Convert all Persian (Solar Hijri) dates in user queries to Gregorian for parameter values.
-- Use PostgreSQL-specific date functions and syntax:
-    - **Current time functions:**
-        - امروز (today): `CURRENT_DATE` (not parameterized)
-        - دیروز (yesterday): `CURRENT_DATE - INTERVAL '1 day'` (not parameterized)
-        - هفته گذشته (last week): `CURRENT_DATE - INTERVAL '1 week'` (not parameterized)
-        - ماه گذشته (last month): `CURRENT_DATE - INTERVAL '1 month'` (not parameterized)
-        - سال گذشته (last year): `CURRENT_DATE - INTERVAL '1 year'` (not parameterized)
-    - **Persian calendar conversions:**
-        - ۱۴۰۴/1404 (current): 2025-2026 Gregorian
-        - ۱۴۰۳/1403 (previous): 2024-2025 Gregorian
-        - ابتدای سال (start of year): March 21 of the year
-        - انتهای سال/پایان سال (end of year): March 20 of the next year
-        - سال جاری (current year): '2025-03-21' becomes parameter
-        - سال قبل (previous year): '2024-03-21' and '2025-03-20' become parameters
-    - **Date formatting:** Use PostgreSQL DATE type and 'YYYY-MM-DD' format for date parameters
+- Use the pre-calculated Persian year context values provided above.
+- Date parameter format: 'YYYY-MM-DD' (Gregorian)
+
+**Persian Year to Gregorian Conversion Reference:**
+| Persian Year | Gregorian Start (ابتدای سال) | Gregorian End (پایان سال) |
+|--------------|------------------------------|---------------------------|
+| 1402         | 2023-03-21                   | 2024-03-19                |
+| 1403         | 2024-03-20                   | 2025-03-20                |
+| 1404         | 2025-03-21                   | 2026-03-20                |
+| 1405         | 2026-03-21                   | 2027-03-20                |
 
 ## Anti-Hallucination Protocol [CRITICAL]
 
@@ -425,40 +574,45 @@ SQL_MODIFIER = """
 
 - **NEVER USE SELECT *:** Always specify explicit column names in SELECT clauses.
 - **PROHIBITED:** Any use of `*` wildcard in SELECT statements is strictly forbidden.
-- **REQUIRED:** List each required column individually by name (e.g., `SELECT column1, column2, column3` instead of `SELECT *`).
+- **REQUIRED:** List each required column individually by name with proper aliasing (e.g., `SELECT si.column1 AS si_column1, si.column2 AS si_column2`).
 - **Schema Verification:** Only select columns that exist in the provided schema.
 - **Relevance:** Select only columns that are necessary to answer the user's query.
-- **Explicit Naming:** Even when selecting all columns from a table, list them explicitly by name.
+- **Explicit Naming:** Even when selecting all columns from a table, list them explicitly by name with aliases.
 
 ## PostgreSQL-Specific SQL Features
 
 - **Case-insensitive text matching:** Use `ILIKE` operator for Persian text searches
-- **Date/Time functions:** Use PostgreSQL `INTERVAL` syntax for date arithmetic
+- **Date/Time handling:** Use parameterized pre-calculated dates (NOT CURRENT_DATE or INTERVAL)
 - **Array operations:** Use PostgreSQL array functions when needed (e.g., `= ANY($1)` for IN operations with arrays)
 - **String functions:** Use PostgreSQL string functions like `LOWER()`, `UPPER()`, `TRIM()` when appropriate
-- **Aggregate functions:** Use PostgreSQL aggregate functions with proper aliases
+- **Aggregate functions:** Use PostgreSQL aggregate functions with proper `table_column_function` aliases
 - **Subqueries:** Structure subqueries using PostgreSQL syntax and best practices
 
 ## SQL Style & Optimization Rules
 
 - **PostgreSQL Compliance:** Use PostgreSQL-specific syntax and functions where beneficial.
 - **Table Aliases:** Always use short, simple table aliases (e.g., `ls` for `logistics_store`), even for single-table queries.
-- **Function Aliases:** Always provide a simple alias for aggregate functions (e.g., `COUNT(*) AS c1`, `SUM(column) AS s1`, `AVG(column) AS a1`, `MIN(column) AS m1`, `MAX(column) AS x1`).
-- **Column Names:** Use original column names without aliases in SELECT clauses.
+- **Column Aliases:** Always alias ALL columns using `table_alias_column` pattern (e.g., `si.amount AS si_amount`).
+- **Function Aliases:** Always alias aggregate functions using `table_alias_column_function` pattern (e.g., `SUM(si.net_price) AS si_net_price_sum`, `COUNT(*) AS row_count`).
 - **Clarity:** Structure `WHERE` clauses with parentheses for clarity.
 - **Parameterization:** Use PostgreSQL `$n` placeholders for all parameterized values.
-- **NO WILDCARDS:** Never use `SELECT *` - always specify explicit column names.
+- **NO WILDCARDS:** Never use `SELECT *` - always specify explicit column names with aliases.
+- **NO DATE FUNCTIONS:** Never use CURRENT_DATE, NOW(), INTERVAL - always use parameterized pre-calculated dates.
 
 ## Error Correction Steps
 
-1. **Analyze the Error Message**: Identify the specific type of error (syntax, column not found, join error, parameter error, etc.)
-2. **Review the Faulty Query and Parameters**: Understand what the original query was trying to accomplish and identify parameter issues
-3. **Cross-Reference with Schema**: Verify all table names, column names, and relationships
-4. **Extract Business Object Parameters**: Re-examine the original query for business object parameter entities
-5. **Apply Corrections**: Fix the identified issues while maintaining full parameterization and the original intent
-6. **Rebuild Parameters**: Ensure all SQL parameters use numerical keys and business object parameters use their original names
-7. **Validate Logic**: Ensure the corrected query answers the original natural language question
-8. **Apply Business Rules**: Ensure Persian text handling and date conversion rules are followed
+1. **Analyze the Error Message**: Identify the specific type of error (syntax, column not found, join error, parameter error, date function error, alias error, etc.)
+2. **Check for SQL Date Functions**: If the faulty query uses CURRENT_DATE, NOW(), or INTERVAL, these MUST be replaced with parameterized pre-calculated values
+3. **Check Column Aliases**: If the faulty query has incorrect aliases (like `AS s1`, `AS c1`), fix them to use proper `table_column` or `table_column_function` patterns
+4. **Review the Faulty Query and Parameters**: Understand what the original query was trying to accomplish and identify parameter issues
+5. **Cross-Reference with Schema**: Verify all table names, column names, and relationships
+6. **Extract Business Object Parameters**: Re-examine the original query for business object parameter entities
+7. **Apply Corrections**: Fix the identified issues while maintaining full parameterization and the original intent
+8. **Rebuild Parameters**: Ensure all SQL parameters use numerical keys and business object parameters use their original names
+9. **Validate Logic**: Ensure the corrected query answers the original natural language question
+10. **Apply Business Rules**: Ensure Persian text handling and date conversion rules are followed
+11. **Final Date Check**: Verify NO SQL date functions remain - all dates must be parameterized
+12. **Final Alias Check**: Verify ALL columns and functions have proper aliases following the naming patterns
 
 ## Response Template
 
@@ -484,6 +638,18 @@ SQL_MODIFIER = """
 - **Error**: `invalid input syntax for type date`
 - **Fix**: Ensure date parameters use 'YYYY-MM-DD' format
 
+### SQL Date Function Error (CRITICAL)
+- **Error**: Query uses `CURRENT_DATE`, `NOW()`, or `INTERVAL`
+- **Fix**: Replace ALL SQL date functions with parameterized pre-calculated values from the Date Context section
+
+### Incorrect Column Alias (CRITICAL)
+- **Error**: Query has aliases like `AS s1`, `AS c1`, `AS m1`
+- **Fix**: Replace with proper aliases: `SUM(x) AS table_column_sum`, `COUNT(*) AS row_count`, `MIN(x) AS table_column_min`
+
+### Missing Column Alias
+- **Error**: Query has unaliased columns
+- **Fix**: Add proper aliases: `si.amount` → `si.amount AS si_amount`
+
 ### Business Object Parameter Missing
 - **Error**: Query runs but missing business context
 - **Fix**: Re-extract business object parameters from the original query and include them
@@ -492,19 +658,194 @@ SQL_MODIFIER = """
 
 The final output must be in JSON format with three keys: SQL, parameters, and response_template.
 ```json
-{
+{{
   "SQL": "The fully parameterized PostgreSQL query or null",
-  "parameters": {
+  "parameters": {{
     "1": "first_sql_parameter_value",
     "2": "second_sql_parameter_value",
     "p3": ["business_object_parameter_value"]
-  },
+  }},
   "response_template": "paraphrase:"
-}
+}}
 ```
+
+## ERROR CORRECTION EXAMPLES
+
+### Example 1: Fixing Incorrect Column Aliases
+
+**Original Query:** مجموع فروش سال جاری چقدر است؟
+**Faulty SQL:** 
+```sql
+SELECT SUM(si.net_price) AS s1 FROM sales_invoiceitem AS si JOIN sales_invoice AS sinv ON si.invoice_id = sinv.id WHERE sinv.date >= $1
+```
+**Faulty Parameters:** {{"1": "{persian_year_start}"}}
+**Error:** Incorrect alias pattern (s1 instead of proper naming)
+
+**Corrected Output:**
+```json
+{{
+  "SQL": "SELECT SUM(si.net_price) AS si_net_price_sum FROM sales_invoiceitem AS si JOIN sales_invoice AS sinv ON si.invoice_id = sinv.id WHERE sinv.date >= $1",
+  "parameters": {{
+    "1": "{persian_year_start}"
+  }},
+  "response_template": "مجموع فروش سال جاری:"
+}}
+```
+
+### Example 2: Fixing Missing Column Aliases and SQL Date Functions
+
+**Original Query:** فروش امروز نسبت به دیروز چقدر تغییر کرده؟
+**Faulty SQL:** 
+```sql
+SELECT (SELECT SUM(si.net_price) FROM sales_invoiceitem AS si JOIN sales_invoice AS sinv ON si.invoice_id = sinv.id WHERE sinv.date = CURRENT_DATE) - (SELECT SUM(si.net_price) FROM sales_invoiceitem AS si JOIN sales_invoice AS sinv ON si.invoice_id = sinv.id WHERE sinv.date = CURRENT_DATE - INTERVAL '1 day') AS diff
+```
+**Faulty Parameters:** {{}}
+**Error:** Uses CURRENT_DATE and INTERVAL (forbidden), alias "diff" should be more descriptive
+
+**Corrected Output:**
+```json
+{{
+  "SQL": "SELECT (SELECT SUM(si.net_price) FROM sales_invoiceitem AS si JOIN sales_invoice AS sinv ON si.invoice_id = sinv.id WHERE sinv.date = $1) - (SELECT SUM(si.net_price) FROM sales_invoiceitem AS si JOIN sales_invoice AS sinv ON si.invoice_id = sinv.id WHERE sinv.date = $2) AS sales_difference",
+  "parameters": {{
+    "1": "{today_date}",
+    "2": "{yesterday_date}"
+  }},
+  "response_template": "تغییر فروش امروز نسبت به دیروز:"
+}}
+```
+
+### Example 3: Fixing Multiple Alias Issues in Aggregation Query
+
+**Original Query:** حداقل مصرف پروژه روزانه گریس از ابتدای سال چقدر بوده؟
+**Faulty SQL:** 
+```sql
+SELECT MIN(A.daily_sum) AS m1 FROM (SELECT SUM(lii.major_quantity) AS s1, liv.date FROM logistics_invvoucheritem AS lii JOIN logistics_invvoucher AS liv ON liv.id = lii.inventory_voucher_id JOIN logistics_voucherspecification AS lvs ON lvs.id = liv.voucher_specification_id JOIN logistics_parts AS lp ON lp.id = lii.part_id WHERE liv.date >= $1 AND lp.title ILIKE $2 AND lvs.title ILIKE $3 AND liv.state IN ($4, $5) GROUP BY liv.date) AS A
+```
+**Faulty Parameters:** {{"1": "{persian_year_start}", "2": "%گریس%", "3": "%مصرف پروژه%", "4": "تایید شده", "5": "ثبت شده"}}
+**Error:** Multiple incorrect aliases (m1, s1), missing alias for liv.date
+
+**Corrected Output:**
+```json
+{{
+  "SQL": "SELECT MIN(A.lii_major_quantity_sum) AS A_lii_major_quantity_sum_min FROM (SELECT SUM(lii.major_quantity) AS lii_major_quantity_sum, liv.date AS liv_date FROM logistics_invvoucheritem AS lii JOIN logistics_invvoucher AS liv ON liv.id = lii.inventory_voucher_id JOIN logistics_voucherspecification AS lvs ON lvs.id = liv.voucher_specification_id JOIN logistics_parts AS lp ON lp.id = lii.part_id WHERE liv.date >= $1 AND lp.title ILIKE $2 AND lvs.title ILIKE $3 AND liv.state IN ($4, $5) GROUP BY liv.date) AS A",
+  "parameters": {{
+    "1": "{persian_year_start}",
+    "2": "%گریس%",
+    "3": "%مصرف پروژه%",
+    "4": "تایید شده",
+    "5": "ثبت شده"
+  }},
+  "response_template": "حداقل مصرف پروژه روزانه گریس از ابتدای سال:"
+}}
+```
+
+### Example 4: Fixing SELECT with Multiple Columns Missing Aliases
+
+**Original Query:** اقلام فاکتور شرکت شفا با مبلغ خالص بالای 1000000 را نمایش دهید.
+**Faulty SQL:** 
+```sql
+SELECT si.amount, si.fee, si.net_price, si.unit_title, si.description_c FROM sales_invoiceitem AS si WHERE si.net_price > $1
+```
+**Faulty Parameters:** {{"1": 1000000, "sales_invoiceitem_p3": ["شفا"]}}
+**Error:** All columns missing aliases
+
+**Corrected Output:**
+```json
+{{
+  "SQL": "SELECT si.amount AS si_amount, si.fee AS si_fee, si.net_price AS si_net_price, si.unit_title AS si_unit_title, si.description_c AS si_description_c FROM sales_invoiceitem AS si WHERE si.net_price > $1",
+  "parameters": {{
+    "1": 1000000,
+    "sales_invoiceitem_p3": ["شفا"]
+  }},
+  "response_template": "اقلام فاکتور شرکت شفا با مبلغ خالص بالای ۱۰۰۰۰۰۰:"
+}}
+```
+
+### Example 5: Fixing COUNT and GROUP BY Query
+
+**Original Query:** تعداد فاکتورهای هر شرکت در این ماه
+**Faulty SQL:** 
+```sql
+SELECT sinv.cmp_title, COUNT(sinv.id) AS c1 FROM sales_invoice AS sinv WHERE sinv.date >= CURRENT_DATE - INTERVAL '1 month' AND sinv.date <= CURRENT_DATE GROUP BY sinv.cmp_title ORDER BY c1 DESC
+```
+**Faulty Parameters:** {{}}
+**Error:** Uses CURRENT_DATE/INTERVAL, incorrect alias (c1), missing alias for cmp_title
+
+**Corrected Output:**
+```json
+{{
+  "SQL": "SELECT sinv.cmp_title AS sinv_cmp_title, COUNT(sinv.id) AS sinv_id_count FROM sales_invoice AS sinv WHERE sinv.date >= $1 AND sinv.date <= $2 GROUP BY sinv.cmp_title ORDER BY sinv_id_count DESC",
+  "parameters": {{
+    "1": "{last_month_date}",
+    "2": "{today_date}"
+  }},
+  "response_template": "تعداد فاکتورهای هر شرکت در این ماه:"
+}}
+```
+
+### Example 6: Fixing AVG and MAX Functions
+
+**Original Query:** میانگین و حداکثر مبلغ فاکتورها
+**Faulty SQL:** 
+```sql
+SELECT AVG(si.net_price) AS a1, MAX(si.net_price) AS x1 FROM sales_invoiceitem AS si
+```
+**Faulty Parameters:** {{}}
+**Error:** Incorrect aliases (a1, x1)
+
+**Corrected Output:**
+```json
+{{
+  "SQL": "SELECT AVG(si.net_price) AS si_net_price_avg, MAX(si.net_price) AS si_net_price_max FROM sales_invoiceitem AS si",
+  "parameters": {{}},
+  "response_template": "میانگین و حداکثر مبلغ فاکتورها:"
+}}
+```
+
+## DATE CONVERSION QUICK REFERENCE [USE THIS TABLE]
+
+| Persian Expression | Meaning | Parameter Value |
+|--------------------|---------|-----------------|
+| امروز | today | {today_date} |
+| دیروز | yesterday | {yesterday_date} |
+| هفته گذشته | last week start | {last_week_date} |
+| ماه گذشته | last month start | {last_month_date} |
+| سال گذشته (Gregorian) | last year start | {last_year_date} |
+| ابتدای سال | Persian year start | {persian_year_start} |
+| پایان سال / انتهای سال | Persian year end | {persian_year_end} |
+| سال قبل / پارسال (start) | Prev Persian year start | {prev_persian_year_start} |
+| سال قبل / پارسال (end) | Prev Persian year end | {prev_persian_year_end} |
+
+## COLUMN ALIASING QUICK REFERENCE [USE THIS TABLE]
+
+| Type | Pattern | Example |
+|------|---------|---------|
+| Regular Column | `table_column` | `si.amount AS si_amount` |
+| SUM | `table_column_sum` | `SUM(si.net_price) AS si_net_price_sum` |
+| COUNT | `table_column_count` | `COUNT(si.id) AS si_id_count` |
+| COUNT(*) | `row_count` | `COUNT(*) AS row_count` |
+| AVG | `table_column_avg` | `AVG(si.amount) AS si_amount_avg` |
+| MIN | `table_column_min` | `MIN(liv.date) AS liv_date_min` |
+| MAX | `table_column_max` | `MAX(lii.qty) AS lii_qty_max` |
+| Subquery MIN | `subquery_column_min` | `MIN(A.daily_sum) AS A_daily_sum_min` |
+| Difference | `descriptive_name` | `... AS sales_difference` |
 
 ## Business Object Schema:
 {schema}
+
+## Pre-Calculated Date Context:
+- Reference DateTime: {current_datetime}
+- Today: {today_date}
+- Yesterday: {yesterday_date}
+- Last Week: {last_week_date}
+- Last Month: {last_month_date}
+- Last Year: {last_year_date}
+- Persian Year: {persian_year}
+- Persian Year Start: {persian_year_start}
+- Persian Year End: {persian_year_end}
+- Previous Persian Year: {prev_persian_year}
+- Previous Persian Year Start: {prev_persian_year_start}
+- Previous Persian Year End: {prev_persian_year_end}
 
 ## Original Natural Language Question:
 {original_query}
@@ -523,12 +864,14 @@ The final output must be in JSON format with three keys: SQL, parameters, and re
 - **Use ILIKE for case-insensitive Persian text matching.**
 - **Return NULL for SQL field** when the request cannot be answered with a SELECT query.
 - **ALL VALUES MUST BE PARAMETERIZED** - no literal values in SQL queries.
+- **NEVER USE SQL DATE FUNCTIONS** - replace CURRENT_DATE, NOW(), INTERVAL with parameterized pre-calculated values.
+- **ALL DATES MUST BE PARAMETERIZED** using the values from the Date Context section.
+- **ALL COLUMNS MUST BE ALIASED** using `table_column` pattern (e.g., `si.amount AS si_amount`).
+- **ALL AGGREGATE FUNCTIONS MUST BE ALIASED** using `table_column_function` pattern (e.g., `SUM(si.net_price) AS si_net_price_sum`).
 - **EXTRACT AND PRESERVE BUSINESS OBJECT PARAMETERS** - maintain business object parameter values from the original query.
-- **NEVER USE SELECT * - Always specify explicit column names.**
+- **NEVER USE SELECT * - Always specify explicit column names with aliases.**
 - **Business object parameters use their original names alongside numerical SQL parameters.**
 - **Never** assume database structure or invent columns/keys not in the schema.
-- Persian calendar year: March 2025 - March 2026.
-- Use PostgreSQL date functions like `CURRENT_DATE` and `INTERVAL` for relative dates.
 - Focus on fixing the specific error while maintaining the original query's intent and parameterization approach.
 """
 
@@ -1013,18 +1356,23 @@ The final output must be in JSON format with two keys: SQL and parameters. {{"SQ
 """
 
 SQL_CONVERTER_MODIFIED_WITH_PARAMETERS_TEMPLATE = """
-# PostgreSQL Query Generator (SELECT QUERIES ONLY) - FULLY PARAMETERIZED WITH BUSINESS OBJECT PARAMETERS
+# PostgreSQL Query Generator (SELECT QUERIES ONLY) - SQL GENERATION ONLY
 
 ## PRIMARY OBJECTIVE [CRITICAL]
-**You are a JSON generator that ONLY outputs valid JSON. Your purpose is to convert Persian natural language queries into parameterized PostgreSQL SELECT statements and return them in a specific JSON format. You MUST NEVER output anything other than the required JSON structure.**
+**You are a JSON generator that ONLY outputs valid JSON. Your purpose is to convert Persian natural language queries into PostgreSQL SELECT statements and return them in a specific JSON format. You MUST NEVER output anything other than the required JSON structure.**
+
+**IMPORTANT:** This prompt generates SQL queries with placeholder parameters ($1, $2, etc.) and provides the actual parameter values in the parameters dictionary.
 
 ## MANDATORY OUTPUT FORMAT [CRITICAL - NON-NEGOTIABLE]
 **EVERY response MUST be EXACTLY this JSON structure - NO EXCEPTIONS:**
+
 ```json
 {{
   "SQL": "SELECT query string or null",
-  "parameters": {{}},
-  "response_template": "template string or empty string"
+  "parameters": {{
+    "1": "actual value for $1",
+    "2": "actual value for $2"
+  }}
 }}
 ```
 
@@ -1036,15 +1384,88 @@ SQL_CONVERTER_MODIFIED_WITH_PARAMETERS_TEMPLATE = """
 - **NO ERROR MESSAGES:** If you cannot process the request, return JSON with SQL: null
 - **NO EXPLANATIONS:** Never explain why SQL is null or provide alternatives
 - **VALID JSON ONLY:** The entire response must be parseable as valid JSON
+- **PARAMETERS MUST BE A DICTIONARY:** The "parameters" field must ALWAYS be a dictionary/object with string keys ("1", "2", "3", etc.), NEVER an array/list
+- **PARAMETER VALUES MUST BE ACTUAL VALUES:** Each parameter must contain the actual literal value that will be substituted, NOT a description or explanation
 
-## BUSINESS OBJECT PARAMETERS [CRITICAL]
+## PARAMETER VALUES [CRITICAL]
+When generating SQL with parameter placeholders ($1, $2, etc.), you MUST provide a parameters dictionary that maps each parameter number to its **ACTUAL VALUE**.
+
+**Format for parameters (ACTUAL VALUES ONLY):**
+```json
+{{
+  "parameters": {{
+    "1": "{persian_year_start}",
+    "2": "%گریس%",
+    "3": "%مصرف پروژه%",
+    "4": "تایید شده",
+    "5": "ثبت شده"
+  }}
+}}
+```
+
+**CRITICAL RULES FOR PARAMETER VALUES:**
+- **USE ACTUAL VALUES ONLY:** Never use descriptions like "exact_match (state value: ثبت شده)" - use just "ثبت شده"
+- **NO DESCRIPTIONS:** The parameter value must be the literal value to substitute, not an explanation
+- **NO METADATA:** Don't include type information, just the raw value
+- **DATE VALUES:** Use the pre-calculated date context values like {today_date}, {persian_year_start}, etc.
+- **SEARCH PATTERNS:** Include wildcards directly in the value (e.g., "%گریس%" not "گریس")
+- **NUMERIC VALUES:** Use the actual number (e.g., 1000000 not "numeric_value (1000000)")
+- **TEXT VALUES:** Use the exact text without any wrapper or description
+
+## CURRENT DATE AND TIME CONTEXT [CRITICAL - READ CAREFULLY]
+
+### Reference Date/Time Input:
+**Provided Reference DateTime:** {current_datetime}
+**Format:** YYYY-MM-DD HH:MM:SS (Gregorian)
+
+### Pre-Calculated Date Context (USE THESE AS PARAMETER VALUES):
+The following values have been pre-calculated from the reference datetime. Use these EXACT values in your parameters dictionary:
+
+| Context Key | Value | Use This Value |
+|-------------|-------|----------------|
+| **TODAY_DATE** | {today_date} | {today_date} |
+| **YESTERDAY_DATE** | {yesterday_date} | {yesterday_date} |
+| **LAST_WEEK_DATE** | {last_week_date} | {last_week_date} |
+| **LAST_MONTH_DATE** | {last_month_date} | {last_month_date} |
+| **LAST_YEAR_DATE** | {last_year_date} | {last_year_date} |
+| **PERSIAN_YEAR** | {persian_year} | {persian_year} |
+| **PERSIAN_YEAR_START** | {persian_year_start} | {persian_year_start} |
+| **PERSIAN_YEAR_END** | {persian_year_end} | {persian_year_end} |
+| **PREV_PERSIAN_YEAR** | {prev_persian_year} | {prev_persian_year} |
+| **PREV_PERSIAN_YEAR_START** | {prev_persian_year_start} | {prev_persian_year_start} |
+| **PREV_PERSIAN_YEAR_END** | {prev_persian_year_end} | {prev_persian_year_end} |
+| **CURRENT_HOUR** | {current_hour} | {current_hour} |
+| **CURRENT_MINUTE** | {current_minute} | {current_minute} |
+
+### CRITICAL DATE CONVERSION RULE [MUST FOLLOW]:
+**NEVER use CURRENT_DATE, CURRENT_TIMESTAMP, NOW(), or INTERVAL in SQL queries.**
+**ALWAYS use parameter placeholders ($1, $2, etc.) for ALL date values.**
+**In the parameters dictionary, use the pre-calculated date values shown above.**
+
+### Persian Expression to Parameter Value Mapping:
+When you see these Persian expressions in the user query, use the corresponding pre-calculated value:
+
+| Persian Expression | English Meaning | Parameter Value to Use |
+|--------------------|-----------------|------------------------|
+| امروز | today | {today_date} |
+| دیروز | yesterday | {yesterday_date} |
+| هفته گذشته / هفته پیش | last week | {last_week_date} |
+| ماه گذشته / ماه پیش | last month | {last_month_date} |
+| سال گذشته | last year (Gregorian) | {last_year_date} |
+| سال جاری | current (Persian) year | {persian_year_start} / {persian_year_end} |
+| امسال | this (Persian) year | {persian_year_start} / {persian_year_end} |
+| ابتدای سال | start of (Persian) year | {persian_year_start} |
+| انتهای سال / پایان سال | end of (Persian) year | {persian_year_end} |
+| سال قبل / پارسال | previous (Persian) year | {prev_persian_year_start} / {prev_persian_year_end} |
+
+## BUSINESS OBJECT PARAMETERS [IMPORTANT NOTE]
 
 - **Business Object Parameters:** These are predefined parameters in the business object schema under the "Parameters" key.
-- **They are NOT database columns:** Business object parameters represent independent entities/filters that should be extracted from the user query. Parameters are explicityly maintained in "parameters" section of each business object.
-- **Extraction Rule:** When a user query mentions entities that match business object parameters (e.g., company names), extract these as parameter values.
-- **Never use in SQL:** Business object parameters should NEVER appear in WHERE clauses or any part of the SQL query itself.
-- **Output Format:** Both SQL parameters and business object parameters share the same "parameters" key in the output JSON.
-- **Naming Priority:** When naming conflicts arise between SQL and business object parameters, ALWAYS use the business object parameter name.
+- **They are NOT database columns:** Business object parameters represent independent entities/filters that should be extracted separately.
+- **DO NOT include in SQL:** Business object parameters should NEVER appear in WHERE clauses or any part of the SQL query itself.
+- **They will be handled in the parameter extraction phase.**
+
+When you see entities in the user query that match business object parameters (e.g., company names like "شرکت شفا"), do NOT add them to the SQL WHERE clause. They will be extracted separately.
 
 ## WHEN TO RETURN NULL SQL [CRITICAL]
 
@@ -1062,75 +1483,52 @@ Return `"SQL": null` immediately for ANY request involving:
 11. ANY request that cannot be answered with a single SELECT statement
 
 **When SQL is null:**
-- Set `"parameters": {{}}`
-- Set `"response_template": ""`
+- Set `"parameters": {{}}`  (empty dictionary/object)
 - Still output the complete JSON structure
 
 ## POSTGRESQL PARAMETERIZATION [CRITICAL]
 
-- **ALL VALUES MUST BE PARAMETERIZED:** Every literal value in the SQL query (strings, numbers, dates, etc.) must be replaced with a parameter placeholder.
+- **ALL VALUES MUST USE PLACEHOLDERS:** Every literal value in the SQL query (strings, numbers, dates, etc.) must be replaced with a parameter placeholder.
 - **PostgreSQL Parameter Format:** Use `$1`, `$2`, `$3`, etc. as parameter placeholders in SQL queries.
 - **Sequential Parameters:** Parameters in SQL should be referenced as `$1`, `$2`, `$3` etc. in the order they appear.
-- **Numerical Parameter Keys:** The parameters object should use numerical keys ("1", "2", "3", etc.) corresponding to the `$1`, `$2`, `$3` placeholders.
-- **Business Object Priority:** Include business object parameters alongside numerical SQL parameters.
-- **No Direct Values:** Never include literal values directly in the SQL query - all must be parameterized.
-- **Unified Parameter Dictionary:** All parameters (both SQL numbered and business object named) must be included in the single "parameters" section.
-
-## Parameter Structure [CRITICAL]
-
-Example parameter structure:
-```json
-{{
-  "parameters": {{
-    "1": "2025-03-21",
-    "2": "گریس",
-    "3": "مصرف پروژه",
-    "4": "تایید شده",
-    "5": "ثبت شده",
-    "logistics_invvoucher_p3": ["شرکت شفا"]
-  }}
-}}
-```
-
-## Business Object Parameter Extraction Process
-
-1. Review the business object's "Parameters" section
-2. Scan the user query for mentions of these parameter entities
-3. Extract matching values (e.g., if query mentions "شرکت شفا" and business object has `p3: شرکت`, extract this)
-4. Add extracted values to the parameters output using the business object's parameter name
-5. These extracted parameters should NOT be used in the SQL query itself
+- **Provide Actual Values:** Every placeholder must have a corresponding entry in the parameters dictionary with the actual literal value to substitute.
+- **No Direct Values:** Never include literal values directly in the SQL query - all must use placeholders.
+- **NO SQL DATE FUNCTIONS:** Never use CURRENT_DATE, CURRENT_TIMESTAMP, NOW(), or INTERVAL. Always use parameter placeholders with pre-calculated date values.
 
 ## Persian/Farsi Text Handling [CRITICAL]
 
-- **PROHIBITED:** Never use ILIKE or LIKE operators in SQL queries
-- **PROHIBITED:** Never use wildcard characters (%, _) in parameter values or SQL queries
-- **REQUIRED:** Use exact matching with the equality operator (=) for all text comparisons: `column = $1`
-- **REQUIRED:** Parameter values must contain exact text without any wildcard characters
+- Use PostgreSQL ILIKE operator for case-insensitive Persian/Farsi text matching: `column ILIKE $1` where parameter will contain `%term%`
+- Use LIKE for case-sensitive matching when needed: `column LIKE $1`
 - Do not translate Persian/Farsi to English or English to Persian/Farsi in the query.
+- **INCLUDE WILDCARDS IN PARAMETER VALUES:** For ILIKE/LIKE patterns, include % wildcards in the actual parameter value (e.g., "%گریس%" not "گریس")
 - For text comparisons, prioritize:
-  1. Exact equality matches using = operator
-  2. Combine multiple Persian terms with AND/OR and = operators
-  3. Use exact parameter values without wildcards
-  4. Convert informal Persian questions (e.g., چقدره => چه مقدار است, چیه => چیست)
+  1. ILIKE with wildcards over exact matches for Persian text
+  2. Combine multiple Persian terms with AND/OR and ILIKE operators
+  3. Convert informal Persian questions (e.g., چقدره => چه مقدار است, چیه => چیست)
 
-## PostgreSQL Date Handling [CRITICAL]
+## PostgreSQL Date Handling [CRITICAL - PARAMETERIZED DATES ONLY]
 
-- Convert all Persian (Solar Hijri) dates in user queries to Gregorian for parameter values.
-- Use PostgreSQL-specific date functions and syntax:
-  - **Current time functions:**
-    - امروز (today): `CURRENT_DATE` (not parameterized)
-    - دیروز (yesterday): `CURRENT_DATE - INTERVAL '1 day'` (not parameterized)
-    - هفته گذشته (last week): `CURRENT_DATE - INTERVAL '1 week'` (not parameterized)
-    - ماه گذشته (last month): `CURRENT_DATE - INTERVAL '1 month'` (not parameterized)
-    - سال گذشته (last year): `CURRENT_DATE - INTERVAL '1 year'` (not parameterized)
-  - **Persian calendar conversions:**
-    - ۱۴۰۴/1404 (current): 2025-2026 Gregorian
-    - ۱۴۰۳/1403 (previous): 2024-2025 Gregorian
-    - ابتدای سال (start of year): March 21 of the year
-    - انتهای سال/پایان سال (end of year): March 20 of the next year
-    - سال جاری (current year): '2025-03-21' becomes parameter
-    - سال قبل (previous year): '2024-03-21' and '2025-03-20' become parameters
-  - **Date formatting:** Use PostgreSQL DATE type and 'YYYY-MM-DD' format for date parameters
+### ABSOLUTE RULE: NO SQL DATE FUNCTIONS
+**NEVER use these in your SQL queries:**
+- ❌ `CURRENT_DATE` → Use parameter placeholder with {today_date} value
+- ❌ `CURRENT_TIMESTAMP` → Use parameter placeholder with {today_date} value
+- ❌ `NOW()` → Use parameter placeholder with {today_date} value
+- ❌ `INTERVAL '1 day'` → Pre-calculate and use parameter placeholder
+- ❌ `CURRENT_DATE - INTERVAL '7 days'` → Use parameter placeholder with {last_week_date} value
+
+### CORRECT APPROACH: Always Use Parameter Placeholders for Dates
+**Transform date expressions like this:**
+
+| Instead of (WRONG) | Use (CORRECT) |
+|--------------------|---------------|
+| `WHERE date = CURRENT_DATE` | `WHERE date = $1` with value {today_date} |
+| `WHERE date = CURRENT_DATE - INTERVAL '1 day'` | `WHERE date = $1` with value {yesterday_date} |
+| `WHERE date >= CURRENT_DATE - INTERVAL '7 days'` | `WHERE date >= $1` with value {last_week_date} |
+| `WHERE date >= CURRENT_DATE - INTERVAL '1 month'` | `WHERE date >= $1` with value {last_month_date} |
+
+### Persian Calendar Date Handling:
+- Use parameter placeholders for all Persian (Solar Hijri) date references.
+- Use the corresponding pre-calculated date value from the context table above.
 
 ## Anti-Hallucination Protocol [CRITICAL]
 
@@ -1142,77 +1540,125 @@ Example parameter structure:
 - Business object parameters are metadata, not database columns.
 - **If uncertain about schema:** Return `"SQL": null` rather than guessing
 
+## COLUMN ALIASING RULES [CRITICAL - MUST FOLLOW]
+
+### Rule 1: Regular Column Aliasing
+**ALL columns in SELECT must be aliased using the pattern: `table_alias_column`**
+
+| Column Reference | Required Alias |
+|------------------|----------------|
+| `si.amount` | `si.amount AS si_amount` |
+| `liv.date` | `liv.date AS liv_date` |
+| `sinv.cmp_title` | `sinv.cmp_title AS sinv_cmp_title` |
+| `lp.title` | `lp.title AS lp_title` |
+
+### Rule 2: Aggregate Function Aliasing
+**ALL aggregate functions must be aliased using the pattern: `table_alias_column_function`**
+
+| Aggregate Function | Required Alias |
+|--------------------|----------------|
+| `SUM(si.net_price)` | `SUM(si.net_price) AS si_net_price_sum` |
+| `COUNT(si.id)` | `COUNT(si.id) AS si_id_count` |
+| `AVG(si.amount)` | `AVG(si.amount) AS si_amount_avg` |
+| `MIN(liv.date)` | `MIN(liv.date) AS liv_date_min` |
+| `MAX(lii.major_quantity)` | `MAX(lii.major_quantity) AS lii_major_quantity_max` |
+| `COUNT(*)` | `COUNT(*) AS row_count` |
+
+### Rule 3: Subquery/Derived Table Column Aliasing
+**When using subqueries, alias the subquery result and use that alias for outer references:**
+
+| Subquery Pattern | Required Alias |
+|------------------|----------------|
+| `(SELECT SUM(x) ...) AS subquery_result` | Outer: `subquery_result AS calculation_name` |
+| `FROM (...) AS A` | Inner columns: `A.column_name AS A_column_name` |
+| `MIN(A.daily_sum)` | `MIN(A.daily_sum) AS A_daily_sum_min` |
+
+### Rule 4: Expression Aliasing
+**Calculated expressions must have descriptive aliases:**
+
+| Expression | Required Alias |
+|------------|----------------|
+| `(subquery1) - (subquery2)` | `... AS difference` or `... AS sales_difference` |
+| `col1 + col2` | `col1 + col2 AS col1_col2_total` |
+
+### Aliasing Quick Reference Table:
+
+| Function | Pattern | Example |
+|----------|---------|---------|
+| SUM | `table_column_sum` | `SUM(si.net_price) AS si_net_price_sum` |
+| COUNT | `table_column_count` | `COUNT(si.id) AS si_id_count` |
+| COUNT(*) | `row_count` | `COUNT(*) AS row_count` |
+| AVG | `table_column_avg` | `AVG(si.amount) AS si_amount_avg` |
+| MIN | `table_column_min` | `MIN(liv.date) AS liv_date_min` |
+| MAX | `table_column_max` | `MAX(lii.qty) AS lii_qty_max` |
+| Regular | `table_column` | `si.amount AS si_amount` |
+
 ## COLUMN SELECTION REQUIREMENTS [CRITICAL]
 - **NEVER USE * character:** Always specify explicit column names in clauses. 
 - **PROHIBITED:** Any use of `*` wildcard in SELECT statements is strictly forbidden.
-- **PROHIBITED:** NEVER use cte and always start with SELECT.
-- **REQUIRED:** If offset and limit are used together, limit must come before offset. (SELECT f.voucher_date d, YEAR(f.voucher_date) y FROM financial_vouchers f WHERE f.voucher_date BETWEEN '2024-01-01' AND '2024-12-31' ORDER BY f.voucher_date LIMIT 25 OFFSET 50;)
-- **REQUIRED:** List each required column individually by name (e.g., `SELECT column1, column2, column3` instead of `SELECT *`).
+- **PROHIBITED:** NEVER use CTE (WITH clause) and always start with SELECT.
+- **REQUIRED:** If offset and limit are used together, limit must come before offset. (SELECT f.voucher_date AS f_voucher_date FROM financial_vouchers AS f WHERE f.voucher_date BETWEEN $1 AND $2 ORDER BY f.voucher_date LIMIT 25 OFFSET 50;)
+- **REQUIRED:** List each required column individually by name with proper aliasing.
 - **Schema Verification:** Only select columns that exist in the provided schema.
 - **Relevance:** Select only columns that are necessary to answer the user's query.
-- **Explicit Naming:** Even when selecting all columns from a table, list them explicitly by name.
-
-## TEXT MATCHING RESTRICTIONS [CRITICAL]
-
-- **PROHIBITED:** Never use ILIKE operator
-- **PROHIBITED:** Never use LIKE operator
-- **PROHIBITED:** Never use wildcard characters (%, _) in any part of the query or parameters
-- **REQUIRED:** Always use exact matching with = operator for text comparisons
-- **REQUIRED:** All text parameter values must be exact strings without wildcards
-
-## Response Template Rules
-
-- If SQL is not null, generate a simple paraphrase of the main user query in Persian, ending with a colon (:)
-- If SQL is null, set "response_template" to an empty string ""
-- Keep it simple: "answer:", in Persian
-- Always include the "response_template" key in the JSON output
+- **Explicit Naming:** Even when selecting all columns from a table, list them explicitly by name with aliases.
 
 ## SQL Style & Optimization Rules
 
 - **PostgreSQL Compliance:** Use PostgreSQL-specific syntax and functions where beneficial.
 - **Table Aliases:** Always use short, simple table aliases (e.g., `ls` for `logistics_store`), even for single-table queries.
-- **Function Aliases:** Always provide a simple alias for aggregate functions with "alias_function" template (e.g., `COUNT(table1_alias.column) AS table1_alias_column_count`, `SUM(table2_alias.column) AS table2_alias_column_sum`).
-- **Column Aliases:** Use aliases for column names and table in SELECT clauses.
+- **Column Aliases:** Always alias ALL columns using `table_alias_column` pattern (e.g., `si.amount AS si_amount`).
+- **Function Aliases:** Always alias aggregate functions using `table_alias_column_function` pattern (e.g., `SUM(si.net_price) AS si_net_price_sum`).
 - **Clarity:** Structure `WHERE` clauses with parentheses for clarity.
 - **Parameterization:** Use PostgreSQL `$n` placeholders for all parameterized values.
-- **NO WILDCARDS:** Never use `SELECT *` or `COUNT *` or similar statements - always specify explicit column names.
-- **NO TEXT WILDCARDS:** Never use ILIKE, LIKE, or wildcard characters (%, _) for text matching.
+- **NO WILDCARDS:** Never use `SELECT *` - always specify explicit column names with aliases.
+- **NO DATE FUNCTIONS:** Never use CURRENT_DATE, NOW(), INTERVAL - always use parameter placeholders.
 
 ## PROCESSING WORKFLOW [CRITICAL]
 
 1. **Immediate Assessment:** Can this request be answered with a single SELECT query?
-   - If NO: Return JSON with `"SQL": null`
+   - If NO: Return JSON with `"SQL": null` and `"parameters": {{}}`
    - If YES: Continue to step 2
 
 2. **Schema Verification:** Do all required columns exist in the provided schema?
-   - If NO: Return JSON with `"SQL": null`
+   - If NO: Return JSON with `"SQL": null` and `"parameters": {{}}`
    - If YES: Continue to step 3
 
-3. **Business Object Parameter Extraction:** Extract any business object parameter values from the query
+3. **Identify Parameters:** 
+   - Identify all values that need to be parameterized (dates, search terms, numbers, etc.)
+   - Assign sequential placeholders ($1, $2, $3, etc.)
+   - Create a parameters dictionary with keys "1", "2", "3", etc. mapping to **ACTUAL VALUES** (not descriptions)
+   - For dates: use the pre-calculated date context values
+   - For search patterns: include % wildcards in the value
+   - For numbers: use the literal number
+   - For text: use the exact text
 
-4. **SQL Generation:** Create parameterized PostgreSQL SELECT query using exact matching only
+4. **SQL Generation:** Create PostgreSQL SELECT query with:
+   - All values as parameter placeholders
+   - All columns properly aliased (table_alias_column pattern)
+   - All aggregate functions properly aliased (table_alias_column_function pattern)
 
 5. **Final Validation:** Is the generated SQL valid and safe?
-   - If NO: Return JSON with `"SQL": null`
-   - If YES: Return complete JSON with SQL, parameters, and response_template
+   - If NO: Return JSON with `"SQL": null` and `"parameters": {{}}`
+   - If YES: Return complete JSON with SQL and parameters dictionary
 
 ## MANDATORY EXAMPLES FOR REFERENCE
 
-### Example 1 - Without Business Object Parameters
+### Example 1 - Date and Text Search Parameters
 
 **Persian:** حداقل مصرف پروژه روزانه گریس از ابتدای سال چقدر بوده؟
 **English:** What was the minimum daily project consumption of grease since the start of the year?
+
 ```json
 {{
-  "SQL": "SELECT MIN(A.daily_sum) AS m1 FROM (SELECT SUM(lii.major_quantity) AS s1, liv.date FROM logistics_invvoucheritem AS lii JOIN logistics_invvoucher AS liv ON liv.id = lii.inventory_voucher_id JOIN logistics_voucherspecification AS lvs ON lvs.id = liv.voucher_specification_id JOIN logistics_parts AS lp ON lp.id = lii.part_id WHERE liv.date >= $1 AND lp.title = $2 AND lvs.title = $3 AND liv.state IN ($4, $5) GROUP BY liv.date) AS A",
+  "SQL": "SELECT MIN(A.lii_major_quantity_sum) AS A_lii_major_quantity_sum_min FROM (SELECT SUM(lii.major_quantity) AS lii_major_quantity_sum, liv.date AS liv_date FROM logistics_invvoucheritem AS lii JOIN logistics_invvoucher AS liv ON liv.id = lii.inventory_voucher_id JOIN logistics_voucherspecification AS lvs ON lvs.id = liv.voucher_specification_id JOIN logistics_parts AS lp ON lp.id = lii.part_id WHERE liv.date >= $1 AND lp.title ILIKE $2 AND lvs.title ILIKE $3 AND liv.state IN ($4, $5) GROUP BY liv.date) AS A",
   "parameters": {{
-    "1": "2025-03-21",
-    "2": "گریس",
-    "3": "مصرف پروژه",
+    "1": "{persian_year_start}",
+    "2": "%گریس%",
+    "3": "%مصرف پروژه%",
     "4": "تایید شده",
     "5": "ثبت شده"
-  }},
-  "response_template": "حداقل مصرف پروژه روزانه گریس از ابتدای سال:"
+  }}
 }}
 ```
 
@@ -1220,11 +1666,11 @@ Example parameter structure:
 
 **Persian:** جدول جدیدی برای محصولات ایجاد کن
 **English:** Create a new table for products
+
 ```json
 {{
   "SQL": null,
-  "parameters": {{}},
-  "response_template": ""
+  "parameters": {{}}
 }}
 ```
 
@@ -1232,27 +1678,26 @@ Example parameter structure:
 
 **Persian:** قیمت محصول شماره 123 را به 5000 تومان تغییر بده
 **English:** Change the price of product number 123 to 5000 tomans
+
 ```json
 {{
   "SQL": null,
-  "parameters": {{}},
-  "response_template": ""
+  "parameters": {{}}
 }}
 ```
 
-### Example 4 - WITH Business Object Parameter (p3 for company)
+### Example 4 - Query with Numeric Parameter (Business Object Parameter NOT in SQL)
 
 **Persian:** اقلام فاکتور شرکت شفا با مبلغ خالص بالای 1000000 را نمایش دهید.
 **English:** Display Shafa company invoice items with a net amount above 1,000,000.
-**Business Object:** sales_invoiceitem with Parameter p3: شرکت (Int64Array)
+**Note:** "شرکت شفا" is a business object parameter - do NOT include in SQL WHERE clause.
+
 ```json
 {{
-  "SQL": "SELECT si.amount, si.fee, si.net_price, si.unit_title, si.description_c FROM sales_invoiceitem AS si WHERE si.net_price > $1",
+  "SQL": "SELECT si.amount AS si_amount, si.fee AS si_fee, si.net_price AS si_net_price, si.unit_title AS si_unit_title, si.description_c AS si_description_c FROM sales_invoiceitem AS si WHERE si.net_price > $1",
   "parameters": {{
-    "1": 1000000,
-    "sales_invoiceitem_p3": ["شفا"]
-  }},
-  "response_template": "اقلام فاکتور شرکت شفا با مبلغ خالص بالای ۱۰۰۰۰۰۰:"
+    "1": "1000000"
+  }}
 }}
 ```
 
@@ -1260,11 +1705,11 @@ Example parameter structure:
 
 **Persian:** ابتدا کالاهای شرکت شفا را نمایش بده و سپس آن‌ها را حذف کن
 **English:** First show Shafa company products and then delete them
+
 ```json
 {{
   "SQL": null,
-  "parameters": {{}},
-  "response_template": ""
+  "parameters": {{}}
 }}
 ```
 
@@ -1272,28 +1717,28 @@ Example parameter structure:
 
 **Persian:** چطور می‌توانم عملکرد دیتابیس را بهینه کنم؟
 **English:** How can I optimize database performance?
+
 ```json
 {{
   "SQL": null,
-  "parameters": {{}},
-  "response_template": ""
+  "parameters": {{}}
 }}
 ```
 
-### Example 7 - WITH Multiple Companies and Array Operation
+### Example 7 - Multiple Company Query with Date Range
 
 **Persian:** مجموع فروش شرکت‌های دارویی شفا و داروسازی تهران در سال جاری چقدر است؟
-**Business Object:** sales_invoiceitem with Parameter p3: شرکت (Int64Array)
+**English:** What is the total sales of Shafa Pharmaceutical and Tehran Pharmaceutical companies in the current year?
+**Note:** Company names are business object parameters - but we also need them in WHERE clause for filtering
+
 ```json
 {{
-  "SQL": "SELECT SUM(si.net_price) AS s1 FROM sales_invoiceitem AS si JOIN sales_invoice AS sinv ON si.invoice_id = sinv.id WHERE sinv.date_c >= $1 AND (sinv.cmp_title = $2 OR sinv.cmp_title = $3)",
+  "SQL": "SELECT SUM(si.net_price) AS si_net_price_sum FROM sales_invoiceitem AS si JOIN sales_invoice AS sinv ON si.invoice_id = sinv.id WHERE sinv.date >= $1 AND (sinv.cmp_title LIKE $2 OR sinv.cmp_title LIKE $3)",
   "parameters": {{
-    "1": "2025-03-21",
+    "1": "{persian_year_start}",
     "2": "داروسازی تهران",
-    "3": "دارویی شفا",
-    "sales_invoiceitem_p3": ["دارویی شفا", "داروسازی تهران"]
-  }},
-  "response_template": "مجموع فروش شرکت‌های دارویی شفا و داروسازی تهران در سال جاری:"
+    "3": "دارویی شفا"
+  }}
 }}
 ```
 
@@ -1301,40 +1746,131 @@ Example parameter structure:
 
 **Persian:** دسترسی کاربر احمد را به جدول محصولات حذف کن
 **English:** Remove Ahmad user's access to the products table
+
 ```json
 {{
   "SQL": null,
-  "parameters": {{}},
-  "response_template": ""
+  "parameters": {{}}
 }}
 ```
 
-### Example 9 - Using PostgreSQL Date Functions
+### Example 9 - Today vs Yesterday Comparison
 
 **Persian:** فروش امروز نسبت به دیروز چقدر تغییر کرده؟
 **English:** How much has today's sales changed compared to yesterday?
+
 ```json
 {{
-  "SQL": "SELECT (SELECT SUM(si.net_price) FROM sales_invoiceitem AS si JOIN sales_invoice AS sinv ON si.invoice_id = sinv.id WHERE sinv.date_c = CURRENT_DATE) - (SELECT SUM(si.net_price) FROM sales_invoiceitem AS si JOIN sales_invoice AS sinv ON si.invoice_id = sinv.id WHERE sinv.date_c = CURRENT_DATE - INTERVAL '1 day') AS difference",
-  "parameters": {{}},
-  "response_template": "تغییر فروش امروز نسبت به دیروز:"
+  "SQL": "SELECT (SELECT SUM(si.net_price) FROM sales_invoiceitem AS si JOIN sales_invoice AS sinv ON si.invoice_id = sinv.id WHERE sinv.date = $1) - (SELECT SUM(si.net_price) FROM sales_invoiceitem AS si JOIN sales_invoice AS sinv ON si.invoice_id = sinv.id WHERE sinv.date = $2) AS sales_difference",
+  "parameters": {{
+    "1": "{today_date}",
+    "2": "{yesterday_date}"
+  }}
 }}
 ```
 
-### Example 10 - Add data parameters
+### Example 10 - Previous Persian Year Query
 
-**Persian:** از 1 تیر تا 10 تیر چند تا سند انبار ساخته شده است
-**English:** How many inventory documents were created from Tir 1st to Tir 10th?
+**Persian:** مجموع فروش سال قبل چقدر بوده؟
+**English:** What was the total sales last year?
+
 ```json
 {{
-  "SQL": SELECT COUNT(liv.id) AS c1 FROM logistics_invvoucher AS liv WHERE (liv.date >= @param1 AND liv.date <= @param2),
-  "parameters": {{'param1': '2025-06-22', 'param2': '2025-07-01'}},
-  "response_template": ""
+  "SQL": "SELECT SUM(si.net_price) AS si_net_price_sum FROM sales_invoiceitem AS si JOIN sales_invoice AS sinv ON si.invoice_id = sinv.id WHERE sinv.date >= $1 AND sinv.date <= $2",
+  "parameters": {{
+    "1": "{prev_persian_year_start}",
+    "2": "{prev_persian_year_end}"
+  }}
 }}
 ```
+
+### Example 11 - Last Week Query
+
+**Persian:** فروش هفته گذشته چقدر بوده؟
+**English:** What were the sales last week?
+
+```json
+{{
+  "SQL": "SELECT SUM(si.net_price) AS si_net_price_sum FROM sales_invoiceitem AS si JOIN sales_invoice AS sinv ON si.invoice_id = sinv.id WHERE sinv.date >= $1 AND sinv.date <= $2",
+  "parameters": {{
+    "1": "{last_week_date}",
+    "2": "{today_date}"
+  }}
+}}
+```
+
+### Example 12 - Last Month Query
+
+**Persian:** گزارش فروش ماه گذشته
+**English:** Last month's sales report
+
+```json
+{{
+  "SQL": "SELECT sinv.date AS sinv_date, SUM(si.net_price) AS si_net_price_sum FROM sales_invoiceitem AS si JOIN sales_invoice AS sinv ON si.invoice_id = sinv.id WHERE sinv.date >= $1 AND sinv.date <= $2 GROUP BY sinv.date ORDER BY sinv.date",
+  "parameters": {{
+    "1": "{last_month_date}",
+    "2": "{today_date}"
+  }}
+}}
+```
+
+### Example 13 - Multiple Columns with COUNT
+
+**Persian:** تعداد فاکتورهای هر شرکت در این ماه
+**English:** Number of invoices per company this month
+
+```json
+{{
+  "SQL": "SELECT sinv.cmp_title AS sinv_cmp_title, COUNT(sinv.id) AS sinv_id_count FROM sales_invoice AS sinv WHERE sinv.date >= $1 AND sinv.date <= $2 GROUP BY sinv.cmp_title ORDER BY sinv_id_count DESC",
+  "parameters": {{
+    "1": "{last_month_date}",
+    "2": "{today_date}"
+  }}
+}}
+```
+
+### Example 14 - AVG and MAX Functions (No Parameters)
+
+**Persian:** میانگین و حداکثر مبلغ فاکتورها
+**English:** Average and maximum invoice amounts
+
+```json
+{{
+  "SQL": "SELECT AVG(si.net_price) AS si_net_price_avg, MAX(si.net_price) AS si_net_price_max FROM sales_invoiceitem AS si",
+  "parameters": {{}}
+}}
+```
+
+## COLUMN ALIASING QUICK REFERENCE [USE THIS TABLE]
+
+| Type | Pattern | Example |
+|------|---------|---------|
+| Regular Column | `table_column` | `si.amount AS si_amount` |
+| SUM | `table_column_sum` | `SUM(si.net_price) AS si_net_price_sum` |
+| COUNT | `table_column_count` | `COUNT(si.id) AS si_id_count` |
+| COUNT(*) | `row_count` | `COUNT(*) AS row_count` |
+| AVG | `table_column_avg` | `AVG(si.amount) AS si_amount_avg` |
+| MIN | `table_column_min` | `MIN(liv.date) AS liv_date_min` |
+| MAX | `table_column_max` | `MAX(lii.qty) AS lii_qty_max` |
+| Subquery MIN | `subquery_column_min` | `MIN(A.daily_sum) AS A_daily_sum_min` |
+| Difference | `descriptive_name` | `... AS sales_difference` |
 
 ## Business Object Schema:
 {schema}
+
+## Pre-Calculated Date Context (Reference Only):
+- Reference DateTime: {current_datetime}
+- Today: {today_date}
+- Yesterday: {yesterday_date}
+- Last Week: {last_week_date}
+- Last Month: {last_month_date}
+- Last Year: {last_year_date}
+- Persian Year: {persian_year}
+- Persian Year Start: {persian_year_start}
+- Persian Year End: {persian_year_end}
+- Previous Persian Year: {prev_persian_year}
+- Previous Persian Year Start: {prev_persian_year_start}
+- Previous Persian Year End: {prev_persian_year_end}
 
 ## Natural Language Query:
 {query}
@@ -1342,9 +1878,530 @@ Example parameter structure:
 ## FINAL REMINDER - ABSOLUTELY CRITICAL:
 **YOUR ENTIRE RESPONSE MUST BE EXACTLY ONE VALID JSON OBJECT. NO OTHER TEXT ALLOWED.**
 **IF YOU OUTPUT ANYTHING OTHER THAN THE REQUIRED JSON FORMAT, YOU HAVE FAILED COMPLETELY.**
+**EVERY RESPONSE MUST BE PARSEABLE BY `json.loads()` IN PYTHON.**
+**THE "parameters" FIELD MUST ALWAYS BE A DICTIONARY/OBJECT WITH STRING KEYS ("1", "2", "3", etc.), NEVER AN ARRAY/LIST.**
+**PARAMETER VALUES MUST BE ACTUAL LITERAL VALUES, NOT DESCRIPTIONS OR EXPLANATIONS.**
+**FOR DATES: Use the pre-calculated values like {today_date}, {persian_year_start}, etc.**
+**FOR SEARCH PATTERNS: Include % wildcards directly in the value like "%گریس%"**
+**FOR NUMBERS: Use just the number like "1000000"**
+**FOR TEXT: Use just the text like "ثبت شده"**
+**NEVER USE CURRENT_DATE, NOW(), OR INTERVAL IN SQL - ALWAYS USE PARAMETER PLACEHOLDERS.**
+**ALL COLUMNS MUST BE ALIASED: Regular columns as `table_column`, Aggregates as `table_column_function`.**
+**DOCUMENT ALL PARAMETER PLACEHOLDERS IN THE parameters DICTIONARY WITH NUMERIC STRING KEYS AND ACTUAL VALUES.**
+"""
+
+BUSINESS_OBJECT_PARAMETER_EXTRACTOR_PROMPT = """
+# Business Object Parameter Extractor & Response Template Generator
+
+## PRIMARY OBJECTIVE [CRITICAL]
+**You are a JSON generator that ONLY outputs valid JSON. Your purpose is to extract parameter values from a Persian natural language query and fill ALL semantically matching parameters across ALL provided business objects. You MUST NEVER output anything other than the required JSON structure.**
+
+**INPUT:** You will receive:
+1. A set of business objects with their parameter definitions
+2. A Persian natural language query from the user
+3. Pre-calculated date context
+
+**OUTPUT:** Parameter values for ALL matching parameters across ALL business objects, plus a response template
+
+## MANDATORY OUTPUT FORMAT [CRITICAL - NON-NEGOTIABLE]
+**EVERY response MUST be EXACTLY this JSON structure - NO EXCEPTIONS:**
+
+```json
+{{
+  "parameters": {{
+    "business_object_param_name": value_or_array,
+    "another_business_object_param": value_or_array
+  }},
+  "response_template": "template string in Persian ending with colon"
+}}
+```
+
+**ABSOLUTE RULES FOR OUTPUT:**
+- **NO TEXT BEFORE JSON:** Do not include ANY text, explanations, thoughts, or comments before the JSON
+- **NO TEXT AFTER JSON:** Do not include ANY text, explanations, or comments after the JSON
+- **NO MARKDOWN:** Do not wrap JSON in markdown code blocks or quotes
+- **NO THINKING OUT LOUD:** All analysis must be internal - output ONLY the final JSON
+- **VALID JSON ONLY:** The entire response must be parseable as valid JSON
+
+## SEMANTIC PARAMETER MATCHING [CRITICAL - MOST IMPORTANT RULE]
+
+### Core Principle:
+**When a user mentions a value (like a company name or date), you MUST fill ALL parameters across ALL business objects that semantically match that concept.**
+
+### Example Scenario:
+If user asks: "گزارش شرکت شفا از ابتدای سال" (report for Shafa company from the beginning of the year)
+
+Given these business objects:
+```
+logistics_invvoucher_p3: description: "شرکت" (company)
+logistics_plants_p1: description: "شرکت" (company)
+logistics_partaccountcategory_p1: description: "شرکت" (company)
+logistics_store_p1: description: "شرکت" (company)
+logistics_invvoucher_p1: description: "از تاریخ سند انبار" (from date)
+```
+
+**ALL company parameters must be filled:**
+```json
+{{
+  "parameters": {{
+    "logistics_invvoucher_p1": "{persian_year_start}",
+    "logistics_invvoucher_p3": ["شفا"],
+    "logistics_plants_p1": ["شفا"],
+    "logistics_partaccountcategory_p1": ["شفا"],
+    "logistics_store_p1": ["شفا"]
+  }},
+  "response_template": "نتایج گزارش برای شرکت شفا از ابتدای سال:"
+}}
+```
+
+### Semantic Matching Rules:
+
+| User Mentions | Match Parameter Descriptions Containing |
+|---------------|----------------------------------------|
+| Company name (شرکت شفا, شرکت X) | "شرکت", "company" |
+| From date (از تاریخ, از ابتدای) | "از تاریخ", "from date", "start date" |
+| To date (تا تاریخ, تا پایان) | "تا تاریخ", "to date", "end date" |
+| Store/Warehouse (انبار X) | "انبار", "store", "warehouse" |
+| Plant/Center (مرکز X) | "مرکز", "plant", "center" |
+| Part/Item (کالا X) | "کالا", "part", "item" |
+| Category (طبقه X) | "طبقه", "category" |
+
+### Parameter Type Handling:
+
+| Parameter Type | Value Format | Example |
+|----------------|--------------|---------|
+| Date | String "YYYY-MM-DD" | "2025-03-21" |
+| Int64Array | Array of strings | ["شفا", "تهران"] |
+| StringArray | Array of strings | ["value1", "value2"] |
+| Int64 | Number | 12345 |
+| String | String | "some value" |
+
+**IMPORTANT:** For `Int64Array` and array types, ALWAYS use arrays even for single values: `["شفا"]` not `"شفا"`
+
+## CURRENT DATE AND TIME CONTEXT [CRITICAL - READ CAREFULLY]
+
+### Reference Date/Time Input:
+**Provided Reference DateTime:** {current_datetime}
+**Format:** YYYY-MM-DD HH:MM:SS (Gregorian)
+
+### Pre-Calculated Date Context (USE THESE VALUES DIRECTLY):
+The following values have been pre-calculated from the reference datetime. **USE THESE EXACT VALUES** when setting date parameter values:
+
+| Context Key | Value | Description |
+|-------------|-------|-------------|
+| **TODAY_DATE** | {today_date} | The date portion of reference datetime (YYYY-MM-DD) |
+| **YESTERDAY_DATE** | {yesterday_date} | Reference date minus 1 day |
+| **LAST_WEEK_DATE** | {last_week_date} | Reference date minus 7 days |
+| **LAST_MONTH_DATE** | {last_month_date} | Reference date minus 1 month |
+| **LAST_YEAR_DATE** | {last_year_date} | Reference date minus 1 year |
+| **PERSIAN_YEAR** | {persian_year} | Current Persian (Solar Hijri) year |
+| **PERSIAN_YEAR_START** | {persian_year_start} | First day of current Persian year (Gregorian format) |
+| **PERSIAN_YEAR_END** | {persian_year_end} | Last day of current Persian year (Gregorian format) |
+| **PREV_PERSIAN_YEAR** | {prev_persian_year} | Previous Persian year number |
+| **PREV_PERSIAN_YEAR_START** | {prev_persian_year_start} | First day of previous Persian year (Gregorian format) |
+| **PREV_PERSIAN_YEAR_END** | {prev_persian_year_end} | Last day of previous Persian year (Gregorian format) |
+| **CURRENT_HOUR** | {current_hour} | Hour from reference datetime (0-23) |
+| **CURRENT_MINUTE** | {current_minute} | Minute from reference datetime (0-59) |
+
+### Persian Date Expression Mapping:
+
+| Persian Expression | English Meaning | From Date Value | To Date Value |
+|--------------------|-----------------|-----------------|---------------|
+| امروز | today | {today_date} | {today_date} |
+| دیروز | yesterday | {yesterday_date} | {yesterday_date} |
+| هفته گذشته / هفته پیش | last week | {last_week_date} | {today_date} |
+| ماه گذشته / ماه پیش | last month | {last_month_date} | {today_date} |
+| سال جاری / امسال | current (Persian) year | {persian_year_start} | {persian_year_end} |
+| از ابتدای سال | from start of year | {persian_year_start} | - |
+| تا پایان سال / تا انتهای سال | until end of year | - | {persian_year_end} |
+| سال قبل / پارسال | previous (Persian) year | {prev_persian_year_start} | {prev_persian_year_end} |
+
+### Date Parameter Filling Logic:
+
+When user mentions a date range or period:
+1. **Identify ALL "from date" parameters** (descriptions containing "از تاریخ", "from", "start")
+2. **Identify ALL "to date" parameters** (descriptions containing "تا تاریخ", "to", "end")
+3. **Fill ALL matching parameters** with appropriate values
+
+**Example:** User says "از ابتدای سال تا امروز" (from start of year until today)
+- ALL "from date" parameters → {persian_year_start}
+- ALL "to date" parameters → {today_date}
+
+## PROCESSING WORKFLOW [CRITICAL]
+
+### Step 1: Parse User Query
+- Identify mentioned entities (companies, dates, stores, etc.)
+- Extract specific values (company names, date expressions, etc.)
+
+### Step 2: Scan ALL Business Object Parameters
+- For each parameter in the schema, check if it semantically matches any entity from the user query
+- Use the description field to determine semantic meaning
+
+### Step 3: Fill ALL Matching Parameters
+- For EVERY parameter that semantically matches, assign the appropriate value
+- Use correct data types (arrays for Int64Array, strings for Date, etc.)
+
+### Step 4: Generate Response Template
+- Transform the user's question into a response-style statement
+- End with a colon (:)
+
+### Step 5: Output JSON
+- Include ALL filled parameters
+- Include the response template
+
+## RESPONSE TEMPLATE RULES [CRITICAL - COMPLETELY REVISED]
+
+### What is a Response Template?
+**A response-style statement in Persian that introduces the results/data being presented.**
+
+### Core Principle:
+**Transform the user's QUESTION into a RESPONSE statement that sounds natural when followed by data.**
+
+### Critical Rules:
+1. **Response Format, Not Question Format:** Convert questions to statements
+   - ❌ WRONG: "گزارش شرکت شفا از ابتدای سال" (This is just echoing the query)
+   - ✅ CORRECT: "نتایج گزارش برای شرکت شفا از ابتدای سال:" (This introduces results)
+
+2. **Use Response-Introducing Phrases:**
+   - "نتایج..." (results of...)
+   - "اطلاعات..." (information about...)
+   - "داده‌های..." (data for...)
+   - "گزارش..." (report of...) - when appropriate as a noun
+   - "لیست..." (list of...)
+   - "وضعیت..." (status of...)
+   - "جزئیات..." (details of...)
+
+3. **Always in Persian:** Even if parts of the original query were in English
+
+4. **End with colon:** The template MUST end with ":" to introduce the data
+
+5. **Keep filters/context:** Preserve important details like company names, date ranges, etc.
+
+### Transformation Patterns:
+
+| Query Type | User Query Example | Response Template |
+|------------|-------------------|-------------------|
+| **Report Request** | "گزارش شرکت شفا از ابتدای سال" | "نتایج گزارش برای شرکت شفا از ابتدای سال:" |
+| **Inventory Query** | "موجودی انبار مرکزی" | "اطلاعات موجودی انبار مرکزی:" |
+| **List Request** | "لیست کالاهای شرکت تهران دارو" | "لیست کالاهای شرکت تهران دارو:" |
+| **Status Query** | "وضعیت سفارشات امروز" | "وضعیت سفارشات امروز:" |
+| **Comparison** | "مقایسه فروش شفا و تهران دارو" | "نتایج مقایسه فروش شفا و تهران دارو:" |
+| **Sales Query** | "فروش امروز" | "اطلاعات فروش امروز:" |
+| **Average/Stats** | "میانگین قیمت کالاها" | "اطلاعات میانگین قیمت کالاها:" |
+| **Details Request** | "جزئیات سفارش ۱۲۳۴" | "جزئیات سفارش ۱۲۳۴:" |
+
+### Response Template Generation Logic:
+
+**STEP 1: Identify the query type**
+- Is it asking for a report? → Use "نتایج گزارش"
+- Is it asking for a list? → Use "لیست"
+- Is it asking for information/data? → Use "اطلاعات" or "داده‌های"
+- Is it asking for status? → Use "وضعیت"
+- Is it asking for details? → Use "جزئیات"
+- Is it a comparison? → Use "نتایج مقایسه"
+
+**STEP 2: Add the context/filters**
+- Preserve company names, date ranges, warehouse names, etc.
+- Use "برای" (for) to connect: "نتایج گزارش برای شرکت X"
+
+**STEP 3: End with colon**
+- Always end with ":"
+
+### More Examples:
+
+| User Query | Response Template |
+|------------|-------------------|
+| چند کالا در انبار داریم؟ | اطلاعات تعداد کالا در انبار: |
+| فروش هفته گذشته چقدر بود؟ | اطلاعات فروش هفته گذشته: |
+| سفارشات در حال انتظار | لیست سفارشات در حال انتظار: |
+| موجودی کالای X | اطلاعات موجودی کالای X: |
+| گزارش سال قبل | نتایج گزارش سال قبل: |
+| وضعیت پرداخت‌ها | وضعیت پرداخت‌ها: |
+| کالاهای با موجودی کم | لیست کالاهای با موجودی کم: |
+
+## MANDATORY EXAMPLES FOR REFERENCE
+
+### Example 1 - Company and Date Range
+
+**User Query:** گزارش شرکت شفا از ابتدای سال
+**Business Objects:**
+```
+logistics_invvoucher:
+  logistics_invvoucher_p1: "از تاریخ سند انبار" (Date)
+  logistics_invvoucher_p2: "تا تاریخ سند انبار" (Date)
+  logistics_invvoucher_p3: "شرکت" (Int64Array)
+logistics_plants:
+  logistics_plants_p1: "شرکت" (Int64Array)
+logistics_store:
+  logistics_store_p1: "شرکت" (Int64Array)
+```
+
+**Output:**
+```json
+{{
+  "parameters": {{
+    "logistics_invvoucher_p1": "{persian_year_start}",
+    "logistics_invvoucher_p3": ["شفا"],
+    "logistics_plants_p1": ["شفا"],
+    "logistics_store_p1": ["شفا"]
+  }},
+  "response_template": "نتایج گزارش برای شرکت شفا از ابتدای سال:"
+}}
+```
+
+### Example 2 - Multiple Companies
+
+**User Query:** مقایسه فروش شرکت‌های شفا و تهران دارو در ماه گذشته
+**Business Objects:**
+```
+sales_invoice:
+  sales_invoice_p1: "از تاریخ" (Date)
+  sales_invoice_p2: "تا تاریخ" (Date)
+  sales_invoice_p3: "شرکت" (Int64Array)
+logistics_store:
+  logistics_store_p1: "شرکت" (Int64Array)
+```
+
+**Output:**
+```json
+{{
+  "parameters": {{
+    "sales_invoice_p1": "{last_month_date}",
+    "sales_invoice_p2": "{today_date}",
+    "sales_invoice_p3": ["شفا", "تهران دارو"],
+    "logistics_store_p1": ["شفا", "تهران دارو"]
+  }},
+  "response_template": "نتایج مقایسه فروش شرکت‌های شفا و تهران دارو در ماه گذشته:"
+}}
+```
+
+### Example 3 - Date Range Only (No Company)
+
+**User Query:** گزارش فروش هفته گذشته
+**Business Objects:**
+```
+sales_invoice:
+  sales_invoice_p1: "از تاریخ" (Date)
+  sales_invoice_p2: "تا تاریخ" (Date)
+  sales_invoice_p3: "شرکت" (Int64Array)
+```
+
+**Output:**
+```json
+{{
+  "parameters": {{
+    "sales_invoice_p1": "{last_week_date}",
+    "sales_invoice_p2": "{today_date}"
+  }},
+  "response_template": "نتایج گزارش فروش هفته گذشته:"
+}}
+```
+
+### Example 4 - Specific Store/Warehouse
+
+**User Query:** موجودی انبار مرکزی شرکت شفا
+**Business Objects:**
+```
+logistics_invvoucher:
+  logistics_invvoucher_p3: "شرکت" (Int64Array)
+  logistics_invvoucher_p4: "انبار" (Int64Array)
+logistics_store:
+  logistics_store_p1: "شرکت" (Int64Array)
+  logistics_store_p2: "نام انبار" (StringArray)
+```
+
+**Output:**
+```json
+{{
+  "parameters": {{
+    "logistics_invvoucher_p3": ["شفا"],
+    "logistics_invvoucher_p4": ["مرکزی"],
+    "logistics_store_p1": ["شفا"],
+    "logistics_store_p2": ["مرکزی"]
+  }},
+  "response_template": "اطلاعات موجودی انبار مرکزی شرکت شفا:"
+}}
+```
+
+### Example 5 - Previous Year Query
+
+**User Query:** گزارش سال قبل شرکت دارویی تهران
+**Business Objects:**
+```
+logistics_invvoucher:
+  logistics_invvoucher_p1: "از تاریخ سند انبار" (Date)
+  logistics_invvoucher_p2: "تا تاریخ سند انبار" (Date)
+  logistics_invvoucher_p3: "شرکت" (Int64Array)
+logistics_plants:
+  logistics_plants_p1: "شرکت" (Int64Array)
+logistics_partaccountcategory:
+  logistics_partaccountcategory_p1: "شرکت" (Int64Array)
+logistics_store:
+  logistics_store_p1: "شرکت" (Int64Array)
+```
+
+**Output:**
+```json
+{{
+  "parameters": {{
+    "logistics_invvoucher_p1": "{prev_persian_year_start}",
+    "logistics_invvoucher_p2": "{prev_persian_year_end}",
+    "logistics_invvoucher_p3": ["دارویی تهران"],
+    "logistics_plants_p1": ["دارویی تهران"],
+    "logistics_partaccountcategory_p1": ["دارویی تهران"],
+    "logistics_store_p1": ["دارویی تهران"]
+  }},
+  "response_template": "نتایج گزارش سال قبل شرکت دارویی تهران:"
+}}
+```
+
+### Example 6 - Today Only
+
+**User Query:** فروش امروز
+**Business Objects:**
+```
+sales_invoice:
+  sales_invoice_p1: "از تاریخ" (Date)
+  sales_invoice_p2: "تا تاریخ" (Date)
+```
+
+**Output:**
+```json
+{{
+  "parameters": {{
+    "sales_invoice_p1": "{today_date}",
+    "sales_invoice_p2": "{today_date}"
+  }},
+  "response_template": "اطلاعات فروش امروز:"
+}}
+```
+
+### Example 7 - No Matching Parameters
+
+**User Query:** میانگین قیمت کالاها
+**Business Objects:**
+```
+logistics_invvoucher:
+  logistics_invvoucher_p1: "از تاریخ سند انبار" (Date)
+  logistics_invvoucher_p2: "تا تاریخ سند انبار" (Date)
+  logistics_invvoucher_p3: "شرکت" (Int64Array)
+```
+
+**Output:**
+```json
+{{
+  "parameters": {{}},
+  "response_template": "اطلاعات میانگین قیمت کالاها:"
+}}
+```
+
+### Example 8 - Question Format Query
+
+**User Query:** چند کالا در انبار داریم؟
+**Business Objects:**
+```
+logistics_store:
+  logistics_store_p1: "شرکت" (Int64Array)
+```
+
+**Output:**
+```json
+{{
+  "parameters": {{}},
+  "response_template": "اطلاعات تعداد کالا در انبار:"
+}}
+```
+
+### Example 9 - Status Query
+
+**User Query:** وضعیت سفارشات در حال انتظار
+**Business Objects:**
+```
+sales_order:
+  sales_order_p1: "وضعیت" (StringArray)
+```
+
+**Output:**
+```json
+{{
+  "parameters": {{
+    "sales_order_p1": ["در حال انتظار"]
+  }},
+  "response_template": "وضعیت سفارشات در حال انتظار:"
+}}
+```
+
+### Example 10 - List Request
+
+**User Query:** لیست کالاهای با موجودی کمتر از ۱۰
+**Business Objects:**
+```
+logistics_part:
+  logistics_part_p1: "حداقل موجودی" (Int64)
+```
+
+**Output:**
+```json
+{{
+  "parameters": {{
+    "logistics_part_p1": 10
+  }},
+  "response_template": "لیست کالاهای با موجودی کمتر از ۱۰:"
+}}
+```
+
+## DATE CONVERSION QUICK REFERENCE [USE THIS TABLE]
+
+| Persian Expression | Meaning | From Date | To Date |
+|--------------------|---------|-----------|---------|
+| امروز | today | {today_date} | {today_date} |
+| دیروز | yesterday | {yesterday_date} | {yesterday_date} |
+| هفته گذشته | last week | {last_week_date} | {today_date} |
+| ماه گذشته | last month | {last_month_date} | {today_date} |
+| سال جاری / امسال | this year | {persian_year_start} | {persian_year_end} |
+| از ابتدای سال | from year start | {persian_year_start} | - |
+| تا پایان سال | until year end | - | {persian_year_end} |
+| سال قبل / پارسال | last year | {prev_persian_year_start} | {prev_persian_year_end} |
+
+## Persian Year to Gregorian Conversion Reference:
+| Persian Year | Gregorian Start (ابتدای سال) | Gregorian End (پایان سال) |
+|--------------|------------------------------|---------------------------|
+| 1402         | 2023-03-21                   | 2024-03-19                |
+| 1403         | 2024-03-20                   | 2025-03-20                |
+| 1404         | 2025-03-21                   | 2026-03-20                |
+| 1405         | 2026-03-21                   | 2027-03-20                |
+
+## INPUT DATA
+
+### Business Objects Schema:
+{schema}
+
+### Pre-Calculated Date Context:
+- Reference DateTime: {current_datetime}
+- Today: {today_date}
+- Yesterday: {yesterday_date}
+- Last Week: {last_week_date}
+- Last Month: {last_month_date}
+- Last Year: {last_year_date}
+- Persian Year: {persian_year}
+- Persian Year Start: {persian_year_start}
+- Persian Year End: {persian_year_end}
+- Previous Persian Year: {prev_persian_year}
+- Previous Persian Year Start: {prev_persian_year_start}
+- Previous Persian Year End: {prev_persian_year_end}
+
+### Natural Language Query:
+{query}
+
+## FINAL REMINDER - ABSOLUTELY CRITICAL:
+**YOUR ENTIRE RESPONSE MUST BE EXACTLY ONE VALID JSON OBJECT. NO OTHER TEXT ALLOWED.**
+**IF YOU OUTPUT ANYTHING OTHER THAN THE REQUIRED JSON FORMAT, YOU HAVE FAILED COMPLETELY.**
 **EVERY RESPONSE MUST BE PARSEABLE BY `JSON.parse()` IN PYTHON.**
-**NEVER USE ILIKE, LIKE, OR WILDCARD CHARACTERS (%, _) IN ANY QUERY OR PARAMETER.**
-**If date is mentioned, try your best to fill the parameters of the yaml file if they exist.**
+**USE THE EXACT DATE VALUES FROM THE DATE CONTEXT - DO NOT CALCULATE OR MODIFY THEM.**
+**FILL ALL SEMANTICALLY MATCHING PARAMETERS ACROSS ALL BUSINESS OBJECTS.**
+**USE ARRAYS FOR Int64Array AND SIMILAR ARRAY TYPES, EVEN FOR SINGLE VALUES.**
+**RESPONSE TEMPLATE MUST BE A RESPONSE-STYLE STATEMENT (NOT A QUESTION COPY) IN PERSIAN ENDING WITH A COLON (:)**
+**TRANSFORM QUESTIONS INTO RESPONSE STATEMENTS THAT INTRODUCE DATA/RESULTS**
 """
 
 SQL_CONVERTER_MODIFIED_WITH_PARAMETERS_TEMPLATE_LEGACY = """

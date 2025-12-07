@@ -18,19 +18,18 @@ NUMBER_OF_SUGGESTED_DATABASE = 10
 BASE_URL = os.getenv("BASE_URL_BACKEND")
 
 CSS_STYLE_FILE = "./src/style.css"
-validation_template_response = ":قابل اجرا بودن کوئری روی پلتفرم"
+validation_template_response = "If the query is executable on the platform engine:"
 
 def validate_execution(query):
     import json
     from playwright.sync_api import sync_playwright
-    
     try:
         with sync_playwright() as p:
             # Launch the browser in visible mode (headless=False) to see the interaction
             try:
                 browser = p.chromium.launch(headless=True)
             except Exception as e:
-                return f"خطا در راه‌اندازی مرورگر: {e}"
+                return f"Error launching browser: {e}"
             
             try:
                 context = browser.new_context(
@@ -39,7 +38,7 @@ def validate_execution(query):
                 page = context.new_page()
             except Exception as e:
                 browser.close()
-                return f"خطا در ایجاد صفحه مرورگر: {e}"
+                return f"Error creating browser page: {e}"
 
             # --- LOGIN FLOW ---
             try:
@@ -49,7 +48,7 @@ def validate_execution(query):
                 page.goto(login_url)
             except Exception as e:
                 browser.close()
-                return f"خطا در باز کردن صفحه ورود: {e}"
+                return f"Error opening login page: {e}"
 
             # 2. Fill User 'admin'
             print("Filling username...")
@@ -60,7 +59,7 @@ def validate_execution(query):
                 print(f"Could not find 'input.ng-touched' immediately: {e}")
                 print("Attempting to fill the first available input as fallback...")
                 browser.close()
-                return "خطا هنگام پر کردن نام کاربری"
+                return "Error filling in username"
 
             # 3. Fill Password 'admin'
             print("Filling password...")
@@ -76,7 +75,7 @@ def validate_execution(query):
                 page.click(".form__submit-btn")
             except Exception as e:
                 browser.close()
-                return f"خطا هنگام کلیک روی دکمه ورود: {e}"
+                return f"Error when clicking the login button: {e}"
 
             # 5. Wait 2 seconds for login to process
             print("Waiting 1.5 seconds...")
@@ -91,7 +90,7 @@ def validate_execution(query):
                 page.goto(target_url)
             except Exception as e:
                 browser.close()
-                return f"خطا در باز کردن صفحه هدف: {e}"
+                return f"Error opening target page: {e}"
 
             # 7. Extract cookies and perform the POST request
             print("Extracting cookies...")
@@ -102,7 +101,7 @@ def validate_execution(query):
                 print(f"Cookies retrieved: {cookie_header[:50]}...")  # Print first 50 chars for verification
             except Exception as e:
                 browser.close()
-                return f"خطا در استخراج کوکی‌ها: {e}"
+                return f"Error extracting cookies: {e}"
 
             post_url = "http://aiconnect-dev.uat.mars.abramad.com/aiconnect/api/dev/parse"
 
@@ -134,20 +133,20 @@ def validate_execution(query):
                         response_data = response.json()
                         print(json.dumps(response_data, indent=2))
                         browser.close()
-                        return f"عملیات با موفقیت انجام شد. کد وضعیت: {response.status}"
+                        return f"The operation was successful. Status code: {response.status}"
                     except Exception:
                         response_text = response.text()
                         print(response_text)
                         browser.close()
-                        return f"عملیات با موفقیت انجام شد. کد وضعیت: {response.status}"
+                        return f"The operation was successful. Status code: {response.status}"
                 else:
                     browser.close()
-                    return f"خطا در درخواست API. کد وضعیت: {response.status}"
+                    return f"API request error. Status code: {response.status}"
 
             except Exception as e:
                 print(f"API Request failed: {e}")
                 browser.close()
-                return f"خطا در ارسال درخواست به API: {e}"
+                return f"Error sending request to API: {e}"
 
     except Exception as e:
         return f"خطای غیرمنتظره: {e}"
@@ -673,7 +672,7 @@ def main():
                         f'<div class="markdown-rtl">اجرای کوئری</div>', unsafe_allow_html=True)
                     st.selectbox(
                         '<div class="markdown-rtl">اجرای کوئری</div>',
-                        ["بله", "خیر"],
+                        ["خیر", "بله"],
                         key="temporal_evaluate_sql",
                         label_visibility="collapsed"
                     ) 
@@ -828,13 +827,11 @@ def main():
                                 is_sql = st.session_state.get(
                                     "sql_response_type", [False] * len(st.session_state["response"]))[i]
                                 if is_sql:
-                                    # if st.session_state["evaluate_sql"]:
-                                    #     sql_content_dict = json.loads(content)
-                                    #     import pdb
-                                    #     pdb.set_trace()
-                                    #     validation_response = validate_execution(sql_content_dict["sql"])
-                                    #     content = content + "\n" + validation_template_response + "\n" + validation_response
-                                    st.markdown(f'<div class="markdown-ltr sql-code-block">\n\n```sql\n{content}\n```\n\n</div>', unsafe_allow_html=True, help=help_msg)
+                                    validation_response = ""
+                                    if st.session_state["evaluate_sql"] and st.session_state["user_input"]:
+                                        direct_validation_response = validate_execution(content["response"])
+                                        validation_response = f"The output of the execution response is:\n\n{direct_validation_response}"
+                                    st.markdown(f'<div class="markdown-ltr sql-code-block">\n\n```sql\n{content}\n```\n\n{validation_response}</div>', unsafe_allow_html=True, help=help_msg)
                                 else:
                                     st.markdown(f'<div class="markdown-rtl">{content}</div>', unsafe_allow_html=True, help=help_msg)
                                 if st.session_state.get("do_suggest_modules") and i == len(st.session_state["response"]) - 1:
@@ -1062,3 +1059,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+# playwright install
+# playwright install-deps
