@@ -31,7 +31,8 @@ from .retriever import Retriever
 from .config import config
 from .cache import Cache
 from .utils import json_cleaning, json_cleaning_1
-from .business_objects import LOGISTICS_SALES_MODIFIED, FINANCIAL_BO_MODIFIED, LOGISTICS_MODIFIED, CRM_BO, TREASURY_BO
+from .business_objects import LOGISTICS_SALES_MODIFIED, FINANCIAL_BO_MODIFIED, LOGISTICS_MODIFIED
+from .business_objects_v2 import CRM_BO, TREASURY_BO
 from .semantic_router import SemanticRouterPipeline
 from langchain.chat_models import ChatOpenAI
 from langfuse import observe
