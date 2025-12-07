@@ -708,3 +708,20 @@ CRM_BO = """
 - **Relations**: None
 
 """
+
+TREASURY_BO = """
+## treasury_cheque
+- **Title**: "چک پرداختی"
+- **Context**: "treasury"
+- **Parameters**:
+      treasury_cheque_p1: "Int64"
+- **Attributes**:
+  - **String Type**:
+    - id: "قلم سند پرداخت"
+    - due_date: "تاریخ سررسید"
+    - full_name: "نام دریافت کننده"
+    - national_id: "کد/شناسه ملی"
+  - **Decimal Type**:
+    - amount: "مبلغ"
+  relations: null
+"""
