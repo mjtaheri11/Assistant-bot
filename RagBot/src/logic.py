@@ -31,7 +31,7 @@ from .retriever import Retriever
 from .config import config
 from .cache import Cache
 from .utils import json_cleaning, json_cleaning_1
-from .business_objects import LOGISTICS_SALES_MODIFIED, FINANCIAL_BO_MODIFIED
+from .business_objects import LOGISTICS_SALES_MODIFIED, FINANCIAL_BO_MODIFIED, LOGISTICS_MODIFIED, CRM_BO, TREASURY_BO
 from .semantic_router import SemanticRouterPipeline
 from langchain.chat_models import ChatOpenAI
 from langfuse import observe
@@ -323,26 +323,24 @@ def hash_string(input_string):
 
     return hex_digest
 
-def model_selector(use_oss: bool = False, use_qwen3_coder: bool = False):
+def model_selector(use_oss, clients):
     if use_oss:
-        model_name = OSS_LLM_MODEL_NAME
-        api_base = OSS_API_BASE
-        api_key = OSS_API_KEY
-    elif use_qwen3_coder:
-        model_name = QWEN3_CODER_LLM_MODEL_NAME
-        api_base = QWEN3_CODER_API_BASE
-        api_key = QWEN3_CODER_API_KEY
+        extra = {}
+        print(clients)
+        client_model = {"client": clients["oss"], "extra":extra, "model_name": os.environ.get("OSS_LLM_MODEL_NAME", "/gpt-120")}
     else:
-        model_name = GPT_LLM_MODEL_NAME
-        api_base = GPT_API_BASE
-        api_key = GPT_API_KEY
-
-    
-    result = model_name, api_base, api_key
-    return result
+        extra = {
+                # "top_k": 1,
+                # "do_sample": False,
+                # "seed": 42,
+                # "sampling_method": "greedy",
+                # "reasoning_effort": "medium"
+            }
+        client_model = {"client": clients["gpt"], "extra":extra,  "model_name": os.environ.get("GPT_LLM_MODEL_NAME", "gpt-5.1-2025-11-13")}
+    return client_model
 
 @observe()
-async def get_chat_response(
+async def get_chat_response_legacy(
         prompt: str, 
         model_name: str = OSS_LLM_MODEL_NAME,
         api_key=OSS_API_KEY, 
@@ -371,7 +369,7 @@ async def get_chat_response(
             openai_api_base=api_base,
             model_name=model_name,
             openai_api_key=api_key,
-            temperature=0,
+            temperature=1,
             model_kwargs={},
             extra_body=extra
         )
@@ -385,6 +383,42 @@ async def get_chat_response(
     result = response.content
     
     return result
+
+@observe()
+async def get_chat_response(
+        prompt: str, 
+        client_model,
+        
+    ) -> str:
+
+    print("Character Length of the prompt: ", len(prompt))
+    print("words length of the prompt: ", len(prompt.split()))
+
+    
+
+    # Prepare messages in the standard OpenAI dictionary format
+    # The original code used SystemMessage, so we use "role": "system"
+    messages = [
+        {"role": "system", "content": prompt}
+    ]
+
+    try:
+        # Call the AsyncOpenAI client
+        response = await client_model["client"].chat.completions.create(
+            model=client_model["model_name"],
+            messages=messages,
+            temperature=1,
+            extra_body=client_model["extra"] # Pass the extra parameters here
+        )
+
+        # Extract the content from the response
+        result = response.choices[0].message.content
+        return result
+
+    except Exception as e:
+        # Basic error handling
+        print(f"Error generating response: {e}")
+        raise e
 
 @observe()
 async def get_cache_response(
@@ -413,7 +447,7 @@ def history_serializer(history: List[tuple[str, str]]) -> str:
     return serialized_history
 
 @observe()
-async def utterance_paraphraser(history: List[tuple[str, str]], user_utterance: str, assistant_name: str = None, use_oss:bool = True) -> str:
+async def utterance_paraphraser(clients, history: List[tuple[str, str]], user_utterance: str, assistant_name: str = None, use_oss:bool = True) -> str:
     serialized_history = history_serializer(history)
     
     if assistant_name:
@@ -429,20 +463,21 @@ async def utterance_paraphraser(history: List[tuple[str, str]], user_utterance: 
             history=serialized_history,
             question=user_utterance,
         )
-    model_name, api_base, api_key = model_selector(use_oss, use_qwen3_coder=False)
-    response_1 = await get_chat_response(prompt, model_name, api_key, api_base)
+    client_model = model_selector(use_oss, clients)
+    response_1 = await get_chat_response(prompt, client_model)
     response = json_cleaning_1(response_1)
     return response
 
 @observe()
 async def query_responder(
+    clients, 
     query: str, 
     context: str, 
     history: List[tuple[str, str]],
     company_name: str = None, 
     assistant_name: str = None, 
     answer_type: str = "normal", 
-    use_oss: bool = True
+    use_oss: bool = True, 
     ) -> str:
 
     serialized_history = history_serializer(history)
@@ -464,8 +499,8 @@ async def query_responder(
         question=query,
         conversation_history=serialized_history
     )
-    model_name, api_base, api_key = model_selector(use_oss, use_qwen3_coder=False)
-    response = await get_chat_response(prompt, model_name, api_key, api_base)
+    client_model = model_selector(use_oss, clients)
+    response = await get_chat_response(prompt, client_model)
     response = json_cleaning(response)
     
     return response
@@ -473,31 +508,32 @@ async def query_responder(
 
 @observe()
 async def chitchat_responder(
+    clients,
     query: str,
     context: str, 
     history: List[tuple[str, str]],
-    use_oss: bool
+    use_oss: bool, 
     ):
     serialized_history = history_serializer(history)
     prompt = CHITCHAT_PROMPT.format(user_question=query, 
                              context=context, 
                              history=serialized_history
                              )
-    model_name, api_base, api_key = model_selector(use_oss, use_qwen3_coder=False)
-    response = await get_chat_response(prompt, model_name, api_key, api_base)
+    client_model = model_selector(use_oss, clients)
+    response = await get_chat_response(prompt, client_model)
     
     return response
 
     
 @observe()
-async def answer_validator(question: str, context: str, answer: str, use_oss: bool) -> str:
+async def answer_validator(clients, question: str, context: str, answer: str, use_oss: bool) -> str:
     prompt = ANSWER_VALIDATOR_PROMPT.format(
         context=context,
         question=question,
         answer=answer,
     )
-    model_name, api_base, api_key = model_selector(use_oss, use_qwen3_coder=False)
-    response = await get_chat_response(prompt, model_name, api_key, api_base)
+    client_model = model_selector(use_oss, clients)
+    response = await get_chat_response(prompt, client_model)
     return response
 
 @observe()
@@ -636,14 +672,15 @@ def get_schema_for_module(detected_module: str) -> str:
 
 @observe()
 async def sql_responder_(
+    clients,
     query: str,
     detected_module: str = "", 
     faulty_sql_query: str = "", 
     error_message: str = "", 
     do_retry: bool = False,
-    parameters: dict = None,
-    use_oss: bool = False
-):
+    parameters = None,
+    use_oss: bool = False,
+    ):
     """
     Unified SQL responder supporting both simple schema list and module-based schema selection.
     """
@@ -700,9 +737,9 @@ def _get_chitchat_cache_key(utterance: str) -> str:
 
 
 async def _determine_final_route(
+    clients, 
     utterance: str,
     query_embedding: List,
-    use_joblib: bool = True,
     use_oss: bool = False,
 ) -> str:
 
@@ -710,6 +747,7 @@ async def _determine_final_route(
     alpha_threshold = router_config["alpha_threshold"]
     beta_threshold = router_config["beta_threshold"]
     """Determines the final route based on probability thresholds."""
+    use_joblib = True
     if use_joblib:
         semantic_router_client = SemanticRouterPipeline(
             inference_only=True,
@@ -720,7 +758,6 @@ async def _determine_final_route(
         predictions, probabilities, max_prob = semantic_router_client.predict_sentences_input_embedding_and_sentences([utterance], [query_embedding])
         top_prediction = predictions[0][0]
         probabilities = list(probabilities)  # Convert to list to make it subscriptable
-
         if max_prob > alpha_threshold and ("همکاران" not in utterance) and (top_prediction != "illegal"):
             return top_prediction
 
@@ -741,14 +778,14 @@ async def _determine_final_route(
         plausible_routes = ['chitchat', 'illegal', 'irrelevant', 'sql', 'qa']
 
     # Use an LLM to disambiguate between plausible routes
-    model_name, api_base, api_key = model_selector(True, use_qwen3_coder=False)
+    client_model = model_selector(True, clients)
     result = await get_chat_response(
-        SEMANTIC_ROUTER.format(user_query=utterance, class_list=plausible_routes), model_name, api_key, api_base
+        SEMANTIC_ROUTER.format(user_query=utterance, class_list=plausible_routes), client_model
     )
     return result
 
 @observe()
-async def get_route_for_utterance(utterance: str, query_embedding: List, use_joblib: bool = False) -> str:    
+async def get_route_for_utterance(clients, utterance: str, query_embedding: List, use_oss: bool = False) -> str:    
     CHITCHAT_ROUTE = "chitchat"
     ROUTER_CONFIG = config["router_model"]
     
@@ -770,7 +807,7 @@ async def get_route_for_utterance(utterance: str, query_embedding: List, use_job
         return chitchat_route
 
     # 3. Determine the final route using the logic in the helper function
-    final_route = await _determine_final_route(utterance, query_embedding, use_joblib, use_oss)
+    final_route = await _determine_final_route(clients, utterance, query_embedding, use_oss)
 
     # 4. Cache the result for future requests
     # Note: The original code had a commented-out line to cache all routes.
@@ -786,6 +823,7 @@ async def get_route_for_utterance(utterance: str, query_embedding: List, use_job
 
 @observe()
 async def chat_responder_(
+    clients,
     history: List[tuple[str, str]],
     user_utterance: str,
     database_index: str = config["database"]["collection_name"],
@@ -794,7 +832,7 @@ async def chat_responder_(
     response_type: str = config["database"]["response_type"],
     use_cache: bool = config["database"]["use_cache"],
     detected_module: str = "",
-    use_oss: bool = True
+    use_oss: bool = True, 
 ) -> Union[tuple[str, str, str, str], tuple[str, str, str, bool, List[str]]]:
     """
     Unified chat responder supporting both develop branch (simple RAG) and feature/add-sql-agent (SQL + module handling)
@@ -806,7 +844,7 @@ async def chat_responder_(
             result_temp = user_utterance, response, "", False, []
             return result_temp
 
-    paraphrased_utterance = await utterance_paraphraser(history, user_utterance, use_oss=use_oss)
+    paraphrased_utterance = await utterance_paraphraser(clients, history, user_utterance, use_oss=use_oss)
     if use_cache:
         response, _ = await get_cache_response(paraphrased_utterance)
         if response:
@@ -821,7 +859,7 @@ async def chat_responder_(
         result_temp = paraphrased_utterance, "", "", do_clarify, modules
         return result_temp
 
-    route_response = await get_route_for_utterance(paraphrased_utterance, query_embedding, use_oss)
+    route_response = await get_route_for_utterance(clients, paraphrased_utterance, query_embedding, use_oss)
     if route_response == "sql":
         if not modules:
             modules = ["all"]
@@ -830,7 +868,7 @@ async def chat_responder_(
         return result_temp
     
     if route_response == "chitchat":
-        response = await chitchat_responder(paraphrased_utterance, history=history, context=context, use_oss=use_oss)
+        response = await chitchat_responder(clients, paraphrased_utterance, history=history, context=context, use_oss=use_oss)
         result_temp = paraphrased_utterance, response, context, False, []
         
         return result_temp
@@ -845,13 +883,14 @@ async def chat_responder_(
         return result_temp
 
     response = await query_responder(
+        clients,
         paraphrased_utterance,
         context,
         history,
         company_name=company_name,
         assistant_name=assistant_name,
         answer_type=response_type,
-        use_oss=use_oss
+        use_oss=use_oss, 
         )
 
     if "محدوده دانش من " in response:
