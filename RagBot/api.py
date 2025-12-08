@@ -809,7 +809,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request, clients: d
                         response = response_dict["SQL"]
                         if response_dict["parameters"]:
                             response_dict["parameters"] = add_underscore_to_keys(response_dict["parameters"])
-                        bo_parameters_with_template = await parameters_responder(paraphrased_utterance, response, selected_module)
+                        bo_parameters_with_template = await parameters_responder(clients, paraphrased_utterance, response, selected_module, chat_request.use_oss)
                         bo_parameters_with_template_dict = json.loads(bo_parameters_with_template)
                         parameters_dict = finalize_parameters(response_dict, bo_parameters_with_template_dict)
                         parameters = parameters_dict["parameters"]
@@ -861,7 +861,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request, clients: d
                                     response = response_dict["SQL"]
                                     if response_dict["parameters"]:
                                         response_dict["parameters"] = add_underscore_to_keys(response_dict["parameters"])
-                                    bo_parameters_with_template = await parameters_responder(paraphrased_utterance, response, selected_module)
+                                    bo_parameters_with_template = await parameters_responder(clients, paraphrased_utterance, response, selected_module, chat_request.use_oss)
                                     bo_parameters_with_template_dict = json.loads(bo_parameters_with_template)
                                     parameters_dict = finalize_parameters(response_dict, bo_parameters_with_template_dict)
                                     parameters = parameters_dict["parameters"]
@@ -946,7 +946,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request, clients: d
                                     response = response_dict["SQL"]
                                     if response_dict["parameters"]:
                                         response_dict["parameters"] = add_underscore_to_keys(response_dict["parameters"])
-                                    bo_parameters_with_template = await parameters_responder(paraphrased_utterance, response, selected_module)
+                                    bo_parameters_with_template = await parameters_responder(clients, paraphrased_utterance, response, selected_module, chat_request.use_oss)
                                     bo_parameters_with_template_dict = json.loads(bo_parameters_with_template)
                                     parameters_dict = finalize_parameters(response_dict, bo_parameters_with_template_dict)
                                     parameters = parameters_dict["parameters"]

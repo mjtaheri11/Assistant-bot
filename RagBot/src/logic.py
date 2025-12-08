@@ -702,21 +702,21 @@ async def sql_responder_(
             error_message=error_message
         )
     
-    model_name, api_base, api_key = model_selector(use_oss, use_qwen3_coder=False)
+    client_model = model_selector(use_oss, clients)
     raw_json_response = await get_chat_response(
         bo_prompt, 
-        model_name=model_name, 
-        api_key=api_key,
-        api_base=api_base
+        client_model=client_model
     )
     response = json_cleaning(raw_json_response)
     return response
 
 @observe()
 async def parameters_responder(
+    clients,
     paraphrased_utterance, 
     sql_query,
-    detected_module: str = ""
+    detected_module: str = "", 
+    use_oss: bool = False
     ):
 
     sql_proposed_tables = extract_tables_simple(sql_query)
@@ -725,7 +725,8 @@ async def parameters_responder(
     selections = {table: ['parameters'] for table in sql_proposed_tables}
     bo_parameters_schema = subselect_yaml(yaml_schema, selections, "yaml")
     prompt = format_sql_prompt(paraphrased_utterance, bo_parameters_schema, BUSINESS_OBJECT_PARAMETER_EXTRACTOR_PROMPT)
-    raw_json_response = await get_chat_response(prompt)
+    client_model = model_selector(use_oss, clients)
+    raw_json_response = await get_chat_response(prompt, client_model)
     response = json_cleaning(raw_json_response)
     return response
 
