@@ -25,7 +25,7 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
-
+.idea
 # PyInstaller
 #  Usually these files are written by a python script from a template
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
@@ -231,3 +231,10 @@ RagBot/requirements_2.txt
 RagBot/Dockerfile_2
 RagBot/kubefiles
 RagBot/temp*.md
+RagBot/.idea
+RagBot/.sonar
+RagBot/.scannerwork
+RagBot/profile_results.prof
+RagBot/sonar-project.properties
+RagBot/sonar-scanner-7.3.0.5189-windows-x64/
+assets/.idea
