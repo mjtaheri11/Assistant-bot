@@ -1562,7 +1562,7 @@ Return `"SQL": null` immediately for ANY request involving:
 | `AVG(si.amount)` | `AVG(si.amount) AS si_amount_avg` |
 | `MIN(liv.date)` | `MIN(liv.date) AS liv_date_min` |
 | `MAX(lii.major_quantity)` | `MAX(lii.major_quantity) AS lii_major_quantity_max` |
-| `COUNT(*)` | `COUNT(*) AS row_count` |
+
 
 ### Rule 3: Subquery/Derived Table Column Aliasing
 **When using subqueries, alias the subquery result and use that alias for outer references:**
@@ -1587,7 +1587,6 @@ Return `"SQL": null` immediately for ANY request involving:
 |----------|---------|---------|
 | SUM | `table_column_sum` | `SUM(si.net_price) AS si_net_price_sum` |
 | COUNT | `table_column_count` | `COUNT(si.id) AS si_id_count` |
-| COUNT(*) | `row_count` | `COUNT(*) AS row_count` |
 | AVG | `table_column_avg` | `AVG(si.amount) AS si_amount_avg` |
 | MIN | `table_column_min` | `MIN(liv.date) AS liv_date_min` |
 | MAX | `table_column_max` | `MAX(lii.qty) AS lii_qty_max` |
@@ -1848,7 +1847,6 @@ Return `"SQL": null` immediately for ANY request involving:
 | Regular Column | `table_column` | `si.amount AS si_amount` |
 | SUM | `table_column_sum` | `SUM(si.net_price) AS si_net_price_sum` |
 | COUNT | `table_column_count` | `COUNT(si.id) AS si_id_count` |
-| COUNT(*) | `row_count` | `COUNT(*) AS row_count` |
 | AVG | `table_column_avg` | `AVG(si.amount) AS si_amount_avg` |
 | MIN | `table_column_min` | `MIN(liv.date) AS liv_date_min` |
 | MAX | `table_column_max` | `MAX(lii.qty) AS lii_qty_max` |
