@@ -4,6 +4,9 @@ import os
 from langchain_core.documents import Document
 from qdrant_client import QdrantClient, models
 
+# Import the module itself to use patch.object
+import src.initiate_vdb
+
 # Import the functions to be tested
 from src.initiate_vdb import (
     _initialize_qdrant_client,
@@ -80,12 +83,14 @@ class TestInitiateVDB(unittest.TestCase):
             mock_qdrant_client.create_collection.assert_called_once()
             mock_qdrant_vdb.return_value.add_documents.assert_called_with(documents)
 
-    @patch('src.initiate_vdb.ModelManager')
+    @patch.object(src.initiate_vdb, 'qdrant_client', None) # Applied first to override the global
+    @patch('src.retriever.ModelManager')
     @patch('src.initiate_vdb._initialize_qdrant_client')
     def test_create_vector_database_from_config(self, mock_init_client, mock_model_manager):
         """Test the config-based wrapper for DB creation."""
-        mock_qdrant_client = MagicMock(spec=QdrantClient)
-        mock_init_client.return_value = mock_qdrant_client
+        mock_qdrant_client_instance = MagicMock(spec=QdrantClient)
+        mock_init_client.return_value = mock_qdrant_client_instance # _initialize_qdrant_client will return this mock
+
         mock_embedding_model = MagicMock()
         mock_model_manager.return_value.embedding_model = mock_embedding_model
         mock_embedding_model.embed_query.return_value = [0.1] * 768
@@ -100,10 +105,12 @@ class TestInitiateVDB(unittest.TestCase):
             )
 
             mock_create_db.assert_called_once()
-            args, _ = mock_create_db.call_args
-            self.assertEqual(args[0], database_id)
-            self.assertEqual(args[2], mock_qdrant_client)
-            self.assertEqual(args[3], mock_embedding_model)
+            _, kwargs = mock_create_db.call_args
+            self.assertEqual(kwargs['database_id'], database_id)
+            # Now, kwargs['qdrant_client'] should be the mock_qdrant_client_instance
+            self.assertEqual(kwargs['qdrant_client'], mock_qdrant_client_instance)
+            self.assertEqual(kwargs['embedding_model'], mock_embedding_model)
+            self.assertEqual(kwargs['all_documents'], documents)
 
     def test_delete_vector_database(self):
         """Test deleting a vector database."""

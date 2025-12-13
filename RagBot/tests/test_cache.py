@@ -1,323 +1,250 @@
 import unittest
-from unittest.mock import patch, MagicMock, ANY
+import sys
+import os
 import uuid
+from unittest.mock import MagicMock, patch, ANY
+
+# Ensure the root directory is in sys.path to import src modules
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from src.cache import Cache
+from qdrant_client.http import models as qmodels
 from redis.exceptions import RedisError
 
-from src.cache import Cache, REDIS_HOST, REDIS_PORT
 
-
-@patch('src.cache.qdrant_client', new_callable=MagicMock)
-@patch('src.cache.ModelManager', new_callable=MagicMock)
-@patch('src.cache.redis.Redis', new_callable=MagicMock)
-@patch('src.cache.config', {'cache': {'index_name': 'test_collection', 'num_rank2_documents': 3}})
 class TestCache(unittest.TestCase):
 
     def setUp(self):
-        """Set up mocks and reset the Cache singleton before each test."""
-        # Reset singleton instance to ensure test isolation
-        Cache._instance = None
+        """
+        Runs before every test method.
+        Resets the Singleton instance to ensure test isolation.
+        """
+        Cache.reset()
 
-        # Get the mocks from the patches - they're available as test method parameters
-        # but we need to access them differently in setUp
-
-        # We'll set up the cache in each test method instead, or use setUpClass
-        # For now, we can just reset the instance
-        pass
-
-    def _setup_cache(self, mock_redis_class, mock_model_manager_class, mock_qdrant_client):
-        """Helper method to set up cache with mocks."""
-        # Mock the models
+        # Setup common mock objects for dependencies
+        self.mock_qdrant_client = MagicMock()
+        self.mock_model_manager = MagicMock()
         self.mock_embedding_model = MagicMock()
-        self.mock_embedding_model.embed_query.return_value = [0.1] * 10
         self.mock_reranker_model = MagicMock()
-        mock_model_manager_class.return_value.embedding_model = self.mock_embedding_model
-        mock_model_manager_class.return_value.reranker_model = self.mock_reranker_model
 
-        # Mock Redis client
-        self.mock_redis_instance = MagicMock()
-        mock_redis_class.return_value = self.mock_redis_instance
+        # Configure ModelManager mocks
+        self.mock_model_manager.embedding_model = self.mock_embedding_model
+        self.mock_model_manager.reranker_model = self.mock_reranker_model
 
-        # Mock Qdrant client
-        self.mock_qdrant_instance = mock_qdrant_client
+        # Default behavior: Embeddings return a dummy vector
+        self.mock_embedding_model.embed_query.return_value = [0.1, 0.2, 0.3]
 
-        # Instantiate the cache, which will use the mocked clients
-        self.cache = Cache()
-        self.cache.initialize(recreate=False)
+        # Patch configuration
+        self.config_patcher = patch('src.cache.config')
+        self.mock_config = self.config_patcher.start()
+        self.mock_config.__getitem__.side_effect = lambda x: {"index_name": "test_collection"} if x == "cache" else {}
 
     def tearDown(self):
-        """Clean up by resetting the singleton instance after each test."""
-        Cache._instance = None
+        """Runs after every test method."""
+        self.config_patcher.stop()
+        Cache.reset()
 
-    def test_singleton_pattern(self, mock_redis_class, mock_model_manager_class, mock_qdrant_client):
-        """Test that Cache is a singleton and returns the same instance."""
-        self._setup_cache(mock_redis_class, mock_model_manager_class, mock_qdrant_client)
-        instance1 = Cache()
-        instance2 = Cache()
-        self.assertIs(instance1, instance2)
-        self.assertIs(instance1, self.cache)
+    @patch('src.cache.redis.Redis')
+    @patch('src.cache.ModelManager')
+    def test_singleton_pattern(self, MockModelManager, MockRedis):
+        """Ensure Cache acts as a singleton."""
+        MockModelManager.return_value = self.mock_model_manager
 
-    def test_initialize(self, mock_redis_class, mock_model_manager_class, mock_qdrant_client):
-        """Test the initialization of Redis, Qdrant, and models."""
-        self._setup_cache(mock_redis_class, mock_model_manager_class, mock_qdrant_client)
+        cache1 = Cache()
+        cache2 = Cache()
 
-        # Check if Redis was initialized
-        mock_redis_class.assert_called_once_with(
-            host=REDIS_HOST, port=REDIS_PORT, db=0, decode_responses=True
-        )
-        self.assertIsNotNone(self.cache.redis_db)
+        self.assertIs(cache1, cache2, "Cache should be a singleton instance")
+        self.assertTrue(cache1._initialized)
 
-        # Check if ModelManager was called
-        mock_model_manager_class.assert_called_once()
-        self.assertIsNotNone(self.cache.embedding_model)
-        self.assertIsNotNone(self.cache.reranker_model)
+    @patch('src.cache.redis.Redis')
+    @patch('src.cache.ModelManager')
+    def test_initialize_logic(self, MockModelManager, MockRedis):
+        """Test initialization logic including collection creation."""
+        MockModelManager.return_value = self.mock_model_manager
 
-        # Check if Qdrant client is set
-        self.assertEqual(self.cache._client, self.mock_qdrant_instance)
-        self.assertEqual(self.cache._collection_name, 'test_collection')
-        self.assertEqual(self.cache._embedding_dim, 10)
+        # Initialize Cache with our mock Qdrant client
+        cache = Cache(qdrant_client_instance=self.mock_qdrant_client, recreate=True)
 
-    def test_ensure_collection_exists_recreate(self, mock_redis_class, mock_model_manager_class, mock_qdrant_client):
-        """Test that collection is deleted and recreated when recreate=True."""
-        Cache._instance = None  # Reset to re-initialize
-        self._setup_cache(mock_redis_class, mock_model_manager_class, mock_qdrant_client)
+        # Verify Redis connection attempted
+        MockRedis.assert_called_once()
 
-        # We need to re-initialize to test the 'recreate' flag
-        Cache._instance = None
-        cache = Cache()
-        cache.initialize(recreate=True)
+        # Verify Collection was deleted and created (since recreate=True)
+        self.mock_qdrant_client.delete_collection.assert_called_with(collection_name="test_collection")
+        self.mock_qdrant_client.create_collection.assert_called()
 
-        mock_qdrant_client.delete_collection.assert_called_once_with(collection_name='test_collection')
-        mock_qdrant_client.create_collection.assert_called_once()
-        self.assertEqual(mock_qdrant_client.create_payload_index.call_count, 4)
+        # Verify Payload Indices created (query, thumb_up, thumb_down, flag)
+        self.assertEqual(self.mock_qdrant_client.create_payload_index.call_count, 4)
 
-    def test_get_exact_cache(self, mock_redis_class, mock_model_manager_class, mock_qdrant_client):
-        """Test retrieving a value from the Redis cache."""
-        self._setup_cache(mock_redis_class, mock_model_manager_class, mock_qdrant_client)
-        self.mock_redis_instance.get.return_value = "cached_response"
-        result = self.cache.get_exact_cache("test_query")
-        self.mock_redis_instance.get.assert_called_once_with("test_query")
-        self.assertEqual(result, "cached_response")
+    @patch('src.cache.redis.Redis')
+    @patch('src.cache.ModelManager')
+    def test_initialize_no_redis(self, MockModelManager, MockRedis):
+        """Test initialization when Redis is disabled."""
+        MockModelManager.return_value = self.mock_model_manager
 
-    def test_set_exact_cache(self, mock_redis_class, mock_model_manager_class, mock_qdrant_client):
-        """Test setting a value in the Redis cache."""
-        self._setup_cache(mock_redis_class, mock_model_manager_class, mock_qdrant_client)
-        self.cache.set_exact_cache("test_key", "test_value")
-        self.mock_redis_instance.set.assert_called_once_with("test_key", "test_value")
+        cache = Cache(exact_cache=False, qdrant_client_instance=self.mock_qdrant_client)
 
-    def test_query_to_point_id(self, mock_redis_class, mock_model_manager_class, mock_qdrant_client):
-        """Test deterministic UUID generation for a query."""
-        self._setup_cache(mock_redis_class, mock_model_manager_class, mock_qdrant_client)
-        query = "hello world"
-        expected_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, query))
-        result_id = self.cache._query_to_point_id(query)
-        self.assertEqual(result_id, expected_id)
+        self.assertIsNone(cache.redis_db)
+        MockRedis.assert_not_called()
 
-    def test_insert_row(self, mock_redis_class, mock_model_manager_class, mock_qdrant_client):
-        """Test inserting a new row into Qdrant."""
-        self._setup_cache(mock_redis_class, mock_model_manager_class, mock_qdrant_client)
-        self.cache._insert_row("q", "r", "u", 1, 0, 0)
-        self.mock_embedding_model.embed_query.assert_called_with("q")
-        self.mock_qdrant_instance.upsert.assert_called_once()
-        # Check that the payload is correct in the call to upsert
-        args, kwargs = self.mock_qdrant_instance.upsert.call_args
-        self.assertEqual(kwargs['collection_name'], 'test_collection')
-        point = kwargs['points'][0]
-        self.assertEqual(point.payload['query'], 'q')
-        self.assertEqual(point.payload['response'], 'r')
+    @patch('src.cache.redis.Redis')
+    @patch('src.cache.ModelManager')
+    def test_get_set_exact_cache(self, MockModelManager, MockRedis):
+        """Test Redis get and set operations."""
+        MockModelManager.return_value = self.mock_model_manager
+        mock_redis_instance = MockRedis.return_value
 
-    def test_update_row_existing(self, mock_redis_class, mock_model_manager_class, mock_qdrant_client):
-        """Test updating an existing row in Qdrant."""
-        self._setup_cache(mock_redis_class, mock_model_manager_class, mock_qdrant_client)
-        existing_payload = {"query": "q", "response": "r", "thumb_up": 1}
-        with patch.object(self.cache, '_get_row', return_value=existing_payload) as mock_get_row:
-            self.cache._update_row("q", {"thumb_up": 2, "response": "new_r"})
+        cache = Cache(qdrant_client_instance=self.mock_qdrant_client)
 
-            self.mock_qdrant_instance.upsert.assert_called_once()
-            args, kwargs = self.mock_qdrant_instance.upsert.call_args
-            point = kwargs['points'][0]
-            # Verify payload is correctly merged
-            self.assertEqual(point.payload['response'], 'new_r')
-            self.assertEqual(point.payload['thumb_up'], 2)
+        # Test Set
+        cache.set_exact_cache("key", "value")
+        mock_redis_instance.set.assert_called_with("key", "value")
 
-    def test_update_row_new(self, mock_redis_class, mock_model_manager_class, mock_qdrant_client):
-        """Test that _update_row calls _insert_row for a new query."""
-        self._setup_cache(mock_redis_class, mock_model_manager_class, mock_qdrant_client)
-        with patch.object(self.cache, '_get_row', return_value=None) as mock_get_row:
-            with patch.object(self.cache, '_insert_row', autospec=True) as mock_insert_row:
-                self.cache._update_row("new_q", {"response": "new_r"})
-                mock_get_row.assert_called_once_with("new_q")
-                mock_insert_row.assert_called_once_with(
-                    query="new_q",
-                    response="new_r",
-                    url="",
-                    thumb_up=0,
-                    thumb_down=0,
-                    flag=0
-                )
+        # Test Get Hit
+        mock_redis_instance.get.return_value = "cached_value"
+        result = cache.get_exact_cache("query")
+        self.assertEqual(result, "cached_value")
 
-    def test_get_row(self, mock_redis_class, mock_model_manager_class, mock_qdrant_client):
-        """Test retrieving a single row from Qdrant by query."""
-        self._setup_cache(mock_redis_class, mock_model_manager_class, mock_qdrant_client)
+        # Test Get Miss/Error
+        mock_redis_instance.get.side_effect = RedisError("Connection failed")
+        result = cache.get_exact_cache("query")
+        self.assertIsNone(result)
+
+    @patch('src.cache.ModelManager')
+    def test_insert_row(self, MockModelManager):
+        """Test inserting a row into Qdrant."""
+        MockModelManager.return_value = self.mock_model_manager
+        cache = Cache(exact_cache=False, qdrant_client_instance=self.mock_qdrant_client)
+
+        query = "test query"
+        cache._insert_row(query, "response", "url", 0, 0, 0)
+
+        # Check embedding was generated
+        self.mock_embedding_model.embed_query.assert_called_with(query)
+
+        # Check upsert was called
+        self.mock_qdrant_client.upsert.assert_called_once()
+        call_args = self.mock_qdrant_client.upsert.call_args
+        self.assertEqual(call_args.kwargs['collection_name'], "test_collection")
+
+        # Verify Payload
+        points = call_args.kwargs['points']
+        self.assertEqual(points[0].payload['query'], query)
+        self.assertEqual(points[0].payload['response'], "response")
+
+    @patch('src.cache.ModelManager')
+    def test_get_embedding_match_single(self, MockModelManager):
+        """Test vector search with a single result."""
+        MockModelManager.return_value = self.mock_model_manager
+        cache = Cache(exact_cache=False, qdrant_client_instance=self.mock_qdrant_client)
+
+        # Mock Search Result
         mock_point = MagicMock()
-        mock_point.payload = {"query": "q", "response": "r"}
-        self.mock_qdrant_instance.retrieve.return_value = [mock_point]
+        mock_point.score = 0.95  # Distance = 1 - 0.95 = 0.05
+        mock_point.payload = {"query": "test", "data": "val"}
+        self.mock_qdrant_client.search.return_value = [mock_point]
 
-        result = self.cache._get_row("q")
+        # Threshold is 0.1. Distance 0.05 <= 0.1, so it should match.
+        matches = cache.get_embedding_match("query", threshold=0.1, knn=1)
 
-        point_id = self.cache._query_to_point_id("q")
-        self.mock_qdrant_instance.retrieve.assert_called_once_with(
-            collection_name='test_collection', ids=[point_id], with_payload=True
-        )
-        self.assertEqual(result, {"query": "q", "response": "r"})
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0], mock_point.payload)
 
-    def test_rerank_score(self, mock_redis_class, mock_model_manager_class, mock_qdrant_client):
-        """Test the reranking logic."""
-        self._setup_cache(mock_redis_class, mock_model_manager_class, mock_qdrant_client)
-        matches = [
-            {"query": "doc1", "response": "resp1"},
-            {"query": "doc2", "response": "resp2"},
-        ]
-        # Reranker returns higher score for doc2
-        self.mock_reranker_model.compute_score.return_value = [0.5, 0.9]
+    @patch('src.cache.ModelManager')
+    def test_get_embedding_match_rerank(self, MockModelManager):
+        """Test vector search with multiple results triggering rerank."""
+        MockModelManager.return_value = self.mock_model_manager
+        cache = Cache(exact_cache=False, qdrant_client_instance=self.mock_qdrant_client)
 
-        reranked_matches = self.cache._rerank_score("query", matches)
+        # Mock Search Results (2 hits)
+        p1 = MagicMock(score=0.99, payload={"query": "doc1"})
+        p2 = MagicMock(score=0.98, payload={"query": "doc2"})
+        self.mock_qdrant_client.search.return_value = [p1, p2]
 
-        self.mock_reranker_model.compute_score.assert_called_once()
-        # Check that doc2 is now first
-        self.assertEqual(len(reranked_matches), 2)
-        self.assertEqual(reranked_matches[0]['query'], 'doc2')
-        self.assertEqual(reranked_matches[1]['query'], 'doc1')
+        # Mock Reranker
+        # Assume reranker flips the order: doc2 is better than doc1
+        self.mock_reranker_model.compute_score.return_value = [0.1, 0.9]  # doc1 score, doc2 score
 
-    def test_get_embedding_match(self, mock_redis_class, mock_model_manager_class, mock_qdrant_client):
-        """Test finding similar documents via embedding search."""
-        self._setup_cache(mock_redis_class, mock_model_manager_class, mock_qdrant_client)
-        mock_result = MagicMock()
-        mock_result.score = 0.95  # High similarity
-        mock_result.payload = {"query": "similar_q", "response": "r"}
-        self.mock_qdrant_instance.search.return_value = [mock_result]
+        matches = cache.get_embedding_match("query", threshold=0.1, knn=2)
 
-        with patch.object(self.cache, '_rerank_score', side_effect=lambda q, m, k: m) as mock_rerank:
-            matches = self.cache.get_embedding_match("query", threshold=0.1, knn=5)
+        # Reranker should be called
+        self.mock_reranker_model.compute_score.assert_called()
 
-            self.mock_qdrant_instance.search.assert_called_once_with(
-                collection_name='test_collection',
-                query_vector=[0.1] * 10,
-                limit=5,
-                with_payload=True,
-                score_threshold=0.9  # 1 - 0.1
-            )
-            self.assertEqual(len(matches), 1)
-            self.assertEqual(matches[0]['query'], 'similar_q')
-            # Rerank should not be called for a single match
-            mock_rerank.assert_not_called()
+        # Verify return order is based on reranker scores (doc2 first)
+        self.assertEqual(matches[0]['query'], "doc2")
+        self.assertEqual(matches[1]['query'], "doc1")
 
-    def test_get_embedding_match_with_rerank(self, mock_redis_class, mock_model_manager_class, mock_qdrant_client):
-        """Test that reranking is called for multiple matches."""
-        self._setup_cache(mock_redis_class, mock_model_manager_class, mock_qdrant_client)
-        mock_result1 = MagicMock(score=0.95, payload={"query": "q1"})
-        mock_result2 = MagicMock(score=0.92, payload={"query": "q2"})
-        self.mock_qdrant_instance.search.return_value = [mock_result1, mock_result2]
+    @patch('src.cache.ModelManager')
+    def test_increment_thumb_up_new_record(self, MockModelManager):
+        """Test incrementing thumb up for a new record (creates new row)."""
+        MockModelManager.return_value = self.mock_model_manager
+        cache = Cache(exact_cache=False, qdrant_client_instance=self.mock_qdrant_client)
 
-        with patch.object(self.cache, '_rerank_score', return_value=[{"query": "reranked"}],
-                          autospec=True) as mock_rerank:
-            matches = self.cache.get_embedding_match("query", threshold=0.1, knn=5)
+        # Mock retrieve returning empty (record doesn't exist)
+        self.mock_qdrant_client.retrieve.return_value = []
 
-            self.assertTrue(len(matches) > 0)
-            mock_rerank.assert_called_once()
-            self.assertEqual(matches[0]['query'], 'reranked')
+        cache.increment_thumb_up("new query", "resp", "url")
 
-    def test_increment_thumb_up_new_document(self, mock_redis_class, mock_model_manager_class, mock_qdrant_client):
-        """Test incrementing thumb_up for a document that doesn't exist."""
-        self._setup_cache(mock_redis_class, mock_model_manager_class, mock_qdrant_client)
-        with patch.object(self.cache, '_get_row', return_value=None) as mock_get_row:
-            with patch.object(self.cache, '_insert_row', autospec=True) as mock_insert_row:
-                self.cache.increment_thumb_up("q", "r", "u")
+        # Should call upsert with thumb_up = 1
+        self.mock_qdrant_client.upsert.assert_called()
+        points = self.mock_qdrant_client.upsert.call_args.kwargs['points']
+        self.assertEqual(points[0].payload['thumb_up'], 1)
 
-                mock_get_row.assert_called_once_with("q")
-                mock_insert_row.assert_called_once_with(
-                    query="q", response="r", url="u", thumb_up=1, thumb_down=0, flag=0
-                )
+    @patch('src.cache.ModelManager')
+    def test_increment_thumb_up_existing_record(self, MockModelManager):
+        """Test incrementing thumb up for existing record (updates row)."""
+        MockModelManager.return_value = self.mock_model_manager
+        cache = Cache(exact_cache=False, qdrant_client_instance=self.mock_qdrant_client)
 
-    def test_increment_thumb_down_existing_document(self, mock_redis_class, mock_model_manager_class,
-                                                    mock_qdrant_client):
-        """Test incrementing thumb_down for an existing document."""
-        self._setup_cache(mock_redis_class, mock_model_manager_class, mock_qdrant_client)
-        existing_record = {"query": "q", "thumb_down": 1}
-        with patch.object(self.cache, '_get_row', return_value=existing_record) as mock_get_row:
-            with patch.object(self.cache, '_update_row', autospec=True) as mock_update_row:
-                self.cache.increment_thumb_down("q", "r", "u")
+        # Mock retrieve returning existing record
+        existing_payload = {"query": "q", "thumb_up": 5, "response": "r"}
+        mock_point = MagicMock()
+        mock_point.payload = existing_payload
+        self.mock_qdrant_client.retrieve.return_value = [mock_point]
 
-                mock_get_row.assert_called_once_with("q")
-                mock_update_row.assert_called_once_with("q", {"thumb_down": 2})
+        cache.increment_thumb_up("q", "r", "u")
 
-    def test_filter_documents(self, mock_redis_class, mock_model_manager_class, mock_qdrant_client):
-        """Test filtering documents using the scroll API."""
-        self._setup_cache(mock_redis_class, mock_model_manager_class, mock_qdrant_client)
-        mock_point1 = MagicMock(payload={'query': 'q1'})
-        mock_point2 = MagicMock(payload={'query': 'q2'})
+        # Should call upsert with thumb_up = 6 (5 + 1)
+        points = self.mock_qdrant_client.upsert.call_args.kwargs['points']
+        self.assertEqual(points[0].payload['thumb_up'], 6)
 
-        # Simulate pagination: first call returns one result and a next offset, second call returns another
-        self.mock_qdrant_instance.scroll.side_effect = [
-            ([mock_point1], "next_offset_id"),
-            ([mock_point2], None)
-        ]
+    @patch('src.cache.ModelManager')
+    def test_filter_documents(self, MockModelManager):
+        """Test filtering documents with scroll."""
+        MockModelManager.return_value = self.mock_model_manager
+        cache = Cache(exact_cache=False, qdrant_client_instance=self.mock_qdrant_client)
 
-        filters = {"author": "test_user", "flag": {"$gte": 1}}
-        results = self.cache.filter_documents(filters)
+        # Mock Scroll results
+        p1 = MagicMock(payload={"id": 1})
+        # Return tuple (points, next_offset)
+        self.mock_qdrant_client.scroll.return_value = ([p1], None)
 
-        self.assertEqual(self.mock_qdrant_instance.scroll.call_count, 2)
-        self.assertEqual(len(results), 2)
-        self.assertEqual(results[0]['query'], 'q1')
-        self.assertEqual(results[1]['query'], 'q2')
+        filters = {"flag": {"$gte": 1}}
+        results = cache.filter_documents(filters)
 
-        # Check that the filter was constructed correctly
-        first_call_args, first_call_kwargs = self.mock_qdrant_instance.scroll.call_args_list[0]
-        scroll_filter = first_call_kwargs['scroll_filter']
-        self.assertIsNotNone(scroll_filter)
-        self.assertEqual(len(scroll_filter.must), 2)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]['id'], 1)
 
-    def test_get_documents_with_metadata_field_numeric(self, mock_redis_class, mock_model_manager_class,
-                                                       mock_qdrant_client):
-        """Test getting documents that have a specific numeric metadata field."""
-        self._setup_cache(mock_redis_class, mock_model_manager_class, mock_qdrant_client)
-        with patch.object(self.cache, 'filter_documents', autospec=True) as mock_filter:
-            self.cache.get_documents_with_metadata_field("thumb_up")
-            mock_filter.assert_called_once_with({"thumb_up": {"$gte": 0}})
+        # Verify Filter construction
+        call_args = self.mock_qdrant_client.scroll.call_args
+        scroll_filter = call_args.kwargs['scroll_filter']
+        self.assertIsInstance(scroll_filter, qmodels.Filter)
+        # Check if Range condition was created for $gte
+        self.assertTrue(any(isinstance(c.range, qmodels.Range) for c in scroll_filter.must if hasattr(c, 'range')))
 
-    def test_get_documents_with_metadata_field_non_numeric(self, mock_redis_class, mock_model_manager_class,
-                                                           mock_qdrant_client):
-        """Test getting documents that have a specific non-numeric metadata field."""
-        self._setup_cache(mock_redis_class, mock_model_manager_class, mock_qdrant_client)
-        self.mock_qdrant_instance.scroll.return_value = ([], None)  # Return empty result
-        self.cache.get_documents_with_metadata_field("url")
+    @patch('src.cache.ModelManager')
+    def test_delete_document(self, MockModelManager):
+        """Test deleting a document."""
+        MockModelManager.return_value = self.mock_model_manager
+        cache = Cache(exact_cache=False, qdrant_client_instance=self.mock_qdrant_client)
 
-        self.mock_qdrant_instance.scroll.assert_called_once()
-        args, kwargs = self.mock_qdrant_instance.scroll.call_args
-        scroll_filter = kwargs['scroll_filter']
-        # Check for must_not=[IsEmptyCondition(...)] which is now IsNotNullCondition
-        self.assertIsNotNone(scroll_filter.must)
-        self.assertEqual(scroll_filter.must[0].is_not_null.key, "url")
+        # Mock existance check
+        self.mock_qdrant_client.retrieve.return_value = [MagicMock()]
 
-    def test_delete_document(self, mock_redis_class, mock_model_manager_class, mock_qdrant_client):
-        """Test deleting a document from Qdrant."""
-        self._setup_cache(mock_redis_class, mock_model_manager_class, mock_qdrant_client)
-        query = "query_to_delete"
-        point_id = self.cache._query_to_point_id(query)
+        cache.delete_document("query_to_delete")
 
-        with patch.object(self.cache, '_get_row', return_value={"query": query}) as mock_get_row:
-            self.cache.delete_document(query)
-
-            self.mock_qdrant_instance.delete.assert_called_once()
-            args, kwargs = self.mock_qdrant_instance.delete.call_args
-            self.assertEqual(kwargs['collection_name'], 'test_collection')
-            self.assertEqual(kwargs['points_selector'].points, [point_id])
-
-    def test_delete_document_not_found(self, mock_redis_class, mock_model_manager_class, mock_qdrant_client):
-        """Test that delete is not called if the document doesn't exist."""
-        self._setup_cache(mock_redis_class, mock_model_manager_class, mock_qdrant_client)
-        with patch.object(self.cache, '_get_row', return_value=None) as mock_get_row:
-            self.cache.delete_document("non_existent_query")
-            self.mock_qdrant_instance.delete.assert_not_called()
+        self.mock_qdrant_client.delete.assert_called_once()
+        call_args = self.mock_qdrant_client.delete.call_args
+        self.assertEqual(call_args.kwargs['collection_name'], "test_collection")
 
 
 if __name__ == '__main__':

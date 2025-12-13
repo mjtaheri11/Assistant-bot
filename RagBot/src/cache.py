@@ -40,9 +40,14 @@ class Cache:
     def __new__(cls, *args, **kwargs):
         """Implements the singleton pattern to ensure only one instance of the cache exists."""
         if not cls._instance:
-            cls._instance = super().__new__(cls, *args, **kwargs)
+            cls._instance = super().__new__(cls)  # <--- FIXED
             cls._instance.initialize(**kwargs)
         return cls._instance
+
+    @classmethod
+    def reset(cls):
+        """Reset the singleton instance"""
+        cls._instance = None
 
     def initialize(self, exact_cache: bool = True, recreate: bool = False, qdrant_client_instance=None) -> None:
         """
@@ -358,8 +363,11 @@ class Cache:
         must_conditions = []
         for key, value in filters.items():
             if isinstance(value, dict):
+                # FIX: Strip the '$' from keys like '$gte' so they become 'gte'
                 range_params = {
-                    k: v for k, v in value.items() if k in ["$gte", "$gt", "$lte", "$lt"]
+                    k.replace("$", ""): v
+                    for k, v in value.items()
+                    if k in ["$gte", "$gt", "$lte", "$lt"]
                 }
                 if range_params:
                     must_conditions.append(

@@ -94,7 +94,6 @@ class TritonEmbeddings(Embeddings):
         
         # Filter out empty texts
         non_empty_texts = [text if text else "[EMPTY]" for text in cleaned_texts]
-        
         try:
             # Tokenize all texts
             encoded = self.tokenizer(
@@ -122,7 +121,6 @@ class TritonEmbeddings(Embeddings):
         try:
             input_ids = tokenized_inputs["input_ids"]
             attention_mask = tokenized_inputs["attention_mask"]
-            
             # Check shapes match
             if input_ids.shape != attention_mask.shape:
                 logger.error(f"Shape mismatch: input_ids {input_ids.shape} vs attention_mask {attention_mask.shape}")
