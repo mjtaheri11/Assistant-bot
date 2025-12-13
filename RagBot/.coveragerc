@@ -1,0 +1,16 @@
+[run]
+omit =
+
+    src\business_objects.py
+
+    src\business_objects_legacy.py
+
+    src\business_objects_v2.py
+
+    src\log_to_csv.py
+
+    src\prompts.py
+
+    src\utils.py
+
+    src\vector_db_utils.py
