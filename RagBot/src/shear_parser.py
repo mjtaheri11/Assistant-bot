@@ -79,11 +79,11 @@ class ProcessDocs:
         # A flag to indicate if the current line is within the TOC section.
         in_toc_section = False
         # A regex pattern to identify TOC entry lines.
-        toc_pattern = re.compile(r'\[.*\]\(#_Toc\d+\)')
+        toc_pattern = re.compile(r'\[.*\]\(#_[Tt]oc\d*\)')
         for line in lines:
             stripped_line = line.strip()
             # Check for the start of the table of contents.
-            if "Contents" in stripped_line or "فهرست" in stripped_line:
+            if "Contents" in stripped_line or "فهرست" in stripped_line or "Content" in stripped_line:
                 in_toc_section = True
                 # Skip the "Contents" line itself.
                 continue

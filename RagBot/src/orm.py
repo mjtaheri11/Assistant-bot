@@ -1,64 +1,11 @@
 import asyncpg
-import asyncio
-import os
+
 from typing import Optional, Tuple
 
-from .config import config
 import os
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
 load_dotenv()# Models for request and response
-
-# sudo docker exec -it postgres psql -U postgres -d chatbot -c "CREATE TABLE public.session (session_id UUID DEFAULT gen_random_uuid() PRIMARY KEY, history_length INT)"
-
-# CREATE EXTENSION IF NOT EXISTS "pgcrypto";
-
-# CREATE TABLE public.session (
-#     session_id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-#     create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-# );
-
-# CREATE TABLE public.message (
-#     message_id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-#     session_id UUID REFERENCES public.session(session_id),
-#     user_query TEXT,
-#     paraphrased_query TEXT,
-#     bot_response TEXT,
-#     feedback TEXT,
-#     elapsed_time TEXT,
-#     create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-# );
-
-# sudo docker exec -it postgres psql -U postgres -d chatbot -c "ALTER TABLE public.message ADD COLUMN is_sql BOOLEAN DEFAULT FALSE;"
-
-# sudo docker exec -it postgres psql -U postgres -d chatbot -c "CREATE TABLE public.databases (
-#                                                               database_id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-#                                                               company_name TEXT DEFAULT 'همکاران سیستم',
-#                                                               assistant_name TEXT DEFAULT 'دستیار دیجیتال',
-#                                                               create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-#                                                           );"
-       
-# sudo docker exec -it postgres psql -U postgres -d chatbot -c "CREATE TABLE public.sessions (
-#                                                               session_id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-#                                                               database_id UUID REFERENCES public.databases(database_id),
-#                                                               response_type VARCHAR(20) DEFAULT 'concise',
-#                                                               create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-#                                                           );"
-   
-# sudo docker exec -it postgres psql -U postgres -d chatbot -c "CREATE TABLE public.message (
-#                                                               message_id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-#                                                               session_id UUID REFERENCES public.sessions(session_id),
-#                                                               user_query TEXT,
-#                                                               paraphrased_query TEXT,
-#                                                               bot_response TEXT,
-#                                                               feedback TEXT,
-#                                                               elapsed_time FLOAT,
-#                                                               is_sql BOOLEAN DEFAULT FALSE,
-#                                                               selected_module TEXT,
-#                                                               do_suggest BOOLEAN DEFAULT FALSE,
-#                                                               create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-#                                                           );"
 
 class Postgres:
     _instance = None
