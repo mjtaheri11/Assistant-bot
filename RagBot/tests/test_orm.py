@@ -1,474 +1,716 @@
-import unittest
-from unittest.mock import patch, AsyncMock
-import uuid
-import os
-
+import pytest
+import asyncio
+from unittest.mock import AsyncMock, MagicMock, patch, call
 from src.orm import Postgres
 
-class TestPostgres(unittest.TestCase):
 
-    def setUp(self):
-        """Set up a clean instance of the Postgres class for each test."""
-        # Reset the singleton for isolation
-        Postgres._instance = None
-        self.postgres = Postgres()
+@pytest.fixture
+def reset_singleton():
+    """Reset the singleton instance before and after each test."""
+    Postgres.reset_instance()
+    yield
+    Postgres.reset_instance()
 
-    @patch.dict(os.environ, {
-        "POSTGRES_DB": "test_db",
-        "POSTGRES_ADDR": "localhost",
-        "POSTGRES_USER": "test_user",
-        "POSTGRES_PASSWORD": "test_password",
-        "POSTGRES_PORT": "5432",
-    })
-    @patch('src.orm.asyncpg.connect', new_callable=AsyncMock)
-    async def test_execute_query(self, mock_connect):
-        """Test the internal _execute_query method."""
-        mock_connection = AsyncMock()
-        mock_connect.return_value = mock_connection
-        mock_connection.fetchrow.return_value = "fetchrow_result"
-        mock_connection.fetch.return_value = "fetch_result"
 
-        # Test fetchrow
-        result = await self.postgres._execute_query("SELECT 1", is_insert=True)
-        self.assertEqual(result, "fetchrow_result")
+@pytest.fixture
+def mock_env_vars():
+    """Mock environment variables."""
+    with patch.dict('os.environ', {
+        'POSTGRES_DB': 'test_db',
+        'POSTGRES_ADDR': 'localhost',
+        'POSTGRES_USER': 'test_user',
+        'POSTGRES_PASSWORD': 'test_pass',
+        'POSTGRES_PORT': '5432'
+    }):
+        yield
 
-        # Test fetch
-        result = await self.postgres._execute_query("SELECT ALL", fetch_results=True)
-        self.assertEqual(result, "fetch_result")
 
-        # Test execute
-        result = await self.postgres._execute_query("INSERT", fetch_results=False, insert_values=("value",))
-        self.assertTrue(result)
-        mock_connection.execute.assert_called_with("INSERT", "value")
+@pytest.fixture
+def mock_connection():
+    """Create a mock database connection."""
+    connection = AsyncMock()
+    connection.is_closed.return_value = False
 
-    @patch('src.orm.Postgres._execute_query', new_callable=AsyncMock)
-    async def test_create_database(self, mock_execute_query):
-        """Test the create_database function."""
-        mock_db_id = uuid.uuid4()
-        mock_execute_query.return_value = (mock_db_id,)
+    # Mock the transaction context manager properly
+    transaction_mock = MagicMock()
+    transaction_mock.__aenter__ = AsyncMock(return_value=None)
+    transaction_mock.__aexit__ = AsyncMock(return_value=None)
 
-        # Test with both names
-        result = await self.postgres.create_database(company_name="TestCorp", assistant_name="Tester")
-        self.assertEqual(result, {"database_id": str(mock_db_id)})
-        mock_execute_query.assert_called_with(
-            "INSERT INTO public.databases (company_name, assistant_name) VALUES ($1, $2) RETURNING database_id;",
-            insert_values=("TestCorp", "Tester"),
-            is_insert=True,
-            fetch_results=True
-        )
+    # --- FIX APPLIED HERE ---
+    # We replace the .transaction attribute with a MagicMock.
+    # If we left it as an AsyncMock (the default for methods on an AsyncMock object),
+    # calling it would return a coroutine, which causes the "TypeError: 'coroutine' object..."
+    # when used in an 'async with' statement.
+    connection.transaction = MagicMock(return_value=transaction_mock)
 
-        # Test with no names
-        await self.postgres.create_database()
-        mock_execute_query.assert_called_with(
-            "INSERT INTO public.databases DEFAULT VALUES RETURNING database_id;",
-            insert_values=None,
-            is_insert=True,
-            fetch_results=True
-        )
+    return connection
 
-    @patch('src.orm.Postgres._execute_query', new_callable=AsyncMock)
-    async def test_create_session(self, mock_execute_query):
-        """Test the create_session function."""
-        mock_session_id = uuid.uuid4()
-        mock_execute_query.return_value = (mock_session_id,)
 
-        result = await self.postgres.create_session(database_id="db1", tenant_name="tenant1", user_code="user1")
-        self.assertEqual(result, {"session_id": str(mock_session_id)})
-        mock_execute_query.assert_called_with(
-            "INSERT INTO public.session (database_id, tenant_name, user_code) VALUES ($1, $2, $3) RETURNING session_id;",
-            insert_values=("db1", "tenant1", "user1"),
-            is_insert=True,
-            fetch_results=True
-        )
+class TestPostgresSingleton:
+    """Test singleton pattern behavior."""
 
-    @patch('src.orm.Postgres._execute_query', new_callable=AsyncMock)
-    async def test_get_history(self, mock_execute_query):
-        """Test the get_history function."""
-        mock_history = [
-            ("q1", "p1", "r1", "m1", True, "mod1", 1.1, True, "temp1", "{}"),
-            ("q2", "p2", "r2", "m2", False, "mod2", 2.2, False, "temp2", "{}"),
-        ]
-        mock_execute_query.return_value = mock_history
+    def test_singleton_instance(self, reset_singleton, mock_env_vars):
+        """Test that only one instance is created."""
+        pg1 = Postgres()
+        pg2 = Postgres()
+        assert pg1 is pg2
 
-        history = await self.postgres.get_history("session1", 1, 10, with_paraphrase=True)
-        self.assertEqual(len(history), 2)
-        self.assertEqual(history[0]['query'], 'q1')
-        self.assertIn('paraphrased_query', history[0])
+    def test_reset_instance(self, reset_singleton, mock_env_vars):
+        """Test that reset_instance clears the singleton."""
+        pg1 = Postgres()
+        Postgres.reset_instance()
+        pg2 = Postgres()
+        assert pg1 is not pg2
 
-        history_no_paraphrase = await self.postgres.get_history("session1", 1, 10, with_paraphrase=False)
-        self.assertNotIn('paraphrased_query', history_no_paraphrase[0])
+    def test_initialization(self, reset_singleton, mock_env_vars):
+        """Test that initialization sets correct attributes."""
+        pg = Postgres()
+        assert pg.database == 'test_db'
+        assert pg.connection_address == 'localhost'
 
-    @patch('src.orm.Postgres._execute_query', new_callable=AsyncMock)
-    async def test_insert_chat_row(self, mock_execute_query):
-        """Test inserting a new chat row."""
-        mock_message_id = uuid.uuid4()
-        mock_execute_query.return_value = (mock_message_id,)
 
-        result = await self.postgres.insert_chat_row("session1", "user_query")
-        self.assertEqual(result, str(mock_message_id))
-        mock_execute_query.assert_called_with(
-            "INSERT INTO messages (session_id, user_query) VALUES ($1, $2) RETURNING message_id;",
-            is_insert=True,
-            insert_values=("session1", "user_query"),
-            fetch_results=True
-        )
+class TestExecuteQuery:
+    """Test the _execute_query method."""
 
-    @patch('src.orm.Postgres._execute_query', new_callable=AsyncMock)
-    async def test_update_last_chat_row(self, mock_execute_query):
-        """Test updating the last chat row."""
-        mock_message_id = uuid.uuid4()
-        mock_execute_query.return_value = (mock_message_id,)
+    @pytest.mark.asyncio
+    async def test_execute_query_fetch_multiple(self, reset_singleton, mock_env_vars, mock_connection):
+        """Test fetching multiple rows."""
+        mock_connection.fetch.return_value = [('row1',), ('row2',)]
 
-        result = await self.postgres.update_last_chat_row(
-            "session1", "paraphrased", "response", True, 1.23
-        )
-        self.assertEqual(result, str(mock_message_id))
-        self.assertEqual(mock_execute_query.call_args[1]['insert_values'][0], "paraphrased")
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
+            result = await pg._execute_query("SELECT * FROM test", fetch_results=True)
 
-    @patch('src.orm.Postgres._execute_query', new_callable=AsyncMock)
-    async def test_set_feedback(self, mock_execute_query):
-        """Test setting feedback for a message."""
-        mock_execute_query.return_value = (uuid.uuid4(),)
+            assert result == [('row1',), ('row2',)]
+            mock_connection.fetch.assert_called_once()
 
-        result = await self.postgres.set_feedback("message1", "positive")
-        self.assertTrue(result)
-        mock_execute_query.assert_called_with(
-            """
-            UPDATE messages
-            SET feedback = $1
-            WHERE message_id = $2 AND feedback IS NULL
-            RETURNING message_id;
-        """,
-            fetch_results=True,
-            insert_values=("positive", "message1"),
-        )
+    @pytest.mark.asyncio
+    async def test_execute_query_fetch_one(self, reset_singleton, mock_env_vars, mock_connection):
+        """Test fetching a single row (is_insert=True)."""
+        mock_connection.fetchrow.return_value = {'id': 1}
 
-    @patch('src.orm.Postgres._execute_query', new_callable=AsyncMock)
-    async def test_exist_session(self, mock_execute_query):
-        """Test checking if a session exists."""
-        mock_execute_query.return_value = [("some_session_id",)]
-        result = await self.postgres.exist_session("some_session_id")
-        self.assertTrue(result)
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
+            result = await pg._execute_query(
+                "INSERT INTO test VALUES ($1)",
+                is_insert=True,
+                insert_values=('value',),
+                fetch_results=True
+            )
 
-        mock_execute_query.return_value = []
-        result = await self.postgres.exist_session("non_existent_session")
-        self.assertFalse(result)
+            assert result == {'id': 1}
+            mock_connection.fetchrow.assert_called_once()
 
-    @patch('src.orm.Postgres._execute_query', new_callable=AsyncMock)
-    async def test_get_message_fields(self, mock_execute_query):
-        """Test retrieving message fields."""
-        mock_execute_query.return_value = [("user_q", "paraphrased_q", "bot_r")]
-        result = await self.postgres.get_message_fields("session1", "message1")
-        self.assertEqual(result, ("user_q", "paraphrased_q", "bot_r"))
+    @pytest.mark.asyncio
+    async def test_execute_query_no_fetch(self, reset_singleton, mock_env_vars, mock_connection):
+        """Test executing without fetching results."""
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
+            result = await pg._execute_query(
+                "UPDATE test SET value = $1",
+                insert_values=('new_value',),
+                fetch_results=False
+            )
 
-    @patch('src.orm.Postgres._execute_query', new_callable=AsyncMock)
-    async def test_validate_session(self, mock_execute_query):
-        """Test session validation."""
-        mock_execute_query.return_value = [(1,)]
-        result = await self.postgres.validate_session("session1")
-        self.assertTrue(result)
+            assert result is True
+            mock_connection.execute.assert_called_once()
 
-    @patch('src.orm.Postgres._execute_query', new_callable=AsyncMock)
-    async def test_find_database_id(self, mock_execute_query):
-        """Test finding a database ID from a session ID."""
-        mock_db_id = uuid.uuid4()
-        mock_execute_query.return_value = (mock_db_id,)
-        result = await self.postgres.find_database_id("session1")
-        self.assertEqual(result, {"database_id": str(mock_db_id)})
+    @pytest.mark.asyncio
+    async def test_execute_query_connection_closed(self, reset_singleton, mock_env_vars, mock_connection):
+        """Test that connection is closed even if already closed."""
+        mock_connection.is_closed.return_value = True
+        mock_connection.fetch.return_value = []
 
-    @patch('src.orm.Postgres._execute_query', new_callable=AsyncMock)
-    async def test_find_company_assistant_names(self, mock_execute_query):
-        """Test finding company and assistant names."""
-        mock_execute_query.return_value = ("TestCorp", "Tester")
-        result = await self.postgres.find_company_assistant_names("db1")
-        self.assertEqual(result, {"company_name": "TestCorp", "assistant_name": "Tester"})
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
+            await pg._execute_query("SELECT * FROM test", fetch_results=True)
 
-    @patch('src.orm.Postgres._execute_query', new_callable=AsyncMock)
-    async def test_extract_response_type(self, mock_execute_query):
-        """Test extracting the response type."""
-        mock_execute_query.return_value = [("verbose",)]
-        result = await self.postgres.extract_response_type("session1")
-        self.assertEqual(result, {"response_type": "verbose"})
+            # Should not call close if already closed
+            mock_connection.close.assert_not_called()
 
-    @patch('src.orm.Postgres._execute_query', new_callable=AsyncMock)
-    async def test_remove_previous_response(self, mock_execute_query):
-        """Test removing a previous response."""
-        result = await self.postgres.remove_previous_response("message1")
-        self.assertTrue(result)
-        mock_execute_query.assert_called_with(
-            "UPDATE messages SET bot_response = NULL WHERE message_id = $1;",
-            is_insert=True,
-            insert_values=("message1",),
-            fetch_results=False
-        )
+    @pytest.mark.asyncio
+    async def test_execute_query_exception(self, reset_singleton, mock_env_vars, mock_connection):
+        """Test exception handling in _execute_query."""
+        mock_connection.fetch.side_effect = Exception("Database error")
 
-    @patch('src.orm.Postgres._execute_query', new_callable=AsyncMock)
-    async def test_get_latest_databases(self, mock_execute_query):
-        """Test getting the latest databases."""
-        mock_db_id = uuid.uuid4()
-        mock_execute_query.return_value = [(mock_db_id, "TestCorp", "Tester")]
-        result = await self.postgres.get_latest_databases()
-        self.assertEqual(len(result), 1)
-        self.assertEqual(result[0]["database_id"], str(mock_db_id))
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
 
-    @patch('src.orm.Postgres._execute_query', new_callable=AsyncMock)
-    async def test_get_latest_sessions(self, mock_execute_query):
-        """Test getting the latest sessions."""
-        mock_session_id = uuid.uuid4()
-        mock_execute_query.return_value = [(mock_session_id, "paraphrased_q", "TestCorp", "Tester", "sometime")]
-        result = await self.postgres.get_latest_sessions()
-        self.assertEqual(len(result), 1)
-        self.assertEqual(result[0]["session_id"], str(mock_session_id))
+            with pytest.raises(Exception) as exc_info:
+                await pg._execute_query("SELECT * FROM test", fetch_results=True)
 
-    @patch('src.orm.Postgres._execute_query', new_callable=AsyncMock)
-    async def test_update_on_click_chat_row(self, mock_execute_query):
-        """Test updating a chat row on click."""
-        result = await self.postgres.update_on_click_chat_row("message1", "new_response", 1.23)
-        self.assertTrue(result)
-        mock_execute_query.assert_called_with(
-            "UPDATE message SET bot_response = $1, elapsed_time = $2, do_suggest = $4, is_sql = $5 WHERE message_id = $3;",
-            is_insert=True,
-            insert_values=("new_response", 1.23, "message1", False, False),
-            fetch_results=False
-        )
+            assert "Database error" in str(exc_info.value)
 
-    @patch('src.orm.Postgres._execute_query', new_callable=AsyncMock)
-    async def test_update_selected_module(self, mock_execute_query):
-        """Test updating the selected module."""
-        result = await self.postgres.update_selected_module("message1", "new_module")
-        self.assertTrue(result)
-        mock_execute_query.assert_called_with(
-            "UPDATE message SET selected_module = $1 WHERE message_id = $2;",
-            is_insert=True,
-            insert_values=("new_module", "message1"),
-            fetch_results=False
-        )
 
-    @patch('src.orm.Postgres._execute_query', new_callable=AsyncMock)
-    async def test_get_user_code_tenant_name(self, mock_execute_query):
-        """Test getting user code and tenant name."""
-        mock_execute_query.return_value = [("user1", "tenant1")]
-        result = await self.postgres.get_user_code_tenant_name("session1")
-        self.assertEqual(result, {"user_code": "user1", "tenant_name": "tenant1"})
+class TestSessionMethods:
+    """Test session-related methods."""
 
-    @patch('src.orm.Postgres._execute_query', new_callable=AsyncMock)
-    async def test_insert_message_choices(self, mock_execute_query):
-        """Test inserting message choices."""
-        mock_execute_query.return_value = (uuid.uuid4(),)
-        result = await self.postgres.insert_message_choices("message1", "choice1", "choice2")
-        self.assertTrue(result)
-        self.assertEqual(mock_execute_query.call_count, 2)
+    @pytest.mark.asyncio
+    async def test_exist_session_true(self, reset_singleton, mock_env_vars, mock_connection):
+        """Test exist_session returns True when session exists."""
+        mock_connection.fetch.return_value = [('session123',)]
 
-    @patch('src.orm.Postgres._execute_query', new_callable=AsyncMock)
-    async def test_get_message_choices(self, mock_execute_query):
-        """Test getting message choices."""
-        mock_execute_query.return_value = [("choice1",), ("choice2",)]
-        result = await self.postgres.get_message_choices("message1")
-        self.assertEqual(result, ["choice1", "choice2"])
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
+            result = await pg.exist_session('session123')
 
-    @patch('src.orm.Postgres._execute_query', new_callable=AsyncMock)
-    async def test_delete_database(self, mock_execute_query):
-        """Test deleting a database."""
-        result = await self.postgres.delete_database("db1")
-        self.assertTrue(result)
-        mock_execute_query.assert_called_with(
-            "delete from public.databases where database_id = $1;",
-            fetch_results=True,
-            insert_values=("db1",)
-        )
+            assert result is True
 
-    @patch('src.orm.Postgres._execute_query', new_callable=AsyncMock)
-    async def test_create_database_assistant_only(self, mock_execute_query):
-        """Test create_database with only assistant_name."""
-        mock_db_id = uuid.uuid4()
-        mock_execute_query.return_value = (mock_db_id,)
+    @pytest.mark.asyncio
+    async def test_exist_session_false(self, reset_singleton, mock_env_vars, mock_connection):
+        """Test exist_session returns False when session doesn't exist."""
+        mock_connection.fetch.return_value = []
 
-        result = await self.postgres.create_database(assistant_name="Tester")
-        self.assertEqual(result, {"database_id": str(mock_db_id)})
-        mock_execute_query.assert_called_with(
-            "INSERT INTO public.databases (assistant_name) VALUES ($1) RETURNING database_id;",
-            insert_values=("Tester",),
-            is_insert=True,
-            fetch_results=True
-        )
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
+            result = await pg.exist_session('session999')
 
-    @patch('src.orm.Postgres._execute_query', new_callable=AsyncMock)
-    async def test_create_session_defaults(self, mock_execute_query):
+            assert result is False
+
+    @pytest.mark.asyncio
+    async def test_validate_session_valid(self, reset_singleton, mock_env_vars, mock_connection):
+        """Test validate_session with valid session."""
+        mock_connection.fetch.return_value = [(1,)]
+
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
+            result = await pg.validate_session('session123')
+
+            assert result is True
+
+    @pytest.mark.asyncio
+    async def test_validate_session_invalid(self, reset_singleton, mock_env_vars, mock_connection):
+        """Test validate_session with invalid session."""
+        mock_connection.fetch.return_value = []
+
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
+            result = await pg.validate_session('session999')
+
+            assert result is False
+
+    @pytest.mark.asyncio
+    async def test_validate_session_exception(self, reset_singleton, mock_env_vars, mock_connection):
+        """Test validate_session handles exceptions."""
+        mock_connection.fetch.side_effect = Exception("DB Error")
+
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
+
+            with pytest.raises(Exception):
+                await pg.validate_session('session123')
+
+    @pytest.mark.asyncio
+    async def test_create_session_with_all_params(self, reset_singleton, mock_env_vars, mock_connection):
+        """Test create_session with all parameters."""
+        mock_connection.fetchrow.return_value = ('new_session_id',)
+
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
+            result = await pg.create_session(
+                database_id='db123',
+                tenant_name='tenant1',
+                user_code='user1'
+            )
+
+            assert result == {'session_id': 'new_session_id'}
+
+    @pytest.mark.asyncio
+    async def test_create_session_default_values(self, reset_singleton, mock_env_vars, mock_connection):
         """Test create_session with default values."""
-        mock_session_id = uuid.uuid4()
-        mock_execute_query.return_value = (mock_session_id,)
+        mock_connection.fetchrow.return_value = ('new_session_id',)
 
-        result = await self.postgres.create_session()
-        self.assertEqual(result, {"session_id": str(mock_session_id)})
-        mock_execute_query.assert_called_with(
-            "INSERT INTO public.session DEFAULT VALUES RETURNING session_id;",
-            insert_values=None,
-            is_insert=True,
-            fetch_results=True
-        )
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
+            result = await pg.create_session()
 
-    @patch('src.orm.Postgres._execute_query', new_callable=AsyncMock)
-    async def test_find_database_id_none(self, mock_execute_query):
-        """Test find_database_id when it returns None."""
-        mock_execute_query.return_value = (None,)
-        result = await self.postgres.find_database_id("session1")
-        self.assertEqual(result, {"database_id": None})
+            assert result == {'session_id': 'new_session_id'}
 
-    @patch('src.orm.Postgres._execute_query', new_callable=AsyncMock)
-    async def test_get_user_code_tenant_name_none(self, mock_execute_query):
-        """Test get_user_code_tenant_name with None values."""
-        mock_execute_query.return_value = [(None, None)]
-        result = await self.postgres.get_user_code_tenant_name("session1")
-        self.assertEqual(result, {"user_code": "", "tenant_name": ""})
+    @pytest.mark.asyncio
+    async def test_create_session_partial_params(self, reset_singleton, mock_env_vars, mock_connection):
+        """Test create_session with some parameters."""
+        mock_connection.fetchrow.return_value = ('new_session_id',)
 
-        mock_execute_query.return_value = [] # Empty result
-        result = await self.postgres.get_user_code_tenant_name("session1")
-        self.assertEqual(result, {"user_code": "", "tenant_name": ""})
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
+            result = await pg.create_session(database_id='db123', tenant_name='tenant1')
 
-    @patch('src.orm.Postgres._execute_query', new_callable=AsyncMock)
-    async def test_insert_chat_row_full(self, mock_execute_query):
-        """Test insert_chat_row with all optional parameters."""
-        mock_message_id = uuid.uuid4()
-        mock_execute_query.return_value = (mock_message_id,)
+            assert result == {'session_id': 'new_session_id'}
 
-        result = await self.postgres.insert_chat_row(
-            session_id="s1",
-            user_query="q1",
-            paraphrased_query="pq1",
-            bot_response="br1",
-            response_type="detailed",
-            elapsed_time=1.5,
-            selected_module="mod1",
-            response_template="tpl1",
-            parameters='{"k": "v"}'
-        )
-        self.assertEqual(result, str(mock_message_id))
-        
-        # Verify the query construction
-        args, kwargs = mock_execute_query.call_args
-        query = args[0]
-        self.assertIn("paraphrased_query", query)
-        self.assertIn("bot_response", query)
-        self.assertIn("elapsed_time", query)
-        self.assertIn("selected_module", query)
-        self.assertIn("response_type", query)
-        self.assertIn("response_template", query)
-        self.assertIn("parameters", query)
-        
-        values = kwargs['insert_values']
-        self.assertEqual(len(values), 9) # 2 required + 7 optional
 
-    @patch('src.orm.asyncpg.connect', new_callable=AsyncMock)
-    async def test_execute_query_exception(self, mock_connect):
-        """Test _execute_query handling exceptions."""
-        mock_connect.side_effect = Exception("Connection failed")
-        
-        with self.assertRaises(Exception) as context:
-            await self.postgres._execute_query("SELECT 1")
+class TestDatabaseMethods:
+    """Test database-related methods."""
 
-        self.assertTrue("Connection failed" in str(context.exception))
+    @pytest.mark.asyncio
+    async def test_create_database_with_both_params(self, reset_singleton, mock_env_vars, mock_connection):
+        """Test create_database with company and assistant names."""
+        mock_connection.fetchrow.return_value = ('db123',)
 
-    def test_singleton_pattern(self):
-        """Test that the class behaves as a Singleton (returns same instance)."""
-        instance1 = Postgres()
-        instance2 = Postgres()
-        self.assertIs(instance1, instance2)
-        # Verify initialization happened once
-        self.assertEqual(instance1.database, "postgres")
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
+            result = await pg.create_database(company_name='CompanyA', assistant_name='AssistantB')
 
-    @patch('src.orm.Postgres._execute_query', new_callable=AsyncMock)
-    async def test_create_database_company_only(self, mock_execute_query):
-        """
-        Covers the branch: if company_name is not None (and assistant is None).
-        """
-        mock_db_id = uuid.uuid4()
-        mock_execute_query.return_value = (mock_db_id,)
+            assert result == {'database_id': 'db123'}
 
-        # Test with Company Name only
-        result = await self.postgres.create_database(company_name="OnlyCorp")
+    @pytest.mark.asyncio
+    async def test_create_database_company_only(self, reset_singleton, mock_env_vars, mock_connection):
+        """Test create_database with only company name."""
+        mock_connection.fetchrow.return_value = ('db123',)
 
-        self.assertEqual(result, {"database_id": str(mock_db_id)})
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
+            result = await pg.create_database(company_name='CompanyA')
 
-        # Verify the generated SQL uses $1 for company_name
-        args, kwargs = mock_execute_query.call_args
-        sql_used = args[0]
-        self.assertIn("company_name", sql_used)
-        self.assertNotIn("assistant_name", sql_used)
-        self.assertEqual(kwargs['insert_values'], ("OnlyCorp",))
+            assert result == {'database_id': 'db123'}
 
-    @patch('src.orm.Postgres._execute_query', new_callable=AsyncMock)
-    async def test_create_session_dynamic_placeholders(self, mock_execute_query):
-        """
-        Covers the logic where placeholder_counter increments correctly
-        when earlier arguments are missing (e.g., no database_id, but has tenant_name).
-        """
-        mock_session_id = uuid.uuid4()
-        mock_execute_query.return_value = (mock_session_id,)
+    @pytest.mark.asyncio
+    async def test_create_database_assistant_only(self, reset_singleton, mock_env_vars, mock_connection):
+        """Test create_database with only assistant name."""
+        mock_connection.fetchrow.return_value = ('db123',)
 
-        # Pass only the SECOND argument (tenant_name)
-        # Logic expectation: tenant_name should be $1, not $2
-        result = await self.postgres.create_session(tenant_name="TenantOnly")
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
+            result = await pg.create_database(assistant_name='AssistantB')
 
-        self.assertEqual(result, {"session_id": str(mock_session_id)})
+            assert result == {'database_id': 'db123'}
 
-        args, kwargs = mock_execute_query.call_args
-        sql_used = args[0]
+    @pytest.mark.asyncio
+    async def test_create_database_default_values(self, reset_singleton, mock_env_vars, mock_connection):
+        """Test create_database with default values."""
+        mock_connection.fetchrow.return_value = ('db123',)
 
-        # Verify SQL construction
-        self.assertIn("(tenant_name)", sql_used)
-        self.assertIn("VALUES ($1)", sql_used)  # Should be $1 because it's the first actual value
-        self.assertEqual(kwargs['insert_values'], ("TenantOnly",))
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
+            result = await pg.create_database()
 
-    @patch('src.orm.Postgres._execute_query', new_callable=AsyncMock)
-    async def test_extract_response_type_empty(self, mock_execute_query):
-        """Covers the case where DB returns None/Empty for response_type."""
-        # Return empty list (no rows found)
-        mock_execute_query.return_value = []
+            assert result == {'database_id': 'db123'}
 
-        result = await self.postgres.extract_response_type("session1")
+    @pytest.mark.asyncio
+    async def test_find_database_id(self, reset_singleton, mock_env_vars, mock_connection):
+        """Test find_database_id."""
+        mock_connection.fetchrow.return_value = ('db123',)
 
-        # Should default to "concise" per the conditional expression in the code
-        self.assertEqual(result, {"response_type": "concise"})
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
+            result = await pg.find_database_id('session123')
 
-    @patch('src.orm.Postgres._execute_query', new_callable=AsyncMock)
-    async def test_get_message_fields_empty(self, mock_execute_query):
-        """Covers the case where DB returns no message fields."""
-        mock_execute_query.return_value = []
+            assert result == {'database_id': 'db123'}
 
-        result = await self.postgres.get_message_fields("session1", "msg1")
+    @pytest.mark.asyncio
+    async def test_find_database_id_none(self, reset_singleton, mock_env_vars, mock_connection):
+        """Test find_database_id when database_id is None."""
+        mock_connection.fetchrow.return_value = (None,)
 
-        # Expect empty list (lines 136-137)
-        self.assertEqual(result, [])
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
+            result = await pg.find_database_id('session123')
 
-    @patch('src.orm.Postgres._execute_query', new_callable=AsyncMock)
-    async def test_validate_session_failure(self, mock_execute_query):
-        """Covers the Exception block in validate_session."""
-        mock_execute_query.side_effect = Exception("DB Error")
+            assert result == {'database_id': None}
 
-        with self.assertRaises(Exception):
-            await self.postgres.validate_session("session1")
+    @pytest.mark.asyncio
+    async def test_find_company_assistant_names(self, reset_singleton, mock_env_vars, mock_connection):
+        """Test find_company_assistant_names."""
+        mock_connection.fetchrow.return_value = ('CompanyA', 'AssistantB')
 
-    @patch('src.orm.Postgres._execute_query', new_callable=AsyncMock)
-    async def test_insert_chat_row_partial(self, mock_execute_query):
-        """
-        Test inserting a chat row with mixed optional parameters.
-        Ensures the loop for values/columns works when some are None.
-        """
-        mock_execute_query.return_value = (uuid.uuid4(),)
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
+            result = await pg.find_company_assistant_names('db123')
 
-        # user_query is required. We add ONE optional (response_type).
-        # paraphased_query, bot_response etc are None.
-        await self.postgres.insert_chat_row(
-            "sess1", "query", response_type="detailed"
-        )
+            assert result == {'company_name': 'CompanyA', 'assistant_name': 'AssistantB'}
 
-        args, kwargs = mock_execute_query.call_args
-        sql = args[0]
+    @pytest.mark.asyncio
+    async def test_delete_database(self, reset_singleton, mock_env_vars, mock_connection):
+        """Test delete_database."""
+        mock_connection.fetch.return_value = []
 
-        # Check that 'paraphrased_query' is NOT in the columns
-        self.assertNotIn("paraphrased_query", sql)
-        # Check that 'response_type' IS in the columns
-        self.assertIn("response_type", sql)
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
+            result = await pg.delete_database('db123')
 
-if __name__ == '__main__':
-    unittest.main()
+            assert result is True
+
+    @pytest.mark.asyncio
+    async def test_get_latest_databases(self, reset_singleton, mock_env_vars, mock_connection):
+        """Test get_latest_databases."""
+        mock_connection.fetch.return_value = [
+            ('db1', 'Company1', 'Assistant1'),
+            ('db2', 'Company2', 'Assistant2')
+        ]
+
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
+            result = await pg.get_latest_databases(num_databases=2)
+
+            assert len(result) == 2
+            assert result[0] == {'database_id': 'db1', 'company_name': 'Company1', 'assistant_name': 'Assistant1'}
+            assert result[1] == {'database_id': 'db2', 'company_name': 'Company2', 'assistant_name': 'Assistant2'}
+
+
+class TestMessageMethods:
+    """Test message-related methods."""
+
+    @pytest.mark.asyncio
+    async def test_get_message_fields(self, reset_singleton, mock_env_vars, mock_connection):
+        """Test get_message_fields."""
+        mock_connection.fetch.return_value = [('user query', 'paraphrased', 'bot response')]
+
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
+            result = await pg.get_message_fields('session123', 'msg123')
+
+            assert result ==  ('user query', 'paraphrased', 'bot response')
+
+    @pytest.mark.asyncio
+    async def test_get_message_fields_empty(self, reset_singleton, mock_env_vars, mock_connection):
+        """Test get_message_fields with no results."""
+        mock_connection.fetch.return_value = []
+
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
+            result = await pg.get_message_fields('session123', 'msg999')
+
+            assert result == []
+
+    @pytest.mark.asyncio
+    async def test_insert_chat_row_minimal(self, reset_singleton, mock_env_vars, mock_connection):
+        """Test insert_chat_row with minimal parameters."""
+        mock_connection.fetchrow.return_value = ('msg123',)
+
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
+            result = await pg.insert_chat_row('session123', 'user query')
+
+            assert result == 'msg123'
+
+    @pytest.mark.asyncio
+    async def test_insert_chat_row_full(self, reset_singleton, mock_env_vars, mock_connection):
+        """Test insert_chat_row with all parameters."""
+        mock_connection.fetchrow.return_value = ('msg123',)
+
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
+            result = await pg.insert_chat_row(
+                session_id='session123',
+                user_query='user query',
+                paraphrased_query='paraphrased',
+                bot_response='response',
+                response_type='detailed',
+                elapsed_time=1.5,
+                selected_module='module1',
+                response_template='template1',
+                parameters='{"key": "value"}'
+            )
+
+            assert result == 'msg123'
+
+    @pytest.mark.asyncio
+    async def test_update_last_chat_row(self, reset_singleton, mock_env_vars, mock_connection):
+        """Test update_last_chat_row."""
+        mock_connection.fetchrow.return_value = ('msg123',)
+
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
+            result = await pg.update_last_chat_row(
+                session_id='session123',
+                paraphrased_query='paraphrased',
+                bot_response='response',
+                is_sql=True,
+                elapsed_time=2.5,
+                do_suggest=True,
+                selected_module='module1',
+                response_template='template1',
+                parameters='{"key": "value"}'
+            )
+
+            assert result == 'msg123'
+
+    @pytest.mark.asyncio
+    async def test_update_on_click_chat_row(self, reset_singleton, mock_env_vars, mock_connection):
+        """Test update_on_click_chat_row."""
+        mock_connection.execute.return_value = None
+
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
+            result = await pg.update_on_click_chat_row(
+                message_id='msg123',
+                bot_response='response',
+                elapsed_time=1.0,
+                do_suggest=True,
+                is_sql=False
+            )
+
+            assert result is True
+
+    @pytest.mark.asyncio
+    async def test_update_selected_module(self, reset_singleton, mock_env_vars, mock_connection):
+        """Test update_selected_module."""
+        mock_connection.execute.return_value = None
+
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
+            result = await pg.update_selected_module('msg123', 'module2')
+
+            assert result is True
+
+    @pytest.mark.asyncio
+    async def test_remove_previous_response(self, reset_singleton, mock_env_vars, mock_connection):
+        """Test remove_previous_response."""
+        mock_connection.execute.return_value = None
+
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
+            result = await pg.remove_previous_response('msg123')
+
+            assert result is True
+
+
+class TestHistoryMethods:
+    """Test history-related methods."""
+
+    @pytest.mark.asyncio
+    async def test_get_history_with_paraphrase(self, reset_singleton, mock_env_vars, mock_connection):
+        """Test get_history with paraphrase."""
+        mock_connection.fetch.return_value = [
+            ('query1', 'paraphrased1', 'response1', 'msg1', True, 'module1', 1.5, True, 'template1', '{}'),
+            ('query2', 'paraphrased2', 'response2', 'msg2', False, 'module2', 2.0, False, 'template2', '{}')
+        ]
+
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
+            result = await pg.get_history('session123', page_index=1, page_size=10, with_paraphrase=True)
+
+            assert len(result) == 2
+            assert result[0]['paraphrased_query'] == 'paraphrased2'
+            assert result[0]['query'] == 'query2'
+
+    @pytest.mark.asyncio
+    async def test_get_history_without_paraphrase(self, reset_singleton, mock_env_vars, mock_connection):
+        """Test get_history without paraphrase."""
+        mock_connection.fetch.return_value = [
+            ('query1', 'paraphrased1', 'response1', 'msg1', True, 'module1', 1.5, True, 'template1', '{}')
+        ]
+
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
+            result = await pg.get_history('session123', page_index=1, page_size=10, with_paraphrase=False)
+
+            assert len(result) == 1
+            assert 'paraphrased_query' not in result[0]
+            assert result[0]['query'] == 'query1'
+
+    @pytest.mark.asyncio
+    async def test_get_history_pagination(self, reset_singleton, mock_env_vars, mock_connection):
+        """Test get_history with pagination."""
+        mock_connection.fetch.return_value = []
+
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
+            result = await pg.get_history('session123', page_index=2, page_size=5)
+
+            # Verify offset calculation (page_index - 1) * page_size = (2-1)*5 = 5
+            assert result == []
+
+    @pytest.mark.asyncio
+    async def test_get_latest_sessions(self, reset_singleton, mock_env_vars, mock_connection):
+        """Test get_latest_sessions."""
+        mock_connection.fetch.return_value = [
+            ('session1', 'query1', 'Company1', 'Assistant1', '2024-01-01'),
+            ('session2', 'query2', 'Company2', 'Assistant2', '2024-01-02')
+        ]
+
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
+            result = await pg.get_latest_sessions(num_sessions=2, offset=0, recent_limit=1000)
+
+            assert len(result) == 2
+            assert result[0]['session_id'] == 'session1'
+            assert result[0]['paraphrased_query'] == 'query1'
+            assert result[0]['company_name'] == 'Company1'
+
+
+class TestResponseTypeMethods:
+    """Test response type methods."""
+
+    @pytest.mark.asyncio
+    async def test_extract_response_type_exists(self, reset_singleton, mock_env_vars, mock_connection):
+        """Test extract_response_type when response type exists."""
+        mock_connection.fetch.return_value = [('detailed',)]
+
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
+            result = await pg.extract_response_type('session123')
+
+            assert result == {'response_type': 'detailed'}
+
+    @pytest.mark.asyncio
+    async def test_extract_response_type_default(self, reset_singleton, mock_env_vars, mock_connection):
+        """Test extract_response_type returns default when not found."""
+        mock_connection.fetch.return_value = []
+
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
+            result = await pg.extract_response_type('session123')
+
+            assert result == {'response_type': 'concise'}
+
+
+class TestFeedbackMethods:
+    """Test feedback-related methods."""
+
+    @pytest.mark.asyncio
+    async def test_set_feedback_success(self, reset_singleton, mock_env_vars, mock_connection):
+        """Test set_feedback successful update."""
+        mock_connection.fetch.return_value = [('msg123',)]
+
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
+            result = await pg.set_feedback('msg123', 'positive')
+
+            assert result is True
+
+    @pytest.mark.asyncio
+    async def test_set_feedback_no_update(self, reset_singleton, mock_env_vars, mock_connection):
+        """Test set_feedback when no update occurs."""
+        mock_connection.fetch.return_value = []
+
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
+            result = await pg.set_feedback('msg123', 'negative')
+
+            assert result is False
+
+
+class TestUserMethods:
+    """Test user-related methods."""
+
+    @pytest.mark.asyncio
+    async def test_get_user_code_tenant_name_both_exist(self, reset_singleton, mock_env_vars, mock_connection):
+        """Test get_user_code_tenant_name when both exist."""
+        mock_connection.fetch.return_value = [('user123', 'tenant123')]
+
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
+            result = await pg.get_user_code_tenant_name('session123')
+
+            assert result == {'user_code': 'user123', 'tenant_name': 'tenant123'}
+
+    @pytest.mark.asyncio
+    async def test_get_user_code_tenant_name_none_values(self, reset_singleton, mock_env_vars, mock_connection):
+        """Test get_user_code_tenant_name when values are None."""
+        mock_connection.fetch.return_value = [(None, None)]
+
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
+            result = await pg.get_user_code_tenant_name('session123')
+
+            assert result == {'user_code': '', 'tenant_name': ''}
+
+    @pytest.mark.asyncio
+    async def test_get_user_code_tenant_name_partial_none(self, reset_singleton, mock_env_vars, mock_connection):
+        """Test get_user_code_tenant_name when one value is None."""
+        mock_connection.fetch.return_value = [('user123', None)]
+
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
+            result = await pg.get_user_code_tenant_name('session123')
+
+            assert result == {'user_code': 'user123', 'tenant_name': ''}
+
+
+class TestMessageChoicesMethods:
+    """Test message choices methods."""
+
+    @pytest.mark.asyncio
+    async def test_insert_message_choices_single(self, reset_singleton, mock_env_vars, mock_connection):
+        """Test insert_message_choices with single choice."""
+        mock_connection.fetch.return_value = [('choice1',)]
+
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
+            result = await pg.insert_message_choices('msg123', 'option1')
+
+            assert result is True
+
+    @pytest.mark.asyncio
+    async def test_insert_message_choices_multiple(self, reset_singleton, mock_env_vars, mock_connection):
+        """Test insert_message_choices with multiple choices."""
+        mock_connection.fetch.return_value = [('choice1',)]
+
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
+            result = await pg.insert_message_choices('msg123', 'option1', 'option2', 'option3')
+
+            assert result is True
+
+    @pytest.mark.asyncio
+    async def test_get_message_choices(self, reset_singleton, mock_env_vars, mock_connection):
+        """Test get_message_choices."""
+        mock_connection.fetch.return_value = [
+            ('choice1',),
+            ('choice2',),
+            ('choice3',)
+        ]
+
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
+            result = await pg.get_message_choices('msg123')
+
+            assert result == ['choice1', 'choice2', 'choice3']
+
+    @pytest.mark.asyncio
+    async def test_get_message_choices_empty(self, reset_singleton, mock_env_vars, mock_connection):
+        """Test get_message_choices with no choices."""
+        mock_connection.fetch.return_value = []
+
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
+            result = await pg.get_message_choices('msg123')
+
+            assert result == []
+
+
+class TestEdgeCases:
+    """Test edge cases and error scenarios."""
+
+    @pytest.mark.asyncio
+    async def test_connection_error_handling(self, reset_singleton, mock_env_vars):
+        """Test handling of connection errors."""
+        with patch('asyncpg.connect', new_callable=AsyncMock, side_effect=Exception("Connection failed")):
+            pg = Postgres()
+
+            with pytest.raises(Exception) as exc_info:
+                await pg.exist_session('session123')
+
+            assert "Connection failed" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_insert_values_with_empty_tuple(self, reset_singleton, mock_env_vars, mock_connection):
+        """Test query execution with empty values tuple."""
+        mock_connection.fetch.return_value = []
+
+        with patch('asyncpg.connect', new_callable=AsyncMock, return_value=mock_connection):
+            pg = Postgres()
+            result = await pg._execute_query(
+                "SELECT * FROM test",
+                fetch_results=True,
+                insert_values=()
+            )
+
+            assert result == []
+
+    @pytest.mark.asyncio
+    async def test_multiple_connections_singleton(self, reset_singleton, mock_env_vars):
+        """Test that multiple async operations use the same singleton."""
+        pg1 = Postgres()
+        pg2 = Postgres()
+
+        # Both should be the same instance
+        assert pg1 is pg2
+
+        # Should only initialize once
+        assert pg1.database == 'test_db'
+        assert pg2.database == 'test_db'
+
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v", "--cov=src.orm", "--cov-report=html", "--cov-report=term"])

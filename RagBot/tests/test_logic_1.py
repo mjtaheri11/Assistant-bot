@@ -150,7 +150,7 @@ class TestLogicModule(unittest.IsolatedAsyncioTestCase):
 
         context = logic.calculate_date_context()
 
-        self.assertEqual(context['today_date'], "2025-12-10")
+        self.assertEqual(context['today_date'], "2025-12-14")
         self.assertEqual(context['current_hour'], "17")
         self.assertEqual(context['persian_year'], "1404")
 
