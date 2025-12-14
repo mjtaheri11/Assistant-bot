@@ -20,6 +20,14 @@ class Postgres:
         
         self.database = os.getenv("POSTGRES_DB")
         self.connection_address = os.getenv("POSTGRES_ADDR")
+
+    @classmethod
+    def reset_instance(cls):
+        """
+        Resets the singleton instance to None.
+        Useful for unit tests or reloading configuration/environment variables.
+        """
+        cls._instance = None
        
     async def _execute_query(
         self,
@@ -515,4 +523,3 @@ class Postgres:
                 insert_values=(database_id),
             )                    
         return True
-   

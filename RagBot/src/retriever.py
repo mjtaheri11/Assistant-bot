@@ -1210,6 +1210,22 @@ class ModelManager:
         else:
             raise ValueError(f"Unsupported reranker type: '{reranker_type}'")
 
+    @classmethod
+    def reset(cls):
+        """
+        Resets the singleton instance.
+        This forces the next instantiation to re-run _initialize().
+        """
+        if cls._instance:
+            # Optional: Explicitly delete heavy model references to aid Garbage Collection
+            if hasattr(cls._instance, 'embedding_model'):
+                del cls._instance.embedding_model
+            if hasattr(cls._instance, 'reranker_model'):
+                del cls._instance.reranker_model
+
+            # Reset the instance to None
+            cls._instance = None
+            logger.info("♻️ ModelManager singleton has been reset.")
 
 class Retriever(object):
     _instance = None
