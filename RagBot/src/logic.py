@@ -4,14 +4,12 @@ import os
 import statistics
 import yaml
 from dotenv import load_dotenv
-from datetime import datetime
-from zoneinfo import ZoneInfo  # Python 3.9+
-### remove this!
 
 import numpy as np
 from langchain.schema import SystemMessage
 import torch
 import sqlglot
+from sqlglot import exp
 
 from collections import Counter
 from typing import List, Tuple, Union, Set
@@ -46,12 +44,14 @@ torch.manual_seed(SEED)
 np.random.seed(SEED)
 torch.cuda.manual_seed_all(SEED)
 random.seed(SEED)
-OSS_LLM_MODEL_NAME = os.getenv("OSS_LLM_MODEL_NAME", "/gpt-120")
+GPT_OSS_NAME = "/gpt-120"
+OSS_LLM_MODEL_NAME = os.getenv("OSS_LLM_MODEL_NAME", GPT_OSS_NAME)
 GPT_LLM_MODEL_NAME = os.getenv("GPT_LLM_MODEL_NAME", "gpt-4.1-2025-04-14")
 QWEN3_CODER_LLM_MODEL_NAME = os.getenv("QWEN3_CODER_MODEL_NAME", "/Qwen/Qwen3-Coder-30B-A3B-Instruct")
 OSS_API_KEY = os.getenv("OSS_API_KEY", "EMPTY")
 GPT_API_KEY = os.getenv("GPT_API_KEY", "EMPTY")
 QWEN3_CODER_API_KEY = os.getenv("QWEN3_CODER_API_KEY", "EMPTY")
+USE_JOBLIB = bool(os.getenv("USE_JOBLIB", "1"))
 
 LANGFUSE_SECRET_KEY = os.getenv("LANGFUSE_SECRET_KEY")
 LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY")
@@ -68,8 +68,6 @@ template_for_not_answer = "پاسخ به این سوال در محدوده پا�
 template_for_not_context = """این سوال خارج از حوزه کاری {company_name} است. لطفا سوال خود را در رابطه با محصولات و خدمات {company_name} مطرح کنید. برای اطلاعات بیشتر به 'https://systemgroup.net' مراجعه کنید"""
 template_for_doubtful_answer = "سوال شما را به خوبی متوجه نشدم. لطفا سوال خود را به صورت دقیق تر بپرسید تا بتوانم بهتر کمک کنم."
 
-import sqlglot
-from sqlglot import exp
 
 def extract_tables_robust(sql: str, dialect: str = None) -> dict:
     """
@@ -328,7 +326,7 @@ def model_selector(use_oss, clients):
     if use_oss:
         extra = {}
         print(clients)
-        client_model = {"client": clients["oss"], "extra":extra, "model_name": os.environ.get("OSS_LLM_MODEL_NAME", "/gpt-120")}
+        client_model = {"client": clients["oss"], "extra":extra, "model_name": os.environ.get("OSS_LLM_MODEL_NAME", GPT_OSS_NAME)}
     else:
         extra = {
                 # "top_k": 1,
@@ -356,7 +354,7 @@ async def get_chat_response_legacy(
     print("LLM_MODEL_NAME:", model_name)
     # Use OpenRouter if available, otherwise fall back to original configuration
     if api_base and model_name and api_key:
-        if model_name != "/gpt-120":
+        if model_name != GPT_OSS_NAME:
             extra = {}
         else:
             extra = {
@@ -749,8 +747,7 @@ async def _determine_final_route(
     alpha_threshold = router_config["alpha_threshold"]
     beta_threshold = router_config["beta_threshold"]
     """Determines the final route based on probability thresholds."""
-    use_joblib = True
-    if use_joblib:
+    if USE_JOBLIB:
         semantic_router_client = SemanticRouterPipeline(
             inference_only=True,
             embedding_model=router_config["embedding_model"],
@@ -780,7 +777,7 @@ async def _determine_final_route(
         plausible_routes = ['chitchat', 'illegal', 'irrelevant', 'sql', 'qa']
 
     # Use an LLM to disambiguate between plausible routes
-    client_model = model_selector(True, clients)
+    client_model = model_selector(use_oss, clients)
     result = await get_chat_response(
         SEMANTIC_ROUTER.format(user_query=utterance, class_list=plausible_routes), client_model
     )
