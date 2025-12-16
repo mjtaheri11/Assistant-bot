@@ -1,8 +1,7 @@
 import os
 import logging
-from typing import List, Dict, Optional, Any
+from typing import List, Optional
 
-from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_qdrant import Qdrant
 from qdrant_client import QdrantClient, models
 from langchain_core.documents import Document
