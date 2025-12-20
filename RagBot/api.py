@@ -1208,6 +1208,8 @@ async def create_nl2sql_database(
         logger.info(f"Creating NL2SQL database '{collection_name}' with {len(documents)} examples")
         
         # Create vector database using existing function
+        import pdb
+        pdb.set_trace()
         result_collection = create_vector_database_from_config(
             database_id=collection_name,
             all_documents=documents,
