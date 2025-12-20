@@ -726,8 +726,6 @@ class DocumentProcessor:
             
             # Phase 1: Convert to markdown using MarkItDown
             markdown_content = self.converter.convert_to_markdown(file_path)
-            import pdb
-            pdb.set_trace()
             
             if not markdown_content.strip():
                 logging.warning(f"No content extracted from {file_path}")
@@ -1352,8 +1350,6 @@ def get_document_chunks(file_path: str) -> List[DocumentChunk]:
 #         print(f"Demo failed: {e}")
 #         logging.error(f"Demo error: {e}", exc_info=True)
 
-if __name__ == "__main__":
-    chunks = get_document_chunks("/home/user01/mj-workspace/Assistant-bot/knowledge_base/new-KB/Treasury_14040116.docx")
-    import pdb
-    pdb.set_trace()
-    print("hello world")
+# if __name__ == "__main__":
+#     chunks = get_document_chunks("/home/user01/mj-workspace/Assistant-bot/knowledge_base/new-KB/Treasury_14040116.docx")
+#     print("hello world")

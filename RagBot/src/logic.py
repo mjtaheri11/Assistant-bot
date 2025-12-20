@@ -2,6 +2,7 @@ import random
 import os
 import statistics
 import yaml
+import json
 from dotenv import load_dotenv
 
 import numpy as np
@@ -568,10 +569,10 @@ async def process_sql_response(
     
     sql_with_params = integrate_params(response, response_dict["parameters"])    
     bo_parameters_with_template = await parameters_responder(
+        clients,
         paraphrased_utterance,
         sql_with_params,
         selected_module,
-        clients,
         use_oss
     )
     bo_parameters_with_template_dict = json.loads(bo_parameters_with_template)
@@ -980,7 +981,6 @@ async def parameters_responder(
     paraphrased_utterance, 
     sql_query,
     detected_module: str,
-    clients,
     use_oss: bool = True,
     ):
 
@@ -1023,8 +1023,6 @@ async def _determine_final_route(
             model_name=router_config["model_name"]
         )
         predictions, probabilities, max_prob = semantic_router_client.predict_sentences_input_embedding_and_sentences([utterance], [query_embedding])
-        import pdb
-        pdb.set_trace()
         top_prediction = predictions[0][0]
         probabilities = list(probabilities)  # Convert to list to make it subscriptable
         if max_prob > alpha_threshold and ("همکاران" not in utterance) and (top_prediction != "illegal"):
@@ -1153,9 +1151,6 @@ async def chat_responder_(
         do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=detected_database_index, input_module=detected_module, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context)
     else:
         do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=detected_database_index, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context)
-
-    import pdb
-    pdb.set_trace()
 
     if route_response == "chitchat":
         response = await chitchat_responder(clients, paraphrased_utterance, context=context, history=history, use_oss=use_oss)
