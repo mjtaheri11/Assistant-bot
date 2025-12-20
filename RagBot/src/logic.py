@@ -29,8 +29,7 @@ from .retriever import Retriever
 from .config import config
 from .cache import Cache
 from .utils import json_cleaning, json_cleaning_1
-from .business_objects import LOGISTICS_SALES_MODIFIED, FINANCIAL_BO_MODIFIED
-from .business_objects_v2 import CRM_BO, TREASURY_BO
+from .business_objects import LOGISTICS_SALES_MODIFIED, FINANCIAL_BO_MODIFIED, CRM_BO, TREASURY_BO
 from .semantic_router import SemanticRouterPipeline
 from langchain.chat_models import ChatOpenAI
 from langfuse import observe
@@ -757,6 +756,8 @@ async def _determine_final_route(
             model_name=router_config["model_name"]
         )
         predictions, probabilities, max_prob = semantic_router_client.predict_sentences_input_embedding_and_sentences([utterance], [query_embedding])
+        import pdb 
+        pdb.set_trace()
         top_prediction = predictions[0][0]
         probabilities = list(probabilities)  # Convert to list to make it subscriptable
         if max_prob > alpha_threshold and ("همکاران" not in utterance) and (top_prediction != "illegal"):
