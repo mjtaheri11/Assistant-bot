@@ -29,7 +29,7 @@ from .retriever import Retriever
 from .config import config
 from .cache import Cache
 from .utils import json_cleaning, json_cleaning_1
-from .business_objects import LOGISTICS_SALES_MODIFIED, FINANCIAL_BO_MODIFIED, LOGISTICS_MODIFIED
+from .business_objects import LOGISTICS_SALES_MODIFIED, FINANCIAL_BO_MODIFIED
 from .business_objects_v2 import CRM_BO, TREASURY_BO
 from .semantic_router import SemanticRouterPipeline
 from langchain.chat_models import ChatOpenAI
@@ -678,6 +678,10 @@ def get_schema_for_module(detected_module: str) -> str:
         return FINANCIAL_BO_MODIFIED
     elif module in ("انبار", "فروش"):
         return LOGISTICS_SALES_MODIFIED
+    elif module in ("مدیریت ارتباط با مشتری"):
+        return CRM_BO
+    elif module in ("خزانه داری"):
+        return TREASURY_BO
     else:
         # Fallback: combine both schemas
         return LOGISTICS_SALES_MODIFIED + "\n" + FINANCIAL_BO_MODIFIED
