@@ -269,6 +269,7 @@ class Postgres:
             }
             for row in results
         ]
+    
     async def get_latest_sessions(
         self,
         num_sessions=30,

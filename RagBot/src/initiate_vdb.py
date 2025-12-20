@@ -1,6 +1,7 @@
 import os
 import logging
-from typing import List, Optional
+import json
+from typing import List, Dict, Optional, Any
 
 from langchain_qdrant import Qdrant
 from qdrant_client import QdrantClient, models
@@ -89,6 +90,24 @@ except Exception as e:
 # INTERNAL HELPER FUNCTIONS
 # ==========================================
 
+def _json_item_to_document(item: Dict[str, Any]) -> Document:
+    question = item.get("question", "")
+    
+    sql_obj = item.get("sql", {})
+    sql_query = sql_obj.get("SQL", "")
+    sql_parameters = sql_obj.get("parameters", {})
+    
+    metadata = {
+        "sql": sql_query,
+        "parameters": json.dumps(sql_parameters, ensure_ascii=False),
+        "complexity": item.get("complexity", ""),
+        "module": item.get("module", ""),  # ✅ This is already captured
+        "table": item.get("table", ""),
+    }
+    
+    return Document(page_content=question, metadata=metadata)
+
+
 def _validate_documents(documents: List[Document]) -> List[Document]:
     """Filters out invalid documents to reduce complexity in main function."""
     valid_docs = []
@@ -173,12 +192,12 @@ def _add_batches(vdb: Qdrant, documents: List[Document], batch_size: int) -> Non
 # ==========================================
 
 def create_vector_database(
-        database_id: str,
-        all_documents: List[Document],
-        qdrant_client: QdrantClient,
-        embedding_model,
-        recreate: bool = True,
-        batch_size: int = 100
+    database_id: str,
+    all_documents: List[Document],
+    qdrant_client: QdrantClient,
+    embedding_model,
+    recreate: bool = True,
+    batch_size: int = 100
 ) -> str:
     """
     Main orchestrator. Low cognitive complexity due to helper functions.

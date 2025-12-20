@@ -12,7 +12,7 @@ from sqlglot import exp
 from dataclasses import dataclass, field
 
 from collections import Counter
-from typing import List, Tuple, Union, Set, Optional
+from typing import List, Tuple, Union, Set, Any, Optional
 from .prompts import (
     RAG_CONCISE_SYSTEM_PROMPT,
     RAG_EXPLANATORY_SYSTEM_PROMPT,
@@ -20,7 +20,6 @@ from .prompts import (
     UTTERANCE_PARAPHRASER_PROMPT,
     CHITCHAT_PROMPT,
     SQL_CONVERTER_MODIFIED_WITH_PARAMETERS_TEMPLATE,
-    SQL_MODIFIER,
     ANSWER_VALIDATOR_PROMPT,
     SEMANTIC_ROUTER,
     BUSINESS_OBJECT_PARAMETER_EXTRACTOR_PROMPT
@@ -28,9 +27,10 @@ from .prompts import (
 from .retriever import Retriever
 from .config import config
 from .cache import Cache
-from .utils import json_cleaning, json_cleaning_1
-from .business_objects import LOGISTICS_SALES_MODIFIED, FINANCIAL_BO_MODIFIED, CRM_BO, TREASURY_BO
+from .utils import json_cleaning, json_cleaning_1, calculate_date_context, format_documents_as_sql_examples, convert_sql_parameters, integrate_params, add_param_keys
+from .business_objects import LOGISTICS_SALES_MODIFIED, FINANCIAL_BO_MODIFIED, CRM_BO
 from .semantic_router import SemanticRouterPipeline
+from .default_examples import DEFAULT_EXAMPLES
 from langchain.chat_models import ChatOpenAI
 from langfuse import observe
 import hashlib
@@ -66,6 +66,8 @@ template_for_chitchat_answers = """من اینجا هستم تا تنها به �
 template_for_not_answer = "پاسخ به این سوال در محدوده پاسخگویی من نیست."
 template_for_not_context = """این سوال خارج از حوزه کاری {company_name} است. لطفا سوال خود را در رابطه با محصولات و خدمات {company_name} مطرح کنید. برای اطلاعات بیشتر به 'https://systemgroup.net' مراجعه کنید"""
 template_for_doubtful_answer = "سوال شما را به خوبی متوجه نشدم. لطفا سوال خود را به صورت دقیق تر بپرسید تا بتوانم بهتر کمک کنم."
+MODULE_CLARIFICATION_RESPONSE_TEMPLATE = "لطفا مشخص نمایید سوال شما از کدام یک از ماژول های سیستم است."
+RESPONSE_TEMPLATE_FOR_NO_ANSWER = "متاسفانه، پاسخی به سوال شما یافت نشد."
 
 @dataclass
 class ChatResult:
@@ -87,6 +89,11 @@ def _get_statement_exclusions(statement: exp.Expression) -> tuple[set, set]:
     ctes = {cte.alias for cte in statement.find_all(exp.CTE)}
     aliases = {sub.alias for sub in statement.find_all(exp.Subquery) if sub.alias}
     return ctes, aliases
+
+def finalize_parameters(a_dict, b_dict):
+    # concatenation = {"parameters": a_dict["parameters"] | b_dict["parameters"]}
+    concatenation = (a_dict | b_dict) | {"parameters": a_dict.get("parameters", {}) | b_dict.get("parameters", {})}
+    return concatenation
 
 def extract_tables_robust(sql: str, dialect: str = None) -> dict:
     """
@@ -143,56 +150,88 @@ def extract_tables_simple(sql: str, dialect: str = None) -> list[str]:
     result = extract_tables_robust(sql, dialect)
     return result.get("tables", [])
 
-
 def calculate_date_context() -> dict:
     """
     Calculate all date context values from the current system datetime.
-    
-    Returns:
-        Dictionary with all pre-calculated date context values based on current datetime
+    Includes Persian calendar week boundaries (Saturday-Friday).
+    Includes rolling day/week/month calculations for relative date expressions.
     """
     from datetime import datetime, timedelta
     from dateutil.relativedelta import relativedelta
     
-    # Get current datetime from system
     ref_dt = datetime.now()
     ref_date = ref_dt.date()
     reference_datetime_str = ref_dt.strftime('%Y-%m-%d %H:%M:%S')
     
-    # Calculate basic relative dates
+    # ========== BASIC DATES ==========
     today_date = ref_date.strftime('%Y-%m-%d')
     yesterday_date = (ref_date - timedelta(days=1)).strftime('%Y-%m-%d')
-    last_week_date = (ref_date - timedelta(days=7)).strftime('%Y-%m-%d')
     last_month_date = (ref_date - relativedelta(months=1)).strftime('%Y-%m-%d')
     last_year_date = (ref_date - relativedelta(years=1)).strftime('%Y-%m-%d')
     
-    # Calculate Persian year from Gregorian date
-    year = ref_date.year
-    month = ref_date.month
-    day = ref_date.day
+    # ========== ROLLING DAY CALCULATIONS ==========
+    three_days_ago = (ref_date - timedelta(days=3)).strftime('%Y-%m-%d')
+    one_week_ago = (ref_date - timedelta(days=7)).strftime('%Y-%m-%d')
+    ten_days_ago = (ref_date - timedelta(days=10)).strftime('%Y-%m-%d')
+    two_weeks_ago = (ref_date - timedelta(days=14)).strftime('%Y-%m-%d')
+    three_weeks_ago = (ref_date - timedelta(days=21)).strftime('%Y-%m-%d')
+    four_weeks_ago = (ref_date - timedelta(days=28)).strftime('%Y-%m-%d')
     
-    # Determine Persian year
-    # Persian new year (Nowruz) is around March 20-21
-    # Persian year = Gregorian year - 621 (approximately)
-    if month > 3 or (month == 3 and day >= 21):
-        persian_year = year - 621
-    else:
-        persian_year = year - 622
+    # ========== ROLLING MONTH CALCULATIONS ==========
+    two_months_ago = (ref_date - relativedelta(months=2)).strftime('%Y-%m-%d')
+    three_months_ago = (ref_date - relativedelta(months=3)).strftime('%Y-%m-%d')
+    six_months_ago = (ref_date - relativedelta(months=6)).strftime('%Y-%m-%d')
     
-    # Calculate Persian year start and end in Gregorian
-    # Persian year starts on March 20 or 21 depending on the year
+    # ========== PERSIAN WEEK CALCULATIONS ==========
+    # Python weekday(): Monday=0, ..., Saturday=5, Sunday=6
+    python_weekday = ref_date.weekday()
+    days_since_saturday = (python_weekday - 5) % 7
+    
+    # Current week boundaries
+    current_week_saturday = ref_date - timedelta(days=days_since_saturday)
+    current_week_friday = current_week_saturday + timedelta(days=6)
+    
+    # Last week boundaries
+    last_week_saturday = current_week_saturday - timedelta(days=7)
+    last_week_friday = current_week_saturday - timedelta(days=1)
+    
+    # Persian day names
+    persian_day_names = {
+        5: 'شنبه', 6: 'یکشنبه', 0: 'دوشنبه', 1: 'سه‌شنبه',
+        2: 'چهارشنبه', 3: 'پنجشنبه', 4: 'جمعه'
+    }
+    current_persian_day_name = persian_day_names[python_weekday]
+    persian_day_index = days_since_saturday
+    
+    # Individual days - THIS WEEK
+    this_week_saturday = current_week_saturday.strftime('%Y-%m-%d')
+    this_week_sunday = (current_week_saturday + timedelta(days=1)).strftime('%Y-%m-%d')
+    this_week_monday = (current_week_saturday + timedelta(days=2)).strftime('%Y-%m-%d')
+    this_week_tuesday = (current_week_saturday + timedelta(days=3)).strftime('%Y-%m-%d')
+    this_week_wednesday = (current_week_saturday + timedelta(days=4)).strftime('%Y-%m-%d')
+    this_week_thursday = (current_week_saturday + timedelta(days=5)).strftime('%Y-%m-%d')
+    this_week_friday = (current_week_saturday + timedelta(days=6)).strftime('%Y-%m-%d')
+    
+    # Individual days - LAST WEEK
+    last_week_saturday_str = last_week_saturday.strftime('%Y-%m-%d')
+    last_week_sunday = (last_week_saturday + timedelta(days=1)).strftime('%Y-%m-%d')
+    last_week_monday = (last_week_saturday + timedelta(days=2)).strftime('%Y-%m-%d')
+    last_week_tuesday = (last_week_saturday + timedelta(days=3)).strftime('%Y-%m-%d')
+    last_week_wednesday = (last_week_saturday + timedelta(days=4)).strftime('%Y-%m-%d')
+    last_week_thursday = (last_week_saturday + timedelta(days=5)).strftime('%Y-%m-%d')
+    last_week_friday_str = last_week_friday.strftime('%Y-%m-%d')
+    
+    # ========== PERSIAN YEAR CALCULATIONS ==========
+    year, month, day = ref_date.year, ref_date.month, ref_date.day
+    persian_year = year - 621 if (month > 3 or (month == 3 and day >= 21)) else year - 622
+    
     def get_persian_year_start(p_year):
         g_year = p_year + 621
-        # Simplified: using March 21 for most years, March 20 for leap adjustments
-        if p_year in [1403]:  # Known years with March 20 start
-            return f"{g_year}-03-20"
-        return f"{g_year}-03-21"
+        return f"{g_year}-03-20" if p_year in [1403] else f"{g_year}-03-21"
     
     def get_persian_year_end(p_year):
-        g_year = p_year + 621 + 1  # End is in the next Gregorian year
-        if p_year in [1402]:  # Known years with March 19 end
-            return f"{g_year}-03-19"
-        return f"{g_year}-03-20"
+        g_year = p_year + 621 + 1
+        return f"{g_year}-03-19" if p_year in [1402] else f"{g_year}-03-20"
     
     persian_year_start = get_persian_year_start(persian_year)
     persian_year_end = get_persian_year_end(persian_year)
@@ -204,9 +243,45 @@ def calculate_date_context() -> dict:
         'current_datetime': reference_datetime_str,
         'today_date': today_date,
         'yesterday_date': yesterday_date,
-        'last_week_date': last_week_date,
         'last_month_date': last_month_date,
         'last_year_date': last_year_date,
+        
+        # Rolling day calculations
+        'three_days_ago': three_days_ago,
+        'one_week_ago': one_week_ago,
+        'ten_days_ago': ten_days_ago,
+        'two_weeks_ago': two_weeks_ago,
+        'three_weeks_ago': three_weeks_ago,
+        'four_weeks_ago': four_weeks_ago,
+        
+        # Rolling month calculations
+        'two_months_ago': two_months_ago,
+        'three_months_ago': three_months_ago,
+        'six_months_ago': six_months_ago,
+        
+        # Persian day info
+        'current_persian_day_name': current_persian_day_name,
+        'persian_day_index': str(persian_day_index),
+        
+        # This week (individual days)
+        'this_week_saturday': this_week_saturday,
+        'this_week_sunday': this_week_sunday,
+        'this_week_monday': this_week_monday,
+        'this_week_tuesday': this_week_tuesday,
+        'this_week_wednesday': this_week_wednesday,
+        'this_week_thursday': this_week_thursday,
+        'this_week_friday': this_week_friday,
+        
+        # Last week (individual days)
+        'last_week_saturday': last_week_saturday_str,
+        'last_week_sunday': last_week_sunday,
+        'last_week_monday': last_week_monday,
+        'last_week_tuesday': last_week_tuesday,
+        'last_week_wednesday': last_week_wednesday,
+        'last_week_thursday': last_week_thursday,
+        'last_week_friday': last_week_friday_str,
+        
+        # Persian year
         'persian_year': str(persian_year),
         'persian_year_start': persian_year_start,
         'persian_year_end': persian_year_end,
@@ -217,7 +292,39 @@ def calculate_date_context() -> dict:
         'current_minute': str(ref_dt.minute),
     }
 
-def format_sql_prompt(query: str, schema: str, target_prompt: str = SQL_CONVERTER_MODIFIED_WITH_PARAMETERS_TEMPLATE) -> str:
+def format_sql_prompt(
+    query: str, 
+    schema: str, 
+    target_prompt: str = SQL_CONVERTER_MODIFIED_WITH_PARAMETERS_TEMPLATE,
+    examples: Optional[str] = None
+) -> str:
+    """
+    Format the SQL converter prompt with all date context values using current datetime.
+    
+    Args:
+        query: The natural language query in Persian
+        schema: The business object schema
+        target_prompt: The prompt template to use
+        examples: Optional custom examples. If None, uses DEFAULT_EXAMPLES
+    
+    Returns:
+        Formatted prompt string with all placeholders filled using current datetime
+    """
+    # Calculate date context from current datetime
+    date_context = calculate_date_context()
+    
+    # Add query and schema to context
+    date_context['query'] = query
+    date_context['schema'] = schema
+    
+    # Use default examples if none provided
+    date_context['examples'] = examples if examples else DEFAULT_EXAMPLES
+    
+    # Format the prompt
+    return target_prompt.format(**date_context)
+
+
+def format_param_responder_prompt(query: str, sql_query: str, schema: str, target_prompt: str = SQL_CONVERTER_MODIFIED_WITH_PARAMETERS_TEMPLATE) -> str:
     """
     Format the SQL converter prompt with all date context values using current datetime.
     
@@ -234,42 +341,11 @@ def format_sql_prompt(query: str, schema: str, target_prompt: str = SQL_CONVERTE
     # Add query and schema to context
     date_context['query'] = query
     date_context['schema'] = schema
+    date_context['sql_query'] = sql_query
     
     # Format the prompt
     return target_prompt.format(**date_context)
 
-def format_sql_modifier_prompt(
-    schema: str,
-    original_query: str,
-    faulty_sql_query: str,
-    faulty_parameters: str,
-    error_message: str
-) -> str:
-    """
-    Format the SQL modifier prompt with all date context values using current datetime.
-    
-    Args:
-        schema: The business object schema
-        original_query: The original natural language query in Persian
-        faulty_sql_query: The SQL query that produced an error
-        faulty_parameters: The parameters used with the faulty query
-        error_message: The error message received
-    
-    Returns:
-        Formatted prompt string with all placeholders filled using current datetime
-    """
-    # Calculate date context from current datetime
-    date_context = calculate_date_context()
-    
-    # Add all required fields to context
-    date_context['schema'] = schema
-    date_context['original_query'] = original_query
-    date_context['faulty_sql_query'] = faulty_sql_query
-    date_context['faulty_parameters'] = faulty_parameters
-    date_context['error_message'] = error_message
-    
-    # Format the prompt
-    return SQL_MODIFIER.format(**date_context)
 
 def subselect_yaml(
     data: dict,
@@ -458,6 +534,57 @@ def history_serializer(history: List[tuple[str, str]]) -> str:
         serialized_history += f"USER: {question}\nASSISTANT: {answer}\n\n"
     return serialized_history
 
+
+async def process_sql_response(
+    clients,
+    paraphrased_utterance: str,
+    selected_module: str,
+    use_oss: bool,
+    context: str = "",
+) -> tuple[bool, str, dict | None, str | None]:
+    """
+    Process SQL response and return (is_sql, response, parameters, response_template).
+    """
+    if not context:
+        context = DEFAULT_EXAMPLES
+    response_dict_str = await sql_responder_(
+        clients,
+        paraphrased_utterance,
+        selected_module,
+        context,
+        use_oss=use_oss
+    )
+    
+    response_dict = json.loads(response_dict_str)
+    
+    if response_dict["SQL"] is None:
+        return False, RESPONSE_TEMPLATE_FOR_NO_ANSWER, None, None
+    
+    response_dict["SQL"] = convert_sql_parameters(response_dict["SQL"])
+    response = response_dict["SQL"]
+    
+    if response_dict["parameters"]:
+        response_dict["parameters"] = add_param_keys(response_dict["parameters"])
+    
+    sql_with_params = integrate_params(response, response_dict["parameters"])    
+    bo_parameters_with_template = await parameters_responder(
+        paraphrased_utterance,
+        sql_with_params,
+        selected_module,
+        clients,
+        use_oss
+    )
+    bo_parameters_with_template_dict = json.loads(bo_parameters_with_template)
+    parameters_dict = finalize_parameters(response_dict, bo_parameters_with_template_dict)
+    
+    return (
+        True,
+        response,
+        parameters_dict["parameters"],
+        parameters_dict["response_template"]
+    )
+
+
 @observe()
 async def utterance_paraphraser(clients, history: List[tuple[str, str]], user_utterance: str, assistant_name: str = None, use_oss:bool = True) -> str:
     serialized_history = history_serializer(history)
@@ -479,6 +606,7 @@ async def utterance_paraphraser(clients, history: List[tuple[str, str]], user_ut
     response_1 = await get_chat_response(prompt, client_model)
     response = json_cleaning_1(response_1)
     return response
+
 
 @observe()
 async def query_responder(
@@ -518,6 +646,13 @@ async def query_responder(
     return response
 
 
+async def embed_query(query):
+    from src.retriever import ModelManager
+    model_manager = ModelManager()
+    embedding_query = await model_manager.embedding_model.aembed_query(query)
+    return embedding_query
+
+
 @observe()
 async def chitchat_responder(
     clients,
@@ -548,6 +683,7 @@ async def answer_validator(clients, question: str, context: str, answer: str, us
     response = await get_chat_response(prompt, client_model)
     return response
 
+
 @observe()
 async def is_somewhat_uniform(freq_dict: dict, threshold: float = MODULE_PROPOSER_THRESHOLD) -> tuple[bool, float]:
     """
@@ -566,100 +702,229 @@ async def is_somewhat_uniform(freq_dict: dict, threshold: float = MODULE_PROPOSE
         final_result = (cv <= threshold, mean_freq)
     return final_result
 
+
 @observe()
-async def retrieve_context_with_metadata(query: str, input_modules: List = None, database_index: str = None) -> Tuple[List,List]:
+async def retrieve_context_with_metadata(query: str, input_modules: List = None, database_index: str = None, num_retrieve_context: int = config["retriever"]["retrieved_rank2_documents"]) -> Tuple[List,List]:
     retriever = Retriever()
     
     if input_modules:
-        context_with_metadata, query_embedding = await retriever.retrieve_context(query, database_index,
-                                                                                  module_filter=input_modules)
+        context_with_metadata, query_embedding = await retriever.retrieve_context(
+            query, 
+            database_index,
+            module_filter=input_modules, 
+            k=num_retrieve_context
+            )
     elif database_index:
         # Support database_index parameter from develop branch
-        context_with_metadata, query_embedding = await retriever.retrieve_context(query, database_index)
+        context_with_metadata, query_embedding = await retriever.retrieve_context(query, database_index, k=num_retrieve_context)
     else:
-        context_with_metadata, query_embedding = await retriever.retrieve_context(query)
+        context_with_metadata, query_embedding = await retriever.retrieve_context(query, k=num_retrieve_context)
     return context_with_metadata, query_embedding
 
+
 @observe()
-async def prepare_final_context(query: str, database_index: str = None, input_module: str = ""):
+async def prepare_final_context(
+    query: str,
+    query_embedding,
+    database_index: str = None,
+    input_module: str = "",
+    num_retrieve_context=config["retriever"]["retrieved_rank2_documents"]
+):
     """
-    Unified function supporting both develop branch (simple context) and feature/add-sql-agent (complex module handling)
+    Unified function supporting both develop branch (simple context)
+    and feature/add-sql-agent (complex module handling)
     """
-    
-    context_with_metadata, query_embedding = await retrieve_context_with_metadata(query, database_index=database_index, input_modules=[input_module] if input_module else None)
-    print("#########\n")
-    print(context_with_metadata)
-    print("\n#########")
+    context_with_metadata, query_embedding = await retrieve_context_with_metadata(
+        query,
+        database_index=database_index,
+        input_modules=[input_module] if input_module else None, 
+        num_retrieve_context=num_retrieve_context
+    )
+
     if not context_with_metadata:
         return False, [], [], query_embedding
+
     if input_module:
-        result = _handle_single_module_case(context_with_metadata, input_module) 
-        return *result, query_embedding 
+        result = _handle_single_module_case(
+            context_with_metadata, 
+            input_module, 
+            index_name=database_index
+        )
+        return result
+
     proposable_modules = set(config["modules"]["proposable_modules"])
     detected_modules = [result["module"] for result in context_with_metadata]
     module_frequencies = Counter(detected_modules)
+
     if len(module_frequencies) < 2:
         detected_modules_lst = list(module_frequencies.keys())
-        result = _handle_single_module_case(context_with_metadata, detected_modules_lst[0])
-        return *result, query_embedding
-    
-    print(module_frequencies) # temp logs
+        result = _handle_single_module_case(
+            context_with_metadata, 
+            detected_modules_lst[0],
+            index_name=database_index
+        )
+        return result
+
+    print(module_frequencies)
+
     needs_clarification, _ = await is_somewhat_uniform(module_frequencies)
+
     if not needs_clarification:
         max_value = max(module_frequencies.values())
-        probable_detected_module = [k for k, v in module_frequencies.items() if v == max_value]
-        result = _handle_clear_preference_case(context_with_metadata, probable_detected_module[0])
+        probable_detected_module = [
+            k for k, v in module_frequencies.items() if v == max_value
+        ]
+        result = _handle_clear_preference_case(
+            context_with_metadata, 
+            probable_detected_module[0],
+            index_name=database_index
+        )
     else:
         probable_detected_modules = list(module_frequencies.keys())
         result = _handle_clarification_case(
             context_with_metadata,
             probable_detected_modules,
-            proposable_modules
+            proposable_modules,
+            index_name=database_index
         )
-    return *result, query_embedding
+
+    return result
+
+
+def _format_single_document(doc: dict, index: int = 1) -> str:
+    """
+    Format a single document based on whether it contains SQL or not.
+    
+    Args:
+        doc: Document dict from _documents_to_standard_format
+        index: Example number for formatting
+        
+    Returns:
+        Formatted string for the document
+    """
+    sql_query = doc.get("sql", "")
+    
+    # If no SQL, return the text directly
+    if not sql_query:
+        return doc["text"]
+    
+    # Format as SQL example
+    question = doc["text"]
+    
+    try:
+        parameters = json.loads(doc.get("parameters", "{}"))
+    except json.JSONDecodeError:
+        parameters = {}
+    
+    params_formatted = ", ".join(
+        f'"{k}": "{v}"' for k, v in parameters.items()
+    )
+    
+    metadata = doc.get("metadata", {})
+    complexity = metadata.get("complexity", "")
+    domain = metadata.get("domain", "")
+    
+    example_header = f"Example {index}"
+    if complexity or domain:
+        example_header += f" - {domain.capitalize() if domain else ''}"
+        if complexity:
+            example_header += f" ({complexity})"
+    
+    return f"""{example_header}:
+Query: {question}
+{{"SQL": "{sql_query}", "parameters": {{{params_formatted}}}}}"""
+
+
+def _format_documents_as_string(context_with_metadata: List[dict]) -> str:
+    """Format multiple documents as a single concatenated string."""
+    return "\n\n".join(
+        _format_single_document(doc, i) 
+        for i, doc in enumerate(context_with_metadata, 1)
+    )
+
+
+def _format_documents_as_list(context_with_metadata: List[dict]) -> List[str]:
+    """Format multiple documents as a list of formatted strings."""
+    return [
+        _format_single_document(doc, i) 
+        for i, doc in enumerate(context_with_metadata, 1)
+    ]
+
 
 @observe()
 def _handle_single_module_case(
-    context_with_metadata: List,
-    detected_modules: str
+    context_with_metadata: List[dict],
+    detected_modules: str,
+    index_name: str
 ) -> Tuple[bool, List[str], str]:
     """Handle case where only one module type is detected."""
-    documents = "\n\n".join(context["text"] for context in context_with_metadata)
-    result = False, [detected_modules], documents
-    return result
+    documents = _format_documents_as_string(context_with_metadata)
+    return False, [detected_modules], documents
+
 
 @observe()
 def _handle_clear_preference_case(
-    context_with_metadata: List, detected_module: str
+    context_with_metadata: List[dict], 
+    detected_module: str, 
+    index_name: str
 ) -> Tuple[bool, List[str], List[str]]:
     """Handle case where module preference is clear (no clarification needed)."""
-    documents = [doc["text"] for doc in context_with_metadata]
-    result = False, [detected_module], documents
-    return result
+    documents = _format_documents_as_list(context_with_metadata)
+    return False, [detected_module], documents
+
 
 @observe()
 def _handle_clarification_case(
-    context_with_metadata: List,
+    context_with_metadata: List[dict],
     detected_modules: List[str],
-    proposable_modules: Set[str]
+    proposable_modules: Set[str],
+    index_name: str
 ) -> Tuple[bool, List[str], Union[str, List[str]]]:
     """Handle case where clarification is needed for module selection."""
     unique_modules = set(detected_modules)
     valid_modules = unique_modules & proposable_modules
     
     if len(valid_modules) < 2:
-        documents = context_with_metadata[0]["text"]
+        documents = _format_single_document(context_with_metadata[0], index=1)
         valid_modules_lst = list(valid_modules)
-        result = False, valid_modules_lst, documents 
+        result = False, valid_modules_lst, documents
     else:
-        documents = [doc["text"] for doc in context_with_metadata]
+        documents = _format_documents_as_list(context_with_metadata)
         valid_modules_lst = list(valid_modules)
         result = True, valid_modules_lst, documents
     return result
 
-@observe()
-async def module_proposer():
-    return ["انبار و فروش", "دفتر کل"]
+
+def format_retrieved_as_prompt_examples(
+    retrieved_docs: List,
+    max_examples: int = 10
+) -> str:
+    """
+    Format retrieved documents as examples for the SQL converter prompt.
+    
+    Args:
+        retrieved_docs: List of Documents from vector similarity search
+        max_examples: Maximum number of examples to include
+        
+    Returns:
+        Formatted string of examples ready for prompt injection
+    """
+    # Convert raw Documents to standard format first
+    formatted_docs = []
+    for idx, doc in enumerate(retrieved_docs[:max_examples]):
+        formatted_doc = {
+            "text": doc.page_content,
+            "index": idx,
+            "module": doc.metadata.get("module", "unknown"),
+            "source": doc.metadata.get("source", "unknown"),
+            "sql": doc.metadata.get("sql", ""),
+            "parameters": doc.metadata.get("parameters", "{}"),
+            "metadata": doc.metadata
+        }
+        formatted_docs.append(formatted_doc)
+    
+    return _format_documents_as_string(formatted_docs)
+
     
 def get_schema_for_module(detected_module: str) -> str:
     """
@@ -673,9 +938,9 @@ def get_schema_for_module(detected_module: str) -> str:
     """
     module = detected_module.strip()
     
-    if module in ("دفتر کل", "دفترکل"):
+    if module.strip() in ("دفتر کل", "دفترکل"):
         return FINANCIAL_BO_MODIFIED
-    elif module in ("انبار", "فروش"):
+    elif module.strip() in ("انبار", "فروش"):
         return LOGISTICS_SALES_MODIFIED
     elif module in ("مدیریت ارتباط با مشتری"):
         return CRM_BO
@@ -690,32 +955,33 @@ def get_schema_for_module(detected_module: str) -> str:
 async def sql_responder_(
     clients,
     query: str,
-    detected_module: str = "",
+    detected_module: str = "", 
+    context: str = "",
     use_oss: bool = False,
     ):
     """
     Unified SQL responder supporting both simple schema list and module-based schema selection.
     """
-    
-    schema = get_schema_for_module(detected_module)
 
-    bo_prompt = format_sql_prompt(query, schema=schema)
-    
-    client_model = model_selector(use_oss, clients)
+    schema = get_schema_for_module(detected_module)
+    bo_prompt = format_sql_prompt(query, schema=schema, examples=context)
+    model_client = model_selector(use_oss, clients)
     raw_json_response = await get_chat_response(
         bo_prompt, 
-        client_model=client_model
+        model_client
     )
     response = json_cleaning(raw_json_response)
     return response
+
 
 @observe()
 async def parameters_responder(
     clients,
     paraphrased_utterance, 
     sql_query,
-    detected_module: str = "", 
-    use_oss: bool = False
+    detected_module: str,
+    clients,
+    use_oss: bool = True,
     ):
 
     sql_proposed_tables = extract_tables_simple(sql_query)
@@ -723,11 +989,12 @@ async def parameters_responder(
     yaml_schema = yaml.safe_load(schema)
     selections = {table: ['parameters'] for table in sql_proposed_tables}
     bo_parameters_schema = subselect_yaml(yaml_schema, selections, "yaml")
-    prompt = format_sql_prompt(paraphrased_utterance, bo_parameters_schema, BUSINESS_OBJECT_PARAMETER_EXTRACTOR_PROMPT)
-    client_model = model_selector(use_oss, clients)
-    raw_json_response = await get_chat_response(prompt, client_model)
+    prompt = format_param_responder_prompt(paraphrased_utterance, sql_query, bo_parameters_schema, BUSINESS_OBJECT_PARAMETER_EXTRACTOR_PROMPT)
+    model_client = model_selector(use_oss, clients)
+    raw_json_response = await get_chat_response(prompt, model_client)
     response = json_cleaning(raw_json_response)
     return response
+
 
 @observe()
 def _get_chitchat_cache_key(utterance: str) -> str:
@@ -756,6 +1023,8 @@ async def _determine_final_route(
             model_name=router_config["model_name"]
         )
         predictions, probabilities, max_prob = semantic_router_client.predict_sentences_input_embedding_and_sentences([utterance], [query_embedding])
+        import pdb
+        pdb.set_trace()
         top_prediction = predictions[0][0]
         probabilities = list(probabilities)  # Convert to list to make it subscriptable
         if max_prob > alpha_threshold and ("همکاران" not in utterance) and (top_prediction != "illegal"):
@@ -837,75 +1106,108 @@ def _post_process_rag_response(response: str, company_name: str) -> str:
 
 @observe()
 async def chat_responder_(
-        clients,
-        history: List[tuple[str, str]],
-        user_utterance: str,
-        # Grouping config vars (assuming these defaults exist in your scope)
-        database_index: str = config["database"]["collection_name"],
-        company_name: str = config["database"]["company_name"],
-        assistant_name: str = config["database"]["assistant_name"],
-        response_type: str = config["database"]["response_type"],
-        use_cache: bool = config["database"]["use_cache"],
-        detected_module: str = "",
-        use_oss: bool = True,
-) -> tuple:
-    # 1. Early Cache Check (Raw Utterance)
-    if not detected_module:
-        if cached_resp := await _check_cache_layer(user_utterance, use_cache):
-            return ChatResult(utterance=user_utterance, response=cached_resp).to_tuple()
+    clients,
+    history: List[tuple[str, str]],
+    user_utterance: str,
+    database_index: str = config["database"]["collection_name"],
+    company_name: str = config["database"]["company_name"],
+    assistant_name: str = config["database"]["assistant_name"],
+    response_type: str = config["database"]["response_type"],
+    use_cache: bool = config["database"]["use_cache"],
+    detected_module: str = "",
+    use_oss: bool = True, 
+    sql_mode: bool = True
+) -> Union[tuple[str, str, str, str], tuple[str, str, str, bool, List[str]]]:
+    """
+    Unified chat responder supporting both develop branch (simple RAG) and feature/add-sql-agent (SQL + module handling)
+    """
+    # If sql_mode is True, use the new SQL agent logic
+    is_sql = False
+    num_retrieve_context = config["retriever"]["retrieved_rank2_documents"]
+    parameters = {}
+    sql_response_template = ""
+    if not detected_module and use_cache:
+        response, _ = await get_cache_response(user_utterance)
+        if response:
+            result_temp = is_sql, user_utterance, response, "", False, [], parameters, sql_response_template
+            return result_temp
 
-    # 2. Paraphrasing
-    paraphrased = await utterance_paraphraser(clients, history, user_utterance, use_oss=use_oss)
+    paraphrased_utterance = await utterance_paraphraser(clients, history, user_utterance, use_oss=use_oss)
+    if use_cache:
+        response, _ = await get_cache_response(paraphrased_utterance)
+        if response:
+            result_temp = is_sql, paraphrased_utterance, response, "", False, [], parameters, sql_response_template
+            return result_temp
 
-    # 3. Secondary Cache Check (Paraphrased)
-    if cached_resp := await _check_cache_layer(paraphrased, use_cache):
-        return ChatResult(utterance=paraphrased, response=cached_resp).to_tuple()
+    query_embedding = await embed_query(paraphrased_utterance)
+    route_response = await get_route_for_utterance(clients, paraphrased_utterance, query_embedding, use_oss)
 
-    # 4. Context Preparation
-    # Simplifies the if/else logic for input_module
-    kwargs = {"input_module": detected_module} if detected_module else {}
-    do_clarify, modules, context, query_embedding = await prepare_final_context(
-        paraphrased, database_index=database_index, **kwargs
-    )
+    if sql_mode:
+        if route_response == "sql":
+            num_retrieve_context = config["retriever"]["sql_retrieved_rank2_documents"]
+            detected_database_index = config["database"]["sql_collection_name"]
+        else:
+            detected_database_index = database_index
 
+    if detected_module:
+        do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=detected_database_index, input_module=detected_module, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context)
+    else:
+        do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=detected_database_index, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context)
+
+    import pdb
+    pdb.set_trace()
+
+    if route_response == "chitchat":
+        response = await chitchat_responder(clients, paraphrased_utterance, context=context, history=history, use_oss=use_oss)
+        result_temp = is_sql, paraphrased_utterance, response, context, False, [], parameters, sql_response_template
+        return result_temp
+    
+    if route_response == "illegal" or route_response =="irrelevant":
+        result_temp = is_sql, paraphrased_utterance, template_for_not_answer, "", False, [], parameters, sql_response_template
+        return result_temp
+    
     if do_clarify:
-        return ChatResult(utterance=paraphrased, do_clarify=True, modules=modules).to_tuple()
+        result_temp = is_sql, paraphrased_utterance, MODULE_CLARIFICATION_RESPONSE_TEMPLATE, "", do_clarify, modules, parameters, sql_response_template
+        return result_temp
 
-    # 5. Routing
-    route = await get_route_for_utterance(clients, paraphrased, query_embedding, use_oss)
+    if route_response == "sql" and sql_mode:
+        if modules[0] in config["modules"]["available_sql_modules"]:
+            selected_module = modules[0]
+            is_sql, response, parameters, sql_response_template = await process_sql_response(
+                clients,
+                paraphrased_utterance,
+                selected_module,
+                context,
+                use_oss
+            )
+            result_temp = is_sql, paraphrased_utterance, response, context, False, [selected_module], parameters, sql_response_template  
+            return result_temp
 
-    # --- Route Handlers ---
-
-    if route == "sql":
-        active_modules = modules if modules else ["all"]
-        return ChatResult(utterance=paraphrased, modules=[active_modules[0]]).to_tuple()
-
-    if route == "chitchat":
-        response = await chitchat_responder(clients, paraphrased, history=history, context=context, use_oss=use_oss)
-        return ChatResult(utterance=paraphrased, response=response, context=context).to_tuple()
-
-    if route in ["illegal", "irrelevant"]:
-        return ChatResult(utterance=paraphrased, response=template_for_not_answer).to_tuple()
-
+    _, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, input_module=detected_module, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context)
     if not context:
-        return ChatResult(utterance=paraphrased).to_tuple()
+        response = template_for_not_answer
+        context = ""
+        result_temp = is_sql, paraphrased_utterance, response, context, False, [], parameters, sql_response_template, parameters, sql_response_template
+        return result_temp
 
-    # 6. Default RAG Logic (Query Responder)
-    raw_response = await query_responder(
-        clients, paraphrased, context, history,
-        company_name=company_name, assistant_name=assistant_name,
-        answer_type=response_type, use_oss=use_oss,
+    response = await query_responder(
+        clients,
+        paraphrased_utterance,
+        context,
+        history,
+        company_name=company_name,
+        assistant_name=assistant_name,
+        answer_type=response_type,
+        use_oss=use_oss,
     )
 
-    final_response = _post_process_rag_response(raw_response, company_name)
+    if "محدوده دانش من " in response:
+        response = template_for_not_answer
+    if "خارج از حوزه کاری" in response:
+        response = template_for_not_context.format(company_name=company_name)
+    result_temp = is_sql, paraphrased_utterance, response, context, do_clarify, modules, parameters, sql_response_template
+    return result_temp
 
-    return ChatResult(
-        utterance=paraphrased,
-        response=final_response,
-        context=context,
-        do_clarify=do_clarify,
-        modules=modules
-    ).to_tuple()
 
 @observe()
 async def feedback_(

@@ -820,7 +820,18 @@ def main():
                                         validation_response = f"The output of the execution response is:\n\n{direct_validation_response}"
                                     st.markdown(f'<div class="markdown-ltr sql-code-block">\n\n```sql\n{content}\n```\n\n{validation_response}</div>', unsafe_allow_html=True, help=help_msg)
                                 else:
-                                    st.markdown(f'<div class="markdown-rtl">{content}</div>', unsafe_allow_html=True, help=help_msg)
+                                    # Inject RTL styling for all markdown content
+                                    st.markdown("""
+                                    <style>
+                                    .stMarkdown {
+                                        direction: rtl;
+                                        text-align: right;
+                                    }
+                                    </style>
+                                    """, unsafe_allow_html=True)
+
+                                    # Now use regular markdown (no unsafe_allow_html needed)
+                                    st.markdown(content)
                                 if st.session_state.get("do_suggest_modules") and i == len(st.session_state["response"]) - 1:
                                     # Create a number of columns equal to the number of suggested modules
                                     suggested_modules = st.session_state.get(

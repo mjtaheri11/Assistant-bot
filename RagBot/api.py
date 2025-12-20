@@ -47,10 +47,11 @@ from src.retriever import Retriever, ModelManager
 from src.logic import (
     chat_responder_,
     sql_responder_,
-    module_proposer,
+    utterance_paraphraser,
     parameters_responder
 )
 from src.logs import non_generative_agent_logger, simple_logger
+from src.utils import substitute_sql_parameters, integrate_params
 
 from langchain.schema import Document
 from qdrant_client import QdrantClient
@@ -88,7 +89,6 @@ async def lifespan(app: FastAPI):
     print("Clients closed.")
 
 RESPONSE_TEMPLATE_FOR_NO_ANSWER = "متاسفانه، پاسخی به سوال شما یافت نشد."
-MODULE_CLARIFICATION_RESPONSE_TEMPLATE = "لطفا مشخص نمایید سوال شما از کدام یک از ماژول های سیستم است."
 app = FastAPI(title="Digital Assistant", lifespan=lifespan, root_path=os.getenv("FASTAPI_ROOT_PATH")) # should be added to env variables
  
 # Define Prometheus metrics
@@ -111,7 +111,6 @@ class ChatRequest(BaseModel):
     use_cache: Optional[bool] = True
     # SQL Agent specific fields
     on_click: Optional[bool] = False
-    do_retry: Optional[bool] = False
     error_payload: Optional[str] = ""
     is_sync: Optional[bool] = True
     sql_mode: Optional[bool] = True  # Toggle between legacy and SQL agent mode
@@ -227,6 +226,14 @@ class AddDocumentsResponse(BaseModel):
     documents_added: int
     total_documents: Optional[int] = None  # Total documents in collection after addition
 
+class NL2SQLDatabaseResponse(BaseModel):
+    success: bool
+    message: str
+    collection_name: str
+    documents_count: int
+    total_documents: Optional[int] = None
+
+
 # ================== Utility Functions ==================
 
 
@@ -235,9 +242,85 @@ def find_module_name(original_filename):
     module = config["modules"]["names"][main_filename]
     return module
     
-def finalize_parameters(a_dict, b_dict):
-    concatenation = (a_dict | b_dict) | {"parameters": a_dict.get("parameters", {}) | b_dict.get("parameters", {})}
-    return concatenation
+
+def _parse_json_file(content: bytes, filename: str) -> List[Dict[str, Any]]:
+    """Parse JSON content from uploaded file."""
+    try:
+        data = json.loads(content.decode("utf-8"))
+        return data if isinstance(data, list) else [data]
+    except json.JSONDecodeError as e:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid JSON in file '{filename}': {str(e)}"
+        )
+
+
+def _json_item_to_document(item: Dict[str, Any]) -> Document:
+    """
+    Convert a JSON item to a LangChain Document for NL2SQL.
+    
+    - page_content: The question (for embedding/similarity search)
+    - metadata: SQL, parameters, module, complexity, table
+    - 'id' is excluded as it may vary across files
+    """
+    question = item.get("question", "")
+    
+    if not question:
+        raise ValueError("Item missing 'question' field")
+    
+    sql_obj = item.get("sql", {})
+    sql_query = sql_obj.get("SQL", "")
+    sql_parameters = sql_obj.get("parameters", {})
+    
+    metadata = {
+        "sql": sql_query,
+        "parameters": json.dumps(sql_parameters, ensure_ascii=False),
+        "complexity": item.get("complexity", ""),
+        "module": item.get("module", ""),
+        "table": item.get("table", ""),
+    }
+    
+    return Document(page_content=question, metadata=metadata)
+
+
+async def process_nl2sql_json_files(
+    files: List[UploadFile]
+) -> List[Document]:
+    """
+    Process multiple JSON files and convert to Documents.
+    
+    Args:
+        files: List of uploaded JSON files
+        
+    Returns:
+        List of LangChain Documents
+    """
+    all_documents = []
+    
+    for file in files:
+        # Validate file type
+        if not file.filename.endswith(".json"):
+            raise HTTPException(
+                status_code=422,
+                detail=f"File '{file.filename}' is not a JSON file. Only .json files are accepted."
+            )
+        
+        content = await file.read()
+        items = _parse_json_file(content, file.filename)
+        
+        for idx, item in enumerate(items):
+            try:
+                doc = _json_item_to_document(item)
+                all_documents.append(doc)
+            except ValueError as e:
+                logger.warning(f"Skipping item {idx} in '{file.filename}': {e}")
+                continue
+            except Exception as e:
+                logger.warning(f"Error processing item {idx} in '{file.filename}': {e}")
+                continue
+    
+    return all_documents
+
 
 # ============================================================================
 # PIPELINE INTEGRATION
@@ -443,43 +526,6 @@ def validate_query(query):
         raise HTTPException(status_code=422, detail="Query is empty")
 
 
-def convert_sql_parameters(sql_query):
-    """
-    Convert SQL parameter placeholders from $ format to @ format.
-    All numbers in parameters get an underscore prefix (e.g., $1 -> @_1, @2 -> @_2).
-    
-    Args:
-        sql_query (str): SQL query with $ parameters (e.g., $param, $1, $param_name)
-        
-    Returns:
-        str: SQL query with @ parameters where numbers have underscore prefix
-    """
-    # First convert all $ to @
-    # Pattern to match $ followed by parameter name (alphanumeric + underscore) or just numbers
-    pattern = r'\$([a-zA-Z_]\w*|\d+)'
-    sql_query = re.sub(pattern, r'@\1', sql_query)
-    
-    # Then add underscore before any numbers that follow @
-    # This catches @1, @2, @3, etc. and converts them to @_1, @_2, @_3
-    sql_query = re.sub(r'@(\d+)', r'@param\1', sql_query)
-    
-    return sql_query
-
-
-
-def add_underscore_to_keys(dictionary):
-    """
-    Add an underscore prefix to all keys in a dictionary.
-    
-    Args:
-        dictionary (dict): Input dictionary
-        
-    Returns:
-        dict: New dictionary with underscore-prefixed keys
-    """
-    return {f"param{key}": value for key, value in dictionary.items()}
-
-
 async def preprocess_vector_db_input(files, target_chunk_size, max_chunk_size, company_name, assistant_name):
     """Preprocess files for vector database creation - from develop branch"""
     _settings = {}
@@ -496,6 +542,7 @@ async def preprocess_vector_db_input(files, target_chunk_size, max_chunk_size, c
     _settings["company_name"] = company_name
     _settings["assistant_name"] = assistant_name
     return _settings
+
 
 async def async_responder(session_id):
     """Handle async polling for responses - from SQL agent branch"""
@@ -730,7 +777,8 @@ async def chat_responder(chat_request: ChatRequest, request: Request, clients: d
                     RESPONSE_TEMPLATE_FOR_NO_ANSWER,
                     "",
                 )
-                message_id = await postgres.insert_chat_row(
+                # SQL mode: use different insertion pattern
+                message_id = await postgres.insert_chat_row( # concise response in the database should be modified
                     session_id=session_id,
                     user_query=chat_request.query,
                     paraphrased_query=paraphrased_utterance,
@@ -750,39 +798,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request, clients: d
                     for h in history
                 ]
                 
-                # Use SQL Agent logic
-                if chat_request.do_retry:
-                    # Handle SQL retry logic
-                    is_sql = True
-                    agent = "sql_responder"
-                    paraphrased_utterance = history[-1]["paraphrased_query"]
-                    message_id = str(history[-1]["message_id"])
-                    selected_module = history[-1]["selected_module"]
-                    
-                    _ = await postgres.remove_previous_response(history[-1]["message_id"])
-                    response_dict_str = await sql_responder_(
-                        clients,
-                        paraphrased_utterance,
-                        selected_module,
-                        use_oss=chat_request.use_oss
-                    )
-                    response_dict = json.loads(response_dict_str)
-                    if "NULL" not in response_dict_str:
-                        response_dict["SQL"] = convert_sql_parameters(response_dict["SQL"])
-                        response = response_dict["SQL"]
-                        if response_dict["parameters"]:
-                            response_dict["parameters"] = add_underscore_to_keys(response_dict["parameters"])
-                        bo_parameters_with_template = await parameters_responder(clients, paraphrased_utterance, response, selected_module, chat_request.use_oss)
-                        bo_parameters_with_template_dict = json.loads(bo_parameters_with_template)
-                        parameters_dict = finalize_parameters(response_dict, bo_parameters_with_template_dict)
-                        parameters = parameters_dict["parameters"]
-                        response_template = bo_parameters_with_template["response_template"]
-                     
-                    message = "retried table response generated"
-                    elapsed_time = time.time() - start_time
-                    _ = await postgres.update_on_click_chat_row(message_id, response, elapsed_time)
-
-                elif chat_request.on_click:
+                if chat_request.on_click:
                     # Handle on_click logic
                     selected_module = chat_request.query
                     do_suggest = False
@@ -791,52 +807,22 @@ async def chat_responder(chat_request: ChatRequest, request: Request, clients: d
                         user_query=chat_request.query,
                     )
                     
-                    paraphrased_utterance, response, context, do_clarify, modules = await chat_responder_(
-                        clients,
-                        selected_history,
-                        chat_request.query,
-                        detected_module=chat_request.query,
+                    is_sql, paraphrased_utterance, response, context, do_clarify, modules, parameters, response_template = await chat_responder_(
+                        clients=clients,
+                        history=selected_history,
+                        user_utterance=chat_request.query,
                         database_index=matched_index,
                         company_name=company_name,
-                        assistant_name=assistant_name, 
+                        assistant_name=assistant_name,
+                        response_type=chat_request.response_type,
+                        use_cache=chat_request.use_cache,
+                        detected_module=chat_request.query,
                         use_oss=chat_request.use_oss, 
+                        sql_mode=chat_request.sql_mode
                     )
                     assert do_clarify == False, "on_click should not return do_clarify=True"
                     assert len(modules) <= 1, "on_click should not return modules"
-
-                    if not response:
-                        if chat_request.sql_mode:
-                            if chat_request.query in ["انبار", "فروش", "دفتر کل"]:
-                                is_sql = True                           
-                                agent = "sql_responder"
-                                selected_module = chat_request.query
-                                response_dict_str = await sql_responder_(
-                                    clients, 
-                                    paraphrased_utterance,
-                                    detected_module=selected_module,
-                                    use_oss=chat_request.use_oss
-                                )
-                                response_dict = json.loads(response_dict_str)
-                                if "null" not in response_dict_str and response_dict["SQL"] is not None:
-                                    response_dict["SQL"] = convert_sql_parameters(response_dict["SQL"])
-                                    response = response_dict["SQL"]
-                                    if response_dict["parameters"]:
-                                        response_dict["parameters"] = add_underscore_to_keys(response_dict["parameters"])
-                                    bo_parameters_with_template = await parameters_responder(clients, paraphrased_utterance, response, selected_module, chat_request.use_oss)
-                                    bo_parameters_with_template_dict = json.loads(bo_parameters_with_template)
-                                    parameters_dict = finalize_parameters(response_dict, bo_parameters_with_template_dict)
-                                    parameters = parameters_dict["parameters"]
-                                    response_template = bo_parameters_with_template_dict["response_template"]
-                                else:
-                                    is_sql = False
-                                    response = RESPONSE_TEMPLATE_FOR_NO_ANSWER
-                            else:
-                                is_sql = False
-                                response = RESPONSE_TEMPLATE_FOR_NO_ANSWER
-                        else:
-                            is_sql = False
-                            response = RESPONSE_TEMPLATE_FOR_NO_ANSWER
-                                                
+                            
                     elapsed_time = time.time() - start_time
                     message_id = await postgres.update_last_chat_row(
                         session_id,
@@ -856,26 +842,28 @@ async def chat_responder(chat_request: ChatRequest, request: Request, clients: d
                         session_id=session_id,
                         user_query=chat_request.query,
                     )
-                    
-                    paraphrased_utterance, response, context, do_clarify, modules = await chat_responder_(
-                        clients,
-                        selected_history,
-                        chat_request.query,
-                        detected_module="",
+                    is_sql, paraphrased_utterance, response, context, do_clarify, modules, parameters, response_template = await chat_responder_(
+                        clients=clients,
+                        history=selected_history,
+                        user_utterance=chat_request.query,
                         database_index=matched_index,
                         company_name=company_name,
-                        assistant_name=assistant_name, 
+                        assistant_name=assistant_name,
+                        response_type=chat_request.response_type,
+                        use_cache=chat_request.use_cache,
+                        detected_module="",
                         use_oss=chat_request.use_oss, 
+                        sql_mode=chat_request.sql_mode
                     )
+                    
                     if do_clarify:
                         do_suggest = True
-                        response = MODULE_CLARIFICATION_RESPONSE_TEMPLATE
                         elapsed_time = time.time() - start_time
                         _ = await postgres.insert_message_choices(message_id, *modules)
                         message_id = await postgres.update_last_chat_row(
                             session_id,
                             paraphrased_utterance,
-                            MODULE_CLARIFICATION_RESPONSE_TEMPLATE,
+                            response,
                             is_sql,
                             elapsed_time,
                             do_suggest,
@@ -886,40 +874,8 @@ async def chat_responder(chat_request: ChatRequest, request: Request, clients: d
                         message = "modules proposed"
                         choices = modules
                     else:
-                        if not response:
-                            if chat_request.sql_mode and modules:
-                                selected_module = modules[0]
-                                agent = "sql_responder"
-                                is_sql = True
-                                response_dict_str = await sql_responder_(
-                                    clients,
-                                    paraphrased_utterance,
-                                    selected_module,
-                                    use_oss=chat_request.use_oss
-                                )
-                               
-                                response_dict = json.loads(response_dict_str)
-                                if "null" not in response_dict_str and response_dict["SQL"] is not None:
-                                    response_dict["SQL"] = convert_sql_parameters(response_dict["SQL"])
-                                    response = response_dict["SQL"]
-                                    if response_dict["parameters"]:
-                                        response_dict["parameters"] = add_underscore_to_keys(response_dict["parameters"])
-                                    bo_parameters_with_template = await parameters_responder(clients, paraphrased_utterance, response, selected_module, chat_request.use_oss)
-                                    bo_parameters_with_template_dict = json.loads(bo_parameters_with_template)
-                                    parameters_dict = finalize_parameters(response_dict, bo_parameters_with_template_dict)
-                                    parameters = parameters_dict["parameters"]
-                                    response_template = parameters_dict["response_template"]
-                                else:
-                                    is_sql = False
-                                    response = RESPONSE_TEMPLATE_FOR_NO_ANSWER
-                            
-                            else:
-                                is_sql = False
-                                response = RESPONSE_TEMPLATE_FOR_NO_ANSWER
-                            
                         elapsed_time = time.time() - start_time
                         modules_str = modules[0] if modules else "cache"
-
                         message_id = await postgres.update_last_chat_row(
                             session_id,
                             paraphrased_utterance,
@@ -931,8 +887,9 @@ async def chat_responder(chat_request: ChatRequest, request: Request, clients: d
                             response_template,
                             json.dumps(parameters)
                         )
-                
-        REQUEST_LATENCY.labels(endpoint=CHAT_ENDPOINT).observe(time.time() - start_time)
+
+        agent = "chat_responder" if is_sql else "chat_responder"
+        REQUEST_LATENCY.labels(endpoint="/v1/chat").observe(time.time() - start_time)
         non_generative_agent_logger(
             session_id=session_id,
             tenant_name=tenant_name,
@@ -1000,81 +957,13 @@ async def chat_responder(chat_request: ChatRequest, request: Request, clients: d
                 "response": "",
                 "do_suggest": do_suggest,
                 "choices": choices,
-                "parameters": dict(parameters),
+                "parameters": parameters,
                 "response_template": response_template
             },
             elapsed_time=elapsed_time,
         )
-        raise HTTPException(status_code=500, detail=UNHANDLED_ERROR_MESSAGE)
-
-@app.post(
-    SQL_ENDPOINT,
-    response_model=SQLResponse,
-    responses={
-        200: {},
-        500: {"description": "Unhandled error that should be reported"},
-        404: {"description": "Session not found"},
-        422: {"description": "Unprocessable entity"},
-    },
-)
-@observe()
-async def sql_responder_endpoint(clients, sql_request: SQLRequest, request: Request, use_oss:bool):
-    REQUEST_COUNT.labels(endpoint=SQL_ENDPOINT).inc()
-    start_time = time.time()
-
-    try:
-        postgres = Postgres()
+        raise HTTPException(status_code=500, detail="Unhandled error, Please report")
         
-        # Handle both legacy (table_schemas) and new (session-based) approaches
-        if sql_request.table_schemas:
-            # Legacy approach: direct SQL generation from schemas
-            response = await sql_responder_(clients, sql_request.query, sql_request.table_schemas[0])
-            return SQLResponse(response=response, do_suggest=False, choices=[], message_id="")
-        
-        # New approach: session-based with module detection
-        session_id = get_session_id(request, sql_request)
-        
-        if sql_request.on_click:
-            history = await postgres.get_history(session_id, 1, 1, True)
-            user_question = history[0]["query"]
-            message_id = str(history[0]["message_id"])
-            detected_module = sql_request.query
-            response = await sql_responder_(
-                clients,
-                user_question,
-                detected_module,
-                use_oss=use_oss
-            )
-            
-            elapsed_time = time.time() - start_time
-            await postgres.update_on_click_chat_row(message_id, response, elapsed_time)
-            choices = []
-        else:
-            elapsed_time = time.time() - start_time
-            message_id = await postgres.insert_chat_row(
-                session_id,
-                sql_request.query,
-                sql_request.query,
-                "",
-                elapsed_time,
-            )
-            response = ""
-            choices = await module_proposer()
-
-        return SQLResponse(
-            response=response,
-            do_suggest=len(choices) > 0,
-            choices=choices,
-            message_id=message_id
-        )
-
-    except HTTPException as e:
-        raise e
-    except Exception as e:
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=UNHANDLED_ERROR_MESSAGE)
-
-
 def get_logger():
     logging.basicConfig(level=logging.INFO)
     return logging.getLogger(__name__)
@@ -1255,6 +1144,173 @@ async def create_database_endpoint(
             detail=f"Failed to create database: {str(e)}"
         )
 
+
+async def create_nl2sql_database(
+    files: List[UploadFile] = File(..., description="JSON files containing NL2SQL examples"),
+    collection_name: str = Query(
+        default=config["database"]["sql_collection_name"],
+        description="Name for the Qdrant collection"
+    ),
+    recreate: bool = Query(
+        default=True,
+        description="Recreate collection if it already exists"
+    ),
+    batch_size: int = Query(
+        default=100,
+        ge=1,
+        le=1000,
+        description="Batch size for processing documents"
+    )
+) -> NL2SQLDatabaseResponse:
+    """
+    Create a Qdrant vector database from NL2SQL JSON files.
+    
+    Each JSON file should contain an array of objects with:
+    - id: (excluded - may differ across files)
+    - complexity: Query complexity level
+    - module: Business module name (e.g., "دفتر کل")
+    - table: Database table name(s)
+    - question: Natural language question (embedded for similarity search)
+    - sql: Object with "SQL" query string and "parameters" dict
+    
+    Example JSON structure:
+    ```json
+    [
+      {
+        "id": 1,
+        "complexity": "simple",
+        "module": "دفتر کل",
+        "table": "financial_vouchers",
+        "question": "تعداد کل اقلام سند حسابداری چقدر است؟",
+        "sql": {
+          "SQL": "SELECT COUNT(fv.id) AS fv_id_count FROM financial_vouchers AS fv",
+          "parameters": {}
+        }
+      }
+    ]
+    ```
+    """
+    try:
+        # Validate input
+        if not files:
+            raise HTTPException(status_code=422, detail="No files provided")
+        
+        # Process JSON files to Documents
+        logger.info(f"Processing {len(files)} JSON files for NL2SQL database")
+        documents = await process_nl2sql_json_files(files)
+        
+        if not documents:
+            raise HTTPException(
+                status_code=422,
+                detail="No valid NL2SQL examples found in uploaded files"
+            )
+        
+        logger.info(f"Creating NL2SQL database '{collection_name}' with {len(documents)} examples")
+        
+        # Create vector database using existing function
+        result_collection = create_vector_database_from_config(
+            database_id=collection_name,
+            all_documents=documents,
+            recreate=recreate,
+            batch_size=batch_size,
+            qdrant_client=qdrant_client,
+            embedding_model=None  # Will use config default
+        )
+        
+        # Get collection info
+        info = get_collection_info(result_collection, qdrant_client)
+        
+        return NL2SQLDatabaseResponse(
+            success=True,
+            message=f"Successfully created NL2SQL database '{result_collection}'",
+            collection_name=result_collection,
+            documents_count=len(documents),
+            total_documents=info.get("points_count") if info else len(documents)
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating NL2SQL database: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to create NL2SQL database: {str(e)}"
+        )
+
+
+async def add_nl2sql_documents(
+    database_id: str,
+    files: List[UploadFile] = File(..., description="Additional JSON files to add"),
+    batch_size: int = Query(
+        default=100,
+        ge=1,
+        le=1000,
+        description="Batch size for processing"
+    )
+) -> NL2SQLDatabaseResponse:
+    """
+    Add more NL2SQL examples to an existing vector database.
+    
+    Args:
+        database_id: The existing collection to add documents to
+        files: JSON files containing additional NL2SQL examples
+        batch_size: Number of documents to process in each batch
+    """
+    try:
+        # Check if collection exists
+        collections = list_vector_databases(qdrant_client)
+        if database_id not in collections:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Database '{database_id}' not found"
+            )
+        
+        # Process JSON files
+        logger.info(f"Processing {len(files)} JSON files for database: {database_id}")
+        documents = await process_nl2sql_json_files(files)
+        
+        if not documents:
+            raise HTTPException(
+                status_code=422,
+                detail="No valid NL2SQL examples found in uploaded files"
+            )
+        
+        logger.info(f"Adding {len(documents)} examples to database '{database_id}'")
+        
+        # Add documents to existing collection
+        success = add_documents_to_existing_collection(
+            database_id=database_id,
+            documents=documents,
+            qdrant_client=qdrant_client,
+            embedding_model=None,  # Will use config default
+            batch_size=batch_size
+        )
+        
+        if not success:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to add documents to database"
+            )
+        
+        # Get updated collection info
+        info = get_collection_info(database_id, qdrant_client)
+        
+        return NL2SQLDatabaseResponse(
+            success=True,
+            message=f"Successfully added {len(documents)} examples to '{database_id}'",
+            collection_name=database_id,
+            documents_count=len(documents),
+            total_documents=info.get("points_count") if info else None
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error adding NL2SQL documents: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to add documents: {str(e)}"
+        )
 
 # ===== FastAPI Endpoints =====
 
@@ -1605,6 +1661,79 @@ async def get_config():
     }
 
 
+@app.post(
+    "/v1/nl2sql/database/create",
+    response_model=NL2SQLDatabaseResponse,
+    responses={
+        200: {"description": "NL2SQL database created successfully"},
+        422: {"description": "Invalid JSON or no valid examples found"},
+        500: {"description": "Internal server error"},
+    },
+    summary="Create NL2SQL vector database",
+    description="Upload JSON files containing NL2SQL examples and create a vector database for few-shot retrieval",
+    tags=["NL2SQL"]
+)
+async def create_nl2sql_database_endpoint(
+    files: List[UploadFile] = File(..., description="JSON files containing NL2SQL examples"),
+    collection_name: str = Query(
+        default=config["database"]["sql_collection_name"],
+        description="Name for the Qdrant collection"
+    ),
+    recreate: bool = Query(default=True, description="Recreate collection if exists"),
+    batch_size: int = Query(default=100, description="Batch size for processing", ge=1, le=1000)
+):
+    """
+    Create a vector database from NL2SQL JSON files.
+    
+    JSON Structure:
+    ```json
+    [
+      {
+        "id": 1,
+        "complexity": "simple",
+        "module": "دفتر کل",
+        "table": "financial_vouchers",
+        "question": "سوال به زبان طبیعی",
+        "sql": {
+          "SQL": "SELECT ...",
+          "parameters": {"1": "value"}
+        }
+      }
+    ]
+    ```
+    """
+    return await create_nl2sql_database(
+        files=files,
+        collection_name=collection_name,
+        recreate=recreate,
+        batch_size=batch_size
+    )
+
+@app.post(
+    "/v1/nl2sql/database/{database_id}/add",
+    response_model=NL2SQLDatabaseResponse,
+    responses={
+        200: {"description": "Examples added successfully"},
+        404: {"description": "Database not found"},
+        422: {"description": "Invalid JSON or no valid examples"},
+        500: {"description": "Internal server error"},
+    },
+    summary="Add NL2SQL examples to existing database",
+    description="Upload additional JSON files to add more examples to an existing NL2SQL database",
+    tags=["NL2SQL"]
+)
+async def add_nl2sql_documents_endpoint(
+    database_id: str,
+    files: List[UploadFile] = File(..., description="Additional JSON files"),
+    batch_size: int = Query(default=100, description="Batch size", ge=1, le=1000)
+):
+    """Add more NL2SQL examples to an existing database."""
+    return await add_nl2sql_documents(
+        database_id=database_id,
+        files=files,
+        batch_size=batch_size
+    )
+
 @app.delete(
     "/v1/chat/delete/database/{database_id}",
     response_model=DeleteDatabaseResponse,
@@ -1667,7 +1796,7 @@ async def delete_database(
             status_code=500,
             detail=f"Failed to delete database: {str(e)}"
         )
-        
+
 @app.post(
     FEEDBACK_ENDPOINT,
     responses={

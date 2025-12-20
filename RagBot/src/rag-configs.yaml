@@ -8,6 +8,7 @@ database:
   use_cache: True
   dbname: my-vdb
   collection_name: "default_collection"
+  sql_collection_name: "default_sql_collection"
   documents:
     4thg-intro: معرفی سیستم یکپارچه نسل 4
     crm: مدیریت ارتباط با مشتری
@@ -57,6 +58,13 @@ modules:
     - مدیریت ارتباط با مشتری
     - مودیان مالیاتی
     - گزارش ساز
+
+  available_sql_modules:
+    - انبار
+    - دفتر کل
+    - مدیریت ارتباط با مشتری
+    - خزانه داری
+    - فروش
 
 postgres:
   address: 172.26.0.6 # 172.26.0.5 # postgres # 172.26.0.6 # postgres # 172.20.0.6 # 192.168.208.2
@@ -148,7 +156,8 @@ reranker:
 # configurations for retriever
 retriever:
   retrieved_documents: 40
-  retrieved_rank2_documents: 7
+  retrieved_rank2_documents: 5
+  sql_retrieved_rank2_documents: 10
   retriever_threshold: 0.0
   alpha_threshold: 0.5
   use_reranker: False
@@ -182,7 +191,7 @@ followup_query_generator:
   number_of_suggested_queries: 3
 
 router_model:
-  address: /home/jovyan/Assistant-bot/RagBot/saved_models/svm.joblib
+  address: ../saved_models/svm.joblib
   openrouter: "qwen/qwen3-embedding-4b"
   embedding_model: "qwen3-embedding-4b"
   model_name: svm

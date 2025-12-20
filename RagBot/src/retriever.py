@@ -1383,18 +1383,17 @@ class Retriever(object):
 
     @staticmethod
     def _documents_to_standard_format(documents, reverse=False):
-        """
-        Convert Document objects to a standardized dictionary format.
-        This ensures consistent output whether reranking is used or not.
-        """
         formatted_docs = []
         for idx, doc in enumerate(documents):
             formatted_doc = {
-                "text": doc.page_content,
+                "text": doc.page_content,  # This is the question
                 "index": idx,
                 "module": doc.metadata.get("module", "unknown"),
                 "source": doc.metadata.get("source", "unknown"),
-                "metadata": doc.metadata  # Keep full metadata for potential future use
+                # Add these for NL2SQL use case:
+                "sql": doc.metadata.get("sql", ""),
+                "parameters": doc.metadata.get("parameters", "{}"),
+                "metadata": doc.metadata
             }
             formatted_docs.append(formatted_doc)
         
@@ -1459,8 +1458,12 @@ class Retriever(object):
         else:
             return []
     
-    async def retrieve_context(self, query, collection_name=None, k=None, 
-                              module_filter=None, reverse=True, use_reranker=None) -> Tuple[List, List]:
+    async def retrieve_context(
+        self, 
+        query, 
+        collection_name=None, 
+        k=None, 
+        module_filter=None, reverse=True, use_reranker=None, query_embedding=None) -> Tuple[List, List]:
         """
         Retrieve context with optional reranking.
         
@@ -1474,7 +1477,7 @@ class Retriever(object):
         """
         # 1. OPTIMIZATION: Generate embedding ONCE here.
         # This takes ~500ms. We will pass this vector to the DB to avoid re-calculating it.
-        query_embedding = await self.embedding_model_.aembed_query(query)
+        # query_embedding = await self.embedding_model_.aembed_query(query)
 
         if k is None:
             k = self.config_["retriever"]["retrieved_rank2_documents"]
