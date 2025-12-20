@@ -186,5 +186,5 @@ router_model:
   openrouter: "qwen/qwen3-embedding-4b"
   embedding_model: "qwen3-embedding-4b"
   model_name: svm
-  beta_threshold: 0.3
-  alpha_threshold: 0.6
+  beta_threshold: 0
+  alpha_threshold: 1
