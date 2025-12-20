@@ -115,7 +115,7 @@ class ChatRequest(BaseModel):
     error_payload: Optional[str] = ""
     is_sync: Optional[bool] = True
     sql_mode: Optional[bool] = True  # Toggle between legacy and SQL agent mode
-    use_oss: Optional[bool] = False
+    use_oss: Optional[bool] = True
 
 class ChatResponse(BaseModel):
     message_id: str
