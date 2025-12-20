@@ -1,5 +1,4 @@
 import random
-import json
 import os
 import statistics
 import yaml
@@ -10,9 +9,10 @@ from langchain.schema import SystemMessage
 import torch
 import sqlglot
 from sqlglot import exp
+from dataclasses import dataclass, field
 
 from collections import Counter
-from typing import List, Tuple, Union, Set
+from typing import List, Tuple, Union, Set, Optional
 from .prompts import (
     RAG_CONCISE_SYSTEM_PROMPT,
     RAG_EXPLANATORY_SYSTEM_PROMPT,
@@ -68,6 +68,26 @@ template_for_not_answer = "پاسخ به این سوال در محدوده پا�
 template_for_not_context = """این سوال خارج از حوزه کاری {company_name} است. لطفا سوال خود را در رابطه با محصولات و خدمات {company_name} مطرح کنید. برای اطلاعات بیشتر به 'https://systemgroup.net' مراجعه کنید"""
 template_for_doubtful_answer = "سوال شما را به خوبی متوجه نشدم. لطفا سوال خود را به صورت دقیق تر بپرسید تا بتوانم بهتر کمک کنم."
 
+@dataclass
+class ChatResult:
+    utterance: str
+    response: str = ""
+    context: str = ""
+    do_clarify: bool = False
+    modules: List[str] = field(default_factory=list)
+
+    def to_tuple(self):
+        """Maintains backward compatibility if your caller expects a tuple."""
+        return self.utterance, self.response, self.context, self.do_clarify, self.modules
+
+def _get_statement_exclusions(statement: exp.Expression) -> tuple[set, set]:
+    """
+    Identifies temporary names (CTEs and subquery aliases) within a statement
+    that should not be treated as real tables.
+    """
+    ctes = {cte.alias for cte in statement.find_all(exp.CTE)}
+    aliases = {sub.alias for sub in statement.find_all(exp.Subquery) if sub.alias}
+    return ctes, aliases
 
 def extract_tables_robust(sql: str, dialect: str = None) -> dict:
     """
@@ -87,15 +107,9 @@ def extract_tables_robust(sql: str, dialect: str = None) -> dict:
         subquery_aliases = set()
         
         for statement in parsed:
-            # First, collect CTE names so we can exclude them
-            for cte in statement.find_all(exp.CTE):
-                cte_names.add(cte.alias)
-            
-            # Collect subquery aliases
-            for subquery in statement.find_all(exp.Subquery):
-                if subquery.alias:
-                    subquery_aliases.add(subquery.alias)
-            
+            local_ctes, local_aliases = _get_statement_exclusions(statement)
+            cte_names.update(local_ctes)
+            subquery_aliases.update(local_aliases)
             # Now extract all table references
             for table in statement.find_all(exp.Table):
                 table_name = table.name
@@ -262,7 +276,7 @@ def subselect_yaml(
     data: dict,
     selections: dict[str, list[str] | None],
     output_format: str = "dict"
-) -> Union[dict, str]:
+) -> dict | str:
     """
     Subselect specific keys from multiple tables in YAML data.
     
@@ -426,7 +440,7 @@ async def get_cache_response(
 ) -> tuple[str, str]:
     knn = 1
     cache = Cache()
-    records = await cache.get_embedding_match(
+    records = cache.get_embedding_match(
         query=query,
         threshold=threshold,
         knn=knn,
@@ -673,32 +687,16 @@ def get_schema_for_module(detected_module: str) -> str:
 async def sql_responder_(
     clients,
     query: str,
-    detected_module: str = "", 
-    faulty_sql_query: str = "", 
-    error_message: str = "", 
-    do_retry: bool = False,
-    parameters = None,
+    detected_module: str = "",
     use_oss: bool = False,
     ):
     """
     Unified SQL responder supporting both simple schema list and module-based schema selection.
     """
-    if parameters is None:
-        parameters = {}
     
     schema = get_schema_for_module(detected_module)
-    
-    if not do_retry:
-        bo_prompt = format_sql_prompt(query, schema=schema)
-    else:
-        faulty_sql_query_json = json.dumps({"SQL": faulty_sql_query, "parameters": parameters})
-        bo_prompt = format_modifier_prompt(
-            schema=schema,
-            original_query=query,
-            faulty_sql_query=faulty_sql_query_json,
-            faulty_parameters=parameters,  # Fixed: was undefined 'faulty_parameters'
-            error_message=error_message
-        )
+
+    bo_prompt = format_sql_prompt(query, schema=schema)
     
     client_model = model_selector(use_oss, clients)
     raw_json_response = await get_chat_response(
@@ -784,9 +782,8 @@ async def _determine_final_route(
     return result
 
 @observe()
-async def get_route_for_utterance(clients, utterance: str, query_embedding: List, use_oss: bool = False) -> str:    
+async def get_route_for_utterance(clients, utterance: str, query_embedding: List, use_oss: bool = False) -> str:
     CHITCHAT_ROUTE = "chitchat"
-    ROUTER_CONFIG = config["router_model"]
     
     # It's better to instantiate clients once and reuse them
     # rather than creating them in a function that's called frequently.
@@ -803,7 +800,7 @@ async def get_route_for_utterance(clients, utterance: str, query_embedding: List
     # 2. Check for the specific chitchat cache (from original logic)
     chitchat_key = _get_chitchat_cache_key(utterance)
     if cache_client.get_exact_cache(chitchat_key):
-        return chitchat_route
+        return CHITCHAT_ROUTE
 
     # 3. Determine the final route using the logic in the helper function
     final_route = await _determine_final_route(clients, utterance, query_embedding, use_oss)
@@ -820,85 +817,92 @@ async def get_route_for_utterance(clients, utterance: str, query_embedding: List
     #     cache_client.set_exact_cache(chitchat_key, final_route)
     return final_route.strip()
 
+async def _check_cache_layer(utterance: str, use_cache: bool) -> Optional[str]:
+    """Handles the cache lookup logic."""
+    if not use_cache:
+        return None
+    response, _ = await get_cache_response(utterance)
+    return response
+
+def _post_process_rag_response(response: str, company_name: str) -> str:
+    """Handles specific string replacements and fallback logic."""
+    if "محدوده دانش من " in response:
+        return template_for_not_answer
+    if "خارج از حوزه کاری" in response:
+        return template_for_not_context.format(company_name=company_name)
+    return response
+
 @observe()
 async def chat_responder_(
-    clients,
-    history: List[tuple[str, str]],
-    user_utterance: str,
-    database_index: str = config["database"]["collection_name"],
-    company_name: str = config["database"]["company_name"],
-    assistant_name: str = config["database"]["assistant_name"],
-    response_type: str = config["database"]["response_type"],
-    use_cache: bool = config["database"]["use_cache"],
-    detected_module: str = "",
-    use_oss: bool = True, 
-) -> Union[tuple[str, str, str, str], tuple[str, str, str, bool, List[str]]]:
-    """
-    Unified chat responder supporting both develop branch (simple RAG) and feature/add-sql-agent (SQL + module handling)
-    """
-    # If sql_mode is True, use the new SQL agent logic
-    if not detected_module and use_cache:
-        response, _ = await get_cache_response(user_utterance)
-        if response:
-            result_temp = user_utterance, response, "", False, []
-            return result_temp
+        clients,
+        history: List[tuple[str, str]],
+        user_utterance: str,
+        # Grouping config vars (assuming these defaults exist in your scope)
+        database_index: str = config["database"]["collection_name"],
+        company_name: str = config["database"]["company_name"],
+        assistant_name: str = config["database"]["assistant_name"],
+        response_type: str = config["database"]["response_type"],
+        use_cache: bool = config["database"]["use_cache"],
+        detected_module: str = "",
+        use_oss: bool = True,
+) -> tuple:
+    # 1. Early Cache Check (Raw Utterance)
+    if not detected_module:
+        if cached_resp := await _check_cache_layer(user_utterance, use_cache):
+            return ChatResult(utterance=user_utterance, response=cached_resp).to_tuple()
 
-    paraphrased_utterance = await utterance_paraphraser(clients, history, user_utterance, use_oss=use_oss)
-    if use_cache:
-        response, _ = await get_cache_response(paraphrased_utterance)
-        if response:
-            result_temp = paraphrased_utterance, response, "", False, []
-            return result_temp
-    if detected_module:
-        do_clarify, modules, context, query_embedding = await prepare_final_context(paraphrased_utterance, database_index=database_index, input_module=detected_module)
-    else:
-        do_clarify, modules, context, query_embedding = await prepare_final_context(paraphrased_utterance, database_index=database_index)
+    # 2. Paraphrasing
+    paraphrased = await utterance_paraphraser(clients, history, user_utterance, use_oss=use_oss)
+
+    # 3. Secondary Cache Check (Paraphrased)
+    if cached_resp := await _check_cache_layer(paraphrased, use_cache):
+        return ChatResult(utterance=paraphrased, response=cached_resp).to_tuple()
+
+    # 4. Context Preparation
+    # Simplifies the if/else logic for input_module
+    kwargs = {"input_module": detected_module} if detected_module else {}
+    do_clarify, modules, context, query_embedding = await prepare_final_context(
+        paraphrased, database_index=database_index, **kwargs
+    )
 
     if do_clarify:
-        result_temp = paraphrased_utterance, "", "", do_clarify, modules
-        return result_temp
+        return ChatResult(utterance=paraphrased, do_clarify=True, modules=modules).to_tuple()
 
-    route_response = await get_route_for_utterance(clients, paraphrased_utterance, query_embedding, use_oss)
-    if route_response == "sql":
-        if not modules:
-            modules = ["all"]
-        result_temp = paraphrased_utterance, "", "", False, [modules[0]]
-        
-        return result_temp
-    
-    if route_response == "chitchat":
-        response = await chitchat_responder(clients, paraphrased_utterance, history=history, context=context, use_oss=use_oss)
-        result_temp = paraphrased_utterance, response, context, False, []
-        
-        return result_temp
-    
-    if route_response == "illegal" or route_response =="irrelevant":
-        result_temp = paraphrased_utterance, template_for_not_answer, "", False, []
-        
-        return result_temp
+    # 5. Routing
+    route = await get_route_for_utterance(clients, paraphrased, query_embedding, use_oss)
+
+    # --- Route Handlers ---
+
+    if route == "sql":
+        active_modules = modules if modules else ["all"]
+        return ChatResult(utterance=paraphrased, modules=[active_modules[0]]).to_tuple()
+
+    if route == "chitchat":
+        response = await chitchat_responder(clients, paraphrased, history=history, context=context, use_oss=use_oss)
+        return ChatResult(utterance=paraphrased, response=response, context=context).to_tuple()
+
+    if route in ["illegal", "irrelevant"]:
+        return ChatResult(utterance=paraphrased, response=template_for_not_answer).to_tuple()
 
     if not context:
-        result_temp = paraphrased_utterance, "", "", False, []
-        return result_temp
+        return ChatResult(utterance=paraphrased).to_tuple()
 
-    response = await query_responder(
-        clients,
-        paraphrased_utterance,
-        context,
-        history,
-        company_name=company_name,
-        assistant_name=assistant_name,
-        answer_type=response_type,
-        use_oss=use_oss, 
-        )
+    # 6. Default RAG Logic (Query Responder)
+    raw_response = await query_responder(
+        clients, paraphrased, context, history,
+        company_name=company_name, assistant_name=assistant_name,
+        answer_type=response_type, use_oss=use_oss,
+    )
 
-    if "محدوده دانش من " in response:
-        response = template_for_not_answer
-    if "خارج از حوزه کاری" in response:
-        response = template_for_not_context.format(company_name=company_name)
-    result_temp = paraphrased_utterance, response, context, do_clarify, modules
+    final_response = _post_process_rag_response(raw_response, company_name)
 
-    return result_temp
+    return ChatResult(
+        utterance=paraphrased,
+        response=final_response,
+        context=context,
+        do_clarify=do_clarify,
+        modules=modules
+    ).to_tuple()
 
 @observe()
 async def feedback_(
@@ -909,8 +913,8 @@ async def feedback_(
 ) -> None:
     cache = Cache()
     if feedback_type == "thumb_up":
-        await cache.increment_thumb_up(query, response, url)
+        cache.increment_thumb_up(query, response, url)
     elif feedback_type == "thumb_down":
-        await cache.increment_thumb_down(query, response, url)
+        cache.increment_thumb_down(query, response, url)
     elif feedback_type == "flag":
-        await cache.increment_flag(query, response, url)
+        cache.increment_flag(query, response, url)

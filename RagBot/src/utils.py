@@ -1,6 +1,32 @@
 import json
 
 import streamlit as st
+JSON_START_STR = "```json"
+
+def get_substituted_value(param_value):
+    # Handle different data types
+    if isinstance(param_value, str):
+        # Escape single quotes in strings and wrap in quotes
+        escaped_value = param_value.replace("'", "''")
+        substituted_value = f"'{escaped_value}'"
+    elif isinstance(param_value, (int, float)):
+        # Numbers don't need quotes
+        substituted_value = str(param_value)
+    elif isinstance(param_value, list):
+        # For lists, we'll take the first element (you may want to modify this behavior)
+        if param_value and isinstance(param_value[0], str):
+            escaped_value = param_value[0].replace("'", "''")
+            substituted_value = f"'{escaped_value}'"
+        elif param_value:
+            substituted_value = str(param_value[0])
+        else:
+            substituted_value = "NULL"
+    elif param_value is None:
+        substituted_value = "NULL"
+    else:
+        # For other types, convert to string and wrap in quotes
+        substituted_value = f"'{str(param_value)}'"
+    return substituted_value
 
 def substitute_sql_parameters(json_input):
     """
@@ -34,30 +60,7 @@ def substitute_sql_parameters(json_input):
         if param_name in parameters:
             param_value = parameters[param_name]
             placeholder = f':{param_name}'
-            
-            # Handle different data types
-            if isinstance(param_value, str):
-                # Escape single quotes in strings and wrap in quotes
-                escaped_value = param_value.replace("'", "''")
-                substituted_value = f"'{escaped_value}'"
-            elif isinstance(param_value, (int, float)):
-                # Numbers don't need quotes
-                substituted_value = str(param_value)
-            elif isinstance(param_value, list):
-                # For lists, we'll take the first element (you may want to modify this behavior)
-                if param_value and isinstance(param_value[0], str):
-                    escaped_value = param_value[0].replace("'", "''")
-                    substituted_value = f"'{escaped_value}'"
-                elif param_value:
-                    substituted_value = str(param_value[0])
-                else:
-                    substituted_value = "NULL"
-            elif param_value is None:
-                substituted_value = "NULL"
-            else:
-                # For other types, convert to string and wrap in quotes
-                substituted_value = f"'{str(param_value)}'"
-            
+            substituted_value = get_substituted_value(param_value)
             # Replace the placeholder with the actual value
             result_sql = result_sql.replace(placeholder, substituted_value)
     
@@ -132,13 +135,12 @@ def extract_answer(llm_output):
 
 
 def json_cleaning_1(input_string):
-    final_cleaned_response = input_string.replace("```json", "").replace("```", "").strip() #.replace("\n\n", "\n").strip()
+    final_cleaned_response = input_string.replace(JSON_START_STR, "").replace("```", "").strip() #.replace("\n\n", "\n").strip()
     return final_cleaned_response
 
 def json_cleaning(input_string):    
     cleaned_string = re.sub(r'<think>.*?</think>', '', input_string, flags=re.DOTALL)
-    # cleaned_string = re.sub(r'\n+', '\n', cleaned_string)
-    final_cleaned_response = cleaned_string.replace("```json", "").replace("```", "").strip() #.replace("\n\n", "\n").strip()
+    final_cleaned_response = cleaned_string.replace(JSON_START_STR, "").replace("```", "").strip() #.replace("\n\n", "\n").strip()
     final_cleaned = extract_answer(final_cleaned_response)
     if final_cleaned:
         final_cleaned_response = final_cleaned
@@ -179,8 +181,8 @@ def json_string_to_dict(json_str):
     
     # Remove code block markers if present
     cleaned_str = json_str.strip()
-    if cleaned_str.startswith("```json"):
-        cleaned_str = cleaned_str.replace("```json", "").replace("```", "").strip()
+    if cleaned_str.startswith(JSON_START_STR):
+        cleaned_str = cleaned_str.replace(JSON_START_STR, "").replace("```", "").strip()
     
     try:
         # Parse JSON string into dictionary
@@ -188,54 +190,45 @@ def json_string_to_dict(json_str):
         return result
     except json.JSONDecodeError as e:
         raise ValueError(f"Invalid JSON format: {str(e)}")
-    
-    
+
+
 def init_session_state():
-    if "message_id" not in st.session_state:
-        st.session_state["message_id"] = []
-    if "user_input" not in st.session_state:
-        st.session_state["user_input"] = ""
-    if "user_input_storage" not in st.session_state:
-        st.session_state["user_input_storage"] = []
-    if "user_utterance" not in st.session_state:
-        st.session_state["user_utterance"] = []
-    if "response" not in st.session_state:
-        st.session_state["response"] = []
-    if "log" not in st.session_state:
-        st.session_state["log"] = []
-    if "urls" not in st.session_state:
-        st.session_state["urls"] = []
-    if "query" not in st.session_state:
-        st.session_state["query"] = []
-    if "suggested_sessions" not in st.session_state:
-        st.session_state["suggested_sessions"] = []
-    if "have_clicked_on_feedback" not in st.session_state:
-        st.session_state["have_clicked_on_feedback"] = False
-    if "first_encounter_with_searchbox" not in st.session_state:
-        st.session_state["first_encounter_with_searchbox"] = True
-    if "first_encounter_with_extra_sessions" not in st.session_state:
-        st.session_state["first_encounter_with_extra_sessions"] = True
-    if "do_generate_sessions" not in st.session_state:
-        st.session_state["do_generate_sessions"] = False
-    if "response_is_valid" not in st.session_state:
-        st.session_state["response_is_valid"] = ""
-    if "do_suggest_modules" not in st.session_state:
-        st.session_state["do_suggest_modules"] = False
-    if "on_click" not in st.session_state:
-        st.session_state["on_click"] = False
-    if "suggested_modules" not in st.session_state:
-        st.session_state["suggested_modules"] = []
-    if "on_click_user_input" not in st.session_state:
-        st.session_state["on_click_user_input"] = False
-    if "sql_response_type" not in st.session_state: # TODO only for MAY demo. => should be removed 
-        st.session_state["sql_response_type"] = []
-    if "temporary_response" not in st.session_state:
-        st.session_state["temporary_response"] = ""
-    if "suggested_choices" not in st.session_state:
-        st.session_state["suggested_choices"] = []
-    if "sql_mode" not in st.session_state:
-        st.session_state["sql_mode"] = True
-    if "model_selector" not in st.session_state:
-        st.session_state["model_selector"] = "GPT"
-    if "evaluate_sql" not in st.session_state:
-        st.session_state["evaluate_sql"] = False
+    # Define all state variables and their default values
+    defaults = {
+        # Lists
+        "message_id": [],
+        "user_input_storage": [],
+        "user_utterance": [],
+        "response": [],
+        "log": [],
+        "urls": [],
+        "query": [],
+        "suggested_sessions": [],
+        "suggested_modules": [],
+        "sql_response_type": [],
+        "suggested_choices": [],
+
+        # Strings
+        "user_input": "",
+        "response_is_valid": "",
+        "temporary_response": "",
+        "model_selector": "GPT",
+
+        # Booleans (False by default)
+        "have_clicked_on_feedback": False,
+        "do_generate_sessions": False,
+        "do_suggest_modules": False,
+        "on_click": False,
+        "on_click_user_input": False,
+        "evaluate_sql": False,
+
+        # Booleans (True by default)
+        "first_encounter_with_searchbox": True,
+        "first_encounter_with_extra_sessions": True,
+        "sql_mode": True,
+    }
+
+    # Iterate through the defaults and initialize if not present
+    for key, value in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = value

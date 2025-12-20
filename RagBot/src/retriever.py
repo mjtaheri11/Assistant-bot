@@ -1,6 +1,7 @@
 import os
 import logging
 from dataclasses import dataclass
+from http.client import HTTPException
 from typing import Tuple
 import requests
 import numpy as np
@@ -408,6 +409,35 @@ class OpenRouterEmbeddings(Embeddings):
             text = text[:max_chars]
         
         return text
+
+    def _handle_statuscodes_continue_key_return(self, response, non_empty_texts, attempt):
+        do_return_or_continue = 1
+        if response.status_code == 200:
+            result = response.json()
+            do_return_or_continue = 1
+            final_result = self._parse_response(result, len(non_empty_texts))
+
+        elif response.status_code == 429:  # Rate limit
+            retry_after = int(response.headers.get('Retry-After', self.retry_delay))
+            logger.warning(f"Rate limited. Waiting {retry_after} seconds...")
+            time.sleep(retry_after)
+            do_return_or_continue = 0
+            final_result = None
+
+        elif response.status_code == 401:
+            raise ValueError("Invalid API key")
+
+        else:
+            logger.error(f"OpenRouter returned status {response.status_code}: {response.text}")
+            if attempt < self.max_retries - 1:
+                time.sleep(self.retry_delay * (attempt + 1))
+                final_result = None
+                do_return_or_continue = 0
+            else:
+                response.raise_for_status()
+
+        return final_result, do_return_or_continue
+
     
     def _make_request(self, texts: List[str]) -> List[List[float]]:
         """
@@ -434,26 +464,11 @@ class OpenRouterEmbeddings(Embeddings):
                     headers=self.headers,
                     timeout=self.timeout
                 )
-                
-                if response.status_code == 200:
-                    result = response.json()
-                    return self._parse_response(result, len(non_empty_texts))
-                
-                elif response.status_code == 429:  # Rate limit
-                    retry_after = int(response.headers.get('Retry-After', self.retry_delay))
-                    logger.warning(f"Rate limited. Waiting {retry_after} seconds...")
-                    time.sleep(retry_after)
-                    continue
-                    
-                elif response.status_code == 401:
-                    raise ValueError("Invalid API key")
-                    
+                final_result, do_return_or_continue = self._handle_statuscodes_continue_key_return(response, non_empty_texts, attempt)
+                if do_return_or_continue:
+                    return final_result
                 else:
-                    logger.error(f"OpenRouter returned status {response.status_code}: {response.text}")
-                    if attempt < self.max_retries - 1:
-                        time.sleep(self.retry_delay * (attempt + 1))
-                        continue
-                    response.raise_for_status()
+                    continue
                     
             except requests.exceptions.Timeout:
                 logger.error(f"Request timed out (attempt {attempt + 1})")
@@ -469,7 +484,7 @@ class OpenRouterEmbeddings(Embeddings):
                     continue
                 raise
         
-        raise Exception(f"Failed after {self.max_retries} attempts")
+        raise HTTPException(f"Failed after {self.max_retries} attempts")
 
     @staticmethod
     def _parse_response(response: Dict[str, Any], expected_count: int) -> List[List[float]]:
@@ -856,37 +871,49 @@ class RerankerServiceClient:
             payload["model"] = self.model_name
             
         return payload
-    
-    def _parse_response(self, response_data: Any) -> List[float]:
-        """Parse response based on API type."""
+
+    def parse_api_based(self, response_data):
+        final_result = None
         if self.api_type == APIType.CUSTOM_V2:
             # Custom V2 API might return scores with indices
             if isinstance(response_data, dict):
                 if "results" in response_data:
                     # Extract scores from results
-                    return [item.get("relevance_score", item.get("score", 0.0)) 
+                    final_result = [item.get("relevance_score", item.get("score", 0.0))
                             for item in response_data["results"]]
                 elif "scores" in response_data:
-                    return response_data["scores"]
-                    
+                    final_result = response_data["scores"]
         elif self.api_type == APIType.OPENROUTER:
             # OpenRouter format (adjust based on actual response)
             if isinstance(response_data, dict):
                 if "data" in response_data:
-                    return [item.get("relevance_score", item.get("score", 0.0)) 
+                    final_result = [item.get("relevance_score", item.get("score", 0.0))
                             for item in response_data["data"]]
                 elif "results" in response_data:
-                    return response_data["results"]
-                    
-        # Legacy or general parsing
+                    final_result = response_data["results"]
+        return final_result
+
+    @staticmethod
+    def _legacy_or_general_parsing(response_data):
         if "scores" in response_data:
-            return response_data["scores"]
+            result = response_data["scores"]
         elif "data" in response_data:
-            return [item["score"] for item in response_data["data"]]
+            result = [item["score"] for item in response_data["data"]]
         elif isinstance(response_data, list):
-            return response_data
+            result = response_data
         else:
             raise ValueError(f"Unexpected response format: {response_data}")
+        return result
+    
+    def _parse_response(self, response_data: Any) -> List[float]:
+        """Parse response based on API type."""
+        final_result = self.parse_api_based(response_data)
+        if final_result is not None:
+            return final_result
+        final_result = self._legacy_or_general_parsing(response_data)
+        return final_result
+
+
     
     def rerank(
         self,
@@ -1096,11 +1123,33 @@ class ModelManager:
 
     def _initialize(self):
         # --- Embedding Model Selection ---
+        self.__init_embedding__()
+        # --- Reranker Model Selection ---
+        self.__init_reranker__()
+
+    @classmethod
+    def reset(cls):
+        """
+        Resets the singleton instance.
+        This forces the next instantiation to re-run _initialize().
+        """
+        if cls._instance:
+            # Optional: Explicitly delete heavy model references to aid Garbage Collection
+            if hasattr(cls._instance, 'embedding_model'):
+                del cls._instance.embedding_model
+            if hasattr(cls._instance, 'reranker_model'):
+                del cls._instance.reranker_model
+
+            # Reset the instance to None
+            cls._instance = None
+            logger.info("♻️ ModelManager singleton has been reset.")
+
+    def __init_embedding__(self):
         embedding_config = config["embedding_model"]
         embedding_type = embedding_config.get("type")  # Default to Triton
         if embedding_type == "triton":
             # Triton Inference Server
-            self.embedding_model = TritonEmbeddings(         
+            self.embedding_model = TritonEmbeddings(
                 model_name=embedding_config.get("model_name"),
                 triton_url=embedding_config.get("triton_url"),
                 tokenizer_path=embedding_config.get("tokenizer_path"),
@@ -1109,7 +1158,7 @@ class ModelManager:
                 batch_size=embedding_config.get("batch_size")
             )
             logger.info("✅ Initialized Triton embedding model")
-            
+
         elif embedding_type == "local":
             # Local model
             from langchain_community.embeddings import HuggingFaceEmbeddings
@@ -1128,104 +1177,95 @@ class ModelManager:
         else:
             raise ValueError(f"Unsupported embedding type: '{embedding_type}'")
 
-        # --- Reranker Model Selection ---
+    def __init_reranker_triton__(self, reranker_config):
+        # Triton BGE/Flag Reranker - DEFAULT SERVICE-BASED RERANKER
+        self.reranker_model = TritonBGEReranker(
+            model_name=reranker_config.get("model_name"),
+            triton_url=reranker_config.get("triton_url", "http://triton-server.admin.svc.cluster.local"),
+            tokenizer_path=reranker_config.get("tokenizer_path", "BAAI/bge-reranker-large"),
+            max_length=reranker_config.get("max_length", 512),
+            timeout=reranker_config.get("timeout", 60),
+            batch_size=reranker_config.get("batch_size", 32)
+        )
+        logger.info("✅ Initialized Triton BGE reranker model (default service-based reranker)")
+
+    def __init_reranker_service__(self, reranker_config):
+        # External reranker service with multiple API format support
+        api_url = reranker_config["api_url"]
+
+        # Determine API type from config or auto-detect
+        api_type_str = reranker_config.get("api_type")  # Can be "custom_v2", "openrouter", "legacy", or None
+
+        if api_type_str:
+            # Explicit API type from config
+            try:
+                api_type = APIType(api_type_str)
+            except ValueError:
+                logger.warning(f"Unknown api_type '{api_type_str}', will auto-detect from URL")
+                api_type = None
+        else:
+            # Auto-detect from URL
+            api_type = None
+
+        # Initialize the reranker service client
+        self.reranker_model = RerankerServiceClient(
+            api_url=api_url,
+            api_key=reranker_config.get("api_key"),
+            model_name=reranker_config.get("model_name"),
+            timeout=reranker_config.get("timeout", 60),
+            api_type=api_type  # Will auto-detect if None
+        )
+
+        # Log the detected/specified API type for debugging
+        detected_type = self.reranker_model.api_type.value
+        logger.info(f"✅ Initialized reranker service client (API type: {detected_type})")
+
+        # Log additional info based on API type
+        if self.reranker_model.api_type == APIType.CUSTOM_V2:
+            logger.info(f"   Using Custom V2 API at: {api_url}")
+            logger.info(f"   Model: {reranker_config.get('model_name', 'default')}")
+        elif self.reranker_model.api_type == APIType.OPENROUTER:
+            logger.info(f"   Using OpenRouter API at: {api_url}")
+            logger.info(f"   Model: {reranker_config.get('model_name', 'default')}")
+        elif self.reranker_model.api_type == APIType.LEGACY:
+            logger.info(f"   Using Legacy API format at: {api_url}")
+
+    def __init_reranker_local__(self, reranker_config):
+        # Local reranker models
+        primary_model = reranker_config.get("primary_model", "flag")
+        if primary_model == "flag":
+            self.reranker_model = FlagReranker(
+                reranker_config["flag_model"]["model_path"],
+                device=reranker_config["flag_model"]["device"],
+                use_fp16=True
+            )
+            logger.info("✅ Initialized local FlagReranker model")
+
+        elif primary_model == "qwen":
+            self.reranker_model = QwenReranker(
+                model_name=reranker_config["qwen_model"]["model_path"],
+                device=reranker_config["qwen_model"]["device"],
+                max_length=reranker_config["qwen_model"].get("max_length", 8192)
+            )
+            logger.info("✅ Initialized local QwenReranker model")
+
+        else:
+            raise ValueError(f"Unsupported local reranker model: '{primary_model}'")
+
+    def __init_reranker__(self):
         reranker_config = config["reranker"]
         reranker_type = reranker_config.get("type", "triton")  # Default to Triton
         if reranker_type == "triton":
-            # Triton BGE/Flag Reranker - DEFAULT SERVICE-BASED RERANKER
-            self.reranker_model = TritonBGEReranker(
-                model_name=reranker_config.get("model_name"),
-                triton_url=reranker_config.get("triton_url", "http://triton-server.admin.svc.cluster.local"),
-                tokenizer_path=reranker_config.get("tokenizer_path", "BAAI/bge-reranker-large"),
-                max_length=reranker_config.get("max_length", 512),
-                timeout=reranker_config.get("timeout", 60),
-                batch_size=reranker_config.get("batch_size", 32)
-            )
-            logger.info("✅ Initialized Triton BGE reranker model (default service-based reranker)")
-            
+            self.__init_reranker_triton__(reranker_config)
+
         elif reranker_type == "service":
-            # External reranker service with multiple API format support
-            api_url = reranker_config["api_url"]
-            
-            # Determine API type from config or auto-detect
-            api_type_str = reranker_config.get("api_type")  # Can be "custom_v2", "openrouter", "legacy", or None
-            
-            if api_type_str:
-                # Explicit API type from config
-                try:
-                    api_type = APIType(api_type_str)
-                except ValueError:
-                    logger.warning(f"Unknown api_type '{api_type_str}', will auto-detect from URL")
-                    api_type = None
-            else:
-                # Auto-detect from URL
-                api_type = None
-            
-            # Initialize the reranker service client
-            self.reranker_model = RerankerServiceClient(
-                api_url=api_url,
-                api_key=reranker_config.get("api_key"),
-                model_name=reranker_config.get("model_name"),
-                timeout=reranker_config.get("timeout", 60),
-                api_type=api_type  # Will auto-detect if None
-            )
-            
-            # Log the detected/specified API type for debugging
-            detected_type = self.reranker_model.api_type.value
-            logger.info(f"✅ Initialized reranker service client (API type: {detected_type})")
-            
-            # Log additional info based on API type
-            if self.reranker_model.api_type == APIType.CUSTOM_V2:
-                logger.info(f"   Using Custom V2 API at: {api_url}")
-                logger.info(f"   Model: {reranker_config.get('model_name', 'default')}")
-            elif self.reranker_model.api_type == APIType.OPENROUTER:
-                logger.info(f"   Using OpenRouter API at: {api_url}")
-                logger.info(f"   Model: {reranker_config.get('model_name', 'default')}")
-            elif self.reranker_model.api_type == APIType.LEGACY:
-                logger.info(f"   Using Legacy API format at: {api_url}")
+            self.__init_reranker_service__(reranker_config)
 
         elif reranker_type == "local":
-            # Local reranker models
-            primary_model = reranker_config.get("primary_model", "flag")
-            
-            if primary_model == "flag":
-                self.reranker_model = FlagReranker(
-                    reranker_config["flag_model"]["model_path"],
-                    device=reranker_config["flag_model"]["device"],
-                    use_fp16=True
-                )
-                logger.info("✅ Initialized local FlagReranker model")
-                
-            elif primary_model == "qwen":
-                self.reranker_model = QwenReranker(
-                    model_name=reranker_config["qwen_model"]["model_path"],
-                    device=reranker_config["qwen_model"]["device"],
-                    max_length=reranker_config["qwen_model"].get("max_length", 8192)
-                )
-                logger.info("✅ Initialized local QwenReranker model")
-                
-            else:
-                raise ValueError(f"Unsupported local reranker model: '{primary_model}'")
-                
+            self.__init_reranker_local__(reranker_config)
+
         else:
             raise ValueError(f"Unsupported reranker type: '{reranker_type}'")
-
-    @classmethod
-    def reset(cls):
-        """
-        Resets the singleton instance.
-        This forces the next instantiation to re-run _initialize().
-        """
-        if cls._instance:
-            # Optional: Explicitly delete heavy model references to aid Garbage Collection
-            if hasattr(cls._instance, 'embedding_model'):
-                del cls._instance.embedding_model
-            if hasattr(cls._instance, 'reranker_model'):
-                del cls._instance.reranker_model
-
-            # Reset the instance to None
-            cls._instance = None
-            logger.info("♻️ ModelManager singleton has been reset.")
 
 class Retriever(object):
     _instance = None
@@ -1276,7 +1316,7 @@ class Retriever(object):
                 verify=False,
             )
 
-    async def find_vdb(self, collection_name: str):
+    def find_vdb(self, collection_name: str):
         try:
             collections = self.qdrant_client.get_collections().collections
             collection_exists = any(c.name == collection_name for c in collections)
@@ -1363,7 +1403,7 @@ class Retriever(object):
         
         return formatted_docs
     
-    async def _rerank_documents(self, query, documents, k, reverse=True):
+    def _rerank_documents(self, query, documents, k, reverse=True):
         """
         Rerank documents and return in standardized format.
         """
@@ -1492,6 +1532,29 @@ class Retriever(object):
             use_reranker=use_reranker
         )
 
+    def __update_modules_using_records(self, records, modules):
+        for record in records:
+            if record.payload and 'metadata' in record.payload:
+                metadata = record.payload['metadata']
+                if isinstance(metadata, dict) and 'module' in metadata:
+                    modules.add(metadata['module'])
+        return modules
+
+    def __get_modules_from_collections(self, target_collection, limit, offset):
+        modules = set()
+        while True:
+            records, offset = self.qdrant_client.scroll(
+                collection_name=target_collection,
+                limit=limit,
+                offset=offset,
+                with_payload=True,
+                with_vectors=False
+            )
+            if not records or offset is None:
+                break
+            modules = self.__update_modules_using_records(records, modules)
+        return modules
+
     def get_available_modules(self, collection_name: Optional[str] = None) -> List[str]:
         try:
             if collection_name:
@@ -1501,32 +1564,9 @@ class Retriever(object):
             else:
                 logger.warning("No collection specified and no default collection initialized")
                 return []
-            
-            modules = set()
             offset = None
             limit = 100
-            
-            while True:
-                records, offset = self.qdrant_client.scroll(
-                    collection_name=target_collection,
-                    limit=limit,
-                    offset=offset,
-                    with_payload=True,
-                    with_vectors=False
-                )
-                
-                if not records:
-                    break
-                
-                for record in records:
-                    if record.payload and 'metadata' in record.payload:
-                        metadata = record.payload['metadata']
-                        if isinstance(metadata, dict) and 'module' in metadata:
-                            modules.add(metadata['module'])
-                
-                if offset is None:
-                    break
-            
+            modules = self.__get_modules_from_collections(target_collection, limit, offset)
             return sorted(modules)
             
         except Exception as e:
