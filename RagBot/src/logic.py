@@ -756,8 +756,6 @@ async def _determine_final_route(
             model_name=router_config["model_name"]
         )
         predictions, probabilities, max_prob = semantic_router_client.predict_sentences_input_embedding_and_sentences([utterance], [query_embedding])
-        import pdb 
-        pdb.set_trace()
         top_prediction = predictions[0][0]
         probabilities = list(probabilities)  # Convert to list to make it subscriptable
         if max_prob > alpha_threshold and ("همکاران" not in utterance) and (top_prediction != "illegal"):
