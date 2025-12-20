@@ -108,7 +108,7 @@ class ChatRequest(BaseModel):
     session_id: Optional[str] = None
     does_evaluate: Optional[bool] = False
     response_type: Optional[str] = "concise"
-    use_cache: Optional[bool] = False
+    use_cache: Optional[bool] = True
     # SQL Agent specific fields
     on_click: Optional[bool] = False
     do_retry: Optional[bool] = False
