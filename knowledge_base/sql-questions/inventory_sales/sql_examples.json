@@ -1,0 +1,2202 @@
+[
+  {
+    "id": 1,
+    "complexity": "simple",
+    "module": "انبار",
+    "table": "logistics_invvoucher",
+    "question": "تعداد کل اسناد انبار چقدر است؟",
+    "sql": {
+      "SQL": "SELECT COUNT(liv.id) AS liv_id_count FROM logistics_invvoucher AS liv",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 2,
+    "complexity": "simple",
+    "module": "انبار",
+    "table": "logistics_invvoucheritem",
+    "question": "چند قلم سند انبار ثبت شده؟",
+    "sql": {
+      "SQL": "SELECT COUNT(lii.id) AS lii_id_count FROM logistics_invvoucheritem AS lii",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 3,
+    "complexity": "simple",
+    "module": "انبار",
+    "table": "logistics_parts",
+    "question": "تعداد کالاها چقدر است؟",
+    "sql": {
+      "SQL": "SELECT COUNT(lp.id) AS lp_id_count FROM logistics_parts AS lp",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 4,
+    "complexity": "simple",
+    "module": "انبار",
+    "table": "logistics_store",
+    "question": "چند انبار داریم؟",
+    "sql": {
+      "SQL": "SELECT COUNT(ls.id) AS ls_id_count FROM logistics_store AS ls",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 5,
+    "complexity": "simple",
+    "module": "انبار",
+    "table": "logistics_plants",
+    "question": "تعداد مراکز نگهداری",
+    "sql": {
+      "SQL": "SELECT COUNT(lpl.id) AS lpl_id_count FROM logistics_plants AS lpl",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 6,
+    "complexity": "simple",
+    "module": "انبار",
+    "table": "logistics_voucherspecification",
+    "question": "چند الگوی سند انبار تعریف شده؟",
+    "sql": {
+      "SQL": "SELECT COUNT(lvs.id) AS lvs_id_count FROM logistics_voucherspecification AS lvs",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 7,
+    "complexity": "simple",
+    "module": "انبار",
+    "table": "logistics_storagetype",
+    "question": "تعداد انواع انبار",
+    "sql": {
+      "SQL": "SELECT COUNT(lst.id) AS lst_id_count FROM logistics_storagetype AS lst",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 8,
+    "complexity": "simple",
+    "module": "انبار",
+    "table": "logistics_units",
+    "question": "چند واحد سنجش تعریف شده؟",
+    "sql": {
+      "SQL": "SELECT COUNT(lu.id) AS lu_id_count FROM logistics_units AS lu",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 9,
+    "complexity": "simple",
+    "module": "انبار",
+    "table": "logistics_partaccountcategory",
+    "question": "تعداد طبقات حساب کالا",
+    "sql": {
+      "SQL": "SELECT COUNT(lpac.id) AS lpac_id_count FROM logistics_partaccountcategory AS lpac",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 10,
+    "complexity": "simple",
+    "module": "انبار",
+    "table": "logistics_invvoucheritem",
+    "question": "مجموع مقدار به واحد اصلی",
+    "sql": {
+      "SQL": "SELECT SUM(lii.major_quantity) AS lii_major_quantity_sum FROM logistics_invvoucheritem AS lii",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 11,
+    "complexity": "simple",
+    "module": "انبار",
+    "table": "logistics_invstockpricing",
+    "question": "مجموع مبلغ گردش مبلغی",
+    "sql": {
+      "SQL": "SELECT SUM(lisp.price) AS lisp_price_sum FROM logistics_invstockpricing AS lisp",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 12,
+    "complexity": "simple",
+    "module": "انبار",
+    "table": "logistics_invitemprice",
+    "question": "مجموع مبلغ قلم قیمت",
+    "sql": {
+      "SQL": "SELECT SUM(lip.price) AS lip_price_sum FROM logistics_invitemprice AS lip",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 13,
+    "complexity": "simple",
+    "module": "انبار",
+    "table": "logistics_invvoucheritem",
+    "question": "میانگین مقدار اقلام سند انبار",
+    "sql": {
+      "SQL": "SELECT AVG(lii.major_quantity) AS lii_major_quantity_avg FROM logistics_invvoucheritem AS lii",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 14,
+    "complexity": "simple",
+    "module": "انبار",
+    "table": "logistics_invstockpricing",
+    "question": "میانگین فی گردش مبلغی",
+    "sql": {
+      "SQL": "SELECT AVG(lisp.fee) AS lisp_fee_avg FROM logistics_invstockpricing AS lisp",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 15,
+    "complexity": "simple",
+    "module": "انبار",
+    "table": "logistics_invitemprice",
+    "question": "حداکثر فی قلم قیمت",
+    "sql": {
+      "SQL": "SELECT MAX(lip.fee) AS lip_fee_max FROM logistics_invitemprice AS lip",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 16,
+    "complexity": "simple",
+    "module": "انبار",
+    "table": "logistics_invvoucheritem",
+    "question": "حداکثر مقدار به واحد اصلی",
+    "sql": {
+      "SQL": "SELECT MAX(lii.major_quantity) AS lii_major_quantity_max FROM logistics_invvoucheritem AS lii",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 17,
+    "complexity": "simple",
+    "module": "انبار",
+    "table": "logistics_invstockpricing",
+    "question": "حداقل مبلغ گردش مبلغی",
+    "sql": {
+      "SQL": "SELECT MIN(lisp.price) AS lisp_price_min FROM logistics_invstockpricing AS lisp",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 18,
+    "complexity": "simple",
+    "module": "انبار",
+    "table": "logistics_store",
+    "question": "لیست انبارها",
+    "sql": {
+      "SQL": "SELECT ls.code AS ls_code, ls.title AS ls_title FROM logistics_store AS ls",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 19,
+    "complexity": "simple",
+    "module": "انبار",
+    "table": "logistics_parts",
+    "question": "لیست کالاها",
+    "sql": {
+      "SQL": "SELECT lp.code AS lp_code, lp.title AS lp_title FROM logistics_parts AS lp",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 20,
+    "complexity": "simple",
+    "module": "انبار",
+    "table": "logistics_voucherspecification",
+    "question": "لیست الگوهای سند انبار",
+    "sql": {
+      "SQL": "SELECT lvs.code AS lvs_code, lvs.title AS lvs_title, lvs.voucher_type AS lvs_voucher_type FROM logistics_voucherspecification AS lvs",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 21,
+    "complexity": "simple",
+    "module": "انبار",
+    "table": "logistics_plants",
+    "question": "لیست مراکز نگهداری",
+    "sql": {
+      "SQL": "SELECT lpl.code AS lpl_code, lpl.title AS lpl_title FROM logistics_plants AS lpl",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 22,
+    "complexity": "simple",
+    "module": "انبار",
+    "table": "logistics_storagetype",
+    "question": "لیست انواع انبار",
+    "sql": {
+      "SQL": "SELECT lst.code AS lst_code, lst.title AS lst_title FROM logistics_storagetype AS lst",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 23,
+    "complexity": "simple",
+    "module": "انبار",
+    "table": "logistics_units",
+    "question": "لیست واحدهای سنجش",
+    "sql": {
+      "SQL": "SELECT lu.title AS lu_title, lu.dimension AS lu_dimension FROM logistics_units AS lu",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 24,
+    "complexity": "simple",
+    "module": "انبار",
+    "table": "logistics_partaccountcategory",
+    "question": "لیست طبقات حساب کالا",
+    "sql": {
+      "SQL": "SELECT lpac.code AS lpac_code, lpac.title AS lpac_title, lpac.pricing_method AS lpac_pricing_method FROM logistics_partaccountcategory AS lpac",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 25,
+    "complexity": "simple",
+    "module": "انبار",
+    "table": "logistics_invvoucher",
+    "question": "لیست وضعیت‌های سند انبار",
+    "sql": {
+      "SQL": "SELECT DISTINCT liv.state AS liv_state FROM logistics_invvoucher AS liv",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 26,
+    "complexity": "simple",
+    "module": "انبار",
+    "table": "logistics_voucherspecification",
+    "question": "لیست انواع سند انبار",
+    "sql": {
+      "SQL": "SELECT DISTINCT lvs.voucher_type AS lvs_voucher_type FROM logistics_voucherspecification AS lvs",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 27,
+    "complexity": "simple",
+    "module": "انبار",
+    "table": "logistics_parts",
+    "question": "لیست انواع کالا",
+    "sql": {
+      "SQL": "SELECT DISTINCT lp.part_type AS lp_part_type FROM logistics_parts AS lp",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 28,
+    "complexity": "simple",
+    "module": "انبار",
+    "table": "logistics_invstockpricing",
+    "question": "مجموع مبلغ به ارز عملیاتی",
+    "sql": {
+      "SQL": "SELECT SUM(lisp.price_in_functional_currency) AS lisp_price_in_functional_currency_sum FROM logistics_invstockpricing AS lisp",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 29,
+    "complexity": "simple",
+    "module": "انبار",
+    "table": "logistics_invitempricefactor",
+    "question": "مجموع مالیات و عوارض",
+    "sql": {
+      "SQL": "SELECT SUM(lipf.td_in_functional_currency) AS lipf_td_in_functional_currency_sum FROM logistics_invitempricefactor AS lipf",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 30,
+    "complexity": "simple",
+    "module": "انبار",
+    "table": "logistics_invitempricefactor",
+    "question": "مجموع تخفیفات",
+    "sql": {
+      "SQL": "SELECT SUM(lipf.discount_in_functional_currency) AS lipf_discount_in_functional_currency_sum FROM logistics_invitempricefactor AS lipf",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 31,
+    "complexity": "medium",
+    "module": "انبار",
+    "table": "logistics_invvoucher",
+    "question": "اسناد انبار امروز",
+    "sql": {
+      "SQL": "SELECT liv.number AS liv_number, liv.date AS liv_date, liv.state AS liv_state FROM logistics_invvoucher AS liv WHERE liv.date = $1",
+      "parameters": {"1": "{today_date}"}
+    }
+  },
+  {
+    "id": 32,
+    "complexity": "medium",
+    "module": "انبار",
+    "table": "logistics_invvoucher",
+    "question": "اسناد انبار دیروز",
+    "sql": {
+      "SQL": "SELECT liv.number AS liv_number, liv.date AS liv_date, liv.state AS liv_state FROM logistics_invvoucher AS liv WHERE liv.date = $1",
+      "parameters": {"1": "{yesterday_date}"}
+    }
+  },
+  {
+    "id": 33,
+    "complexity": "medium",
+    "module": "انبار",
+    "table": "logistics_invvoucher",
+    "question": "اسناد انبار این هفته",
+    "sql": {
+      "SQL": "SELECT liv.number AS liv_number, liv.date AS liv_date, liv.state AS liv_state FROM logistics_invvoucher AS liv WHERE liv.date >= $1 AND liv.date <= $2",
+      "parameters": {"1": "{this_week_saturday}", "2": "{this_week_friday}"}
+    }
+  },
+  {
+    "id": 34,
+    "complexity": "medium",
+    "module": "انبار",
+    "table": "logistics_invvoucher",
+    "question": "اسناد انبار هفته گذشته",
+    "sql": {
+      "SQL": "SELECT liv.number AS liv_number, liv.date AS liv_date, liv.state AS liv_state FROM logistics_invvoucher AS liv WHERE liv.date >= $1 AND liv.date <= $2",
+      "parameters": {"1": "{last_week_saturday}", "2": "{last_week_friday}"}
+    }
+  },
+  {
+    "id": 35,
+    "complexity": "medium",
+    "module": "انبار",
+    "table": "logistics_invvoucher",
+    "question": "اسناد انبار از ابتدای سال",
+    "sql": {
+      "SQL": "SELECT liv.number AS liv_number, liv.date AS liv_date, liv.state AS liv_state FROM logistics_invvoucher AS liv WHERE liv.date >= $1",
+      "parameters": {"1": "{persian_year_start}"}
+    }
+  },
+  {
+    "id": 36,
+    "complexity": "medium",
+    "module": "انبار",
+    "table": "logistics_invvoucher",
+    "question": "اسناد انبار با وضعیت ثبت شده",
+    "sql": {
+      "SQL": "SELECT liv.number AS liv_number, liv.date AS liv_date, liv.state AS liv_state FROM logistics_invvoucher AS liv WHERE liv.state = $1",
+      "parameters": {"1": "ثبت شده"}
+    }
+  },
+  {
+    "id": 37,
+    "complexity": "medium",
+    "module": "انبار",
+    "table": "logistics_invvoucher",
+    "question": "اسناد انبار با وضعیت تایید شده",
+    "sql": {
+      "SQL": "SELECT liv.number AS liv_number, liv.date AS liv_date, liv.state AS liv_state FROM logistics_invvoucher AS liv WHERE liv.state = $1",
+      "parameters": {"1": "تایید شده"}
+    }
+  },
+  {
+    "id": 38,
+    "complexity": "medium",
+    "module": "انبار",
+    "table": "logistics_invvoucher",
+    "question": "تعداد اسناد به تفکیک وضعیت",
+    "sql": {
+      "SQL": "SELECT liv.state AS liv_state, COUNT(liv.id) AS liv_id_count FROM logistics_invvoucher AS liv GROUP BY liv.state ORDER BY liv_id_count DESC",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 39,
+    "complexity": "medium",
+    "module": "انبار",
+    "table": "logistics_parts",
+    "question": "کالاهای نوع مواد اولیه",
+    "sql": {
+      "SQL": "SELECT lp.code AS lp_code, lp.title AS lp_title, lp.major_unit_title AS lp_major_unit_title FROM logistics_parts AS lp WHERE lp.part_type = $1",
+      "parameters": {"1": "مواد اولیه"}
+    }
+  },
+  {
+    "id": 40,
+    "complexity": "medium",
+    "module": "انبار",
+    "table": "logistics_parts",
+    "question": "کالاهای نوع محصول",
+    "sql": {
+      "SQL": "SELECT lp.code AS lp_code, lp.title AS lp_title, lp.major_unit_title AS lp_major_unit_title FROM logistics_parts AS lp WHERE lp.part_type = $1",
+      "parameters": {"1": "محصول"}
+    }
+  },
+  {
+    "id": 41,
+    "complexity": "medium",
+    "module": "انبار",
+    "table": "logistics_parts",
+    "question": "تعداد کالا به تفکیک نوع",
+    "sql": {
+      "SQL": "SELECT lp.part_type AS lp_part_type, COUNT(lp.id) AS lp_id_count FROM logistics_parts AS lp GROUP BY lp.part_type ORDER BY lp_id_count DESC",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 42,
+    "complexity": "medium",
+    "module": "انبار",
+    "table": "logistics_store",
+    "question": "انبارهای استان تهران",
+    "sql": {
+      "SQL": "SELECT ls.code AS ls_code, ls.title AS ls_title, ls.state AS ls_state FROM logistics_store AS ls WHERE ls.state ILIKE $1",
+      "parameters": {"1": "%تهران%"}
+    }
+  },
+  {
+    "id": 43,
+    "complexity": "medium",
+    "module": "انبار",
+    "table": "logistics_store",
+    "question": "تعداد انبار به تفکیک استان",
+    "sql": {
+      "SQL": "SELECT ls.state AS ls_state, COUNT(ls.id) AS ls_id_count FROM logistics_store AS ls GROUP BY ls.state ORDER BY ls_id_count DESC",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 44,
+    "complexity": "medium",
+    "module": "انبار",
+    "table": "logistics_invvoucher",
+    "question": "اسناد انبار مربوط به تامین کننده خاص",
+    "sql": {
+      "SQL": "SELECT liv.number AS liv_number, liv.date AS liv_date, liv.supplier_title AS liv_supplier_title FROM logistics_invvoucher AS liv WHERE liv.supplier_title ILIKE $1",
+      "parameters": {"1": "%شفا%"}
+    }
+  },
+  {
+    "id": 45,
+    "complexity": "medium",
+    "module": "انبار",
+    "table": "logistics_invvoucher",
+    "question": "اسناد انبار مربوط به پروژه خاص",
+    "sql": {
+      "SQL": "SELECT liv.number AS liv_number, liv.date AS liv_date, liv.project_title AS liv_project_title FROM logistics_invvoucher AS liv WHERE liv.project_title ILIKE $1",
+      "parameters": {"1": "%ساختمان%"}
+    }
+  },
+  {
+    "id": 46,
+    "complexity": "medium",
+    "module": "انبار",
+    "table": "logistics_invvoucher",
+    "question": "اسناد انبار مربوط به مشتری خاص",
+    "sql": {
+      "SQL": "SELECT liv.number AS liv_number, liv.date AS liv_date, liv.customer_title AS liv_customer_title FROM logistics_invvoucher AS liv WHERE liv.customer_title ILIKE $1",
+      "parameters": {"1": "%احمدی%"}
+    }
+  },
+  {
+    "id": 47,
+    "complexity": "medium",
+    "module": "انبار",
+    "table": "logistics_voucherspecification",
+    "question": "الگوهای سند انبار ورودی",
+    "sql": {
+      "SQL": "SELECT lvs.code AS lvs_code, lvs.title AS lvs_title, lvs.direction AS lvs_direction FROM logistics_voucherspecification AS lvs WHERE lvs.direction = $1",
+      "parameters": {"1": "ورودی"}
+    }
+  },
+  {
+    "id": 48,
+    "complexity": "medium",
+    "module": "انبار",
+    "table": "logistics_voucherspecification",
+    "question": "الگوهای سند انبار خروجی",
+    "sql": {
+      "SQL": "SELECT lvs.code AS lvs_code, lvs.title AS lvs_title, lvs.direction AS lvs_direction FROM logistics_voucherspecification AS lvs WHERE lvs.direction = $1",
+      "parameters": {"1": "خروجی"}
+    }
+  },
+  {
+    "id": 49,
+    "complexity": "medium",
+    "module": "انبار",
+    "table": "logistics_invstockpricing",
+    "question": "گردش مبلغی با وضعیت قیمت گذاری شده",
+    "sql": {
+      "SQL": "SELECT lisp.part_title AS lisp_part_title, lisp.price AS lisp_price, lisp.fee AS lisp_fee FROM logistics_invstockpricing AS lisp WHERE lisp.item_pricing_state = $1",
+      "parameters": {"1": "قیمت گذاری شده"}
+    }
+  },
+  {
+    "id": 50,
+    "complexity": "medium",
+    "module": "انبار",
+    "table": "logistics_invstockpricing",
+    "question": "مجموع مبلغ گردش به تفکیک انبار",
+    "sql": {
+      "SQL": "SELECT lisp.store_title AS lisp_store_title, SUM(lisp.price) AS lisp_price_sum FROM logistics_invstockpricing AS lisp GROUP BY lisp.store_title ORDER BY lisp_price_sum DESC",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 51,
+    "complexity": "medium",
+    "module": "انبار",
+    "table": "logistics_invstockpricing",
+    "question": "مجموع مقدار به تفکیک کالا",
+    "sql": {
+      "SQL": "SELECT lisp.part_title AS lisp_part_title, SUM(lisp.major_unit_quantity) AS lisp_major_unit_quantity_sum FROM logistics_invstockpricing AS lisp GROUP BY lisp.part_title ORDER BY lisp_major_unit_quantity_sum DESC",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 52,
+    "complexity": "medium",
+    "module": "انبار",
+    "table": "logistics_invstockpricing",
+    "question": "گردش مبلغی نوع ورودی",
+    "sql": {
+      "SQL": "SELECT lisp.part_title AS lisp_part_title, lisp.price AS lisp_price, lisp.type_of_effect AS lisp_type_of_effect FROM logistics_invstockpricing AS lisp WHERE lisp.type_of_effect = $1",
+      "parameters": {"1": "ورودی"}
+    }
+  },
+  {
+    "id": 53,
+    "complexity": "medium",
+    "module": "انبار",
+    "table": "logistics_invstockpricing",
+    "question": "گردش مبلغی نوع خروجی",
+    "sql": {
+      "SQL": "SELECT lisp.part_title AS lisp_part_title, lisp.price AS lisp_price, lisp.type_of_effect AS lisp_type_of_effect FROM logistics_invstockpricing AS lisp WHERE lisp.type_of_effect = $1",
+      "parameters": {"1": "خروجی"}
+    }
+  },
+  {
+    "id": 54,
+    "complexity": "medium",
+    "module": "انبار",
+    "table": "logistics_parts",
+    "question": "کالاهای با طبقه حساب خاص",
+    "sql": {
+      "SQL": "SELECT lp.code AS lp_code, lp.title AS lp_title, lp.part_account_category_title AS lp_part_account_category_title FROM logistics_parts AS lp WHERE lp.part_account_category_title ILIKE $1",
+      "parameters": {"1": "%موجودی%"}
+    }
+  },
+  {
+    "id": 55,
+    "complexity": "medium",
+    "module": "انبار",
+    "table": "logistics_partaccountcategory",
+    "question": "طبقات حساب با روش قیمت گذاری میانگین",
+    "sql": {
+      "SQL": "SELECT lpac.code AS lpac_code, lpac.title AS lpac_title, lpac.pricing_method AS lpac_pricing_method FROM logistics_partaccountcategory AS lpac WHERE lpac.pricing_method = $1",
+      "parameters": {"1": "میانگین موزون"}
+    }
+  },
+  {
+    "id": 56,
+    "complexity": "medium",
+    "module": "انبار",
+    "table": "logistics_invvoucher",
+    "question": "تعداد اسناد انبار هفته گذشته",
+    "sql": {
+      "SQL": "SELECT COUNT(liv.id) AS liv_id_count FROM logistics_invvoucher AS liv WHERE liv.date >= $1 AND liv.date <= $2",
+      "parameters": {"1": "{last_week_saturday}", "2": "{last_week_friday}"}
+    }
+  },
+  {
+    "id": 57,
+    "complexity": "medium",
+    "module": "انبار",
+    "table": "logistics_invvoucheritem",
+    "question": "مجموع مقدار اقلام سند انبار هفته گذشته",
+    "sql": {
+      "SQL": "SELECT SUM(lii.major_quantity) AS lii_major_quantity_sum FROM logistics_invvoucheritem AS lii WHERE lii.production_date >= $1 AND lii.production_date <= $2",
+      "parameters": {"1": "{last_week_saturday}", "2": "{last_week_friday}"}
+    }
+  },
+  {
+    "id": 58,
+    "complexity": "medium",
+    "module": "انبار",
+    "table": "logistics_invitemprice",
+    "question": "قلم قیمت‌های امروز",
+    "sql": {
+      "SQL": "SELECT lip.fee AS lip_fee, lip.price AS lip_price, lip.price_type AS lip_price_type FROM logistics_invitemprice AS lip WHERE lip.date = $1",
+      "parameters": {"1": "{today_date}"}
+    }
+  },
+  {
+    "id": 59,
+    "complexity": "medium",
+    "module": "انبار",
+    "table": "logistics_invitempricefactor",
+    "question": "جزییات مبلغی هفته گذشته",
+    "sql": {
+      "SQL": "SELECT lipf.inv_voucher_number AS lipf_inv_voucher_number, lipf.fee AS lipf_fee, lipf.price AS lipf_price FROM logistics_invitempricefactor AS lipf WHERE lipf.date_c >= $1 AND lipf.date_c <= $2",
+      "parameters": {"1": "{last_week_saturday}", "2": "{last_week_friday}"}
+    }
+  },
+  {
+    "id": 60,
+    "complexity": "medium",
+    "module": "انبار",
+    "table": "logistics_invstockpricing",
+    "question": "مجموع مبلغ به تفکیک نوع سند",
+    "sql": {
+      "SQL": "SELECT lisp.inventory_voucher_type AS lisp_inventory_voucher_type, SUM(lisp.price) AS lisp_price_sum FROM logistics_invstockpricing AS lisp GROUP BY lisp.inventory_voucher_type ORDER BY lisp_price_sum DESC",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 61,
+    "complexity": "hard",
+    "module": "انبار",
+    "table": "logistics_invvoucher, logistics_voucherspecification",
+    "question": "اسناد انبار با الگوی رسید خرید",
+    "sql": {
+      "SQL": "SELECT liv.number AS liv_number, liv.date AS liv_date, lvs.title AS lvs_title FROM logistics_invvoucher AS liv JOIN logistics_voucherspecification AS lvs ON liv.voucher_specification_id = lvs.id WHERE lvs.title ILIKE $1",
+      "parameters": {"1": "%رسید خرید%"}
+    }
+  },
+  {
+    "id": 62,
+    "complexity": "hard",
+    "module": "انبار",
+    "table": "logistics_invvoucher, logistics_store",
+    "question": "اسناد انبار به همراه اطلاعات انبار",
+    "sql": {
+      "SQL": "SELECT liv.number AS liv_number, liv.date AS liv_date, ls.title AS ls_title, ls.state AS ls_state FROM logistics_invvoucher AS liv JOIN logistics_store AS ls ON liv.store_id = ls.id",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 63,
+    "complexity": "hard",
+    "module": "انبار",
+    "table": "logistics_invvoucher, logistics_store",
+    "question": "اسناد انبار انبارهای تهران هفته گذشته",
+    "sql": {
+      "SQL": "SELECT liv.number AS liv_number, liv.date AS liv_date, ls.title AS ls_title FROM logistics_invvoucher AS liv JOIN logistics_store AS ls ON liv.store_id = ls.id WHERE ls.state ILIKE $1 AND liv.date >= $2 AND liv.date <= $3",
+      "parameters": {"1": "%تهران%", "2": "{last_week_saturday}", "3": "{last_week_friday}"}
+    }
+  },
+  {
+    "id": 64,
+    "complexity": "hard",
+    "module": "انبار",
+    "table": "logistics_invvoucheritem, logistics_invvoucher",
+    "question": "اقلام سند انبار با وضعیت تایید شده",
+    "sql": {
+      "SQL": "SELECT lii.row_number AS lii_row_number, lii.major_quantity AS lii_major_quantity, liv.number AS liv_number, liv.date AS liv_date FROM logistics_invvoucheritem AS lii JOIN logistics_invvoucher AS liv ON lii.inventory_voucher_id = liv.id WHERE liv.state = $1",
+      "parameters": {"1": "تایید شده"}
+    }
+  },
+  {
+    "id": 65,
+    "complexity": "hard",
+    "module": "انبار",
+    "table": "logistics_invvoucheritem, logistics_parts",
+    "question": "اقلام سند انبار به همراه اطلاعات کالا",
+    "sql": {
+      "SQL": "SELECT lii.major_quantity AS lii_major_quantity, lp.code AS lp_code, lp.title AS lp_title, lp.part_type AS lp_part_type FROM logistics_invvoucheritem AS lii JOIN logistics_parts AS lp ON lii.part_id = lp.id",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 66,
+    "complexity": "hard",
+    "module": "انبار",
+    "table": "logistics_invvoucheritem, logistics_parts",
+    "question": "مجموع مقدار به تفکیک کالا از ابتدای سال",
+    "sql": {
+      "SQL": "SELECT lp.code AS lp_code, lp.title AS lp_title, SUM(lii.major_quantity) AS lii_major_quantity_sum FROM logistics_invvoucheritem AS lii JOIN logistics_parts AS lp ON lii.part_id = lp.id WHERE lii.production_date >= $1 GROUP BY lp.code, lp.title ORDER BY lii_major_quantity_sum DESC",
+      "parameters": {"1": "{persian_year_start}"}
+    }
+  },
+  {
+    "id": 67,
+    "complexity": "hard",
+    "module": "انبار",
+    "table": "logistics_invvoucheritem, logistics_units",
+    "question": "اقلام سند انبار به همراه واحد سنجش",
+    "sql": {
+      "SQL": "SELECT lii.major_quantity AS lii_major_quantity, lu.title AS lu_title FROM logistics_invvoucheritem AS lii JOIN logistics_units AS lu ON lii.unit_id = lu.id",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 68,
+    "complexity": "hard",
+    "module": "انبار",
+    "table": "logistics_store, logistics_plants",
+    "question": "انبارها به همراه مرکز نگهداری",
+    "sql": {
+      "SQL": "SELECT ls.code AS ls_code, ls.title AS ls_title, lpl.title AS lpl_title, lpl.branch_title AS lpl_branch_title FROM logistics_store AS ls JOIN logistics_plants AS lpl ON ls.plant_id = lpl.id",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 69,
+    "complexity": "hard",
+    "module": "انبار",
+    "table": "logistics_invvoucher, logistics_voucherspecification",
+    "question": "تعداد اسناد به تفکیک الگو از ابتدای سال",
+    "sql": {
+      "SQL": "SELECT lvs.title AS lvs_title, COUNT(liv.id) AS liv_id_count FROM logistics_invvoucher AS liv JOIN logistics_voucherspecification AS lvs ON liv.voucher_specification_id = lvs.id WHERE liv.date >= $1 GROUP BY lvs.title ORDER BY liv_id_count DESC",
+      "parameters": {"1": "{persian_year_start}"}
+    }
+  },
+  {
+    "id": 70,
+    "complexity": "hard",
+    "module": "انبار",
+    "table": "logistics_invvoucher, logistics_store",
+    "question": "تعداد اسناد به تفکیک انبار هفته گذشته",
+    "sql": {
+      "SQL": "SELECT ls.title AS ls_title, COUNT(liv.id) AS liv_id_count FROM logistics_invvoucher AS liv JOIN logistics_store AS ls ON liv.store_id = ls.id WHERE liv.date >= $1 AND liv.date <= $2 GROUP BY ls.title ORDER BY liv_id_count DESC",
+      "parameters": {"1": "{last_week_saturday}", "2": "{last_week_friday}"}
+    }
+  },
+  {
+    "id": 71,
+    "complexity": "hard",
+    "module": "انبار",
+    "table": "logistics_invvoucheritem, logistics_invvoucher, logistics_parts",
+    "question": "مجموع مقدار کالاهای نوع مواد اولیه از ابتدای سال",
+    "sql": {
+      "SQL": "SELECT lp.title AS lp_title, SUM(lii.major_quantity) AS lii_major_quantity_sum FROM logistics_invvoucheritem AS lii JOIN logistics_invvoucher AS liv ON lii.inventory_voucher_id = liv.id JOIN logistics_parts AS lp ON lii.part_id = lp.id WHERE liv.date >= $1 AND lp.part_type = $2 GROUP BY lp.title ORDER BY lii_major_quantity_sum DESC",
+      "parameters": {"1": "{persian_year_start}", "2": "مواد اولیه"}
+    }
+  },
+  {
+    "id": 72,
+    "complexity": "hard",
+    "module": "انبار",
+    "table": "logistics_invvoucheritem, logistics_invvoucher, logistics_voucherspecification",
+    "question": "مجموع مقدار اقلام اسناد ورودی از ابتدای سال",
+    "sql": {
+      "SQL": "SELECT lvs.title AS lvs_title, SUM(lii.major_quantity) AS lii_major_quantity_sum FROM logistics_invvoucheritem AS lii JOIN logistics_invvoucher AS liv ON lii.inventory_voucher_id = liv.id JOIN logistics_voucherspecification AS lvs ON liv.voucher_specification_id = lvs.id WHERE liv.date >= $1 AND lvs.direction = $2 GROUP BY lvs.title ORDER BY lii_major_quantity_sum DESC",
+      "parameters": {"1": "{persian_year_start}", "2": "ورودی"}
+    }
+  },
+  {
+    "id": 73,
+    "complexity": "hard",
+    "module": "انبار",
+    "table": "logistics_invvoucheritem, logistics_invvoucher, logistics_store",
+    "question": "مجموع مقدار اقلام به تفکیک انبار هفته گذشته",
+    "sql": {
+      "SQL": "SELECT ls.title AS ls_title, SUM(lii.major_quantity) AS lii_major_quantity_sum FROM logistics_invvoucheritem AS lii JOIN logistics_invvoucher AS liv ON lii.inventory_voucher_id = liv.id JOIN logistics_store AS ls ON liv.store_id = ls.id WHERE liv.date >= $1 AND liv.date <= $2 GROUP BY ls.title ORDER BY lii_major_quantity_sum DESC",
+      "parameters": {"1": "{last_week_saturday}", "2": "{last_week_friday}"}
+    }
+  },
+  {
+    "id": 74,
+    "complexity": "hard",
+    "module": "انبار",
+    "table": "logistics_invitemprice, logistics_invvoucheritem",
+    "question": "قلم قیمت‌ها به همراه اطلاعات قلم سند",
+    "sql": {
+      "SQL": "SELECT lip.fee AS lip_fee, lip.price AS lip_price, lii.major_quantity AS lii_major_quantity FROM logistics_invitemprice AS lip JOIN logistics_invvoucheritem AS lii ON lip.inventory_voucher_item_id = lii.id",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 75,
+    "complexity": "hard",
+    "module": "انبار",
+    "table": "logistics_invitemprice, logistics_invvoucheritem, logistics_parts",
+    "question": "مجموع مبلغ قیمت به تفکیک کالا",
+    "sql": {
+      "SQL": "SELECT lp.title AS lp_title, SUM(lip.price) AS lip_price_sum FROM logistics_invitemprice AS lip JOIN logistics_invvoucheritem AS lii ON lip.inventory_voucher_item_id = lii.id JOIN logistics_parts AS lp ON lii.part_id = lp.id GROUP BY lp.title ORDER BY lip_price_sum DESC",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 76,
+    "complexity": "hard",
+    "module": "انبار",
+    "table": "logistics_invvoucher, logistics_voucherspecification",
+    "question": "مقایسه تعداد اسناد ورودی و خروجی هفته گذشته",
+    "sql": {
+      "SQL": "SELECT lvs.direction AS lvs_direction, COUNT(liv.id) AS liv_id_count FROM logistics_invvoucher AS liv JOIN logistics_voucherspecification AS lvs ON liv.voucher_specification_id = lvs.id WHERE liv.date >= $1 AND liv.date <= $2 GROUP BY lvs.direction",
+      "parameters": {"1": "{last_week_saturday}", "2": "{last_week_friday}"}
+    }
+  },
+  {
+    "id": 77,
+    "complexity": "hard",
+    "module": "انبار",
+    "table": "logistics_invvoucher",
+    "question": "مقایسه تعداد اسناد این هفته با هفته گذشته",
+    "sql": {
+      "SQL": "SELECT (SELECT COUNT(liv.id) FROM logistics_invvoucher AS liv WHERE liv.date >= $1 AND liv.date <= $2) - (SELECT COUNT(liv.id) FROM logistics_invvoucher AS liv WHERE liv.date >= $3 AND liv.date <= $4) AS count_difference",
+      "parameters": {"1": "{this_week_saturday}", "2": "{this_week_friday}", "3": "{last_week_saturday}", "4": "{last_week_friday}"}
+    }
+  },
+  {
+    "id": 78,
+    "complexity": "hard",
+    "module": "انبار",
+    "table": "logistics_invstockpricing",
+    "question": "حداقل و حداکثر مبلغ روزانه گردش از ابتدای سال",
+    "sql": {
+      "SQL": "SELECT MIN(A.daily_price) AS A_daily_price_min, MAX(A.daily_price) AS A_daily_price_max FROM (SELECT SUM(lisp.price) AS daily_price FROM logistics_invstockpricing AS lisp WHERE lisp.inv_voucher_state = $1 GROUP BY lisp.store_title) AS A",
+      "parameters": {"1": "تایید شده"}
+    }
+  },
+  {
+    "id": 79,
+    "complexity": "hard",
+    "module": "انبار",
+    "table": "logistics_invstockpricing",
+    "question": "انبارهایی با گردش مبلغی بالای یک میلیارد",
+    "sql": {
+      "SQL": "SELECT lisp.store_title AS lisp_store_title, SUM(lisp.price) AS lisp_price_sum FROM logistics_invstockpricing AS lisp GROUP BY lisp.store_title HAVING SUM(lisp.price) > $1 ORDER BY lisp_price_sum DESC",
+      "parameters": {"1": "1000000000"}
+    }
+  },
+  {
+    "id": 80,
+    "complexity": "hard",
+    "module": "انبار",
+    "table": "logistics_invstockpricing",
+    "question": "کالاهایی با بیش از 100 تراکنش گردش مبلغی",
+    "sql": {
+      "SQL": "SELECT lisp.part_title AS lisp_part_title, COUNT(lisp.id) AS lisp_id_count, SUM(lisp.price) AS lisp_price_sum FROM logistics_invstockpricing AS lisp GROUP BY lisp.part_title HAVING COUNT(lisp.id) > $1 ORDER BY lisp_id_count DESC",
+      "parameters": {"1": "100"}
+    }
+  },
+  {
+    "id": 81,
+    "complexity": "hard",
+    "module": "انبار",
+    "table": "logistics_invvoucheritem, logistics_invvoucher, logistics_parts",
+    "question": "ده کالای پرمصرف از ابتدای سال",
+    "sql": {
+      "SQL": "SELECT lp.code AS lp_code, lp.title AS lp_title, SUM(lii.major_quantity) AS lii_major_quantity_sum FROM logistics_invvoucheritem AS lii JOIN logistics_invvoucher AS liv ON lii.inventory_voucher_id = liv.id JOIN logistics_parts AS lp ON lii.part_id = lp.id WHERE liv.date >= $1 GROUP BY lp.code, lp.title ORDER BY lii_major_quantity_sum DESC LIMIT $2",
+      "parameters": {"1": "{persian_year_start}", "2": "10"}
+    }
+  },
+  {
+    "id": 82,
+    "complexity": "hard",
+    "module": "انبار",
+    "table": "logistics_invvoucher, logistics_store, logistics_plants",
+    "question": "اسناد انبار به تفکیک شعبه از ابتدای سال",
+    "sql": {
+      "SQL": "SELECT lpl.branch_title AS lpl_branch_title, COUNT(liv.id) AS liv_id_count FROM logistics_invvoucher AS liv JOIN logistics_store AS ls ON liv.store_id = ls.id JOIN logistics_plants AS lpl ON ls.plant_id = lpl.id WHERE liv.date >= $1 GROUP BY lpl.branch_title ORDER BY liv_id_count DESC",
+      "parameters": {"1": "{persian_year_start}"}
+    }
+  },
+  {
+    "id": 83,
+    "complexity": "hard",
+    "module": "انبار",
+    "table": "logistics_invstockpricing",
+    "question": "گردش مبلغی ورودی و خروجی به تفکیک کالا از ابتدای سال",
+    "sql": {
+      "SQL": "SELECT lisp.part_title AS lisp_part_title, lisp.type_of_effect AS lisp_type_of_effect, SUM(lisp.major_unit_quantity) AS lisp_major_unit_quantity_sum, SUM(lisp.price) AS lisp_price_sum FROM logistics_invstockpricing AS lisp GROUP BY lisp.part_title, lisp.type_of_effect ORDER BY lisp.part_title, lisp_price_sum DESC",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 84,
+    "complexity": "hard",
+    "module": "انبار",
+    "table": "logistics_invvoucheritem, logistics_invvoucher",
+    "question": "مانده استفاده نشده اقلام سند از ابتدای سال",
+    "sql": {
+      "SQL": "SELECT lii.row_number AS lii_row_number, liv.number AS liv_number, lii.major_quantity AS lii_major_quantity, lii.remained_major_quantity AS lii_remained_major_quantity FROM logistics_invvoucheritem AS lii JOIN logistics_invvoucher AS liv ON lii.inventory_voucher_id = liv.id WHERE liv.date >= $1 AND lii.remained_major_quantity > $2",
+      "parameters": {"1": "{persian_year_start}", "2": "0"}
+    }
+  },
+  {
+    "id": 85,
+    "complexity": "hard",
+    "module": "انبار",
+    "table": "logistics_invitempricefactor",
+    "question": "مجموع کرایه حمل به تفکیک سند از ابتدای سال",
+    "sql": {
+      "SQL": "SELECT lipf.inv_voucher_number AS lipf_inv_voucher_number, SUM(lipf.tf_in_functional_currency) AS lipf_tf_in_functional_currency_sum FROM logistics_invitempricefactor AS lipf WHERE lipf.date_c >= $1 GROUP BY lipf.inv_voucher_number ORDER BY lipf_tf_in_functional_currency_sum DESC",
+      "parameters": {"1": "{persian_year_start}"}
+    }
+  },
+  {
+    "id": 86,
+    "complexity": "hard",
+    "module": "انبار",
+    "table": "logistics_invvoucher, logistics_voucherspecification",
+    "question": "اسناد انبار خرید داخلی هفته گذشته",
+    "sql": {
+      "SQL": "SELECT liv.number AS liv_number, liv.date AS liv_date, lvs.title AS lvs_title, lvs.purchase_type AS lvs_purchase_type FROM logistics_invvoucher AS liv JOIN logistics_voucherspecification AS lvs ON liv.voucher_specification_id = lvs.id WHERE liv.date >= $1 AND liv.date <= $2 AND lvs.purchase_type = $3",
+      "parameters": {"1": "{last_week_saturday}", "2": "{last_week_friday}", "3": "خرید داخلی"}
+    }
+  },
+  {
+    "id": 87,
+    "complexity": "hard",
+    "module": "انبار",
+    "table": "logistics_invvoucher",
+    "question": "اسناد انبار با شماره سفارش خرید خاص",
+    "sql": {
+      "SQL": "SELECT liv.number AS liv_number, liv.date AS liv_date, liv.purchase_order_no AS liv_purchase_order_no, liv.supplier_title AS liv_supplier_title FROM logistics_invvoucher AS liv WHERE liv.purchase_order_no ILIKE $1",
+      "parameters": {"1": "%PO-2024%"}
+    }
+  },
+  {
+    "id": 88,
+    "complexity": "hard",
+    "module": "انبار",
+    "table": "logistics_invvoucher",
+    "question": "اسناد انبار با شماره دستور تولید از ابتدای سال",
+    "sql": {
+      "SQL": "SELECT liv.number AS liv_number, liv.date AS liv_date, liv.production_order_no AS liv_production_order_no, liv.production_shift AS liv_production_shift FROM logistics_invvoucher AS liv WHERE liv.date >= $1 AND liv.production_order_no IS NOT NULL",
+      "parameters": {"1": "{persian_year_start}"}
+    }
+  },
+  {
+    "id": 89,
+    "complexity": "hard",
+    "module": "انبار",
+    "table": "logistics_invvoucher",
+    "question": "گردش سند انبار به تفکیک روز در هفته گذشته",
+    "sql": {
+      "SQL": "SELECT liv.date AS liv_date, COUNT(liv.id) AS liv_id_count FROM logistics_invvoucher AS liv WHERE liv.date >= $1 AND liv.date <= $2 GROUP BY liv.date ORDER BY liv.date",
+      "parameters": {"1": "{last_week_saturday}", "2": "{last_week_friday}"}
+    }
+  },
+  {
+    "id": 90,
+    "complexity": "hard",
+    "module": "انبار",
+    "table": "logistics_invstockpricing",
+    "question": "مقایسه گردش مبلغی سال جاری با سال قبل",
+    "sql": {
+      "SQL": "SELECT (SELECT COALESCE(SUM(lisp.price), 0) FROM logistics_invstockpricing AS lisp) AS current_year_price, (SELECT COALESCE(SUM(lisp.price), 0) FROM logistics_invstockpricing AS lisp) AS previous_year_price",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 91,
+    "complexity": "hard",
+    "module": "انبار",
+    "table": "logistics_parts, logistics_partaltunit",
+    "question": "کالاها با واحدهای فرعی",
+    "sql": {
+      "SQL": "SELECT lp.code AS lp_code, lp.title AS lp_title, lpa.title AS lpa_title, lpa.coeff AS lpa_coeff FROM logistics_parts AS lp JOIN logistics_partaltunit AS lpa ON lp.id = lpa.part_id",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 92,
+    "complexity": "hard",
+    "module": "انبار",
+    "table": "logistics_invvoucheritem, logistics_invvoucher",
+    "question": "اقلام سند انبار با مرکز هزینه خاص از ابتدای سال",
+    "sql": {
+      "SQL": "SELECT lii.row_number AS lii_row_number, lii.major_quantity AS lii_major_quantity, lii.cost_center_title AS lii_cost_center_title, liv.number AS liv_number FROM logistics_invvoucheritem AS lii JOIN logistics_invvoucher AS liv ON lii.inventory_voucher_id = liv.id WHERE liv.date >= $1 AND lii.cost_center_title ILIKE $2",
+      "parameters": {"1": "{persian_year_start}", "2": "%تولید%"}
+    }
+  },
+  {
+    "id": 93,
+    "complexity": "hard",
+    "module": "انبار",
+    "table": "logistics_invvoucher",
+    "question": "اسناد انبار با نتیجه بازرسی تایید شده",
+    "sql": {
+      "SQL": "SELECT liv.number AS liv_number, liv.date AS liv_date, liv.qc_inspection_no AS liv_qc_inspection_no, liv.inspection_result AS liv_inspection_result FROM logistics_invvoucher AS liv WHERE liv.inspection_result = $1",
+      "parameters": {"1": "تایید"}
+    }
+  },
+  {
+    "id": 94,
+    "complexity": "hard",
+    "module": "انبار",
+    "table": "logistics_invvoucher",
+    "question": "اسناد انبار با اطلاعات حمل و نقل",
+    "sql": {
+      "SQL": "SELECT liv.number AS liv_number, liv.date AS liv_date, liv.transporter_name AS liv_transporter_name, liv.vehicle_no AS liv_vehicle_no, liv.license_plate_no AS liv_license_plate_no, liv.waybill_no AS liv_waybill_no FROM logistics_invvoucher AS liv WHERE liv.waybill_no IS NOT NULL",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 95,
+    "complexity": "hard",
+    "module": "انبار",
+    "table": "logistics_invstockpricing",
+    "question": "گردش مبلغی به تفکیک حوزه قیمت گذاری",
+    "sql": {
+      "SQL": "SELECT lisp.pricing_area_title AS lisp_pricing_area_title, SUM(lisp.price) AS lisp_price_sum, COUNT(lisp.id) AS lisp_id_count FROM logistics_invstockpricing AS lisp GROUP BY lisp.pricing_area_title ORDER BY lisp_price_sum DESC",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 96,
+    "complexity": "hard",
+    "module": "انبار",
+    "table": "logistics_invstockpricing",
+    "question": "گردش مبلغی به تفکیک طرف مقابل",
+    "sql": {
+      "SQL": "SELECT lisp.counter_part_title AS lisp_counter_part_title, SUM(lisp.price) AS lisp_price_sum FROM logistics_invstockpricing AS lisp WHERE lisp.counter_part_title IS NOT NULL GROUP BY lisp.counter_part_title ORDER BY lisp_price_sum DESC",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 97,
+    "complexity": "hard",
+    "module": "انبار",
+    "table": "logistics_invstockpricing",
+    "question": "ده انبار با بیشترین گردش مبلغی",
+    "sql": {
+      "SQL": "SELECT lisp.store_title AS lisp_store_title, SUM(lisp.price) AS lisp_price_sum FROM logistics_invstockpricing AS lisp GROUP BY lisp.store_title ORDER BY lisp_price_sum DESC LIMIT $1",
+      "parameters": {"1": "10"}
+    }
+  },
+  {
+    "id": 98,
+    "complexity": "hard",
+    "module": "انبار",
+    "table": "logistics_invvoucheritem, logistics_invvoucher, logistics_voucherspecification, logistics_parts",
+    "question": "مصرف کالاها در اسناد خروجی از ابتدای سال",
+    "sql": {
+      "SQL": "SELECT lp.code AS lp_code, lp.title AS lp_title, SUM(lii.major_quantity) AS lii_major_quantity_sum FROM logistics_invvoucheritem AS lii JOIN logistics_invvoucher AS liv ON lii.inventory_voucher_id = liv.id JOIN logistics_voucherspecification AS lvs ON liv.voucher_specification_id = lvs.id JOIN logistics_parts AS lp ON lii.part_id = lp.id WHERE liv.date >= $1 AND lvs.direction = $2 GROUP BY lp.code, lp.title ORDER BY lii_major_quantity_sum DESC",
+      "parameters": {"1": "{persian_year_start}", "2": "خروجی"}
+    }
+  },
+  {
+    "id": 99,
+    "complexity": "hard",
+    "module": "انبار",
+    "table": "logistics_invvoucher, logistics_store, logistics_voucherspecification",
+    "question": "گردش انبارها به تفکیک نوع سند از ابتدای سال",
+    "sql": {
+      "SQL": "SELECT ls.title AS ls_title, lvs.voucher_type AS lvs_voucher_type, COUNT(liv.id) AS liv_id_count FROM logistics_invvoucher AS liv JOIN logistics_store AS ls ON liv.store_id = ls.id JOIN logistics_voucherspecification AS lvs ON liv.voucher_specification_id = lvs.id WHERE liv.date >= $1 GROUP BY ls.title, lvs.voucher_type ORDER BY ls.title, liv_id_count DESC",
+      "parameters": {"1": "{persian_year_start}"}
+    }
+  },
+  {
+    "id": 100,
+    "complexity": "hard",
+    "module": "انبار",
+    "table": "logistics_invvoucher, logistics_voucherspecification",
+    "question": "مقایسه گردش انبار هفته جاری با هفته گذشته به تفکیک جهت سند",
+    "sql": {
+      "SQL": "SELECT A.direction AS direction, A.this_week_count AS this_week_count, B.last_week_count AS last_week_count FROM (SELECT lvs.direction AS direction, COUNT(liv.id) AS this_week_count FROM logistics_invvoucher AS liv JOIN logistics_voucherspecification AS lvs ON liv.voucher_specification_id = lvs.id WHERE liv.date >= $1 AND liv.date <= $2 GROUP BY lvs.direction) AS A LEFT JOIN (SELECT lvs.direction AS direction, COUNT(liv.id) AS last_week_count FROM logistics_invvoucher AS liv JOIN logistics_voucherspecification AS lvs ON liv.voucher_specification_id = lvs.id WHERE liv.date >= $3 AND liv.date <= $4 GROUP BY lvs.direction) AS B ON A.direction = B.direction",
+      "parameters": {"1": "{this_week_saturday}", "2": "{this_week_friday}", "3": "{last_week_saturday}", "4": "{last_week_friday}"}
+    }
+  },
+  {
+    "id": 101,
+    "complexity": "simple",
+    "module": "فروش",
+    "table": "sales_invoice",
+    "question": "تعداد کل فاکتورها چقدر است؟",
+    "sql": {
+      "SQL": "SELECT COUNT(si.id) AS si_id_count FROM sales_invoice AS si",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 102,
+    "complexity": "simple",
+    "module": "فروش",
+    "table": "sales_invoiceitem",
+    "question": "چند قلم فاکتور ثبت شده؟",
+    "sql": {
+      "SQL": "SELECT COUNT(sii.id) AS sii_id_count FROM sales_invoiceitem AS sii",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 103,
+    "complexity": "simple",
+    "module": "فروش",
+    "table": "sales_returninvoice",
+    "question": "تعداد فاکتورهای برگشتی",
+    "sql": {
+      "SQL": "SELECT COUNT(sri.id) AS sri_id_count FROM sales_returninvoice AS sri",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 104,
+    "complexity": "simple",
+    "module": "فروش",
+    "table": "sales_product",
+    "question": "چند کالا/خدمت تعریف شده؟",
+    "sql": {
+      "SQL": "SELECT COUNT(sp.id) AS sp_id_count FROM sales_product AS sp",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 105,
+    "complexity": "simple",
+    "module": "فروش",
+    "table": "sales_pricelistheader",
+    "question": "تعداد لیست قیمت‌ها",
+    "sql": {
+      "SQL": "SELECT COUNT(sph.id) AS sph_id_count FROM sales_pricelistheader AS sph",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 106,
+    "complexity": "simple",
+    "module": "فروش",
+    "table": "sales_pricelistitem",
+    "question": "چند قلم لیست قیمت ثبت شده؟",
+    "sql": {
+      "SQL": "SELECT COUNT(spli.id) AS spli_id_count FROM sales_pricelistitem AS spli",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 107,
+    "complexity": "simple",
+    "module": "فروش",
+    "table": "sales_office",
+    "question": "تعداد دفاتر فروش",
+    "sql": {
+      "SQL": "SELECT COUNT(sof.id) AS sof_id_count FROM sales_office AS sof",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 108,
+    "complexity": "simple",
+    "module": "فروش",
+    "table": "sales_salesarea",
+    "question": "چند حوزه فروش داریم؟",
+    "sql": {
+      "SQL": "SELECT COUNT(ssa.id) AS ssa_id_count FROM sales_salesarea AS ssa",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 109,
+    "complexity": "simple",
+    "module": "فروش",
+    "table": "sales_channel",
+    "question": "تعداد کانال‌های فروش",
+    "sql": {
+      "SQL": "SELECT COUNT(sc.id) AS sc_id_count FROM sales_channel AS sc",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 110,
+    "complexity": "simple",
+    "module": "فروش",
+    "table": "sales_organization",
+    "question": "تعداد سازمان‌های فروش",
+    "sql": {
+      "SQL": "SELECT COUNT(so.id) AS so_id_count FROM sales_organization AS so",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 111,
+    "complexity": "simple",
+    "module": "فروش",
+    "table": "sales_invoice",
+    "question": "مجموع مبلغ خالص فاکتورها",
+    "sql": {
+      "SQL": "SELECT SUM(si.net_price) AS si_net_price_sum FROM sales_invoice AS si",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 112,
+    "complexity": "simple",
+    "module": "فروش",
+    "table": "sales_invoice",
+    "question": "مجموع مبلغ ناخالص فاکتورها",
+    "sql": {
+      "SQL": "SELECT SUM(si.total_price) AS si_total_price_sum FROM sales_invoice AS si",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 113,
+    "complexity": "simple",
+    "module": "فروش",
+    "table": "sales_invoice",
+    "question": "مجموع تخفیفات فاکتورها",
+    "sql": {
+      "SQL": "SELECT SUM(si.deductions) AS si_deductions_sum FROM sales_invoice AS si",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 114,
+    "complexity": "simple",
+    "module": "فروش",
+    "table": "sales_invoice",
+    "question": "مجموع مالیات فاکتورها",
+    "sql": {
+      "SQL": "SELECT SUM(si.tax_total) AS si_tax_total_sum FROM sales_invoice AS si",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 115,
+    "complexity": "simple",
+    "module": "فروش",
+    "table": "sales_returninvoice",
+    "question": "مجموع مبلغ خالص فاکتورهای برگشتی",
+    "sql": {
+      "SQL": "SELECT SUM(sri.net_price) AS sri_net_price_sum FROM sales_returninvoice AS sri",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 116,
+    "complexity": "simple",
+    "module": "فروش",
+    "table": "sales_invoiceitem",
+    "question": "میانگین فی اقلام فاکتور",
+    "sql": {
+      "SQL": "SELECT AVG(sii.fee) AS sii_fee_avg FROM sales_invoiceitem AS sii",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 117,
+    "complexity": "simple",
+    "module": "فروش",
+    "table": "sales_invoice",
+    "question": "حداکثر مبلغ فاکتور",
+    "sql": {
+      "SQL": "SELECT MAX(si.net_price) AS si_net_price_max FROM sales_invoice AS si",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 118,
+    "complexity": "simple",
+    "module": "فروش",
+    "table": "sales_invoice",
+    "question": "حداقل مبلغ فاکتور",
+    "sql": {
+      "SQL": "SELECT MIN(si.net_price) AS si_net_price_min FROM sales_invoice AS si",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 119,
+    "complexity": "simple",
+    "module": "فروش",
+    "table": "sales_pricelistitem",
+    "question": "میانگین فی لیست قیمت",
+    "sql": {
+      "SQL": "SELECT AVG(spli.plip_fee) AS spli_plip_fee_avg FROM sales_pricelistitem AS spli",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 120,
+    "complexity": "simple",
+    "module": "فروش",
+    "table": "sales_product",
+    "question": "لیست کالاها/خدمات",
+    "sql": {
+      "SQL": "SELECT sp.code AS sp_code, sp.title AS sp_title FROM sales_product AS sp",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 121,
+    "complexity": "simple",
+    "module": "فروش",
+    "table": "sales_office",
+    "question": "لیست دفاتر فروش",
+    "sql": {
+      "SQL": "SELECT sof.code AS sof_code, sof.title AS sof_title FROM sales_office AS sof",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 122,
+    "complexity": "simple",
+    "module": "فروش",
+    "table": "sales_salesarea",
+    "question": "لیست حوزه‌های فروش",
+    "sql": {
+      "SQL": "SELECT ssa.code AS ssa_code, ssa.title AS ssa_title FROM sales_salesarea AS ssa",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 123,
+    "complexity": "simple",
+    "module": "فروش",
+    "table": "sales_channel",
+    "question": "لیست کانال‌های فروش",
+    "sql": {
+      "SQL": "SELECT sc.code AS sc_code, sc.title AS sc_title FROM sales_channel AS sc",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 124,
+    "complexity": "simple",
+    "module": "فروش",
+    "table": "sales_division",
+    "question": "لیست بخش‌های فروش",
+    "sql": {
+      "SQL": "SELECT sd.code AS sd_code, sd.title AS sd_title FROM sales_division AS sd",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 125,
+    "complexity": "simple",
+    "module": "فروش",
+    "table": "sales_settlementmethod",
+    "question": "لیست روش‌های تسویه",
+    "sql": {
+      "SQL": "SELECT ssm.title AS ssm_title FROM sales_settlementmethod AS ssm",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 126,
+    "complexity": "simple",
+    "module": "فروش",
+    "table": "sales_customergroup",
+    "question": "لیست گروه‌بندی مشتریان",
+    "sql": {
+      "SQL": "SELECT scg.code AS scg_code, scg.title AS scg_title, scg.grouping_title AS scg_grouping_title FROM sales_customergroup AS scg",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 127,
+    "complexity": "simple",
+    "module": "فروش",
+    "table": "sales_productgroup",
+    "question": "لیست گروه‌بندی کالا/خدمت",
+    "sql": {
+      "SQL": "SELECT spg.code AS spg_code, spg.group_title AS spg_group_title, spg.grouping_title AS spg_grouping_title FROM sales_productgroup AS spg",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 128,
+    "complexity": "simple",
+    "module": "فروش",
+    "table": "sales_invoice",
+    "question": "لیست وضعیت‌های فاکتور",
+    "sql": {
+      "SQL": "SELECT DISTINCT si.invoice_state AS si_invoice_state FROM sales_invoice AS si",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 129,
+    "complexity": "simple",
+    "module": "فروش",
+    "table": "sales_pricelistheader",
+    "question": "لیست وضعیت‌های لیست قیمت",
+    "sql": {
+      "SQL": "SELECT DISTINCT sph.state AS sph_state FROM sales_pricelistheader AS sph",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 130,
+    "complexity": "simple",
+    "module": "فروش",
+    "table": "sales_invoiceitem",
+    "question": "مجموع مقدار اقلام فاکتور",
+    "sql": {
+      "SQL": "SELECT SUM(sii.amount) AS sii_amount_sum FROM sales_invoiceitem AS sii",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 131,
+    "complexity": "medium",
+    "module": "فروش",
+    "table": "sales_invoice",
+    "question": "فاکتورهای امروز",
+    "sql": {
+      "SQL": "SELECT si.number_c AS si_number_c, si.date_c AS si_date_c, si.net_price AS si_net_price, si.cu_full_name AS si_cu_full_name FROM sales_invoice AS si WHERE si.date_c = $1",
+      "parameters": {"1": "{today_date}"}
+    }
+  },
+  {
+    "id": 132,
+    "complexity": "medium",
+    "module": "فروش",
+    "table": "sales_invoice",
+    "question": "فاکتورهای دیروز",
+    "sql": {
+      "SQL": "SELECT si.number_c AS si_number_c, si.date_c AS si_date_c, si.net_price AS si_net_price, si.cu_full_name AS si_cu_full_name FROM sales_invoice AS si WHERE si.date_c = $1",
+      "parameters": {"1": "{yesterday_date}"}
+    }
+  },
+  {
+    "id": 133,
+    "complexity": "medium",
+    "module": "فروش",
+    "table": "sales_invoice",
+    "question": "فاکتورهای این هفته",
+    "sql": {
+      "SQL": "SELECT si.number_c AS si_number_c, si.date_c AS si_date_c, si.net_price AS si_net_price FROM sales_invoice AS si WHERE si.date_c >= $1 AND si.date_c <= $2",
+      "parameters": {"1": "{this_week_saturday}", "2": "{this_week_friday}"}
+    }
+  },
+  {
+    "id": 134,
+    "complexity": "medium",
+    "module": "فروش",
+    "table": "sales_invoice",
+    "question": "فاکتورهای هفته گذشته",
+    "sql": {
+      "SQL": "SELECT si.number_c AS si_number_c, si.date_c AS si_date_c, si.net_price AS si_net_price FROM sales_invoice AS si WHERE si.date_c >= $1 AND si.date_c <= $2",
+      "parameters": {"1": "{last_week_saturday}", "2": "{last_week_friday}"}
+    }
+  },
+  {
+    "id": 135,
+    "complexity": "medium",
+    "module": "فروش",
+    "table": "sales_invoice",
+    "question": "فاکتورهای از ابتدای سال",
+    "sql": {
+      "SQL": "SELECT si.number_c AS si_number_c, si.date_c AS si_date_c, si.net_price AS si_net_price FROM sales_invoice AS si WHERE si.date_c >= $1",
+      "parameters": {"1": "{persian_year_start}"}
+    }
+  },
+  {
+    "id": 136,
+    "complexity": "medium",
+    "module": "فروش",
+    "table": "sales_invoice",
+    "question": "فاکتورهای با وضعیت تایید شده",
+    "sql": {
+      "SQL": "SELECT si.number_c AS si_number_c, si.date_c AS si_date_c, si.net_price AS si_net_price, si.invoice_state AS si_invoice_state FROM sales_invoice AS si WHERE si.invoice_state = $1",
+      "parameters": {"1": "تایید شده"}
+    }
+  },
+  {
+    "id": 137,
+    "complexity": "medium",
+    "module": "فروش",
+    "table": "sales_invoice",
+    "question": "مجموع فروش امروز",
+    "sql": {
+      "SQL": "SELECT SUM(si.net_price) AS si_net_price_sum FROM sales_invoice AS si WHERE si.date_c = $1",
+      "parameters": {"1": "{today_date}"}
+    }
+  },
+  {
+    "id": 138,
+    "complexity": "medium",
+    "module": "فروش",
+    "table": "sales_invoice",
+    "question": "مجموع فروش هفته گذشته",
+    "sql": {
+      "SQL": "SELECT SUM(si.net_price) AS si_net_price_sum FROM sales_invoice AS si WHERE si.date_c >= $1 AND si.date_c <= $2",
+      "parameters": {"1": "{last_week_saturday}", "2": "{last_week_friday}"}
+    }
+  },
+  {
+    "id": 139,
+    "complexity": "medium",
+    "module": "فروش",
+    "table": "sales_invoice",
+    "question": "تعداد فاکتور به تفکیک وضعیت",
+    "sql": {
+      "SQL": "SELECT si.invoice_state AS si_invoice_state, COUNT(si.id) AS si_id_count FROM sales_invoice AS si GROUP BY si.invoice_state ORDER BY si_id_count DESC",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 140,
+    "complexity": "medium",
+    "module": "فروش",
+    "table": "sales_invoice",
+    "question": "فروش به تفکیک حوزه فروش",
+    "sql": {
+      "SQL": "SELECT si.sa_title AS si_sa_title, SUM(si.net_price) AS si_net_price_sum FROM sales_invoice AS si GROUP BY si.sa_title ORDER BY si_net_price_sum DESC",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 141,
+    "complexity": "medium",
+    "module": "فروش",
+    "table": "sales_invoice",
+    "question": "فروش به تفکیک دفتر فروش",
+    "sql": {
+      "SQL": "SELECT si.so_title AS si_so_title, SUM(si.net_price) AS si_net_price_sum FROM sales_invoice AS si GROUP BY si.so_title ORDER BY si_net_price_sum DESC",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 142,
+    "complexity": "medium",
+    "module": "فروش",
+    "table": "sales_invoice",
+    "question": "فروش به تفکیک مشتری از ابتدای سال",
+    "sql": {
+      "SQL": "SELECT si.cu_full_name AS si_cu_full_name, SUM(si.net_price) AS si_net_price_sum FROM sales_invoice AS si WHERE si.date_c >= $1 GROUP BY si.cu_full_name ORDER BY si_net_price_sum DESC",
+      "parameters": {"1": "{persian_year_start}"}
+    }
+  },
+  {
+    "id": 143,
+    "complexity": "medium",
+    "module": "فروش",
+    "table": "sales_invoice",
+    "question": "فاکتورهای مشتری خاص",
+    "sql": {
+      "SQL": "SELECT si.number_c AS si_number_c, si.date_c AS si_date_c, si.net_price AS si_net_price FROM sales_invoice AS si WHERE si.cu_full_name ILIKE $1",
+      "parameters": {"1": "%احمدی%"}
+    }
+  },
+  {
+    "id": 144,
+    "complexity": "medium",
+    "module": "فروش",
+    "table": "sales_returninvoice",
+    "question": "فاکتورهای برگشتی هفته گذشته",
+    "sql": {
+      "SQL": "SELECT sri.number_c AS sri_number_c, sri.date_c AS sri_date_c, sri.net_price AS sri_net_price FROM sales_returninvoice AS sri WHERE sri.date_c >= $1 AND sri.date_c <= $2",
+      "parameters": {"1": "{last_week_saturday}", "2": "{last_week_friday}"}
+    }
+  },
+  {
+    "id": 145,
+    "complexity": "medium",
+    "module": "فروش",
+    "table": "sales_returninvoice",
+    "question": "مجموع برگشت از فروش از ابتدای سال",
+    "sql": {
+      "SQL": "SELECT SUM(sri.net_price) AS sri_net_price_sum FROM sales_returninvoice AS sri WHERE sri.date_c >= $1",
+      "parameters": {"1": "{persian_year_start}"}
+    }
+  },
+  {
+    "id": 146,
+    "complexity": "medium",
+    "module": "فروش",
+    "table": "sales_pricelistheader",
+    "question": "لیست قیمت‌های فعال",
+    "sql": {
+      "SQL": "SELECT sph.title AS sph_title, sph.currency_title AS sph_currency_title, sph.pl_validity_start_date AS sph_pl_validity_start_date FROM sales_pricelistheader AS sph WHERE sph.state = $1",
+      "parameters": {"1": "فعال"}
+    }
+  },
+  {
+    "id": 147,
+    "complexity": "medium",
+    "module": "فروش",
+    "table": "sales_pricelistitem",
+    "question": "قلم لیست قیمت‌های معتبر امروز",
+    "sql": {
+      "SQL": "SELECT spli.product_title AS spli_product_title, spli.plip_fee AS spli_plip_fee, spli.unit_title AS spli_unit_title FROM sales_pricelistitem AS spli WHERE spli.plip_validity_start_date <= $1 AND spli.plip_validity_end_date >= $2",
+      "parameters": {"1": "{today_date}", "2": "{today_date}"}
+    }
+  },
+  {
+    "id": 148,
+    "complexity": "medium",
+    "module": "فروش",
+    "table": "sales_invoice",
+    "question": "فاکتورهای با ارز دلار",
+    "sql": {
+      "SQL": "SELECT si.number_c AS si_number_c, si.date_c AS si_date_c, si.cur_title AS si_cur_title, si.net_price AS si_net_price FROM sales_invoice AS si WHERE si.cur_title ILIKE $1",
+      "parameters": {"1": "%دلار%"}
+    }
+  },
+  {
+    "id": 149,
+    "complexity": "medium",
+    "module": "فروش",
+    "table": "sales_invoice",
+    "question": "فاکتورهای با مبلغ بالای یک میلیارد",
+    "sql": {
+      "SQL": "SELECT si.number_c AS si_number_c, si.date_c AS si_date_c, si.net_price AS si_net_price, si.cu_full_name AS si_cu_full_name FROM sales_invoice AS si WHERE si.net_price > $1",
+      "parameters": {"1": "1000000000"}
+    }
+  },
+  {
+    "id": 150,
+    "complexity": "medium",
+    "module": "فروش",
+    "table": "sales_invoiceitem",
+    "question": "مجموع فروش به تفکیک انبار",
+    "sql": {
+      "SQL": "SELECT sii.store_title AS sii_store_title, SUM(sii.net_price) AS sii_net_price_sum FROM sales_invoiceitem AS sii GROUP BY sii.store_title ORDER BY sii_net_price_sum DESC",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 151,
+    "complexity": "medium",
+    "module": "فروش",
+    "table": "sales_invoice",
+    "question": "فروش به تفکیک روش تسویه",
+    "sql": {
+      "SQL": "SELECT si.sm_title AS si_sm_title, SUM(si.net_price) AS si_net_price_sum, COUNT(si.id) AS si_id_count FROM sales_invoice AS si GROUP BY si.sm_title ORDER BY si_net_price_sum DESC",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 152,
+    "complexity": "medium",
+    "module": "فروش",
+    "table": "sales_rinvoiceitem",
+    "question": "مجموع برگشتی به تفکیک انبار",
+    "sql": {
+      "SQL": "SELECT srii.store_title AS srii_store_title, SUM(srii.net_price) AS srii_net_price_sum FROM sales_rinvoiceitem AS srii GROUP BY srii.store_title ORDER BY srii_net_price_sum DESC",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 153,
+    "complexity": "medium",
+    "module": "فروش",
+    "table": "sales_invoice",
+    "question": "تعداد فاکتور هفته گذشته",
+    "sql": {
+      "SQL": "SELECT COUNT(si.id) AS si_id_count FROM sales_invoice AS si WHERE si.date_c >= $1 AND si.date_c <= $2",
+      "parameters": {"1": "{last_week_saturday}", "2": "{last_week_friday}"}
+    }
+  },
+  {
+    "id": 154,
+    "complexity": "medium",
+    "module": "فروش",
+    "table": "sales_invoiceitem",
+    "question": "میانگین مقدار فروش اقلام",
+    "sql": {
+      "SQL": "SELECT AVG(sii.amount) AS sii_amount_avg FROM sales_invoiceitem AS sii",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 155,
+    "complexity": "medium",
+    "module": "فروش",
+    "table": "sales_invoice",
+    "question": "فروش به ارز عملیاتی از ابتدای سال",
+    "sql": {
+      "SQL": "SELECT SUM(si.functional_net_price) AS si_functional_net_price_sum FROM sales_invoice AS si WHERE si.date_c >= $1",
+      "parameters": {"1": "{persian_year_start}"}
+    }
+  },
+  {
+    "id": 156,
+    "complexity": "medium",
+    "module": "فروش",
+    "table": "sales_returninvoice",
+    "question": "برگشت فروش به تفکیک مشتری",
+    "sql": {
+      "SQL": "SELECT sri.cu_full_name AS sri_cu_full_name, SUM(sri.net_price) AS sri_net_price_sum FROM sales_returninvoice AS sri GROUP BY sri.cu_full_name ORDER BY sri_net_price_sum DESC",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 157,
+    "complexity": "medium",
+    "module": "فروش",
+    "table": "sales_pricelistitem",
+    "question": "قلم لیست قیمت با امکان تغییر در اسناد",
+    "sql": {
+      "SQL": "SELECT spli.product_title AS spli_product_title, spli.plip_fee AS spli_plip_fee, spli.pli_is_price_changeable AS spli_pli_is_price_changeable FROM sales_pricelistitem AS spli WHERE spli.pli_is_price_changeable = $1",
+      "parameters": {"1": "true"}
+    }
+  },
+  {
+    "id": 158,
+    "complexity": "medium",
+    "module": "فروش",
+    "table": "sales_invoice",
+    "question": "فروش به تفکیک سال مالی",
+    "sql": {
+      "SQL": "SELECT si.afy_title AS si_afy_title, SUM(si.net_price) AS si_net_price_sum, COUNT(si.id) AS si_id_count FROM sales_invoice AS si GROUP BY si.afy_title ORDER BY si_net_price_sum DESC",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 159,
+    "complexity": "medium",
+    "module": "فروش",
+    "table": "sales_returninvoice",
+    "question": "برگشت فروش به تفکیک حوزه فروش",
+    "sql": {
+      "SQL": "SELECT sri.sa_title AS sri_sa_title, SUM(sri.net_price) AS sri_net_price_sum FROM sales_returninvoice AS sri GROUP BY sri.sa_title ORDER BY sri_net_price_sum DESC",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 160,
+    "complexity": "medium",
+    "module": "فروش",
+    "table": "sales_invoice",
+    "question": "فروش به تفکیک روز در هفته گذشته",
+    "sql": {
+      "SQL": "SELECT si.date_c AS si_date_c, SUM(si.net_price) AS si_net_price_sum, COUNT(si.id) AS si_id_count FROM sales_invoice AS si WHERE si.date_c >= $1 AND si.date_c <= $2 GROUP BY si.date_c ORDER BY si.date_c",
+      "parameters": {"1": "{last_week_saturday}", "2": "{last_week_friday}"}
+    }
+  },
+  {
+    "id": 161,
+    "complexity": "hard",
+    "module": "فروش",
+    "table": "sales_invoiceitem, sales_invoice",
+    "question": "اقلام فاکتورهای تایید شده از ابتدای سال",
+    "sql": {
+      "SQL": "SELECT sii.unit_title AS sii_unit_title, sii.amount AS sii_amount, sii.net_price AS sii_net_price, si.number_c AS si_number_c FROM sales_invoiceitem AS sii JOIN sales_invoice AS si ON sii.invoice_id = si.id WHERE si.date_c >= $1 AND si.invoice_state = $2",
+      "parameters": {"1": "{persian_year_start}", "2": "تایید شده"}
+    }
+  },
+  {
+    "id": 162,
+    "complexity": "hard",
+    "module": "فروش",
+    "table": "sales_invoiceitem, sales_product",
+    "question": "فروش به تفکیک کالا/خدمت",
+    "sql": {
+      "SQL": "SELECT sp.code AS sp_code, sp.title AS sp_title, SUM(sii.net_price) AS sii_net_price_sum, SUM(sii.amount) AS sii_amount_sum FROM sales_invoiceitem AS sii JOIN sales_product AS sp ON sii.gnr_product_id = sp.id GROUP BY sp.code, sp.title ORDER BY sii_net_price_sum DESC",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 163,
+    "complexity": "hard",
+    "module": "فروش",
+    "table": "sales_invoiceitem, sales_productgroup",
+    "question": "فروش به تفکیک گروه کالا/خدمت",
+    "sql": {
+      "SQL": "SELECT spg.group_title AS spg_group_title, SUM(sii.net_price) AS sii_net_price_sum FROM sales_invoiceitem AS sii JOIN sales_productgroup AS spg ON sii.gnr_product_id = spg.product_id GROUP BY spg.group_title ORDER BY sii_net_price_sum DESC",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 164,
+    "complexity": "hard",
+    "module": "فروش",
+    "table": "sales_invoice, sales_invoicecustomergroup",
+    "question": "فروش به تفکیک گروه مشتری",
+    "sql": {
+      "SQL": "SELECT sicg.group_title AS sicg_group_title, SUM(si.net_price) AS si_net_price_sum FROM sales_invoice AS si JOIN sales_invoicecustomergroup AS sicg ON si.customer_id = sicg.customer_id GROUP BY sicg.group_title ORDER BY si_net_price_sum DESC",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 165,
+    "complexity": "hard",
+    "module": "فروش",
+    "table": "sales_rinvoiceitem, sales_returninvoice",
+    "question": "اقلام فاکتور برگشتی هفته گذشته",
+    "sql": {
+      "SQL": "SELECT srii.unit_title AS srii_unit_title, srii.amount AS srii_amount, srii.net_price AS srii_net_price, sri.number_c AS sri_number_c FROM sales_rinvoiceitem AS srii JOIN sales_returninvoice AS sri ON srii.return_invoice_id = sri.id WHERE sri.date_c >= $1 AND sri.date_c <= $2",
+      "parameters": {"1": "{last_week_saturday}", "2": "{last_week_friday}"}
+    }
+  },
+  {
+    "id": 166,
+    "complexity": "hard",
+    "module": "فروش",
+    "table": "sales_rinvoiceitem, sales_product",
+    "question": "برگشت فروش به تفکیک کالا/خدمت",
+    "sql": {
+      "SQL": "SELECT sp.code AS sp_code, sp.title AS sp_title, SUM(srii.net_price) AS srii_net_price_sum FROM sales_rinvoiceitem AS srii JOIN sales_product AS sp ON srii.gnr_product_id = sp.id GROUP BY sp.code, sp.title ORDER BY srii_net_price_sum DESC",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 167,
+    "complexity": "hard",
+    "module": "فروش",
+    "table": "sales_pricelistitem, sales_pricelistheader",
+    "question": "قلم لیست قیمت‌های فعال",
+    "sql": {
+      "SQL": "SELECT spli.product_title AS spli_product_title, spli.plip_fee AS spli_plip_fee, sph.title AS sph_title FROM sales_pricelistitem AS spli JOIN sales_pricelistheader AS sph ON spli.pl_id = sph.id WHERE sph.state = $1",
+      "parameters": {"1": "فعال"}
+    }
+  },
+  {
+    "id": 168,
+    "complexity": "hard",
+    "module": "فروش",
+    "table": "sales_invoiceitem, sales_invoice, sales_product",
+    "question": "ده کالای پرفروش از ابتدای سال",
+    "sql": {
+      "SQL": "SELECT sp.code AS sp_code, sp.title AS sp_title, SUM(sii.net_price) AS sii_net_price_sum FROM sales_invoiceitem AS sii JOIN sales_invoice AS si ON sii.invoice_id = si.id JOIN sales_product AS sp ON sii.gnr_product_id = sp.id WHERE si.date_c >= $1 GROUP BY sp.code, sp.title ORDER BY sii_net_price_sum DESC LIMIT $2",
+      "parameters": {"1": "{persian_year_start}", "2": "10"}
+    }
+  },
+  {
+    "id": 169,
+    "complexity": "hard",
+    "module": "فروش",
+    "table": "sales_invoice",
+    "question": "مقایسه فروش این هفته با هفته گذشته",
+    "sql": {
+      "SQL": "SELECT (SELECT COALESCE(SUM(si.net_price), 0) FROM sales_invoice AS si WHERE si.date_c >= $1 AND si.date_c <= $2) - (SELECT COALESCE(SUM(si.net_price), 0) FROM sales_invoice AS si WHERE si.date_c >= $3 AND si.date_c <= $4) AS sales_difference",
+      "parameters": {"1": "{this_week_saturday}", "2": "{this_week_friday}", "3": "{last_week_saturday}", "4": "{last_week_friday}"}
+    }
+  },
+  {
+    "id": 170,
+    "complexity": "hard",
+    "module": "فروش",
+    "table": "sales_invoice",
+    "question": "مقایسه تعداد فاکتور امروز با دیروز",
+    "sql": {
+      "SQL": "SELECT (SELECT COUNT(si.id) FROM sales_invoice AS si WHERE si.date_c = $1) - (SELECT COUNT(si.id) FROM sales_invoice AS si WHERE si.date_c = $2) AS count_difference",
+      "parameters": {"1": "{today_date}", "2": "{yesterday_date}"}
+    }
+  },
+  {
+    "id": 171,
+    "complexity": "hard",
+    "module": "فروش",
+    "table": "sales_invoice",
+    "question": "حداقل و حداکثر فروش روزانه از ابتدای سال",
+    "sql": {
+      "SQL": "SELECT MIN(A.daily_sales) AS A_daily_sales_min, MAX(A.daily_sales) AS A_daily_sales_max FROM (SELECT SUM(si.net_price) AS daily_sales FROM sales_invoice AS si WHERE si.date_c >= $1 GROUP BY si.date_c) AS A",
+      "parameters": {"1": "{persian_year_start}"}
+    }
+  },
+  {
+    "id": 172,
+    "complexity": "hard",
+    "module": "فروش",
+    "table": "sales_invoice",
+    "question": "میانگین فروش روزانه از ابتدای سال",
+    "sql": {
+      "SQL": "SELECT AVG(A.daily_sales) AS A_daily_sales_avg FROM (SELECT SUM(si.net_price) AS daily_sales FROM sales_invoice AS si WHERE si.date_c >= $1 GROUP BY si.date_c) AS A",
+      "parameters": {"1": "{persian_year_start}"}
+    }
+  },
+  {
+    "id": 173,
+    "complexity": "hard",
+    "module": "فروش",
+    "table": "sales_invoice",
+    "question": "مشتریان با فروش بالای یک میلیارد از ابتدای سال",
+    "sql": {
+      "SQL": "SELECT si.cu_full_name AS si_cu_full_name, si.cu_code AS si_cu_code, SUM(si.net_price) AS si_net_price_sum FROM sales_invoice AS si WHERE si.date_c >= $1 GROUP BY si.cu_full_name, si.cu_code HAVING SUM(si.net_price) > $2 ORDER BY si_net_price_sum DESC",
+      "parameters": {"1": "{persian_year_start}", "2": "1000000000"}
+    }
+  },
+  {
+    "id": 174,
+    "complexity": "hard",
+    "module": "فروش",
+    "table": "sales_invoiceitem, sales_product",
+    "question": "کالاهایی با بیش از 100 تراکنش فروش",
+    "sql": {
+      "SQL": "SELECT sp.code AS sp_code, sp.title AS sp_title, COUNT(sii.id) AS sii_id_count, SUM(sii.net_price) AS sii_net_price_sum FROM sales_invoiceitem AS sii JOIN sales_product AS sp ON sii.gnr_product_id = sp.id GROUP BY sp.code, sp.title HAVING COUNT(sii.id) > $1 ORDER BY sii_id_count DESC",
+      "parameters": {"1": "100"}
+    }
+  },
+  {
+    "id": 175,
+    "complexity": "hard",
+    "module": "فروش",
+    "table": "sales_invoiceitem, sales_invoice",
+    "question": "میانگین تعداد اقلام فاکتور از ابتدای سال",
+    "sql": {
+      "SQL": "SELECT AVG(A.item_count) AS A_item_count_avg FROM (SELECT COUNT(sii.id) AS item_count FROM sales_invoiceitem AS sii JOIN sales_invoice AS si ON sii.invoice_id = si.id WHERE si.date_c >= $1 GROUP BY si.id) AS A",
+      "parameters": {"1": "{persian_year_start}"}
+    }
+  },
+  {
+    "id": 176,
+    "complexity": "hard",
+    "module": "فروش",
+    "table": "sales_invoiceitem, logistics_invvoucheritem",
+    "question": "اقلام فاکتور با اطلاعات سند انبار",
+    "sql": {
+      "SQL": "SELECT sii.amount AS sii_amount, sii.net_price AS sii_net_price, lii.major_quantity AS lii_major_quantity FROM sales_invoiceitem AS sii JOIN logistics_invvoucheritem AS lii ON sii.voucher_item_id = lii.id",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 177,
+    "complexity": "hard",
+    "module": "فروش",
+    "table": "sales_invoiceitem, logistics_invvoucheritem, logistics_invvoucher",
+    "question": "فروش به تفکیک انبار با اطلاعات سند انبار",
+    "sql": {
+      "SQL": "SELECT liv.store_id AS liv_store_id, SUM(sii.net_price) AS sii_net_price_sum FROM sales_invoiceitem AS sii JOIN logistics_invvoucheritem AS lii ON sii.voucher_item_id = lii.id JOIN logistics_invvoucher AS liv ON lii.inventory_voucher_id = liv.id GROUP BY liv.store_id ORDER BY sii_net_price_sum DESC",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 178,
+    "complexity": "hard",
+    "module": "فروش",
+    "table": "sales_rinvoiceitem, logistics_invvoucheritem",
+    "question": "برگشت فروش با اطلاعات سند انبار",
+    "sql": {
+      "SQL": "SELECT srii.amount AS srii_amount, srii.net_price AS srii_net_price, lii.major_quantity AS lii_major_quantity FROM sales_rinvoiceitem AS srii JOIN logistics_invvoucheritem AS lii ON srii.voucher_item_id = lii.id",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 179,
+    "complexity": "hard",
+    "module": "فروش",
+    "table": "sales_invoice, sales_returninvoice",
+    "question": "فروش خالص (فروش منهای برگشتی) از ابتدای سال",
+    "sql": {
+      "SQL": "SELECT (SELECT COALESCE(SUM(si.net_price), 0) FROM sales_invoice AS si WHERE si.date_c >= $1) - (SELECT COALESCE(SUM(sri.net_price), 0) FROM sales_returninvoice AS sri WHERE sri.date_c >= $2) AS net_sales",
+      "parameters": {"1": "{persian_year_start}", "2": "{persian_year_start}"}
+    }
+  },
+  {
+    "id": 180,
+    "complexity": "hard",
+    "module": "فروش",
+    "table": "sales_invoice, sales_returninvoice",
+    "question": "نرخ برگشت فروش (درصد برگشتی به فروش) از ابتدای سال",
+    "sql": {
+      "SQL": "SELECT (SELECT COALESCE(SUM(sri.net_price), 0) FROM sales_returninvoice AS sri WHERE sri.date_c >= $1) AS return_total, (SELECT COALESCE(SUM(si.net_price), 0) FROM sales_invoice AS si WHERE si.date_c >= $2) AS sales_total",
+      "parameters": {"1": "{persian_year_start}", "2": "{persian_year_start}"}
+    }
+  },
+  {
+    "id": 181,
+    "complexity": "hard",
+    "module": "فروش",
+    "table": "sales_invoiceitem, sales_invoice, sales_productgroup",
+    "question": "فروش هفته گذشته به تفکیک گروه کالا",
+    "sql": {
+      "SQL": "SELECT spg.group_title AS spg_group_title, SUM(sii.net_price) AS sii_net_price_sum FROM sales_invoiceitem AS sii JOIN sales_invoice AS si ON sii.invoice_id = si.id JOIN sales_productgroup AS spg ON sii.gnr_product_id = spg.product_id WHERE si.date_c >= $1 AND si.date_c <= $2 GROUP BY spg.group_title ORDER BY sii_net_price_sum DESC",
+      "parameters": {"1": "{last_week_saturday}", "2": "{last_week_friday}"}
+    }
+  },
+  {
+    "id": 182,
+    "complexity": "hard",
+    "module": "فروش",
+    "table": "sales_pricelistitem, sales_pricelistheader",
+    "question": "میانگین فی لیست قیمت به تفکیک ارز",
+    "sql": {
+      "SQL": "SELECT sph.currency_title AS sph_currency_title, AVG(spli.plip_fee) AS spli_plip_fee_avg FROM sales_pricelistitem AS spli JOIN sales_pricelistheader AS sph ON spli.pl_id = sph.id GROUP BY sph.currency_title ORDER BY spli_plip_fee_avg DESC",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 183,
+    "complexity": "hard",
+    "module": "فروش",
+    "table": "sales_invoice",
+    "question": "ده مشتری برتر از نظر فروش از ابتدای سال",
+    "sql": {
+      "SQL": "SELECT si.cu_full_name AS si_cu_full_name, si.cu_code AS si_cu_code, SUM(si.net_price) AS si_net_price_sum, COUNT(si.id) AS si_id_count FROM sales_invoice AS si WHERE si.date_c >= $1 GROUP BY si.cu_full_name, si.cu_code ORDER BY si_net_price_sum DESC LIMIT $2",
+      "parameters": {"1": "{persian_year_start}", "2": "10"}
+    }
+  },
+  {
+    "id": 184,
+    "complexity": "hard",
+    "module": "فروش",
+    "table": "sales_invoice",
+    "question": "فروش به تفکیک حوزه و دفتر فروش از ابتدای سال",
+    "sql": {
+      "SQL": "SELECT si.sa_title AS si_sa_title, si.so_title AS si_so_title, SUM(si.net_price) AS si_net_price_sum FROM sales_invoice AS si WHERE si.date_c >= $1 GROUP BY si.sa_title, si.so_title ORDER BY si_net_price_sum DESC",
+      "parameters": {"1": "{persian_year_start}"}
+    }
+  },
+  {
+    "id": 185,
+    "complexity": "hard",
+    "module": "فروش",
+    "table": "sales_invoiceitem, sales_invoice",
+    "question": "تخفیفات به تفکیک مشتری از ابتدای سال",
+    "sql": {
+      "SQL": "SELECT si.cu_full_name AS si_cu_full_name, SUM(sii.deduction_price) AS sii_deduction_price_sum FROM sales_invoiceitem AS sii JOIN sales_invoice AS si ON sii.invoice_id = si.id WHERE si.date_c >= $1 GROUP BY si.cu_full_name ORDER BY sii_deduction_price_sum DESC",
+      "parameters": {"1": "{persian_year_start}"}
+    }
+  },
+  {
+    "id": 186,
+    "complexity": "hard",
+    "module": "فروش",
+    "table": "sales_invoice",
+    "question": "مجموع مالیات به تفکیک ماه از ابتدای سال",
+    "sql": {
+      "SQL": "SELECT si.date_c AS si_date_c, SUM(si.tax_total) AS si_tax_total_sum FROM sales_invoice AS si WHERE si.date_c >= $1 GROUP BY si.date_c ORDER BY si.date_c",
+      "parameters": {"1": "{persian_year_start}"}
+    }
+  },
+  {
+    "id": 187,
+    "complexity": "hard",
+    "module": "فروش",
+    "table": "sales_invoiceitem, sales_invoice, logistics_invvoucheritem, logistics_parts",
+    "question": "فروش به تفکیک نوع کالا",
+    "sql": {
+      "SQL": "SELECT lp.part_type AS lp_part_type, SUM(sii.net_price) AS sii_net_price_sum FROM sales_invoiceitem AS sii JOIN sales_invoice AS si ON sii.invoice_id = si.id JOIN logistics_invvoucheritem AS lii ON sii.voucher_item_id = lii.id JOIN logistics_parts AS lp ON lii.part_id = lp.id WHERE si.date_c >= $1 GROUP BY lp.part_type ORDER BY sii_net_price_sum DESC",
+      "parameters": {"1": "{persian_year_start}"}
+    }
+  },
+  {
+    "id": 188,
+    "complexity": "hard",
+    "module": "فروش",
+    "table": "sales_rinvoiceitem, sales_invoiceitem",
+    "question": "اقلام فاکتور برگشتی با اطلاعات فاکتور مبنا",
+    "sql": {
+      "SQL": "SELECT srii.amount AS srii_amount, srii.net_price AS srii_net_price, sii.amount AS sii_amount, sii.net_price AS sii_net_price FROM sales_rinvoiceitem AS srii JOIN sales_invoiceitem AS sii ON srii.base_item_id = sii.id",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 189,
+    "complexity": "hard",
+    "module": "فروش",
+    "table": "sales_invoice",
+    "question": "فروش به ارز گزارشگری اول از ابتدای سال",
+    "sql": {
+      "SQL": "SELECT si.sa_title AS si_sa_title, SUM(si.first_reporting_net_price) AS si_first_reporting_net_price_sum FROM sales_invoice AS si WHERE si.date_c >= $1 GROUP BY si.sa_title ORDER BY si_first_reporting_net_price_sum DESC",
+      "parameters": {"1": "{persian_year_start}"}
+    }
+  },
+  {
+    "id": 190,
+    "complexity": "hard",
+    "module": "فروش",
+    "table": "sales_invoiceitem, sales_invoice",
+    "question": "فاکتورهایی با بیش از 10 قلم",
+    "sql": {
+      "SQL": "SELECT si.number_c AS si_number_c, si.date_c AS si_date_c, si.net_price AS si_net_price, COUNT(sii.id) AS sii_id_count FROM sales_invoiceitem AS sii JOIN sales_invoice AS si ON sii.invoice_id = si.id GROUP BY si.number_c, si.date_c, si.net_price HAVING COUNT(sii.id) > $1 ORDER BY sii_id_count DESC",
+      "parameters": {"1": "10"}
+    }
+  },
+  {
+    "id": 191,
+    "complexity": "hard",
+    "module": "فروش",
+    "table": "sales_invoice",
+    "question": "مقایسه فروش سال جاری با سال قبل",
+    "sql": {
+      "SQL": "SELECT (SELECT COALESCE(SUM(si.net_price), 0) FROM sales_invoice AS si WHERE si.date_c >= $1 AND si.date_c <= $2) AS current_year_sales, (SELECT COALESCE(SUM(si.net_price), 0) FROM sales_invoice AS si WHERE si.date_c >= $3 AND si.date_c <= $4) AS previous_year_sales",
+      "parameters": {"1": "{persian_year_start}", "2": "{persian_year_end}", "3": "{prev_persian_year_start}", "4": "{prev_persian_year_end}"}
+    }
+  },
+  {
+    "id": 192,
+    "complexity": "hard",
+    "module": "فروش",
+    "table": "sales_invoice",
+    "question": "فروش به تفکیک پرداخت کننده",
+    "sql": {
+      "SQL": "SELECT si.pay_full_name AS si_pay_full_name, si.payer_code AS si_payer_code, SUM(si.net_price) AS si_net_price_sum FROM sales_invoice AS si WHERE si.pay_full_name IS NOT NULL GROUP BY si.pay_full_name, si.payer_code ORDER BY si_net_price_sum DESC",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 193,
+    "complexity": "hard",
+    "module": "فروش",
+    "table": "sales_invoice",
+    "question": "فروش به تفکیک تحویل گیرنده",
+    "sql": {
+      "SQL": "SELECT si.rec_full_name AS si_rec_full_name, si.receiver_code AS si_receiver_code, SUM(si.net_price) AS si_net_price_sum FROM sales_invoice AS si WHERE si.rec_full_name IS NOT NULL GROUP BY si.rec_full_name, si.receiver_code ORDER BY si_net_price_sum DESC",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 194,
+    "complexity": "hard",
+    "module": "فروش",
+    "table": "sales_invoiceitem, sales_invoice",
+    "question": "عوامل افزاینده به تفکیک حوزه فروش از ابتدای سال",
+    "sql": {
+      "SQL": "SELECT si.sa_title AS si_sa_title, SUM(sii.surcharges) AS sii_surcharges_sum FROM sales_invoiceitem AS sii JOIN sales_invoice AS si ON sii.invoice_id = si.id WHERE si.date_c >= $1 GROUP BY si.sa_title ORDER BY sii_surcharges_sum DESC",
+      "parameters": {"1": "{persian_year_start}"}
+    }
+  },
+  {
+    "id": 195,
+    "complexity": "hard",
+    "module": "فروش",
+    "table": "sales_pricelistitem, sales_pricelistheader",
+    "question": "لیست قیمت‌هایی که این ماه منقضی می‌شوند",
+    "sql": {
+      "SQL": "SELECT sph.title AS sph_title, sph.pl_validity_end_date AS sph_pl_validity_end_date, COUNT(spli.id) AS spli_id_count FROM sales_pricelistitem AS spli JOIN sales_pricelistheader AS sph ON spli.pl_id = sph.id WHERE sph.pl_validity_end_date >= $1 AND sph.pl_validity_end_date <= $2 GROUP BY sph.title, sph.pl_validity_end_date",
+      "parameters": {"1": "{last_month_date}", "2": "{today_date}"}
+    }
+  },
+  {
+    "id": 196,
+    "complexity": "hard",
+    "module": "فروش",
+    "table": "sales_invoiceitem, sales_invoice, logistics_invvoucheritem, logistics_invvoucher, logistics_store",
+    "question": "فروش به تفکیک انبار با جزئیات از ابتدای سال",
+    "sql": {
+      "SQL": "SELECT ls.title AS ls_title, SUM(sii.net_price) AS sii_net_price_sum, COUNT(sii.id) AS sii_id_count FROM sales_invoiceitem AS sii JOIN sales_invoice AS si ON sii.invoice_id = si.id JOIN logistics_invvoucheritem AS lii ON sii.voucher_item_id = lii.id JOIN logistics_invvoucher AS liv ON lii.inventory_voucher_id = liv.id JOIN logistics_store AS ls ON liv.store_id = ls.id WHERE si.date_c >= $1 GROUP BY ls.title ORDER BY sii_net_price_sum DESC",
+      "parameters": {"1": "{persian_year_start}"}
+    }
+  },
+  {
+    "id": 197,
+    "complexity": "hard",
+    "module": "فروش",
+    "table": "sales_invoice",
+    "question": "مقایسه فروش هفته جاری با هفته گذشته به تفکیک حوزه فروش",
+    "sql": {
+      "SQL": "SELECT A.sa_title AS sa_title, A.this_week_sales AS this_week_sales, B.last_week_sales AS last_week_sales FROM (SELECT si.sa_title AS sa_title, SUM(si.net_price) AS this_week_sales FROM sales_invoice AS si WHERE si.date_c >= $1 AND si.date_c <= $2 GROUP BY si.sa_title) AS A LEFT JOIN (SELECT si.sa_title AS sa_title, SUM(si.net_price) AS last_week_sales FROM sales_invoice AS si WHERE si.date_c >= $3 AND si.date_c <= $4 GROUP BY si.sa_title) AS B ON A.sa_title = B.sa_title",
+      "parameters": {"1": "{this_week_saturday}", "2": "{this_week_friday}", "3": "{last_week_saturday}", "4": "{last_week_friday}"}
+    }
+  },
+  {
+    "id": 198,
+    "complexity": "hard",
+    "module": "فروش",
+    "table": "sales_invoiceitem, sales_invoice, sales_product",
+    "question": "تحلیل فروش کالاهای پرفروش هفته گذشته",
+    "sql": {
+      "SQL": "SELECT sp.code AS sp_code, sp.title AS sp_title, SUM(sii.amount) AS sii_amount_sum, SUM(sii.net_price) AS sii_net_price_sum, AVG(sii.fee) AS sii_fee_avg FROM sales_invoiceitem AS sii JOIN sales_invoice AS si ON sii.invoice_id = si.id JOIN sales_product AS sp ON sii.gnr_product_id = sp.id WHERE si.date_c >= $1 AND si.date_c <= $2 GROUP BY sp.code, sp.title ORDER BY sii_net_price_sum DESC LIMIT $3",
+      "parameters": {"1": "{last_week_saturday}", "2": "{last_week_friday}", "3": "10"}
+    }
+  },
+  {
+    "id": 199,
+    "complexity": "hard",
+    "module": "فروش",
+    "table": "sales_rinvoiceitem, sales_returninvoice, sales_product",
+    "question": "ده کالای با بیشترین برگشتی از ابتدای سال",
+    "sql": {
+      "SQL": "SELECT sp.code AS sp_code, sp.title AS sp_title, SUM(srii.net_price) AS srii_net_price_sum FROM sales_rinvoiceitem AS srii JOIN sales_returninvoice AS sri ON srii.return_invoice_id = sri.id JOIN sales_product AS sp ON srii.gnr_product_id = sp.id WHERE sri.date_c >= $1 GROUP BY sp.code, sp.title ORDER BY srii_net_price_sum DESC LIMIT $2",
+      "parameters": {"1": "{persian_year_start}", "2": "10"}
+    }
+  },
+  {
+    "id": 200,
+    "complexity": "hard",
+    "module": "فروش",
+    "table": "sales_invoiceitem, sales_invoice, logistics_invvoucheritem, logistics_invvoucher, logistics_voucherspecification",
+    "question": "فروش به تفکیک الگوی سند انبار از ابتدای سال",
+    "sql": {
+      "SQL": "SELECT lvs.title AS lvs_title, SUM(sii.net_price) AS sii_net_price_sum FROM sales_invoiceitem AS sii JOIN sales_invoice AS si ON sii.invoice_id = si.id JOIN logistics_invvoucheritem AS lii ON sii.voucher_item_id = lii.id JOIN logistics_invvoucher AS liv ON lii.inventory_voucher_id = liv.id JOIN logistics_voucherspecification AS lvs ON liv.voucher_specification_id = lvs.id WHERE si.date_c >= $1 GROUP BY lvs.title ORDER BY sii_net_price_sum DESC",
+      "parameters": {"1": "{persian_year_start}"}
+    }
+  }
+]

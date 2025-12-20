@@ -1,0 +1,1102 @@
+[
+  {
+    "id": 1,
+    "complexity": "simple",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_customer",
+    "question": "تعداد کل مشتریان چقدر است؟",
+    "sql": {
+      "SQL": "SELECT COUNT(cc.id) AS cc_id_count FROM crm_customer AS cc",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 2,
+    "complexity": "simple",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_lead",
+    "question": "چند سرنخ داریم؟",
+    "sql": {
+      "SQL": "SELECT COUNT(cl.id) AS cl_id_count FROM crm_lead AS cl",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 3,
+    "complexity": "simple",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_opportunity",
+    "question": "تعداد فرصت‌های فروش",
+    "sql": {
+      "SQL": "SELECT COUNT(co.id) AS co_id_count FROM crm_opportunity AS co",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 4,
+    "complexity": "simple",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_campaign",
+    "question": "چند کمپین ثبت شده؟",
+    "sql": {
+      "SQL": "SELECT COUNT(cc.id) AS cc_id_count FROM crm_campaign AS cc",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 5,
+    "complexity": "simple",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_quote",
+    "question": "تعداد پیش فاکتورها",
+    "sql": {
+      "SQL": "SELECT COUNT(cq.id) AS cq_id_count FROM crm_quote AS cq",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 6,
+    "complexity": "simple",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_contact",
+    "question": "چند نفر در لیست افراد ثبت شده؟",
+    "sql": {
+      "SQL": "SELECT COUNT(cct.id) AS cct_id_count FROM crm_contact AS cct",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 7,
+    "complexity": "simple",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_customerrequest",
+    "question": "تعداد درخواست‌های مشتری",
+    "sql": {
+      "SQL": "SELECT COUNT(ccr.id) AS ccr_id_count FROM crm_customerrequest AS ccr",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 8,
+    "complexity": "simple",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_quoteitem",
+    "question": "چند قلم پیش فاکتور ثبت شده؟",
+    "sql": {
+      "SQL": "SELECT COUNT(cqi.id) AS cqi_id_count FROM crm_quoteitem AS cqi",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 9,
+    "complexity": "simple",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_opportunityitem",
+    "question": "تعداد اقلام فرصت",
+    "sql": {
+      "SQL": "SELECT COUNT(coi.id) AS coi_id_count FROM crm_opportunityitem AS coi",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 10,
+    "complexity": "simple",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_opportunity",
+    "question": "مجموع مبلغ فرصت‌ها",
+    "sql": {
+      "SQL": "SELECT SUM(co.price) AS co_price_sum FROM crm_opportunity AS co",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 11,
+    "complexity": "simple",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_quote",
+    "question": "مجموع مبلغ خالص پیش فاکتورها",
+    "sql": {
+      "SQL": "SELECT SUM(cq.net_price) AS cq_net_price_sum FROM crm_quote AS cq",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 12,
+    "complexity": "simple",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_campaign",
+    "question": "مجموع بودجه کمپین‌ها",
+    "sql": {
+      "SQL": "SELECT SUM(cc.budget) AS cc_budget_sum FROM crm_campaign AS cc",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 13,
+    "complexity": "simple",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_opportunity",
+    "question": "میانگین احتمال موفقیت فرصت‌ها",
+    "sql": {
+      "SQL": "SELECT AVG(co.success_probability) AS co_success_probability_avg FROM crm_opportunity AS co",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 14,
+    "complexity": "simple",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_quote",
+    "question": "حداکثر مبلغ پیش فاکتور",
+    "sql": {
+      "SQL": "SELECT MAX(cq.net_price) AS cq_net_price_max FROM crm_quote AS cq",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 15,
+    "complexity": "simple",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_quoteitem",
+    "question": "میانگین فی اقلام پیش فاکتور",
+    "sql": {
+      "SQL": "SELECT AVG(cqi.fee) AS cqi_fee_avg FROM crm_quoteitem AS cqi",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 16,
+    "complexity": "simple",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_customer",
+    "question": "لیست نام مشتریان",
+    "sql": {
+      "SQL": "SELECT cc.fullname AS cc_fullname, cc.code AS cc_code FROM crm_customer AS cc",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 17,
+    "complexity": "simple",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_lead",
+    "question": "اسامی سرنخ‌ها",
+    "sql": {
+      "SQL": "SELECT cl.firstname AS cl_firstname, cl.lastname AS cl_lastname FROM crm_lead AS cl",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 18,
+    "complexity": "simple",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_campaign",
+    "question": "مجموع درآمد مورد انتظار کمپین‌ها",
+    "sql": {
+      "SQL": "SELECT SUM(cc.expected_income) AS cc_expected_income_sum FROM crm_campaign AS cc",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 19,
+    "complexity": "simple",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_opportunityitem",
+    "question": "مجموع مبلغ خالص اقلام فرصت",
+    "sql": {
+      "SQL": "SELECT SUM(coi.net_price) AS coi_net_price_sum FROM crm_opportunityitem AS coi",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 20,
+    "complexity": "simple",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_quoteitem",
+    "question": "مجموع مالیات اقلام پیش فاکتور",
+    "sql": {
+      "SQL": "SELECT SUM(cqi.tax_price) AS cqi_tax_price_sum FROM crm_quoteitem AS cqi",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 21,
+    "complexity": "simple",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_opportunity",
+    "question": "حداقل مبلغ فرصت",
+    "sql": {
+      "SQL": "SELECT MIN(co.price) AS co_price_min FROM crm_opportunity AS co",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 22,
+    "complexity": "simple",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_campaign",
+    "question": "مجموع هزینه واقعی کمپین‌ها",
+    "sql": {
+      "SQL": "SELECT SUM(cc.actual_cost) AS cc_actual_cost_sum FROM crm_campaign AS cc",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 23,
+    "complexity": "simple",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_customerPhone",
+    "question": "تعداد شماره تماس‌های ثبت شده برای مشتریان",
+    "sql": {
+      "SQL": "SELECT COUNT(ccp.id) AS ccp_id_count FROM crm_customerPhone AS ccp",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 24,
+    "complexity": "simple",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_leadPhone",
+    "question": "چند شماره تماس برای سرنخ‌ها ثبت شده؟",
+    "sql": {
+      "SQL": "SELECT COUNT(clp.id) AS clp_id_count FROM crm_leadPhone AS clp",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 25,
+    "complexity": "simple",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_contactPhone",
+    "question": "تعداد شماره تماس افراد",
+    "sql": {
+      "SQL": "SELECT COUNT(ccp.id) AS ccp_id_count FROM crm_contactPhone AS ccp",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 26,
+    "complexity": "simple",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_customerEmail",
+    "question": "چند ایمیل برای مشتریان ثبت شده؟",
+    "sql": {
+      "SQL": "SELECT COUNT(cce.id) AS cce_id_count FROM crm_customerEmail AS cce",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 27,
+    "complexity": "simple",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_leadEmail",
+    "question": "تعداد ایمیل‌های سرنخ",
+    "sql": {
+      "SQL": "SELECT COUNT(cle.id) AS cle_id_count FROM crm_leadEmail AS cle",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 28,
+    "complexity": "simple",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_contactEmail",
+    "question": "چند ایمیل برای افراد ثبت شده؟",
+    "sql": {
+      "SQL": "SELECT COUNT(cce.id) AS cce_id_count FROM crm_contactEmail AS cce",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 29,
+    "complexity": "simple",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_customerAddress",
+    "question": "تعداد آدرس‌های مشتریان",
+    "sql": {
+      "SQL": "SELECT COUNT(cca.id) AS cca_id_count FROM crm_customerAddress AS cca",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 30,
+    "complexity": "simple",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_leadAddress",
+    "question": "چند آدرس برای سرنخ‌ها ثبت شده؟",
+    "sql": {
+      "SQL": "SELECT COUNT(cla.id) AS cla_id_count FROM crm_leadAddress AS cla",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 31,
+    "complexity": "medium",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_customer",
+    "question": "مشتریان ایجاد شده امروز",
+    "sql": {
+      "SQL": "SELECT cc.fullname AS cc_fullname, cc.customer_type AS cc_customer_type, cc.primary_phone AS cc_primary_phone FROM crm_customer AS cc WHERE cc.created_at = $1",
+      "parameters": {"1": "{today_date}"}
+    }
+  },
+  {
+    "id": 32,
+    "complexity": "medium",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_lead",
+    "question": "سرنخ‌های ایجاد شده دیروز",
+    "sql": {
+      "SQL": "SELECT cl.firstname AS cl_firstname, cl.lastname AS cl_lastname, cl.source AS cl_source, cl.lead_state AS cl_lead_state FROM crm_lead AS cl WHERE cl.created_at = $1",
+      "parameters": {"1": "{yesterday_date}"}
+    }
+  },
+  {
+    "id": 33,
+    "complexity": "medium",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_opportunity",
+    "question": "فرصت‌هایی که این هفته بسته می‌شوند",
+    "sql": {
+      "SQL": "SELECT co.name AS co_name, co.customer_title AS co_customer_title, co.close_date AS co_close_date, co.price AS co_price FROM crm_opportunity AS co WHERE co.close_date >= $1 AND co.close_date <= $2",
+      "parameters": {"1": "{this_week_saturday}", "2": "{this_week_friday}"}
+    }
+  },
+  {
+    "id": 34,
+    "complexity": "medium",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_quote",
+    "question": "پیش فاکتورهای هفته گذشته",
+    "sql": {
+      "SQL": "SELECT cq.title AS cq_title, cq.number AS cq_number, cq.date AS cq_date, cq.net_price AS cq_net_price FROM crm_quote AS cq WHERE cq.date >= $1 AND cq.date <= $2",
+      "parameters": {"1": "{last_week_saturday}", "2": "{last_week_friday}"}
+    }
+  },
+  {
+    "id": 35,
+    "complexity": "medium",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_campaign",
+    "question": "کمپین‌های فعال",
+    "sql": {
+      "SQL": "SELECT cc.name AS cc_name, cc.start_date AS cc_start_date, cc.end_date AS cc_end_date, cc.budget AS cc_budget FROM crm_campaign AS cc WHERE cc.status = $1",
+      "parameters": {"1": "فعال"}
+    }
+  },
+  {
+    "id": 36,
+    "complexity": "medium",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_lead",
+    "question": "سرنخ‌های تبدیل نشده با جذابیت بالا",
+    "sql": {
+      "SQL": "SELECT cl.firstname AS cl_firstname, cl.lastname AS cl_lastname, cl.rate AS cl_rate, cl.primary_phone AS cl_primary_phone FROM crm_lead AS cl WHERE cl.rate ILIKE $1 AND cl.lead_state != $2",
+      "parameters": {"1": "%بالا%", "2": "تبدیل شده"}
+    }
+  },
+  {
+    "id": 37,
+    "complexity": "medium",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_customer",
+    "question": "مشتریان صنعت دارویی",
+    "sql": {
+      "SQL": "SELECT cc.fullname AS cc_fullname, cc.industry AS cc_industry, cc.primary_phone AS cc_primary_phone FROM crm_customer AS cc WHERE cc.industry ILIKE $1",
+      "parameters": {"1": "%دارو%"}
+    }
+  },
+  {
+    "id": 38,
+    "complexity": "medium",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_customerrequest",
+    "question": "درخواست‌های با اولویت فوری",
+    "sql": {
+      "SQL": "SELECT ccr.code AS ccr_code, ccr.title AS ccr_title, ccr.submission_date AS ccr_submission_date, ccr.stage AS ccr_stage FROM crm_customerrequest AS ccr WHERE ccr.priority = $1",
+      "parameters": {"1": "فوری"}
+    }
+  },
+  {
+    "id": 39,
+    "complexity": "medium",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_contact",
+    "question": "افرادی که سمت مدیر عامل دارند",
+    "sql": {
+      "SQL": "SELECT cct.first_name AS cct_first_name, cct.last_name AS cct_last_name, cct.title AS cct_title FROM crm_contact AS cct WHERE cct.title ILIKE $1",
+      "parameters": {"1": "%مدیر عامل%"}
+    }
+  },
+  {
+    "id": 40,
+    "complexity": "medium",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_opportunity",
+    "question": "فرصت‌های برنده شده",
+    "sql": {
+      "SQL": "SELECT co.name AS co_name, co.customer_title AS co_customer_title, co.price AS co_price, co.close_date AS co_close_date FROM crm_opportunity AS co WHERE co.stage = $1",
+      "parameters": {"1": "برنده شده"}
+    }
+  },
+  {
+    "id": 41,
+    "complexity": "medium",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_lead",
+    "question": "تعداد سرنخ‌ها به تفکیک منبع",
+    "sql": {
+      "SQL": "SELECT cl.source AS cl_source, COUNT(cl.id) AS cl_id_count FROM crm_lead AS cl GROUP BY cl.source ORDER BY cl_id_count DESC",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 42,
+    "complexity": "medium",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_opportunity",
+    "question": "تعداد فرصت به تفکیک مرحله",
+    "sql": {
+      "SQL": "SELECT co.stage AS co_stage, COUNT(co.id) AS co_id_count FROM crm_opportunity AS co GROUP BY co.stage",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 43,
+    "complexity": "medium",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_customer",
+    "question": "تعداد مشتری به تفکیک نوع",
+    "sql": {
+      "SQL": "SELECT cc.customer_type AS cc_customer_type, COUNT(cc.id) AS cc_id_count FROM crm_customer AS cc GROUP BY cc.customer_type",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 44,
+    "complexity": "medium",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_customerrequest",
+    "question": "تعداد درخواست به تفکیک اولویت",
+    "sql": {
+      "SQL": "SELECT ccr.priority AS ccr_priority, COUNT(ccr.id) AS ccr_id_count FROM crm_customerrequest AS ccr GROUP BY ccr.priority ORDER BY ccr_id_count DESC",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 45,
+    "complexity": "medium",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_quote",
+    "question": "مجموع پیش فاکتورهای امروز",
+    "sql": {
+      "SQL": "SELECT SUM(cq.net_price) AS cq_net_price_sum FROM crm_quote AS cq WHERE cq.date = $1",
+      "parameters": {"1": "{today_date}"}
+    }
+  },
+  {
+    "id": 46,
+    "complexity": "medium",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_lead",
+    "question": "سرنخ‌های از دست رفته",
+    "sql": {
+      "SQL": "SELECT cl.firstname AS cl_firstname, cl.lastname AS cl_lastname, cl.lost_reason AS cl_lost_reason FROM crm_lead AS cl WHERE cl.lead_state = $1",
+      "parameters": {"1": "از دست رفته"}
+    }
+  },
+  {
+    "id": 47,
+    "complexity": "medium",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_opportunity",
+    "question": "فرصت‌های با احتمال موفقیت بالای 80 درصد",
+    "sql": {
+      "SQL": "SELECT co.name AS co_name, co.customer_title AS co_customer_title, co.success_probability AS co_success_probability, co.price AS co_price FROM crm_opportunity AS co WHERE co.success_probability > $1",
+      "parameters": {"1": "80"}
+    }
+  },
+  {
+    "id": 48,
+    "complexity": "medium",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_customer",
+    "question": "مشتریان حقوقی",
+    "sql": {
+      "SQL": "SELECT cc.fullname AS cc_fullname, cc.code AS cc_code, cc.primary_phone AS cc_primary_phone FROM crm_customer AS cc WHERE cc.customer_type = $1",
+      "parameters": {"1": "حقوقی"}
+    }
+  },
+  {
+    "id": 49,
+    "complexity": "medium",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_lead",
+    "question": "سرنخ‌های ایجاد شده از ابتدای سال",
+    "sql": {
+      "SQL": "SELECT cl.firstname AS cl_firstname, cl.lastname AS cl_lastname, cl.created_at AS cl_created_at, cl.lead_state AS cl_lead_state FROM crm_lead AS cl WHERE cl.created_at >= $1",
+      "parameters": {"1": "{persian_year_start}"}
+    }
+  },
+  {
+    "id": 50,
+    "complexity": "medium",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_quote",
+    "question": "پیش فاکتورهای ماه گذشته",
+    "sql": {
+      "SQL": "SELECT cq.title AS cq_title, cq.number AS cq_number, cq.date AS cq_date, cq.net_price AS cq_net_price FROM crm_quote AS cq WHERE cq.date >= $1 AND cq.date <= $2",
+      "parameters": {"1": "{last_month_date}", "2": "{today_date}"}
+    }
+  },
+  {
+    "id": 51,
+    "complexity": "medium",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_campaign",
+    "question": "کمپین‌های سال جاری",
+    "sql": {
+      "SQL": "SELECT cc.name AS cc_name, cc.start_date AS cc_start_date, cc.budget AS cc_budget, cc.expected_income AS cc_expected_income FROM crm_campaign AS cc WHERE cc.start_date >= $1 AND cc.start_date <= $2",
+      "parameters": {"1": "{persian_year_start}", "2": "{persian_year_end}"}
+    }
+  },
+  {
+    "id": 52,
+    "complexity": "medium",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_customerrequest",
+    "question": "درخواست‌های در حال بررسی",
+    "sql": {
+      "SQL": "SELECT ccr.code AS ccr_code, ccr.title AS ccr_title, ccr.owner_display AS ccr_owner_display FROM crm_customerrequest AS ccr WHERE ccr.stage = $1",
+      "parameters": {"1": "در حال بررسی"}
+    }
+  },
+  {
+    "id": 53,
+    "complexity": "medium",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_opportunity",
+    "question": "مجموع فرصت‌های برنده شده امسال",
+    "sql": {
+      "SQL": "SELECT SUM(co.price) AS co_price_sum FROM crm_opportunity AS co WHERE co.stage = $1 AND co.close_date >= $2 AND co.close_date <= $3",
+      "parameters": {"1": "برنده شده", "2": "{persian_year_start}", "3": "{persian_year_end}"}
+    }
+  },
+  {
+    "id": 54,
+    "complexity": "medium",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_quote",
+    "question": "تعداد پیش فاکتور به تفکیک حوزه فروش",
+    "sql": {
+      "SQL": "SELECT cq.sales_area_title AS cq_sales_area_title, COUNT(cq.id) AS cq_id_count FROM crm_quote AS cq GROUP BY cq.sales_area_title",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 55,
+    "complexity": "medium",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_customer",
+    "question": "مشتریان با صنعت فناوری اطلاعات",
+    "sql": {
+      "SQL": "SELECT cc.fullname AS cc_fullname, cc.industry AS cc_industry, cc.website AS cc_website FROM crm_customer AS cc WHERE cc.industry ILIKE $1",
+      "parameters": {"1": "%فناوری%"}
+    }
+  },
+  {
+    "id": 56,
+    "complexity": "medium",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_customerAddress",
+    "question": "آدرس‌های مشتریان در تهران",
+    "sql": {
+      "SQL": "SELECT cca.title AS cca_title, cca.address_c AS cca_address_c, cca.city AS cca_city FROM crm_customerAddress AS cca WHERE cca.city ILIKE $1",
+      "parameters": {"1": "%تهران%"}
+    }
+  },
+  {
+    "id": 57,
+    "complexity": "medium",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_leadAddress",
+    "question": "آدرس‌های سرنخ در اصفهان",
+    "sql": {
+      "SQL": "SELECT cla.title AS cla_title, cla.address_c AS cla_address_c, cla.province AS cla_province FROM crm_leadAddress AS cla WHERE cla.province ILIKE $1",
+      "parameters": {"1": "%اصفهان%"}
+    }
+  },
+  {
+    "id": 58,
+    "complexity": "medium",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_opportunity",
+    "question": "میانگین احتمال موفقیت به تفکیک روند فروش",
+    "sql": {
+      "SQL": "SELECT co.pipeline AS co_pipeline, AVG(co.success_probability) AS co_success_probability_avg FROM crm_opportunity AS co GROUP BY co.pipeline",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 59,
+    "complexity": "medium",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_lead",
+    "question": "تعداد سرنخ به تفکیک مرحله",
+    "sql": {
+      "SQL": "SELECT cl.lead_state AS cl_lead_state, COUNT(cl.id) AS cl_id_count FROM crm_lead AS cl GROUP BY cl.lead_state",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 60,
+    "complexity": "medium",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_customerrequest",
+    "question": "درخواست‌های ثبت شده هفته گذشته",
+    "sql": {
+      "SQL": "SELECT ccr.code AS ccr_code, ccr.title AS ccr_title, ccr.submission_date AS ccr_submission_date, ccr.priority AS ccr_priority FROM crm_customerrequest AS ccr WHERE ccr.submission_date >= $1 AND ccr.submission_date <= $2",
+      "parameters": {"1": "{last_week_saturday}", "2": "{last_week_friday}"}
+    }
+  },
+  {
+    "id": 61,
+    "complexity": "hard",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_customer, crm_customerOpportunity",
+    "question": "مشتریان با فرصت‌های بالای یک میلیارد تومان",
+    "sql": {
+      "SQL": "SELECT cc.fullname AS cc_fullname, cc.customer_type AS cc_customer_type, cco.name AS cco_name, cco.price AS cco_price, cco.stage AS cco_stage FROM crm_customer AS cc JOIN crm_customerOpportunity AS cco ON cc.id = cco.customer_id WHERE cco.price > $1",
+      "parameters": {"1": "1000000000"}
+    }
+  },
+  {
+    "id": 62,
+    "complexity": "hard",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_customer, crm_customerQuote",
+    "question": "مشتریان با پیش فاکتورهای ماه گذشته",
+    "sql": {
+      "SQL": "SELECT cc.fullname AS cc_fullname, cc.code AS cc_code, ccq.title AS ccq_title, ccq.net_price AS ccq_net_price, ccq.date AS ccq_date FROM crm_customer AS cc JOIN crm_customerQuote AS ccq ON cc.id = ccq.customer_id WHERE ccq.date >= $1 AND ccq.date <= $2",
+      "parameters": {"1": "{last_month_date}", "2": "{today_date}"}
+    }
+  },
+  {
+    "id": 63,
+    "complexity": "hard",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_customer, crm_customerLead",
+    "question": "مشتریان به همراه سرنخ‌های مرتبط",
+    "sql": {
+      "SQL": "SELECT cc.fullname AS cc_fullname, ccl.firstname AS ccl_firstname, ccl.lastname AS ccl_lastname, ccl.primary_phone AS ccl_primary_phone FROM crm_customer AS cc JOIN crm_customerLead AS ccl ON cc.id = ccl.customer_id",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 64,
+    "complexity": "hard",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_customer, crm_customerContact",
+    "question": "مشتریان با افراد مرتبط که سمت مدیر دارند",
+    "sql": {
+      "SQL": "SELECT cc.fullname AS cc_fullname, ccc.first_name AS ccc_first_name, ccc.last_name AS ccc_last_name, ccc.title AS ccc_title FROM crm_customer AS cc JOIN crm_customerContact AS ccc ON cc.id = ccc.customer_id WHERE ccc.title ILIKE $1",
+      "parameters": {"1": "%مدیر%"}
+    }
+  },
+  {
+    "id": 65,
+    "complexity": "hard",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_customer, crm_customerCampaign",
+    "question": "مشتریان عضو کمپین‌های فعال",
+    "sql": {
+      "SQL": "SELECT cc.fullname AS cc_fullname, ccc.name AS ccc_name, ccc.start_date AS ccc_start_date, ccc.budget AS ccc_budget FROM crm_customer AS cc JOIN crm_customerCampaign AS ccc ON cc.id = ccc.customer_id WHERE ccc.stage = $1",
+      "parameters": {"1": "فعال"}
+    }
+  },
+  {
+    "id": 66,
+    "complexity": "hard",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_customer, crm_customerGrouping",
+    "question": "تعداد مشتری به تفکیک گروه‌بندی",
+    "sql": {
+      "SQL": "SELECT ccg.grouping_title AS ccg_grouping_title, ccg.group_title AS ccg_group_title, COUNT(cc.id) AS cc_id_count FROM crm_customer AS cc JOIN crm_customerGrouping AS ccg ON cc.id = ccg.customer_id GROUP BY ccg.grouping_title, ccg.group_title ORDER BY cc_id_count DESC",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 67,
+    "complexity": "hard",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_lead, crm_leadOpportunity",
+    "question": "سرنخ‌ها با فرصت‌های مرتبط برنده شده",
+    "sql": {
+      "SQL": "SELECT cl.firstname AS cl_firstname, cl.lastname AS cl_lastname, clo.name AS clo_name, clo.price AS clo_price, clo.stage AS clo_stage FROM crm_lead AS cl JOIN crm_leadOpportunity AS clo ON cl.opportunity_id = clo.id WHERE clo.stage = $1",
+      "parameters": {"1": "برنده شده"}
+    }
+  },
+  {
+    "id": 68,
+    "complexity": "hard",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_lead, crm_leadCampaign",
+    "question": "سرنخ‌ها به همراه کمپین‌های مرتبط",
+    "sql": {
+      "SQL": "SELECT cl.firstname AS cl_firstname, cl.lastname AS cl_lastname, cl.lead_state AS cl_lead_state, clc.name AS clc_name, clc.stage AS clc_stage FROM crm_lead AS cl JOIN crm_leadCampaign AS clc ON cl.id = clc.lead_id",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 69,
+    "complexity": "hard",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_lead, crm_leadCustomer",
+    "question": "سرنخ‌های تبدیل شده با اطلاعات مشتری",
+    "sql": {
+      "SQL": "SELECT cl.firstname AS cl_firstname, cl.lastname AS cl_lastname, cl.convert_date AS cl_convert_date, clc.fullname AS clc_fullname, clc.code AS clc_code FROM crm_lead AS cl JOIN crm_leadCustomer AS clc ON cl.customer_id = clc.id WHERE cl.lead_state = $1",
+      "parameters": {"1": "تبدیل شده"}
+    }
+  },
+  {
+    "id": 70,
+    "complexity": "hard",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_lead, crm_leadContact",
+    "question": "سرنخ‌ها با افراد مرتبط",
+    "sql": {
+      "SQL": "SELECT cl.firstname AS cl_firstname, cl.lastname AS cl_lastname, clc.first_name AS clc_first_name, clc.last_name AS clc_last_name, clc.title AS clc_title FROM crm_lead AS cl JOIN crm_leadContact AS clc ON cl.contact_id = clc.id",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 71,
+    "complexity": "hard",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_opportunity, crm_opportunityitem",
+    "question": "فرصت‌های برنده شده با جزئیات اقلام",
+    "sql": {
+      "SQL": "SELECT co.name AS co_name, co.customer_title AS co_customer_title, coi.product_title AS coi_product_title, coi.amount AS coi_amount, coi.net_price AS coi_net_price FROM crm_opportunity AS co JOIN crm_opportunityitem AS coi ON co.id = coi.opportunity_id WHERE co.stage = $1",
+      "parameters": {"1": "برنده شده"}
+    }
+  },
+  {
+    "id": 72,
+    "complexity": "hard",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_opportunity, crm_opportunitycustomer",
+    "question": "فرصت‌های با مبلغ بالا به همراه اطلاعات مشتری",
+    "sql": {
+      "SQL": "SELECT co.name AS co_name, co.price AS co_price, co.stage AS co_stage, coc.customer_title AS coc_customer_title, coc.code AS coc_code FROM crm_opportunity AS co JOIN crm_opportunitycustomer AS coc ON co.customer_id = coc.id WHERE co.price > $1",
+      "parameters": {"1": "500000000"}
+    }
+  },
+  {
+    "id": 73,
+    "complexity": "hard",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_opportunity, crm_opportunitylead",
+    "question": "فرصت‌ها با سرنخ‌های مرتبط",
+    "sql": {
+      "SQL": "SELECT co.name AS co_name, co.price AS co_price, col.firstname AS col_firstname, col.lastname AS col_lastname, col.primary_phone AS col_primary_phone FROM crm_opportunity AS co JOIN crm_opportunitylead AS col ON co.id = col.opportunity_id",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 74,
+    "complexity": "hard",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_opportunity, crm_opportunityquote",
+    "question": "فرصت‌ها با پیش فاکتورهای مرتبط",
+    "sql": {
+      "SQL": "SELECT co.name AS co_name, co.price AS co_price, coq.title AS coq_title, coq.number AS coq_number, coq.net_price AS coq_net_price FROM crm_opportunity AS co JOIN crm_opportunityquote AS coq ON co.id = coq.related_opportunity_id",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 75,
+    "complexity": "hard",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_quote, crm_quoteitem",
+    "question": "پیش فاکتورهای هفته گذشته با جزئیات اقلام",
+    "sql": {
+      "SQL": "SELECT cq.title AS cq_title, cq.number AS cq_number, cqi.unit_title AS cqi_unit_title, cqi.amount AS cqi_amount, cqi.fee AS cqi_fee, cqi.net_price AS cqi_net_price FROM crm_quote AS cq JOIN crm_quoteitem AS cqi ON cq.id = cqi.quote_id WHERE cq.date >= $1 AND cq.date <= $2",
+      "parameters": {"1": "{last_week_saturday}", "2": "{last_week_friday}"}
+    }
+  },
+  {
+    "id": 76,
+    "complexity": "hard",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_quote, crm_quotecustomer",
+    "question": "پیش فاکتورها با اطلاعات مشتری مربوطه",
+    "sql": {
+      "SQL": "SELECT cq.title AS cq_title, cq.number AS cq_number, cq.net_price AS cq_net_price, cqc.name AS cqc_name, cqc.code AS cqc_code FROM crm_quote AS cq JOIN crm_quotecustomer AS cqc ON cq.customer_id = cqc.id WHERE cq.date >= $1",
+      "parameters": {"1": "{persian_year_start}"}
+    }
+  },
+  {
+    "id": 77,
+    "complexity": "hard",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_quote, crm_quoteopportunity",
+    "question": "پیش فاکتورها با فرصت مرتبط",
+    "sql": {
+      "SQL": "SELECT cq.title AS cq_title, cq.net_price AS cq_net_price, cqo.opportunity_title AS cqo_opportunity_title, cqo.opportunity_stage AS cqo_opportunity_stage, cqo.opportunity_price AS cqo_opportunity_price FROM crm_quote AS cq JOIN crm_quoteopportunity AS cqo ON cq.id = cqo.quote_id",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 78,
+    "complexity": "hard",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_quote, crm_quoteinvoice",
+    "question": "پیش فاکتورهایی که به فاکتور تبدیل شده‌اند",
+    "sql": {
+      "SQL": "SELECT cq.title AS cq_title, cq.number AS cq_number, cq.net_price AS cq_net_price, cqi.invoice_number AS cqi_invoice_number, cqi.invoice_date AS cqi_invoice_date, cqi.invoice_net_price AS cqi_invoice_net_price FROM crm_quote AS cq JOIN crm_quoteinvoice AS cqi ON cq.id = cqi.quote_id",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 79,
+    "complexity": "hard",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_campaign, crm_campaignLead",
+    "question": "تعداد سرنخ هر کمپین فعال",
+    "sql": {
+      "SQL": "SELECT cc.name AS cc_name, cc.budget AS cc_budget, COUNT(ccl.id) AS ccl_id_count FROM crm_campaign AS cc JOIN crm_campaignLead AS ccl ON cc.id = ccl.campaign_id WHERE cc.status = $1 GROUP BY cc.name, cc.budget ORDER BY ccl_id_count DESC",
+      "parameters": {"1": "فعال"}
+    }
+  },
+  {
+    "id": 80,
+    "complexity": "hard",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_campaign, crm_campaignCustomer",
+    "question": "مشتریان هر کمپین با بودجه بالای صد میلیون",
+    "sql": {
+      "SQL": "SELECT cc.name AS cc_name, cc.budget AS cc_budget, ccc.fullname AS ccc_fullname, ccc.customer_type AS ccc_customer_type FROM crm_campaign AS cc JOIN crm_campaignCustomer AS ccc ON cc.id = ccc.campaign_id WHERE cc.budget > $1",
+      "parameters": {"1": "100000000"}
+    }
+  },
+  {
+    "id": 81,
+    "complexity": "hard",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_campaign, crm_campaignContact",
+    "question": "افراد مرتبط با کمپین‌های فعال",
+    "sql": {
+      "SQL": "SELECT cc.name AS cc_name, ccc.first_name AS ccc_first_name, ccc.last_name AS ccc_last_name, ccc.title AS ccc_title, ccc.primary_phone AS ccc_primary_phone FROM crm_campaign AS cc JOIN crm_campaignContact AS ccc ON cc.id = ccc.campaign_id WHERE cc.status = $1",
+      "parameters": {"1": "فعال"}
+    }
+  },
+  {
+    "id": 82,
+    "complexity": "hard",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_campaign, crm_campaignOpportunity",
+    "question": "مجموع مبلغ فرصت‌های هر کمپین",
+    "sql": {
+      "SQL": "SELECT cc.name AS cc_name, cc.budget AS cc_budget, SUM(cco.price) AS cco_price_sum, COUNT(cco.id) AS cco_id_count FROM crm_campaign AS cc JOIN crm_campaignOpportunity AS cco ON cc.id = cco.campaign_id GROUP BY cc.name, cc.budget ORDER BY cco_price_sum DESC",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 83,
+    "complexity": "hard",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_contact, crm_contactCustomer",
+    "question": "افراد با مشتریان مرتبط",
+    "sql": {
+      "SQL": "SELECT cct.first_name AS cct_first_name, cct.last_name AS cct_last_name, cct.title AS cct_title, ccc.fullname AS ccc_fullname, ccc.customer_type AS ccc_customer_type FROM crm_contact AS cct JOIN crm_contactCustomer AS ccc ON cct.id = ccc.contact_id",
+      "parameters": {}
+    }
+  },
+  {
+    "id": 84,
+    "complexity": "hard",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_contact, crm_contactCampaign",
+    "question": "افراد عضو کمپین‌های سال جاری",
+    "sql": {
+      "SQL": "SELECT cct.first_name AS cct_first_name, cct.last_name AS cct_last_name, ccc.name AS ccc_name, ccc.start_date AS ccc_start_date FROM crm_contact AS cct JOIN crm_contactCampaign AS ccc ON cct.id = ccc.contact_id WHERE ccc.start_date >= $1 AND ccc.start_date <= $2",
+      "parameters": {"1": "{persian_year_start}", "2": "{persian_year_end}"}
+    }
+  },
+  {
+    "id": 85,
+    "complexity": "hard",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_customerrequest, crm_customerrequestcustomer",
+    "question": "درخواست‌های فوری با اطلاعات مشتری",
+    "sql": {
+      "SQL": "SELECT ccr.code AS ccr_code, ccr.title AS ccr_title, ccr.submission_date AS ccr_submission_date, ccrc.fullname AS ccrc_fullname, ccrc.customer_type AS ccrc_customer_type FROM crm_customerrequest AS ccr JOIN crm_customerrequestcustomer AS ccrc ON ccr.customer_id = ccrc.id WHERE ccr.priority = $1",
+      "parameters": {"1": "فوری"}
+    }
+  },
+  {
+    "id": 86,
+    "complexity": "hard",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_customer, crm_customerPhone",
+    "question": "مشتریان حقوقی با شماره تماس‌هایشان",
+    "sql": {
+      "SQL": "SELECT cc.fullname AS cc_fullname, cc.code AS cc_code, ccp.title AS ccp_title, ccp.number_c AS ccp_number_c FROM crm_customer AS cc JOIN crm_customerPhone AS ccp ON cc.id = ccp.customer_id WHERE cc.customer_type = $1",
+      "parameters": {"1": "حقوقی"}
+    }
+  },
+  {
+    "id": 87,
+    "complexity": "hard",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_customer, crm_customerEmail",
+    "question": "ایمیل‌های اصلی مشتریان صنعت دارویی",
+    "sql": {
+      "SQL": "SELECT cc.fullname AS cc_fullname, cc.industry AS cc_industry, cce.email AS cce_email FROM crm_customer AS cc JOIN crm_customerEmail AS cce ON cc.id = cce.customer_id WHERE cc.industry ILIKE $1 AND cce.is_primary = $2",
+      "parameters": {"1": "%دارو%", "2": "true"}
+    }
+  },
+  {
+    "id": 88,
+    "complexity": "hard",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_lead, crm_leadPhone",
+    "question": "سرنخ‌های جدید با شماره تماس‌هایشان",
+    "sql": {
+      "SQL": "SELECT cl.firstname AS cl_firstname, cl.lastname AS cl_lastname, clp.number_c AS clp_number_c, clp.title AS clp_title FROM crm_lead AS cl JOIN crm_leadPhone AS clp ON cl.id = clp.lead_id WHERE cl.lead_state = $1",
+      "parameters": {"1": "جدید"}
+    }
+  },
+  {
+    "id": 89,
+    "complexity": "hard",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_lead, crm_leadEmail",
+    "question": "ایمیل‌های سرنخ‌های با جذابیت بالا",
+    "sql": {
+      "SQL": "SELECT cl.firstname AS cl_firstname, cl.lastname AS cl_lastname, cl.rate AS cl_rate, cle.email AS cle_email FROM crm_lead AS cl JOIN crm_leadEmail AS cle ON cl.id = cle.lead_id WHERE cl.rate ILIKE $1",
+      "parameters": {"1": "%بالا%"}
+    }
+  },
+  {
+    "id": 90,
+    "complexity": "hard",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_contact, crm_contactPhone",
+    "question": "شماره تماس افراد با سمت مدیر",
+    "sql": {
+      "SQL": "SELECT cct.first_name AS cct_first_name, cct.last_name AS cct_last_name, cct.title AS cct_title, ccp.number_c AS ccp_number_c FROM crm_contact AS cct JOIN crm_contactPhone AS ccp ON cct.id = ccp.contact_id WHERE cct.title ILIKE $1",
+      "parameters": {"1": "%مدیر%"}
+    }
+  },
+  {
+    "id": 91,
+    "complexity": "hard",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_contact, crm_contactEmail",
+    "question": "ایمیل‌های اصلی افراد",
+    "sql": {
+      "SQL": "SELECT cct.first_name AS cct_first_name, cct.last_name AS cct_last_name, cce.email AS cce_email FROM crm_contact AS cct JOIN crm_contactEmail AS cce ON cct.id = cce.contact_id WHERE cce.is_primary = $1",
+      "parameters": {"1": "true"}
+    }
+  },
+  {
+    "id": 92,
+    "complexity": "hard",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_contact, crm_contactAddress",
+    "question": "آدرس افراد در تهران",
+    "sql": {
+      "SQL": "SELECT cct.first_name AS cct_first_name, cct.last_name AS cct_last_name, cca.address_c AS cca_address_c, cca.city AS cca_city FROM crm_contact AS cct JOIN crm_contactAddress AS cca ON cct.id = cca.contact_id WHERE cca.city ILIKE $1",
+      "parameters": {"1": "%تهران%"}
+    }
+  },
+  {
+    "id": 93,
+    "complexity": "hard",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_customer, crm_customerOpportunity",
+    "question": "مجموع مبلغ فرصت‌های هر مشتری امسال",
+    "sql": {
+      "SQL": "SELECT cc.fullname AS cc_fullname, SUM(cco.price) AS cco_price_sum, COUNT(cco.id) AS cco_id_count FROM crm_customer AS cc JOIN crm_customerOpportunity AS cco ON cc.id = cco.customer_id WHERE cco.close_date >= $1 AND cco.close_date <= $2 GROUP BY cc.fullname ORDER BY cco_price_sum DESC",
+      "parameters": {"1": "{persian_year_start}", "2": "{persian_year_end}"}
+    }
+  },
+  {
+    "id": 94,
+    "complexity": "hard",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_customer, crm_customerQuote",
+    "question": "مجموع پیش فاکتورهای هر مشتری ماه گذشته",
+    "sql": {
+      "SQL": "SELECT cc.fullname AS cc_fullname, cc.code AS cc_code, SUM(ccq.net_price) AS ccq_net_price_sum, COUNT(ccq.id) AS ccq_id_count FROM crm_customer AS cc JOIN crm_customerQuote AS ccq ON cc.id = ccq.customer_id WHERE ccq.date >= $1 AND ccq.date <= $2 GROUP BY cc.fullname, cc.code ORDER BY ccq_net_price_sum DESC",
+      "parameters": {"1": "{last_month_date}", "2": "{today_date}"}
+    }
+  },
+  {
+    "id": 95,
+    "complexity": "hard",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_opportunity",
+    "question": "تفاوت مبلغ فرصت‌های برنده شده این هفته با هفته گذشته",
+    "sql": {
+      "SQL": "SELECT (SELECT COALESCE(SUM(co.price), 0) FROM crm_opportunity AS co WHERE co.stage = $1 AND co.close_date >= $2 AND co.close_date <= $3) - (SELECT COALESCE(SUM(co.price), 0) FROM crm_opportunity AS co WHERE co.stage = $4 AND co.close_date >= $5 AND co.close_date <= $6) AS price_difference",
+      "parameters": {"1": "برنده شده", "2": "{this_week_saturday}", "3": "{this_week_friday}", "4": "برنده شده", "5": "{last_week_saturday}", "6": "{last_week_friday}"}
+    }
+  },
+  {
+    "id": 96,
+    "complexity": "hard",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_quote",
+    "question": "حداقل و حداکثر پیش فاکتور روزانه از ابتدای سال",
+    "sql": {
+      "SQL": "SELECT MIN(A.daily_sum) AS A_daily_sum_min, MAX(A.daily_sum) AS A_daily_sum_max FROM (SELECT SUM(cq.net_price) AS daily_sum FROM crm_quote AS cq WHERE cq.date >= $1 GROUP BY cq.date) AS A",
+      "parameters": {"1": "{persian_year_start}"}
+    }
+  },
+  {
+    "id": 97,
+    "complexity": "hard",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_lead",
+    "question": "تفاوت تعداد سرنخ‌های جدید این هفته با هفته گذشته",
+    "sql": {
+      "SQL": "SELECT (SELECT COUNT(cl.id) FROM crm_lead AS cl WHERE cl.lead_state = $1 AND cl.created_at >= $2 AND cl.created_at <= $3) - (SELECT COUNT(cl.id) FROM crm_lead AS cl WHERE cl.lead_state = $4 AND cl.created_at >= $5 AND cl.created_at <= $6) AS lead_difference",
+      "parameters": {"1": "جدید", "2": "{this_week_saturday}", "3": "{this_week_friday}", "4": "جدید", "5": "{last_week_saturday}", "6": "{last_week_friday}"}
+    }
+  },
+  {
+    "id": 98,
+    "complexity": "hard",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_quote, crm_quoteitem",
+    "question": "میانگین تعداد اقلام پیش فاکتورهای ماه گذشته",
+    "sql": {
+      "SQL": "SELECT AVG(A.item_count) AS A_item_count_avg FROM (SELECT COUNT(cqi.id) AS item_count FROM crm_quote AS cq JOIN crm_quoteitem AS cqi ON cq.id = cqi.quote_id WHERE cq.date >= $1 AND cq.date <= $2 GROUP BY cq.id) AS A",
+      "parameters": {"1": "{last_month_date}", "2": "{today_date}"}
+    }
+  },
+  {
+    "id": 99,
+    "complexity": "hard",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_opportunity, crm_opportunityitem",
+    "question": "فرصت‌هایی با بیش از 5 قلم که برنده شده‌اند",
+    "sql": {
+      "SQL": "SELECT co.name AS co_name, co.customer_title AS co_customer_title, co.price AS co_price, COUNT(coi.id) AS coi_id_count FROM crm_opportunity AS co JOIN crm_opportunityitem AS coi ON co.id = coi.opportunity_id WHERE co.stage = $1 GROUP BY co.name, co.customer_title, co.price HAVING COUNT(coi.id) > $2",
+      "parameters": {"1": "برنده شده", "2": "5"}
+    }
+  },
+  {
+    "id": 100,
+    "complexity": "hard",
+    "module": "مدیریت ارتباط با مشتری",
+    "table": "crm_campaign, crm_campaignOpportunity",
+    "question": "کمپین‌هایی با نرخ تبدیل فرصت بالا (فرصت‌های برنده شده به کل)",
+    "sql": {
+      "SQL": "SELECT cc.name AS cc_name, cc.budget AS cc_budget, COUNT(CASE WHEN cco.stage = $1 THEN 1 END) AS won_count, COUNT(cco.id) AS total_count FROM crm_campaign AS cc JOIN crm_campaignOpportunity AS cco ON cc.id = cco.campaign_id GROUP BY cc.name, cc.budget HAVING COUNT(cco.id) > $2 ORDER BY won_count DESC",
+      "parameters": {"1": "برنده شده", "2": "0"}
+    }
+  }
+]
