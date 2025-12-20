@@ -1,26 +1,15 @@
 import io
 import re
-import json
 import functools
-import tempfile
-import math
-import shutil
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import List, Union, Dict
+from typing import List, Union
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain.schema import Document
-from fastapi import HTTPException, UploadFile, File, Query
-from qdrant_client import QdrantClient, models
 from transformers import AutoTokenizer
 
 from markitdown import MarkItDown
 
 from .config import config
-
-# Constants
-# MAX_CHUNK_SIZE = 2100
-# MAX_TOKEN_SIZE = 512
 
 MAX_CHUNK_SIZE = 5000
 MAX_TOKEN_SIZE = 8192
@@ -389,8 +378,7 @@ class SoleChunker(HierarchicalChunker):
     def __init__(self, md_file_address):
         super().__init__(md_file_address)
 
-    @staticmethod
-    def hierarchy_to_sole(list_to_expand):
+    def hierarchy_to_sole(self, list_to_expand):
         list_final = [[]]
         list_of_done_values = []
         for counter_of_list, dict_elem in enumerate(list_to_expand):
@@ -400,24 +388,26 @@ class SoleChunker(HierarchicalChunker):
                     continue
                 counter_of_pointer = counter_of_list
                 while True:
-                    if counter_of_pointer == len(list_to_expand):
+                    if counter_of_pointer == len(list_to_expand) or list_to_expand[counter_of_pointer][key]:
                         break
                     dict_to_consider = list_to_expand[counter_of_pointer]
-                    if dict_to_consider[key] != value:
-                        break
-                    for i in range(1, 7):
-                        if len(dict_to_consider[i]) == 0:
-                            continue
-                        if dict_to_consider[i] == value:
-                            value_to_append = dict_to_consider[i]
-                        else:
-                            value_to_append = dict_to_consider[i].split("\n")[0]
-                        if value_to_append not in list_final[-1]:
-                            list_final[-1].append(value_to_append)
+                    self._update_list_final(value, dict_to_consider, list_final)
                     counter_of_pointer = counter_of_pointer + 1
                 list_final.append([])
                 list_of_done_values.append(value)
         return list_final
+
+    @staticmethod
+    def _update_list_final(value, dict_to_consider, list_final):
+        for i in range(1, 7):
+            if len(dict_to_consider[i]) == 0:
+                continue
+            if dict_to_consider[i] == value:
+                value_to_append = dict_to_consider[i]
+            else:
+                value_to_append = dict_to_consider[i].split("\n")[0]
+            if value_to_append not in list_final[-1]:
+                list_final[-1].append(value_to_append)
 
     @staticmethod
     def __get_chunk_list__(paragraph, max_allowed_tokens):
@@ -439,21 +429,19 @@ class SoleChunker(HierarchicalChunker):
                 is_separator_regex=True
             )
             splitted_text = text_splitter.split_text(paragraph)
-        except Exception as e:
+        except Exception:
             print("error splitting paragraph:", paragraph)
             splitted_text = [paragraph]
 
         return splitted_text
 
-    @staticmethod
-    def calculate_reserved_chunk_size(list_to_rechunk, num_total_token):
-        max_elem = max(list_to_rechunk, key=len)
-        index_to_cut = max_elem.find("\n")
-        max_elem_header = max_elem[:index_to_cut]
-        rest_part = max_elem[index_to_cut:]
-        rest_part_len_token = len(rest_part.split())
-        other_part_len_token = num_total_token - rest_part_len_token
-        reserved_part_max_len_token = MAX_TOKEN_SIZE - other_part_len_token
+    def get_splitted_text(self, reserved_part_max_len_token, rest_part, need_rechunk_yet):
+        if reserved_part_max_len_token < 0:
+            splitted_text = self.__get_chunk_list__(rest_part, max_allowed_tokens=20)
+        else:
+            need_rechunk_yet = False
+            splitted_text = self.__get_chunk_list__(rest_part, max_allowed_tokens=reserved_part_max_len_token)
+        return splitted_text, need_rechunk_yet
 
     def __rechunk__(self, list_to_rechunk):
         bag_of_chunks = []
@@ -462,10 +450,7 @@ class SoleChunker(HierarchicalChunker):
         need_rechunk_yet = True
         max_length = 8192
         for elem in list_to_rechunk:
-            len_elems_traditional = len(elem.split())
             len_elems = len(tokenizer(elem, padding=True, truncation=True, max_length=max_length, return_tensors="pt",))
-            # len_elems = len(tokenizer.encode(elem, add_special_tokens=True))
-            # count_num_tokens_traditional = count_num_tokens + len_elems_traditional
             count_num_tokens = count_num_tokens + len_elems
 
         if count_num_tokens >= MAX_TOKEN_SIZE:
@@ -475,14 +460,9 @@ class SoleChunker(HierarchicalChunker):
             rest_part = max_elem[index_to_cut:]
             rest_part_len_token = len(
                 tokenizer(rest_part, padding=True, truncation=True, max_length=max_length, return_tensors="pt", ))
-            # rest_part_len_token = len(tokenizer.encode(rest_part, add_special_tokens=True))
             other_part_len_token = count_num_tokens - rest_part_len_token
             reserved_part_max_len_token = MAX_TOKEN_SIZE - other_part_len_token
-            if reserved_part_max_len_token < 0:
-                splitted_text = self.__get_chunk_list__(rest_part, max_allowed_tokens=20)
-            else:
-                need_rechunk_yet = False
-                splitted_text = self.__get_chunk_list__(rest_part, max_allowed_tokens=reserved_part_max_len_token)
+            splitted_text, need_rechunk_yet = self.get_splitted_text(reserved_part_max_len_token, rest_part, need_rechunk_yet)
             index_of_max = list_to_rechunk.index(max_elem)
             for text_splitted in splitted_text:
                 list_new = []

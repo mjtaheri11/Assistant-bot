@@ -353,28 +353,6 @@ class TestTritonEmbeddings(unittest.TestCase):
         with self.assertRaises(Exception):
             self.triton_embeddings._call_triton(["test text"])
 
-    # @patch('src.retriever.requests.post')
-    # def test_embed_documents(self, mock_post):
-    #     """Test embedding multiple documents."""
-    #     self.mock_tokenizer.return_value = {
-    #         "input_ids": np.array([[1, 2, 3]]),
-    #         "attention_mask": np.array([[1, 1, 1]])
-    #     }
-    #     self.mock_tokenizer.vocab_size = 250002
-    #     mock_response = MagicMock()
-    #     mock_response.status_code = 200
-    #     mock_response.json.return_value = {
-    #         "outputs": [{
-    #             "shape": [1, 10],
-    #             "data": list(range(10))
-    #         }]
-    #     }
-    #     mock_post.return_value = mock_response
-    #
-    #     embeddings = self.triton_embeddings.embed_documents(["text1", "text2", "text3"])
-    #
-    #     self.assertEqual(len(embeddings), 3)
-
     @patch('src.retriever.requests.post')
     def test_embed_query(self, mock_post):
         """Test embedding a query."""
@@ -725,7 +703,7 @@ class TestRerankerServiceClient(unittest.TestCase):
         payload = client._format_request_legacy([["q", "d"]], normalize=True)
 
         self.assertIn("pairs", payload)
-        self.assertEqual(payload["normalize"], True)
+        self.assertTrue(payload["normalize"])
 
     @patch('src.retriever.requests.post')
     def test_rerank_custom_v2(self, mock_post):
@@ -789,7 +767,6 @@ class TestRerankerServiceClient(unittest.TestCase):
         )
 
         with patch.object(client, 'rerank', return_value=[0.9, 0.8]) as mock_rerank:
-            scores = client.compute_score([["query", "doc1"], ["query", "doc2"]])
             mock_rerank.assert_called_once()
 
     @patch('src.retriever.requests.post')

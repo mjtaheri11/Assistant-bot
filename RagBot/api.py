@@ -1,6 +1,4 @@
-import argparse
 import asyncio
-import csv
 import json
 import logging
 import re
@@ -8,12 +6,9 @@ import os
 import shutil
 import time
 import traceback
-from datetime import datetime
-from io import BytesIO
-from typing import List, Any, Optional, Tuple, Dict
+from typing import List, Any, Optional, Dict
 
-import asyncpg
-from fastapi import FastAPI, HTTPException, Request, Query, File, Form, UploadFile, Depends
+from fastapi import FastAPI, HTTPException, Request, Query, File, UploadFile, Depends
 from fastapi.responses import JSONResponse
 from prometheus_client import Counter, Histogram, generate_latest
 from pydantic import BaseModel, Field
@@ -22,15 +17,20 @@ from langfuse import observe, get_client
 from dotenv import load_dotenv
 from contextlib import asynccontextmanager
 from openai import AsyncOpenAI
-from src.shear_parser import convert_word_to_markdown, SoleChunker
+from src.shear_parser import convert_word_to_markdown, SoleChunker, preprocess_markdown_file
 import tempfile
 from pathlib import Path
+import aiofiles
 # Langfuse configuration
 load_dotenv()
 
 LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY")
 LANGFUSE_SECRET_KEY = os.getenv("LANGFUSE_SECRET_KEY")
 LANGFUSE_HOST = os.getenv("LANGFUSE_HOST")
+FEEDBACK_ENDPOINT = "/v1/feedback"
+CHAT_ENDPOINT = "/v1/chat"
+SQL_ENDPOINT = "/v1/chat/sql"
+UNHANDLED_ERROR_MESSAGE = "Unhandled error, Please report"
 
 from src.vector_db_utils import (
     create_vector_database,
@@ -46,23 +46,18 @@ from src.initiate_vdb import qdrant_client
 from src.retriever import Retriever, ModelManager
 from src.logic import (
     chat_responder_,
-    feedback_,
-    prepare_final_context,
-    query_responder,
     sql_responder_,
-    utterance_paraphraser,
     module_proposer,
     parameters_responder
 )
 from src.logs import non_generative_agent_logger, simple_logger
-from src.utils import substitute_sql_parameters
 
 from langchain.schema import Document
-from qdrant_client import QdrantClient, models
+from qdrant_client import QdrantClient
 
 llm_clients = {}
 
-async def get_client_llm():
+def get_client_llm():
     return llm_clients
     
 @asynccontextmanager
@@ -157,7 +152,7 @@ class HistoryRequest(BaseModel):
     page_index: int = 1
     page_size: int = 5
     session_id: str
-    contain_paraphrase: str = False
+    contain_paraphrase: bool = False
 
 class GetSessionsResponse(BaseModel):
     response: List[dict]
@@ -241,7 +236,6 @@ def find_module_name(original_filename):
     return module
     
 def finalize_parameters(a_dict, b_dict):
-    # concatenation = {"parameters": a_dict["parameters"] | b_dict["parameters"]}
     concatenation = (a_dict | b_dict) | {"parameters": a_dict.get("parameters", {}) | b_dict.get("parameters", {})}
     return concatenation
 
@@ -285,9 +279,10 @@ async def process_uploaded_files(
         for file in files:
             file_path = temp_upload_dir / file.filename
             content = await file.read()
-            
-            with open(file_path, 'wb') as f:
-                f.write(content)
+
+            async with aiofiles.open(file_path, 'wb') as f:
+                # You must await the write operation
+                await f.write(content)
             
             file_extension = Path(file.filename).suffix.lower()
             
@@ -384,7 +379,7 @@ async def process_uploaded_files(
             print(f"Warning: Could not remove temp directory {temp_dir}: {e}")
 
 
-def find_database_collection_with_postgres(postgres_obj: object, database_id: str = None):
+def find_database_collection_with_postgres(database_id: str = None):
     """
     Find database collection and fetch company/assistant names from PostgreSQL.
     This is the recommended approach for production use.
@@ -412,7 +407,7 @@ def find_database_collection_with_postgres(postgres_obj: object, database_id: st
         collection_exists = any(c.name == collection_name for c in collections)
         
         if not collection_exists:
-            raise Exception(f"Collection '{collection_name}' not found in Qdrant")
+            raise ValueError(f"Collection '{collection_name}' not found in Qdrant")
         
         # Fetch company_name and assistant_name from PostgreSQL
         postgres = Postgres()
@@ -427,7 +422,7 @@ def find_database_collection_with_postgres(postgres_obj: object, database_id: st
         return collection_name, company_name, assistant_name
         
     except Exception as e:
-        raise Exception(f"ERROR finding database '{database_id}': {str(e)}")
+        raise ValueError(f"ERROR finding database '{database_id}': {str(e)}")
 
 
 def get_session_id(request: Request, content_request: BaseModel):
@@ -461,7 +456,7 @@ def convert_sql_parameters(sql_query):
     """
     # First convert all $ to @
     # Pattern to match $ followed by parameter name (alphanumeric + underscore) or just numbers
-    pattern = r'\$([a-zA-Z_][a-zA-Z0-9_]*|\d+)'
+    pattern = r'\$([a-zA-Z_]\w*|\d+)'
     sql_query = re.sub(pattern, r'@\1', sql_query)
     
     # Then add underscore before any numbers that follow @
@@ -540,14 +535,9 @@ async def metrics():
     }
 )
 async def get_latest_sessions():
-    try:
-        postgres = Postgres()
-        sessions = await postgres.get_latest_sessions()
-        return GetSessionsResponse(response=sessions)
-    except HTTPException as e:
-        raise e
-    except Exception as e:
-        raise e
+    postgres = Postgres()
+    sessions = await postgres.get_latest_sessions()
+    return GetSessionsResponse(response=sessions)
 
 @app.get(
     "/v1/databases", 
@@ -558,14 +548,9 @@ async def get_latest_sessions():
     },
 )
 async def get_latest_databases():
-    try:
-        postgres = Postgres()
-        databases = await postgres.get_latest_databases()
-        return GetDatabasesResponse(response=databases)
-    except HTTPException as e:
-        raise e
-    except Exception as e:
-        raise e
+    postgres = Postgres()
+    databases = await postgres.get_latest_databases()
+    return GetDatabasesResponse(response=databases)
 
 @app.get(
     "/v1/faq",
@@ -592,10 +577,10 @@ async def get_faq(
         raise e
     except Exception as e:
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail="Unhandled error, Please report")
+        raise HTTPException(status_code=500, detail=UNHANDLED_ERROR_MESSAGE)
 
 @app.get(
-    "/v1/chat",
+    CHAT_ENDPOINT,
     response_model=HistoryResponse,
     responses={
         200: {},
@@ -611,7 +596,7 @@ async def get_history(
 ):
     try:
         postgres = Postgres()
-        simple_logger(f"Received history request", session_id)
+        simple_logger("Received history request", session_id)
         history = await postgres.get_history(
             session_id, page_index, page_size, contain_paraphrase
         )
@@ -620,7 +605,7 @@ async def get_history(
         raise e
     except Exception as e:
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail="Unhandled error, Please report")
+        raise HTTPException(status_code=500, detail=UNHANDLED_ERROR_MESSAGE)
 
 @app.post(
     "/v1/session/create",
@@ -665,12 +650,12 @@ async def create_session(create_session_request: Optional[CreateSessionRequest] 
             output={"session_id": session_id}
         )
         return session_id
-    except Exception as e:
+    except ConnectionError:
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail="Unhandled error, Please report")
+        raise HTTPException(status_code=500, detail=UNHANDLED_ERROR_MESSAGE)
 
 @app.post(
-    "/v1/chat",
+    CHAT_ENDPOINT,
     response_model=ChatResponse,
     responses={
         200: {},
@@ -689,7 +674,7 @@ async def create_session(create_session_request: Optional[CreateSessionRequest] 
 )
 @observe()
 async def chat_responder(chat_request: ChatRequest, request: Request, clients: dict = Depends(get_client_llm)):
-    REQUEST_COUNT.labels(endpoint="/v1/chat").inc()
+    REQUEST_COUNT.labels(endpoint=CHAT_ENDPOINT).inc()
     start_time = time.time()
     is_sql = False
     context = ""
@@ -698,7 +683,6 @@ async def chat_responder(chat_request: ChatRequest, request: Request, clients: d
     choices = []
     do_suggest = False
     parameters = {}
-    # parametric_response = None
     response_template = ""
     tenant_name = ""
     user_code = ""
@@ -732,7 +716,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request, clients: d
                     status_code=404,
                     detail=f"Session not found: {session_id}"
                 )
-            simple_logger(f"Received chat request", session_id)
+            simple_logger("Received chat request", session_id)
             history = await postgres.get_history(
                 session_id,
                 1,
@@ -746,35 +730,20 @@ async def chat_responder(chat_request: ChatRequest, request: Request, clients: d
                     RESPONSE_TEMPLATE_FOR_NO_ANSWER,
                     "",
                 )
-                if not chat_request.sql_mode:
-                    # Legacy mode: insert immediately
-                    message_id = await postgres.insert_chat_row(
-                        session_id=session_id,
-                        user_query=chat_request.query,
-                        paraphrased_query=paraphrased_utterance,
-                        bot_response=response,
-                        response_type=chat_request.response_type,
-                        elapsed_time=time.time() - start_time,
-                        response_template=response_template,
-                        parameters=json.dumps(parameters)
-                    )
-                else:
-                    # SQL mode: use different insertion pattern
-                    message_id = await postgres.insert_chat_row( # concise response in the database should be modified
-                        session_id=session_id,
-                        user_query=chat_request.query,
-                        paraphrased_query=paraphrased_utterance,
-                        bot_response=response,
-                        response_type=chat_request.response_type,
-                        elapsed_time=time.time() - start_time,
-                        response_template=response_template,
-                        parameters=json.dumps(parameters)
-                    )
+                message_id = await postgres.insert_chat_row(
+                    session_id=session_id,
+                    user_query=chat_request.query,
+                    paraphrased_query=paraphrased_utterance,
+                    bot_response=response,
+                    response_type=chat_request.response_type,
+                    elapsed_time=time.time() - start_time,
+                    response_template=response_template,
+                    parameters=json.dumps(parameters)
+                )
                 elapsed_time = time.time() - start_time
             else:
                 database_id_dict = await postgres.find_database_id(session_id)
-                # company_name, assistant_name = find_company_assistant_names(postgres, database_id_dict["database_id"])
-                matched_index, company_name, assistant_name = find_database_collection_with_postgres(postgres, database_id_dict["database_id"])
+                matched_index, company_name, assistant_name = find_database_collection_with_postgres(database_id_dict["database_id"])
                 selected_history = [
                     [h["query"], h["response"]] if len(h["query"]) < 60 
                     else [h["paraphrased_query"], h["response"]]
@@ -789,18 +758,12 @@ async def chat_responder(chat_request: ChatRequest, request: Request, clients: d
                     paraphrased_utterance = history[-1]["paraphrased_query"]
                     message_id = str(history[-1]["message_id"])
                     selected_module = history[-1]["selected_module"]
-                    faulty_sql_query = history[-1]["response"]
-                    faulty_sql_query_parameters = history[-1]["parameters"]
                     
                     _ = await postgres.remove_previous_response(history[-1]["message_id"])
                     response_dict_str = await sql_responder_(
                         clients,
                         paraphrased_utterance,
                         selected_module,
-                        faulty_sql_query,
-                        chat_request.error_payload,
-                        chat_request.do_retry,
-                        faulty_sql_query_parameters, 
                         use_oss=chat_request.use_oss
                     )
                     response_dict = json.loads(response_dict_str)
@@ -846,13 +809,11 @@ async def chat_responder(chat_request: ChatRequest, request: Request, clients: d
                             if chat_request.query in ["انبار", "فروش", "دفتر کل"]:
                                 is_sql = True                           
                                 agent = "sql_responder"
+                                selected_module = chat_request.query
                                 response_dict_str = await sql_responder_(
                                     clients, 
                                     paraphrased_utterance,
-                                    chat_request.query,
-                                    "",
-                                    "",
-                                    chat_request.do_retry,
+                                    detected_module=selected_module,
                                     use_oss=chat_request.use_oss
                                 )
                                 response_dict = json.loads(response_dict_str)
@@ -934,9 +895,6 @@ async def chat_responder(chat_request: ChatRequest, request: Request, clients: d
                                     clients,
                                     paraphrased_utterance,
                                     selected_module,
-                                    "",
-                                    "",
-                                    chat_request.do_retry,
                                     use_oss=chat_request.use_oss
                                 )
                                
@@ -974,7 +932,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request, clients: d
                             json.dumps(parameters)
                         )
                 
-        REQUEST_LATENCY.labels(endpoint="/v1/chat").observe(time.time() - start_time)
+        REQUEST_LATENCY.labels(endpoint=CHAT_ENDPOINT).observe(time.time() - start_time)
         non_generative_agent_logger(
             session_id=session_id,
             tenant_name=tenant_name,
@@ -1026,7 +984,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request, clients: d
     except Exception as e:
         traceback.print_exc()
         elapsed_time = time.time() - start_time
-        REQUEST_LATENCY.labels(endpoint="/v1/chat").observe(elapsed_time)
+        REQUEST_LATENCY.labels(endpoint=CHAT_ENDPOINT).observe(elapsed_time)
         
         non_generative_agent_logger(
             session_id=session_id,
@@ -1047,10 +1005,10 @@ async def chat_responder(chat_request: ChatRequest, request: Request, clients: d
             },
             elapsed_time=elapsed_time,
         )
-        raise HTTPException(status_code=500, detail="Unhandled error, Please report")
+        raise HTTPException(status_code=500, detail=UNHANDLED_ERROR_MESSAGE)
 
 @app.post(
-    "/v1/chat/sql",
+    SQL_ENDPOINT,
     response_model=SQLResponse,
     responses={
         200: {},
@@ -1060,8 +1018,8 @@ async def chat_responder(chat_request: ChatRequest, request: Request, clients: d
     },
 )
 @observe()
-async def sql_responder_endpoint(clients, sql_request: SQLRequest, request: Request):
-    REQUEST_COUNT.labels(endpoint="/v1/chat/sql").inc()
+async def sql_responder_endpoint(clients, sql_request: SQLRequest, request: Request, use_oss:bool):
+    REQUEST_COUNT.labels(endpoint=SQL_ENDPOINT).inc()
     start_time = time.time()
 
     try:
@@ -1070,7 +1028,7 @@ async def sql_responder_endpoint(clients, sql_request: SQLRequest, request: Requ
         # Handle both legacy (table_schemas) and new (session-based) approaches
         if sql_request.table_schemas:
             # Legacy approach: direct SQL generation from schemas
-            response = await sql_responder_(clients, sql_request.query, sql_request.table_schemas)
+            response = await sql_responder_(clients, sql_request.query, sql_request.table_schemas[0])
             return SQLResponse(response=response, do_suggest=False, choices=[], message_id="")
         
         # New approach: session-based with module detection
@@ -1081,12 +1039,11 @@ async def sql_responder_endpoint(clients, sql_request: SQLRequest, request: Requ
             user_question = history[0]["query"]
             message_id = str(history[0]["message_id"])
             detected_module = sql_request.query
-            is_sql = True
             response = await sql_responder_(
                 clients,
                 user_question,
                 detected_module,
-                use_oss=chat_request.use_oss
+                use_oss=use_oss
             )
             
             elapsed_time = time.time() - start_time
@@ -1115,7 +1072,7 @@ async def sql_responder_endpoint(clients, sql_request: SQLRequest, request: Requ
         raise e
     except Exception as e:
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail="Unhandled error, Please report")
+        raise HTTPException(status_code=500, detail=UNHANDLED_ERROR_MESSAGE)
 
 
 def get_logger():
@@ -1385,8 +1342,8 @@ async def add_documents_to_database(
         logger.info(f"Processing {len(files)} files for database: {database_id}")
         processed_files = await process_uploaded_files(
             files=files,
-            company_name=None,  # Not needed for adding to existing DB
-            assistant_name=None  # Not needed for adding to existing DB
+            company_name="",  # Not needed for adding to existing DB
+            assistant_name=""  # Not needed for adding to existing DB
         )
         
         # Flatten documents
@@ -1588,7 +1545,6 @@ async def health_check():
     
     # Check Embedding Model
     try:
-        model_manager = ModelManager()
         embedding_config = config.get("embedding_model", {})
         health_status["services"]["embedding_model"] = {
             "status": "healthy",
@@ -1713,7 +1669,7 @@ async def delete_database(
         )
         
 @app.post(
-    "/v1/feedback",
+    FEEDBACK_ENDPOINT,
     responses={
         200: {"content": {"application/json": {"example": {"message": "Feedback received"}}}},
         422: {"description": "Invalid feedback", "content": {"application/json": {"example": {"detail": "No Session-ID"}}}},
@@ -1723,7 +1679,7 @@ async def delete_database(
 )
 @observe()
 async def feedback(feedback_request: FeedbackRequest, request: Request):
-    endpoint = "/v1/feedback"
+    endpoint = FEEDBACK_ENDPOINT
     REQUEST_COUNT.labels(endpoint=endpoint).inc()
     start_time = time.time()
     try:
@@ -1741,7 +1697,7 @@ async def feedback(feedback_request: FeedbackRequest, request: Request):
         )
 
         log_feedback_request(session_id)
-        result = await process_feedback(feedback_request, message_fields)
+        result = await process_feedback(feedback_request)
 
         log_feedback_response(session_id, "", "", feedback_request, message_fields, start_time)
         return result
@@ -1749,12 +1705,9 @@ async def feedback(feedback_request: FeedbackRequest, request: Request):
     except HTTPException as e:
         raise e
     except Exception as e:
-        handle_unexpected_error(e, session_id, feedback_request, start_time)
+        handle_unexpected_error(e, feedback_request.tenant_name, feedback_request.user_code, session_id, feedback_request, start_time)
 
 
-# def validate_feedback(feedback_request: FeedbackRequest):
-#     if feedback_request.feedback_type not in ["thumb_up", "thumb_down", "flag"]:
-#         raise HTTPException(status_code=422, detail="Invalid feedback")
 
 def validate_feedback(feedback_request: FeedbackRequest):
     if feedback_request.feedback_type not in ["thumb_up", "thumb_down", "flag"]:
@@ -1771,14 +1724,12 @@ async def fetch_message_fields(session_id, message_id):
     return message_fields
 
 
-async def process_feedback(feedback_request, message_fields):
+async def process_feedback(feedback_request):
     message_id = feedback_request.message_id
     postgres = Postgres()
     result = await postgres.set_feedback(message_id, feedback_request.feedback_type)
 
     if result:
-        # user_query, paraphrased_query, bot_response = message_fields
-        # await feedback_(paraphrased_query, bot_response, "", feedback_request.feedback_type)
         return FeedbackResponse(message="feedback received")
     return FeedbackResponse(message="duplicate feedback")
 
@@ -1789,7 +1740,7 @@ def log_feedback_request(session_id):
 
 def log_feedback_response(session_id, tenant_name, user_code, feedback_request, message_fields, start_time):
     elapsed_time = time.time() - start_time
-    REQUEST_LATENCY.labels(endpoint="/v1/feedback").observe(elapsed_time)
+    REQUEST_LATENCY.labels(endpoint=FEEDBACK_ENDPOINT).observe(elapsed_time)
 
     user_query, paraphrased_query, _ = message_fields
     non_generative_agent_logger(
@@ -1809,7 +1760,7 @@ def log_feedback_response(session_id, tenant_name, user_code, feedback_request, 
 
 def handle_unexpected_error(exception, tenant_name, user_code, session_id, feedback_request, start_time):
     elapsed_time = time.time() - start_time
-    REQUEST_LATENCY.labels(endpoint="/v1/feedback").observe(elapsed_time)
+    REQUEST_LATENCY.labels(endpoint=FEEDBACK_ENDPOINT).observe(elapsed_time)
 
     traceback.print_exc()
     non_generative_agent_logger(
@@ -1822,4 +1773,4 @@ def handle_unexpected_error(exception, tenant_name, user_code, session_id, feedb
         {},
         elapsed_time,
     )
-    raise HTTPException(status_code=500, detail="Unhandled error, Please report")
+    raise HTTPException(status_code=500, detail=UNHANDLED_ERROR_MESSAGE)

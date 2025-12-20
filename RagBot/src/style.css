@@ -424,13 +424,6 @@ div.stAlert {
     padding: 0.5rem 0.75rem !important; /* Reduced padding */
     margin: 0.5rem 0 !important; /* Reduced margin */
 }
-/* Hide info boxes completely if needed (optional) */
-/* Uncomment below to completely hide st.info boxes */
-/*
-[data-baseweb="notification"][kind="info"] {
-    display: none !important;
-}
-*/
 /* ============================================
    EXPANDERS - CONSISTENT DIMENSIONS
    ============================================ */

@@ -73,7 +73,7 @@ class TestLogs(unittest.TestCase):
         self.assertEqual(extra['input'], input_dict)
         self.assertEqual(extra['return'], output_dict)
         self.assertAlmostEqual(extra['elapsed_time_in_seconds'], elapsed_time)
-        self.assertTrue('logtime' in extra)
+        self.assertIn('logtime', extra)
 
     @patch('src.logs.get_logger')
     def test_simple_logger(self, mock_get_logger):
@@ -92,7 +92,7 @@ class TestLogs(unittest.TestCase):
         self.assertEqual(args[1], message)
         extra = kwargs['extra']
         self.assertEqual(extra['session_id'], session_id)
-        self.assertTrue('logtime' in extra)
+        self.assertIn('logtime', extra)
 
     @patch('src.logs.get_logger')
     def test_logger_no_session_id(self, mock_get_logger):
@@ -110,7 +110,7 @@ class TestLogs(unittest.TestCase):
         self.assertEqual(args[1], message)
         extra = kwargs['extra']
         self.assertNotIn('session_id', extra)
-        self.assertTrue('logtime' in extra)
+        self.assertIn('logtime' in extra)
 
 if __name__ == '__main__':
     unittest.main()

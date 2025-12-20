@@ -488,7 +488,7 @@ class Postgres:
         user_code, tenant_name = (result[0][0] if result and result[0][0] != None else "", result[0][1] if result and result[0][1] != None else "")
         return {"user_code": str(user_code), "tenant_name": str(tenant_name)}
        
-    async def insert_message_choices(self, message_id: str, *choices) -> None:
+    async def insert_message_choices(self, message_id: str, *choices) -> bool:
         for choice in choices:
             insert_message_choice_query = "INSERT INTO messages_choices (message_id, choice_value) VALUES ($1, $2) RETURNING choice_id;"
             _ = await self._execute_query(

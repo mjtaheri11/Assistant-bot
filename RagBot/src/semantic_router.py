@@ -39,7 +39,7 @@ LIST_OF_VALID_MODEL_NAMES = ["logistic_regression", "svm", "mlp", "rf"]
 
 YOUR_SITE_URL = "<YOUR_SITE_URL>"
 YOUR_SITE_NAME = "<YOUR_SITE_NAME>"
-MODEL_NAME = "qwen/qwen3-embedding-4b"
+QWEN_EMBEDDING_MODEL_NAME = "qwen/qwen3-embedding-4b"
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "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")
 
 
@@ -61,7 +61,7 @@ class EmbeddingLoader(ABC):
 
 
 class Qwen3Embedder(EmbeddingLoader):
-    def __init__(self, model_name="qwen/qwen3-embedding-4b", model_path=None):
+    def __init__(self, model_name=QWEN_EMBEDDING_MODEL_NAME, model_path=None):
         super().__init__()
         self.__set_model_name__(model_name)
         self.__load_model__(model_name=model_name, model_path=model_path)
@@ -69,23 +69,13 @@ class Qwen3Embedder(EmbeddingLoader):
     def __set_model_name__(self, model_name):
         self.model_name = model_name
 
-    def __load_model__(self, model_name="qwen/qwen3-embedding-4b", model_path=None):
+    def __load_model__(self, model_name=QWEN_EMBEDDING_MODEL_NAME, model_path=None):
         self.client = OpenAI(
             base_url="https://openrouter.ai/api/v1",
             api_key=OPENROUTER_API_KEY,
         )
 
         logger.info(f"client set {self.model_name} successfully!")
-
-    # def __call__(self, sentences, *args, **kwargs):
-    #     embedding = self.client.embeddings.create(
-    #         model="qwen/qwen3-embedding-4b",
-    #         # input="Your text string goes here",
-    #         input= sentences, # batch embeddings also supported!
-    #         encoding_format="float"
-    #     )
-    #     embeddings = [w.embedding for w in embedding.data]
-    #     return embeddings
 
     def __call__(self, sentences, batch_size=100, *args, **kwargs):
         """
@@ -103,7 +93,7 @@ class Qwen3Embedder(EmbeddingLoader):
 
             try:
                 embedding_response = self.client.embeddings.create(
-                    model="qwen/qwen3-embedding-4b",
+                    model=QWEN_EMBEDDING_MODEL_NAME,
                     input=batch,
                     encoding_format="float"
                 )
@@ -189,8 +179,6 @@ class ClassifierModel(ABC):
             self.model = joblib.load(address)
 
     def save_model(self, address):
-        # with open(address, "wb") as f:
-        #     pickle.dump(self.model, f)
         joblib.dump(self.model, address)
 
     def fit(self, X_train, y_train):
@@ -232,7 +220,7 @@ class SVMModel(ClassifierModel):
 
     def __load_model__(self, address=None):
         if address is None:
-            self.model = SVC(kernel='rbf', C=1.0, probability=True)
+            self.model = SVC(kernel='rbf', C=1.0, probability=True, gamma="scale", random_state=42)
         else:
             self.model = joblib.load(address)
 
@@ -247,7 +235,6 @@ class MLPClassifierModel(ClassifierModel):
         if address is None:
             self.model = MLPClassifier(
                             hidden_layer_sizes=(100,),
-                            # alpha=0.001,
                             activation='relu',
                             max_iter=2000,
                             random_state=42
@@ -267,7 +254,9 @@ class RFModel(ClassifierModel):
             self.model = RandomForestClassifier(
                             n_estimators=100,
                             max_depth=3,
-                            random_state=42
+                            random_state=42,
+                            min_samples_leaf=1,
+                            max_features="sqrt"
                         )
         else:
             self.model = joblib.load(address)
@@ -281,7 +270,7 @@ class OpenRouterEmbedder:
     def __init__(
             self,
             api_key: str,
-            model_name: str = MODEL_NAME,
+            model_name: str = QWEN_EMBEDDING_MODEL_NAME,
             site_url: str = YOUR_SITE_URL,
             site_name: str = YOUR_SITE_NAME
     ):
@@ -292,7 +281,7 @@ class OpenRouterEmbedder:
             raise ValueError(
                 "Error: Please replace '<YOUR_OPENROUTER_API_KEY_HERE>' with your actual OpenRouter API key or set the environment variable.")
 
-        print(f"Initializing AsyncOpenAI client for OpenRouter...")
+        print("Initializing AsyncOpenAI client for OpenRouter...")
         self.client = AsyncOpenAI(
             base_url="https://openrouter.ai/api/v1",
             api_key=api_key,
@@ -341,7 +330,6 @@ class SemanticRouterPipeline:
 
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
-            # cls._instance = super().__new__(cls, *args, **kwargs)
             cls._instance = super().__new__(cls)
             cls._instance._initialize(**kwargs)
         return cls._instance
@@ -416,7 +404,7 @@ class SemanticRouterPipeline:
         elif kwargs.get("model_name") == "rf":
             self.classifier = RFModel(classifier_address)
         else:
-            NotImplementedError(f"unknown model name: {kwargs['model_name']}")
+            raise NotImplementedError(f"unknown model name: {kwargs['model_name']}")
 
     def __load__train_data__(self, **kwargs):
         dataset_address = kwargs.get("dataset_address",
@@ -469,10 +457,8 @@ class SemanticRouterPipeline:
             logger.info(f"Loaded embeddings from {train_embeddings_address}")
         else:
             logger.info(f"No embeddings found in {train_embeddings_address}, providing embeddings for training data!")
-            # embeddings = asyncio.run(self.get_embeddings_of_list(self.X[:10]))
-            # embeddings = self.get_embeddings_of_list(self.X[:10])
             embeddings = self.embedder(self.X, passage_or_sentence= "passage")
-            logger.info(f"Predictions done!")
+            logger.info("Predictions done!")
             save_train_embeddings = kwargs.get("save_train_embeddings", True)
             if save_train_embeddings:
                 logger.info(f"Saving embeddings to {train_embeddings_address}")
@@ -490,7 +476,6 @@ class SemanticRouterPipeline:
         print("predict_proba_time: %s" % (t3 - t2))
         classes = self.classifier.model.classes_
         label = classes[np.argmax(prob[0])]
-        # label = self.classifier.predict(X)
         classes_prob = list(zip(classes, prob[0]))
         t1 = time()
         logger.info(f"Prediction done in {t1 - t0} seconds")
@@ -499,7 +484,6 @@ class SemanticRouterPipeline:
 
     def predict_sentences_input_embedding_and_sentences(self, sentences, sentences_vectors):
         t0 = time()
-        # label = self.classifier.predict(sentences_vectors)
         prob = self.classifier.model.predict_proba(sentences_vectors)
         classes = self.classifier.model.classes_
         classes_prob = list(zip(classes, prob[0]))
@@ -513,31 +497,10 @@ class SemanticRouterPipeline:
 if __name__ == '__main__':
     dataset_address = (Path(__file__).parent / "resources" / "generated_questions" / "output.xlsx").as_posix()
     embedding_address = r"E:\workspace-semantic-router\da-semantic-router\models--intfloat--multilingual-e5-large"
-    # classifier_address = r"E:\semantic_router\resources\models\classifiers_v2\mlp.joblib"
     semantic_router_object = SemanticRouterPipeline(inference_only=False,
                                                     train_embeddings_address=(Path(__file__).parent / "resources" / "vectors_qwen3_embedding_4b" / "embeddings.npy").as_posix(),
                                                     embedding_address=embedding_address,
                                                     classifier_address=None,
                                                     model_name="mlp",
-                                                    # model_name="logistic_regression",
                                                     embedding_model="qwen3-embedding-4b",
                                                     save_train_model_address=(Path(__file__).parent / "resources" / "models" / "classifiers_qwen3_embedding_4b").as_posix())
-    # total_time = 0
-    # for i in range(10):
-    #     t0 = time()
-        # semantic_router_object = SemanticRouterPipeline(inference_only=False, embedding_address=embedding_address,
-        #                                                 classifier_address=classifier_address,
-        #                                                 model_name="mlp",
-        #                                                 dataset_address=dataset_address)
-        # semantic_router_object = SemanticRouterPipeline(inference_only=True, embedding_address=None,
-        #                                                 classifier_address=classifier_address,
-        #                                                 model_name="logistic_regression")
-        # semantic_router_object = SemanticRouterPipeline(inference_only=False, embedding_address=embedding_address,
-        #                                                 classifier_address=classifier_address,
-        #                                                 model_name="mlp")
-        # t1 = time()
-        # print("init time: ", t1 - t0)
-        # new_sentence = "برای ساخت سند حسابداری چه کنم؟"
-        # semantic_router_object.predict_sentences([new_sentence])
-        # t2 = time()
-        # print("predict time: ", t2 - t1)

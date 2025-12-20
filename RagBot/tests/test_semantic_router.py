@@ -24,6 +24,8 @@ from src.semantic_router import (
     LIST_OF_VALID_MODEL_NAMES,
 )
 
+rng = np.random.default_rng(42)
+
 
 class TestSemanticRouter(unittest.TestCase):
 
@@ -64,7 +66,7 @@ class TestSemanticRouter(unittest.TestCase):
         # Path for saving the model
         save_path = (Path(__file__).parent / "resources" / "models" / "classifiers").as_posix()
         try:
-            pipeline = SemanticRouterPipeline(
+            _ = SemanticRouterPipeline(
                 inference_only=False,
                 dataset_address='dummy.xlsx',
                 train_embeddings_address='dummy.npy',
@@ -114,7 +116,7 @@ class TestSemanticRouter(unittest.TestCase):
         pipeline = SemanticRouterPipeline(inference_only=True)
         embeddings = np.array([[1.0, 2.0, 3.0]])
 
-        sorted_probs, classes_prob, max_prob = pipeline.predict_sentences_input_embedding_and_sentences(
+        sorted_probs, _, max_prob = pipeline.predict_sentences_input_embedding_and_sentences(
             ["test"], embeddings
         )
 
@@ -242,7 +244,7 @@ class TestSemanticRouter(unittest.TestCase):
 
             with patch('src.semantic_router.os.path.isfile', return_value=False):
                 try:
-                    pipeline = SemanticRouterPipeline(
+                    _ = SemanticRouterPipeline(
                         inference_only=False,
                         dataset_address='dummy.xlsx',
                         train_embeddings_address=str(embeddings_path),
@@ -253,9 +255,6 @@ class TestSemanticRouter(unittest.TestCase):
                 except Exception:
                     pass
 
-            # Verify embeddings were requested to be saved
-            if mock_np_save.called:
-                self.assertTrue(True)
 
     @patch('src.semantic_router.pd.read_excel')
     @patch('src.semantic_router.np.load')
@@ -413,7 +412,7 @@ class TestJinaaEmbedder(unittest.TestCase):
 
         embedder = JinaaEmbedder()
 
-        result = embedder(["test"], task_for_jina="retrieval")
+        _ = embedder(["test"], task_for_jina="retrieval")
 
         mock_model.encode.assert_called_with(["test"], task="retrieval")
 
@@ -468,7 +467,7 @@ class TestE5Embedder(unittest.TestCase):
 
         embedder = E5Embedder()
 
-        result = embedder(["test"], passage_or_sentence="query")
+        _ = embedder(["test"], passage_or_sentence="query")
 
         call_args = mock_model.encode.call_args[0][0]
         self.assertTrue(call_args[0].startswith("query: "))
@@ -556,12 +555,11 @@ class TestClassifierModels(unittest.TestCase):
     def test_logistic_regression_fit_predict(self):
         """Test LogisticRegressionModel fit and predict."""
         model = LogisticRegressionModel()
-        X_train = np.random.rand(20, 5)
+        X_train = rng.random((20, 5))
         y_train = [0, 1] * 10
 
         model.fit(X_train, y_train)
-
-        X_test = np.random.rand(5, 5)
+        X_test = rng.random((5, 5))
         predictions = model.predict(X_test)
 
         self.assertEqual(len(predictions), 5)
@@ -571,7 +569,7 @@ class TestClassifierModels(unittest.TestCase):
     def test_logistic_regression_calc_metrics(self, mock_sns, mock_plt):
         """Test LogisticRegressionModel metrics calculation."""
         model = LogisticRegressionModel()
-        X_train = np.random.rand(50, 5)
+        X_train = rng.random((50, 5))
         y_train = [0, 1, 2, 3, 4] * 10
         model.fit(X_train, y_train)
 
@@ -593,12 +591,12 @@ class TestClassifierModels(unittest.TestCase):
     def test_svm_model_fit_predict(self):
         """Test SVMModel fit and predict."""
         model = SVMModel()
-        X_train = np.random.rand(20, 5)
+        X_train = rng.random((20, 5))
         y_train = [0, 1] * 10
 
         model.fit(X_train, y_train)
 
-        X_test = np.random.rand(5, 5)
+        X_test = rng.random((5, 5))
         predictions = model.predict(X_test)
 
         self.assertEqual(len(predictions), 5)
@@ -612,12 +610,12 @@ class TestClassifierModels(unittest.TestCase):
     def test_mlp_model_fit_predict(self):
         """Test MLPClassifierModel fit and predict."""
         model = MLPClassifierModel()
-        X_train = np.random.rand(20, 5)
+        X_train = rng.random((20, 5))
         y_train = [0, 1] * 10
 
         model.fit(X_train, y_train)
 
-        X_test = np.random.rand(5, 5)
+        X_test = rng.random((5, 5))
         predictions = model.predict(X_test)
 
         self.assertEqual(len(predictions), 5)
@@ -631,12 +629,12 @@ class TestClassifierModels(unittest.TestCase):
     def test_rf_model_fit_predict(self):
         """Test RFModel fit and predict."""
         model = RFModel()
-        X_train = np.random.rand(20, 5)
+        X_train = rng.random((20, 5))
         y_train = [0, 1] * 10
 
         model.fit(X_train, y_train)
 
-        X_test = np.random.rand(5, 5)
+        X_test = rng.random((5, 5))
         predictions = model.predict(X_test)
 
         self.assertEqual(len(predictions), 5)
@@ -694,8 +692,7 @@ class TestIntegration(unittest.TestCase):
             'label': ['l1', 'l2', 'l3', 'l4', 'l5']
         })
         mock_read_excel.return_value = mock_df
-
-        mock_embeddings = np.random.rand(5, 10)
+        mock_embeddings = rng.random((5, 10))
         mock_np_load.return_value = mock_embeddings
 
         mock_split.return_value = (
@@ -704,11 +701,11 @@ class TestIntegration(unittest.TestCase):
         )
 
         mock_embedder_instance = MagicMock()
-        mock_embedder_instance.return_value = np.random.rand(1, 10)
+        mock_embedder_instance.return_value = rng.random((1, 10))
         mock_embedder.return_value = mock_embedder_instance
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            model_path = Path(tmpdir) / "model.joblib"
+            _ = Path(tmpdir) / "model.joblib"
 
             # Training phase
             try:
@@ -726,7 +723,7 @@ class TestIntegration(unittest.TestCase):
 
             # Inference phase
             try:
-                label, classes_prob, max_prob = pipeline.predict_sentences(["test"])
+                label, _, _ = pipeline.predict_sentences(["test"])
                 self.assertIsNotNone(label)
             except Exception:
                 pass

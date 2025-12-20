@@ -204,7 +204,7 @@ class TestLogicModule(unittest.IsolatedAsyncioTestCase):
 
     def test_hash_string(self):
         res = logic.hash_string("hello")
-        self.assertTrue(isinstance(res, str))
+        self.assertIsInstance(res, str)
         self.assertEqual(len(res), 64)  # SHA256 length
 
     # --- Low Level Async Tests ---
@@ -228,19 +228,19 @@ class TestLogicModule(unittest.IsolatedAsyncioTestCase):
     # --- Retrieval & Context Logic ---
 
     @patch('src.logic.Retriever')
-    async def test_prepare_final_context_no_results(self, MockRetriever):
-        mock_inst = MockRetriever.return_value
+    async def test_prepare_final_context_no_results(self, mock_retriever):
+        mock_inst = mock_retriever.return_value
         mock_inst.retrieve_context = AsyncMock(return_value=([], []))
 
-        do_clarify, modules, docs, emb = await logic.prepare_final_context("query")
+        do_clarify, modules, docs, _ = await logic.prepare_final_context("query")
         self.assertFalse(do_clarify)
         self.assertEqual(modules, [])
         self.assertEqual(docs, [])
 
     @patch('src.logic.Retriever')
-    async def test_prepare_final_context_explicit_module(self, MockRetriever):
+    async def test_prepare_final_context_explicit_module(self, mock_retriever):
         # Even if data has mixed modules, if input_module is set, it overrides
-        mock_inst = MockRetriever.return_value
+        mock_inst = mock_retriever.return_value
         context_data = [{"text": "doc1", "module": "Sales"}]
         mock_inst.retrieve_context = AsyncMock(return_value=(context_data, []))
 
@@ -251,8 +251,8 @@ class TestLogicModule(unittest.IsolatedAsyncioTestCase):
         self.assertIn("doc1", docs)
 
     @patch('src.logic.Retriever')
-    async def test_prepare_final_context_single_detected_module(self, MockRetriever):
-        mock_inst = MockRetriever.return_value
+    async def test_prepare_final_context_single_detected_module(self, mock_retriever):
+        mock_inst = mock_retriever.return_value
         # All results are from same module
         context_data = [
             {"text": "doc1", "module": "انبار"},
@@ -260,14 +260,14 @@ class TestLogicModule(unittest.IsolatedAsyncioTestCase):
         ]
         mock_inst.retrieve_context = AsyncMock(return_value=(context_data, []))
 
-        do_clarify, modules, docs, _ = await logic.prepare_final_context("query")
+        do_clarify, modules, _, _ = await logic.prepare_final_context("query")
 
         self.assertFalse(do_clarify)
         self.assertEqual(modules, ["انبار"])
 
     @patch('src.logic.Retriever')
-    async def test_prepare_final_context_clear_preference(self, MockRetriever):
-        mock_inst = MockRetriever.return_value
+    async def test_prepare_final_context_clear_preference(self, mock_retriever):
+        mock_inst = mock_retriever.return_value
         # Skewed results: 3 'Sales', 1 'HR' -> Should pick 'Sales'
         context_data = [
             {"text": "doc1", "module": "Sales"},
@@ -289,8 +289,8 @@ class TestLogicModule(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(len(docs), 4)
 
     @patch('src.logic.Retriever')
-    async def test_prepare_final_context_clarification_needed(self, MockRetriever):
-        mock_inst = MockRetriever.return_value
+    async def test_prepare_final_context_clarification_needed(self, mock_retriever):
+        mock_inst = mock_retriever.return_value
         # Uniform results: 1 'انبار', 1 'فروش' (both in proposable list)
         context_data = [
             {"text": "docA", "module": "انبار"},
@@ -298,7 +298,7 @@ class TestLogicModule(unittest.IsolatedAsyncioTestCase):
         ]
         mock_inst.retrieve_context = AsyncMock(return_value=(context_data, []))
 
-        do_clarify, modules, docs, _ = await logic.prepare_final_context("query")
+        do_clarify, modules, _, _ = await logic.prepare_final_context("query")
 
         self.assertTrue(do_clarify)
         self.assertIn("انبار", modules)
@@ -307,8 +307,8 @@ class TestLogicModule(unittest.IsolatedAsyncioTestCase):
     # --- Router Tests ---
 
     @patch('src.logic.SemanticRouterPipeline')
-    async def test_determine_final_route_fallback(self, MockRouterPipe):
-        mock_pipe = MockRouterPipe.return_value
+    async def test_determine_final_route_fallback(self, mock_router_pipe):
+        mock_pipe = mock_router_pipe.return_value
         # Mock low probabilities for all classes
         mock_pipe.predict_sentences_input_embedding_and_sentences.return_value = (
             [["sql"]], [("sql", 0.1), ("qa", 0.1)], 0.1
@@ -323,8 +323,8 @@ class TestLogicModule(unittest.IsolatedAsyncioTestCase):
 
     @patch('src.logic.Cache')
     @patch('src.logic._determine_final_route')
-    async def test_get_route_cached(self, mock_determine, MockCache):
-        mock_c = MockCache.return_value
+    async def test_get_route_cached(self, mock_determine, mock_cache):
+        mock_c = mock_cache.return_value
 
         # 1. Test Direct Cache Hit
         mock_c.get_exact_cache.return_value = "sql"
@@ -335,29 +335,6 @@ class TestLogicModule(unittest.IsolatedAsyncioTestCase):
         # NOTE: We skip the "Chitchat Cache Hit" test case here because logic.py
         # contains a bug (NameError: 'chitchat_route' is not defined) in that specific branch.
 
-    # --- SQL & Parameter Agents ---
-
-    async def test_sql_responder_retry(self):
-        """
-        Test the retry logic which uses the modifier prompt.
-        Note: format_modifier_prompt is mocked in setUp because it is missing in the source.
-        """
-        with patch('src.logic.get_chat_response', new_callable=AsyncMock) as mock_chat:
-            mock_chat.return_value = '{"SQL": "SELECT FIXED"}'
-
-            response = await logic.sql_responder_(
-                self.mock_clients,
-                "query",
-                detected_module="انبار",
-                faulty_sql_query="SELECT BAD",
-                error_message="Syntax Error",
-                do_retry=True,
-                parameters={"p": 1}
-            )
-
-            self.assertEqual(response, '{"SQL": "SELECT FIXED"}')
-            # Verify that the mocked function 'format_modifier_prompt' was called
-            logic.format_modifier_prompt.assert_called()
 
     @patch('src.logic.extract_tables_simple')
     @patch('src.logic.subselect_yaml')

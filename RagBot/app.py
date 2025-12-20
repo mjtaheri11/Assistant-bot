@@ -5,6 +5,8 @@ import requests
 import streamlit as st
 import time
 
+from aiohttp.web_exceptions import HTTPException
+
 from src.config import config
 from src.logs import non_generative_agent_logger, simple_logger
 from src.utils import init_session_state
@@ -15,6 +17,8 @@ load_dotenv()
 
 NUMBER_OF_SUGGESTED_SESSIONS = 30
 NUMBER_OF_SUGGESTED_DATABASE = 10
+INPUT_COMPANY_NAME = "نام شرکت خود را وارد کنید"
+INPUT_ASSISTANT_NAME = "نام دستیار خود را وارد کنید"
 BASE_URL = os.getenv("BASE_URL_BACKEND")
 
 CSS_STYLE_FILE = "./src/style.css"
@@ -178,7 +182,7 @@ def session_create(database_id: str = None, api_url: str = BASE_URL):
             # Handle any other status codes
             return None
 
-    except requests.exceptions.RequestException as e:
+    except requests.exceptions.RequestException:
         # Handle any errors that occur during the request
         return None
 
@@ -312,8 +316,7 @@ def request_previous_sessions(api_url: str = BASE_URL):
             "sessions": sessions,
         }
     else:
-        raise Exception
-        # return {"status": "error", "response": ""}
+        raise HTTPException
 
 
 def request_previous_databases(api_url: str = BASE_URL):
@@ -334,7 +337,7 @@ def request_previous_databases(api_url: str = BASE_URL):
             "assistant_names": assistant_names
         }
     else:
-        raise Exception
+        raise HTTPException
 
 
 def send_feedback(
@@ -435,7 +438,6 @@ def main():
     st.set_page_config(
         page_title="hamzan",
         layout="wide",
-        # initial_sidebar_state="expanded",
         initial_sidebar_state="collapsed",
     )
     init_session_state()
@@ -492,9 +494,6 @@ def main():
     if "session_id" not in st.session_state:
         session_id = session_create()
         st.session_state["session_id"] = session_id
-
-    if st.session_state.get("form_submitted", False):
-        form_submitted = True
 
     number_of_columns = [1, 2, 1, 5, 2]
     logging_column, sessions_column, _, main_column, _ = st.columns(
@@ -568,7 +567,7 @@ def main():
                     st.info(
                         " با استفاده از این سامانه میتواند فایل های خود را آپلود کرده و دستیار شخصی سازی شده خود را تحویل بگیرید.",
                     )
-                    uploaded_files = st.file_uploader(
+                    _ = st.file_uploader(
                         "لطفا داکیومنت های مربوط به شرکت یا سازمان خود را با فرمت های مشخص شده وارد کنید.",
                         type=["docx", "doc"],
                         accept_multiple_files=True,
@@ -579,17 +578,17 @@ def main():
                         label_visibility="hidden",
                     )
 
-                    st.markdown("نام دستیار خود را وارد کنید")
+                    st.markdown(INPUT_ASSISTANT_NAME)
                     st.text_input(
-                        "نام دستیار خود را وارد کنید",
-                        placeholder="نام دستیار خود را وارد کنید",
+                        INPUT_ASSISTANT_NAME,
+                        placeholder=INPUT_ASSISTANT_NAME,
                         key="temporal_assistant_name",
                         label_visibility="collapsed",
                     )
-                    st.markdown("نام شرکت خود را وارد کنید")
+                    st.markdown(INPUT_COMPANY_NAME)
                     st.text_input(
-                        "نام شرکت خود را وارد کنید",
-                        placeholder="نام شرکت خود را وارد کنید",
+                        INPUT_COMPANY_NAME,
+                        placeholder=INPUT_COMPANY_NAME,
                         key="temporal_company_name",
                         label_visibility="collapsed",
                     )
@@ -649,7 +648,7 @@ def main():
 
                 with col2:
                     st.markdown(
-                        f'<div class="markdown-rtl">عامل SQL</div>', unsafe_allow_html=True)
+                        '<div class="markdown-rtl">عامل SQL</div>', unsafe_allow_html=True)
                     st.selectbox(
                         '<div class="markdown-rtl">عامل SQL</div>',
                         ["بله", "خیر"],
@@ -659,7 +658,7 @@ def main():
 
                 with col3:
                     st.markdown(
-                        f'<div class="markdown-rtl">OSS برای SQL</div>', unsafe_allow_html=True)
+                        '<div class="markdown-rtl">OSS برای SQL</div>', unsafe_allow_html=True)
                     st.selectbox(
                         '<div class="markdown-rtl">مدل او اس اس برای SQL</div>',
                         ["خیر", "بله"],
@@ -669,7 +668,7 @@ def main():
 
                 with col4:
                     st.markdown(
-                        f'<div class="markdown-rtl">اجرای کوئری</div>', unsafe_allow_html=True)
+                        '<div class="markdown-rtl">اجرای کوئری</div>', unsafe_allow_html=True)
                     st.selectbox(
                         '<div class="markdown-rtl">اجرای کوئری</div>',
                         ["خیر", "بله"],
@@ -753,7 +752,6 @@ def main():
                         st.session_state.message_id.append(message_id)
 
                     elif clicked_on_sidebar_sessions:
-                        session_id = st.session_state.get("session_id")
                         st.session_state.user_utterance = [
                             message["query"]
                             for message in history["history"]
@@ -790,18 +788,7 @@ def main():
                         st.session_state["response_is_valid"] = True
                         progress_bar.progress(value=0)
 
-                    elif clicked_on_new_session:
-                        st.session_state.user_utterance = []
-                        st.session_state.query = []
-                        st.session_state.response = []
-                        st.session_state.user_input_storage = []
-                        st.session_state.message_id = []
-                        st.session_state.have_clicked_on_feedback = False
-                        st.session_state.response_is_valid = False
-                        st.session_state.sql_response_type = []
-                        progress_bar.progress(value=0)
-
-                    elif clicked_on_database_id:
+                    elif clicked_on_new_session or clicked_on_database_id:
                         st.session_state.user_utterance = []
                         st.session_state.query = []
                         st.session_state.response = []
@@ -1002,9 +989,9 @@ def main():
             # Display the last question and answer
             if st.session_state.get("retriever_user_answer"):
                 st.markdown("---")
-                st.success(f"**سوال شما:**")
+                st.success("**سوال شما:**")
                 st.markdown(st.session_state.retriever_user_input)
-                st.success(f"**پاسخ دریافت شده:**")
+                st.success("**پاسخ دریافت شده:**")
                 st.markdown(
                     st.session_state.retriever_user_answer.replace("\n", "  \n"))
 

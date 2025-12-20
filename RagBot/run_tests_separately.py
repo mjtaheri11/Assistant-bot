@@ -38,10 +38,6 @@ def merge_junit_xmls():
 
     # Create a root <testsuites> element
     merged_root = ET.Element("testsuites")
-    failures = 0
-    errors = 0
-    tests = 0
-
     for file_path in xml_files:
         try:
             tree = ET.parse(file_path)
