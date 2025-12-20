@@ -826,7 +826,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request, clients: d
                                     bo_parameters_with_template_dict = json.loads(bo_parameters_with_template)
                                     parameters_dict = finalize_parameters(response_dict, bo_parameters_with_template_dict)
                                     parameters = parameters_dict["parameters"]
-                                    response_template = bo_parameters_with_template["response_template"]
+                                    response_template = bo_parameters_with_template_dict["response_template"]
                                 else:
                                     is_sql = False
                                     response = RESPONSE_TEMPLATE_FOR_NO_ANSWER
