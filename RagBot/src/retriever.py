@@ -1481,8 +1481,6 @@ class Retriever(object):
         
         # Determine whether to use reranker for this call
         should_use_reranker = self.use_reranker if use_reranker is None else use_reranker
-        import pdb
-        pdb.set_trace()
         if collection_name:
             self.find_vdb(collection_name)
         
