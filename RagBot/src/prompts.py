@@ -933,6 +933,9 @@ CORRECT: Persian weeks start on Saturday
 WRONG: Using CURRENT_DATE, NOW(), INTERVAL in SQL
 CORRECT: Use pre-calculated parameter values
 
+WRONG: Using * anywhere in SQL (SELECT *, COUNT(*), etc.)
+CORRECT: Always use explicit column names; use COUNT(1) or COUNT(column_name) instead of COUNT(*)
+
 ## DATE RULES
 
 NEVER use in SQL: CURRENT_DATE, CURRENT_TIMESTAMP, NOW(), INTERVAL
@@ -992,7 +995,7 @@ Example: si.amount AS si_amount
 Aggregate functions: table_column_function
 - SUM(si.net_price) AS si_net_price_sum
 - COUNT(si.id) AS si_id_count
-- COUNT(*) AS row_count
+- COUNT(1) AS row_count
 - AVG(si.amount) AS si_amount_avg
 - MIN(liv.date) AS liv_date_min
 - MAX(lii.qty) AS lii_qty_max
@@ -1005,13 +1008,42 @@ Example: (subquery1) - (subquery2) AS sales_difference
 
 ## SQL RULES
 
-- NEVER use SELECT * - always list columns explicitly
+- NEVER use * anywhere in SQL - this includes SELECT *, COUNT(*), or any other usage of *
+- For counting rows, use COUNT(1) or COUNT(primary_key_column) instead of COUNT(*)
+- Always list columns explicitly in SELECT statements
 - NEVER use CTE (WITH clause) - start with SELECT
 - Always use short table aliases (e.g., ls for logistics_store)
 - If using LIMIT and OFFSET together, LIMIT must come before OFFSET
 - Use parentheses in WHERE clauses for clarity
 - Only use columns that exist in provided schema
 - Only join tables using foreign key relationships in schema
+
+## ASTERISK (*) PROHIBITION
+
+The asterisk character (*) is STRICTLY FORBIDDEN in all SQL output.
+
+NEVER use:
+- SELECT *
+- SELECT table.*
+- COUNT(*)
+- Any expression containing *
+
+ALWAYS use instead:
+- SELECT column1, column2, column3 (explicit column names)
+- SELECT t.column1, t.column2 (with table alias)
+- COUNT(1) or COUNT(column_name) for row counting
+
+WRONG: SELECT * FROM orders
+CORRECT: SELECT o.id, o.date, o.amount FROM orders o
+
+WRONG: SELECT COUNT(*) FROM products
+CORRECT: SELECT COUNT(1) AS row_count FROM products p
+
+WRONG: SELECT COUNT(*) AS total FROM sales
+CORRECT: SELECT COUNT(1) AS total FROM sales s
+
+WRONG: SELECT t.*, s.name FROM table1 t JOIN table2 s ON ...
+CORRECT: SELECT t.id, t.date, t.amount, s.name FROM table1 t JOIN table2 s ON ...
 
 ## PROCESSING STEPS
 
@@ -1033,8 +1065,9 @@ Example: (subquery1) - (subquery2) AS sales_difference
    - All values as parameter placeholders
    - All columns properly aliased
    - All aggregate functions properly aliased
+   - NO asterisks (*) anywhere - use explicit columns and COUNT(1)
 
-5. Validate SQL is correct
+5. Validate SQL is correct and contains no asterisks
    No -> return null SQL
    Yes -> return complete JSON
 
@@ -1044,6 +1077,9 @@ Example: (subquery1) - (subquery2) AS sales_difference
 ## VERIFICATION CHECKLIST
 
 Before outputting, verify:
+- NO asterisks (*) appear anywhere in the SQL (not in SELECT, not in COUNT, nowhere)
+- COUNT uses COUNT(1) or COUNT(column_name), never COUNT(*)
+- All columns are explicitly named, no SELECT * or table.*
 - "هفته پیش" (calendar) uses {last_week_saturday} to {last_week_friday}
 - "یک هفته گذشته/اخیر" (rolling) uses {one_week_ago} to {today_date}
 - "دو هفته گذشته/اخیر" uses {two_weeks_ago} to {today_date}
@@ -1104,7 +1140,6 @@ YEAR RANGES:
 
 OUTPUT ONLY THE JSON. NO OTHER TEXT.
 """
-
 
 BUSINESS_OBJECT_PARAMETER_EXTRACTOR_PROMPT = """
 # Business Object Parameter Extractor

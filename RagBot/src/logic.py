@@ -1,4 +1,5 @@
 import random
+import re
 import os
 import statistics
 import yaml
@@ -301,29 +302,42 @@ def format_sql_prompt(
 ) -> str:
     """
     Format the SQL converter prompt with all date context values using current datetime.
-    
-    Args:
-        query: The natural language query in Persian
-        schema: The business object schema
-        target_prompt: The prompt template to use
-        examples: Optional custom examples. If None, uses DEFAULT_EXAMPLES
-    
-    Returns:
-        Formatted prompt string with all placeholders filled using current datetime
     """
     # Calculate date context from current datetime
     date_context = calculate_date_context()
     
-    # Add query and schema to context
+    # Use default examples if none provided
+    raw_examples = examples if examples else DEFAULT_EXAMPLES
+    
+    # Format examples using regex to only replace known placeholders
+    formatted_examples = replace_placeholders(raw_examples, date_context)
+
+    # Add query, schema, and pre-formatted examples to context
     date_context['query'] = query
     date_context['schema'] = schema
+    date_context['examples'] = formatted_examples
     
-    # Use default examples if none provided
-    date_context['examples'] = examples if examples else DEFAULT_EXAMPLES
-    
-    # Format the prompt
-    return target_prompt.format(**date_context)
+    # Format the final prompt
+    final_prompt = target_prompt.format(**date_context)
 
+    return final_prompt
+
+
+def replace_placeholders(text: str, context: dict) -> str:
+    """
+    Replace only known placeholders in text, leaving JSON braces untouched.
+    Matches {placeholder_name} only for keys that exist in context.
+    """
+    def replacer(match):
+        key = match.group(1)
+        if key in context:
+            return str(context[key])
+        # Return original if not a known placeholder
+        return match.group(0)
+    
+    # Pattern matches {word_characters} but not empty braces or JSON-like patterns
+    pattern = r'\{([a-zA-Z_][a-zA-Z0-9_]*)\}'
+    return re.sub(pattern, replacer, text)
 
 def format_param_responder_prompt(query: str, sql_query: str, schema: str, target_prompt: str = SQL_CONVERTER_MODIFIED_WITH_PARAMETERS_TEMPLATE) -> str:
     """
@@ -552,7 +566,7 @@ async def process_sql_response(
         clients,
         paraphrased_utterance,
         selected_module,
-        context,
+        context=context,
         use_oss=use_oss
     )
     
@@ -870,7 +884,7 @@ def _handle_clear_preference_case(
     index_name: str
 ) -> Tuple[bool, List[str], List[str]]:
     """Handle case where module preference is clear (no clarification needed)."""
-    documents = _format_documents_as_list(context_with_metadata)
+    documents = _format_documents_as_string(context_with_metadata)
     return False, [detected_module], documents
 
 
@@ -890,7 +904,7 @@ def _handle_clarification_case(
         valid_modules_lst = list(valid_modules)
         result = False, valid_modules_lst, documents
     else:
-        documents = _format_documents_as_list(context_with_metadata)
+        documents = _format_documents_as_string(context_with_metadata)
         valid_modules_lst = list(valid_modules)
         result = True, valid_modules_lst, documents
     return result
@@ -963,7 +977,6 @@ async def sql_responder_(
     """
     Unified SQL responder supporting both simple schema list and module-based schema selection.
     """
-
     schema = get_schema_for_module(detected_module)
     bo_prompt = format_sql_prompt(query, schema=schema, examples=context)
     model_client = model_selector(use_oss, clients)
@@ -1172,8 +1185,8 @@ async def chat_responder_(
                 clients,
                 paraphrased_utterance,
                 selected_module,
+                use_oss,
                 context,
-                use_oss
             )
             result_temp = is_sql, paraphrased_utterance, response, context, False, [selected_module], parameters, sql_response_template  
             return result_temp

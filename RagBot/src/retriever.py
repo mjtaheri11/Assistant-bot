@@ -1505,7 +1505,6 @@ class Retriever(object):
             # No reranking - just format and potentially limit documents
             logger.debug(f"Skipping reranker for query: {query[:50]}...")
             result = self._documents_to_standard_format(documents[:k], reverse)
-        
         return result, query_embedding
     
     async def retrieve_context_by_module(self, query, module_name, 
