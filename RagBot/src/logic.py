@@ -1153,17 +1153,10 @@ async def chat_responder_(
     query_embedding = await embed_query(paraphrased_utterance)
     route_response = await get_route_for_utterance(clients, paraphrased_utterance, query_embedding, use_oss)
 
-    if sql_mode:
-        if route_response == "sql":
-            num_retrieve_context = config["retriever"]["sql_retrieved_rank2_documents"]
-            detected_database_index = config["database"]["sql_collection_name"]
-        else:
-            detected_database_index = database_index
-
     if detected_module:
-        do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=detected_database_index, input_module=detected_module, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context)
+        do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, input_module=detected_module, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context)
     else:
-        do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=detected_database_index, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context)
+        do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context)
 
     if route_response == "chitchat":
         response = await chitchat_responder(clients, paraphrased_utterance, context=context, history=history, use_oss=use_oss)
@@ -1178,9 +1171,19 @@ async def chat_responder_(
         result_temp = is_sql, paraphrased_utterance, MODULE_CLARIFICATION_RESPONSE_TEMPLATE, "", do_clarify, modules, parameters, sql_response_template
         return result_temp
 
+    if sql_mode:
+        if route_response == "sql":
+            num_retrieve_context = config["retriever"]["sql_retrieved_rank2_documents"]
+            detected_database_index = config["database"]["sql_collection_name"]
+        else:
+            detected_database_index = database_index
+
     if route_response == "sql" and sql_mode:
-        if modules[0] in config["modules"]["available_sql_modules"]:
-            selected_module = modules[0]
+        selected_module = modules[0] 
+        if selected_module in config["modules"]["available_sql_modules"]:
+            do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=config["database"]["sql_collection_name"], query_embedding=query_embedding, input_module=selected_module, num_retrieve_context=num_retrieve_context)
+            assert do_clarify == False, "The problem related to the prepare final context module. Do clarify should be False"
+            assert len(modules) == 1, "The problem related to the prepare final context module. length of modules should be one"
             is_sql, response, parameters, sql_response_template = await process_sql_response(
                 clients,
                 paraphrased_utterance,
@@ -1188,7 +1191,10 @@ async def chat_responder_(
                 use_oss,
                 context,
             )
-            result_temp = is_sql, paraphrased_utterance, response, context, False, [selected_module], parameters, sql_response_template  
+            if not is_sql: 
+                parameters = {}
+                sql_response_template = ""  
+            result_temp = is_sql, paraphrased_utterance, response, context, False, [selected_module], parameters, sql_response_template 
             return result_temp
 
     _, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, input_module=detected_module, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context)

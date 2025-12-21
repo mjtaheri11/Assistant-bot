@@ -157,7 +157,7 @@ reranker:
 retriever:
   retrieved_documents: 40
   retrieved_rank2_documents: 5
-  sql_retrieved_rank2_documents: 10
+  sql_retrieved_rank2_documents: 25
   retriever_threshold: 0.0
   alpha_threshold: 0.5
   use_reranker: False
