@@ -2954,7 +2954,7 @@ crm_customerrequestcustomer:
 """
 
 TREASURY_BO = """
-treasury_cheque
+treasury_cheque:
   title: "چک پرداختی"
   context: "treasury"
   parameters: 

@@ -754,9 +754,8 @@ async def prepare_final_context(
         input_modules=[input_module] if input_module else None, 
         num_retrieve_context=num_retrieve_context
     )
-
     if not context_with_metadata:
-        return False, [], [], query_embedding
+        return False, [], []
 
     if input_module:
         result = _handle_single_module_case(
@@ -1180,9 +1179,12 @@ async def chat_responder_(
     if route_response == "sql" and sql_mode:
         selected_module = modules[0] 
         if selected_module in config["modules"]["available_sql_modules"]:
-            do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=config["database"]["sql_collection_name"], query_embedding=query_embedding, input_module=selected_module, num_retrieve_context=num_retrieve_context)
+
+            do_clarify, modules_2 , context = await prepare_final_context(paraphrased_utterance, database_index=config["database"]["sql_collection_name"], query_embedding=query_embedding, input_module=selected_module, num_retrieve_context=num_retrieve_context)
+            if len(modules_2) == 0:
+                modules_2 = modules
             assert do_clarify == False, "The problem related to the prepare final context module. Do clarify should be False"
-            assert len(modules) == 1, "The problem related to the prepare final context module. length of modules should be one"
+            assert len(modules_2) == 1, "The problem related to the prepare final context module. length of modules should be one"
             is_sql, response, parameters, sql_response_template = await process_sql_response(
                 clients,
                 paraphrased_utterance,
