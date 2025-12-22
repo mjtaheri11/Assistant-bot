@@ -888,7 +888,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request, clients: d
                             json.dumps(parameters)
                         )
 
-        agent = "chat_responder" if is_sql else "chat_responder"
+        agent = "sql_responder" if is_sql else "chat_responder"
         REQUEST_LATENCY.labels(endpoint="/v1/chat").observe(time.time() - start_time)
         non_generative_agent_logger(
             session_id=session_id,

@@ -1071,9 +1071,6 @@ CORRECT: SELECT t.id, t.date, t.amount, s.name FROM table1 t JOIN table2 s ON ..
    No -> return null SQL
    Yes -> return complete JSON
 
-## EXAMPLES
-{examples}
-
 ## VERIFICATION CHECKLIST
 
 Before outputting, verify:
@@ -1134,6 +1131,9 @@ ROLLING RANGES (use with TO={today_date}):
 YEAR RANGES:
 - Persian Year: {persian_year_start} to {persian_year_end}
 - Previous Persian Year: {prev_persian_year_start} to {prev_persian_year_end}
+
+## EXAMPLES
+{examples}
 
 ## QUERY
 {query}
