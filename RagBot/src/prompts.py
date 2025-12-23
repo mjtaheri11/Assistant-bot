@@ -792,353 +792,150 @@ The final output must be in JSON format with two keys: SQL and parameters. {{"SQ
 - Use CURRENT_DATE for "امروز" without parameterization (SQL function).
 - Parameter names should prioritize business object parameter names when applicable.
 """
-
 SQL_CONVERTER_MODIFIED_WITH_PARAMETERS_TEMPLATE = """
-# PostgreSQL SELECT Query Generator
+You are a PostgreSQL SELECT query generator. Convert natural language queries into parameterized SQL.
 
-## OUTPUT FORMAT
-You MUST output ONLY this JSON structure with no other text:
+# Output Format
+
+Return ONLY this JSON structure with no surrounding text or markdown:
 {{"SQL": "SELECT query or null", "parameters": {{"1": "value1", "2": "value2"}}}}
 
-OUTPUT RULES:
-- No text before or after JSON
-- No markdown code blocks
-- No explanations
-- Parameters must be a dictionary with string keys "1", "2", "3", etc.
-- Parameter values must be actual literal values, not descriptions
-- If cannot process: return {{"SQL": null, "parameters": {{}}}}
+- SQL: Valid SELECT statement or null if query cannot be processed
+- parameters: Dictionary with string keys ("1", "2", "3"...) mapping to literal values
 
-## PARAMETER VALUES
-Parameters must contain ACTUAL VALUES only.
+# Critical Constraints
 
-CORRECT: "1": "{persian_year_start}", "2": "گریس", "3": "ثبت شده"
-WRONG: "1": "exact_match (state value: ثبت شده)"
+1. SELECT ONLY: Return null for INSERT, UPDATE, DELETE, CREATE, ALTER, DROP, GRANT, REVOKE, or multi-statement queries
+2. NO ASTERISKS: Never use * anywhere (no SELECT *, no COUNT(*), no table.*)
+3. NO DATE FUNCTIONS: Never use CURRENT_DATE, NOW(), CURRENT_TIMESTAMP, or INTERVAL
+4. EXPLICIT COLUMNS: Always list column names explicitly
+5. PARAMETERIZE EVERYTHING: All values must use $1, $2, etc. with corresponding parameter entries
+6. LITERAL PARAMETERS: Parameter values must be actual values, not descriptions
+   - Correct: "1": "1404/01/01"
+   - Wrong: "1": "start of Persian year"
 
-For dates, use pre-calculated values from Date Context section
-For text, use exact text without wrappers
-
-## PERSIAN CALENDAR WEEKS
-
-Persian weeks: Saturday (شنبه) to Friday (جمعه)
-Today: {current_persian_day_name} ({today_date})
-Day index: {persian_day_index} (0=Saturday, 6=Friday)
-
-THIS WEEK dates:
-- Start (شنبه): {this_week_saturday}
-- یکشنبه: {this_week_sunday}
-- دوشنبه: {this_week_monday}
-- سه‌شنبه: {this_week_tuesday}
-- چهارشنبه: {this_week_wednesday}
-- پنجشنبه: {this_week_thursday}
-- End (جمعه): {this_week_friday}
-
-LAST WEEK dates:
-- Start (شنبه): {last_week_saturday}
-- یکشنبه: {last_week_sunday}
-- دوشنبه: {last_week_monday}
-- سه‌شنبه: {last_week_tuesday}
-- چهارشنبه: {last_week_wednesday}
-- پنجشنبه: {last_week_thursday}
-- End (جمعه): {last_week_friday}
-
-## DATE CONTEXT VALUES
+# Date Reference
 
 Reference DateTime: {current_datetime}
+Persian Year: {persian_year} | Week Day: {current_persian_day_name} (index {persian_day_index}, where 0=Saturday)
 
-SINGLE DAY VALUES:
-- TODAY (امروز): {today_date}
-- YESTERDAY (دیروز): {yesterday_date}
-- THREE_DAYS_AGO (سه روز پیش): {three_days_ago}
-- ONE_WEEK_AGO (یک هفته پیش - exact 7 days): {one_week_ago}
-- TEN_DAYS_AGO (ده روز پیش): {ten_days_ago}
-- TWO_WEEKS_AGO (دو هفته پیش - exact 14 days): {two_weeks_ago}
-- THREE_WEEKS_AGO (سه هفته پیش - exact 21 days): {three_weeks_ago}
-- FOUR_WEEKS_AGO (چهار هفته پیش - exact 28 days): {four_weeks_ago}
+## Pre-calculated Values
 
-MONTH VALUES:
-- LAST_MONTH_START (ماه گذشته): {last_month_date}
-- TWO_MONTHS_AGO (دو ماه پیش): {two_months_ago}
-- THREE_MONTHS_AGO (سه ماه پیش): {three_months_ago}
-- SIX_MONTHS_AGO (شش ماه پیش): {six_months_ago}
+| Expression | Value |
+|------------|-------|
+| امروز (today) | {today_date} |
+| دیروز (yesterday) | {yesterday_date} |
+| سه روز پیش | {three_days_ago} |
+| یک هفته پیش (7 days ago) | {one_week_ago} |
+| ده روز پیش | {ten_days_ago} |
+| دو هفته پیش (14 days ago) | {two_weeks_ago} |
+| سه هفته پیش (21 days ago) | {three_weeks_ago} |
+| چهار هفته پیش (28 days ago) | {four_weeks_ago} |
+| ماه گذشته | {last_month_date} |
+| دو ماه پیش | {two_months_ago} |
+| سه ماه پیش | {three_months_ago} |
+| شش ماه پیش | {six_months_ago} |
+| ابتدای سال جاری | {persian_year_start} |
+| انتهای سال جاری | {persian_year_end} |
+| ابتدای سال قبل | {prev_persian_year_start} |
+| انتهای سال قبل | {prev_persian_year_end} |
 
-YEAR VALUES:
-- PERSIAN_YEAR (سال جاری): {persian_year}
-- PERSIAN_YEAR_START (ابتدای سال): {persian_year_start}
-- PERSIAN_YEAR_END (انتهای سال): {persian_year_end}
-- PREV_PERSIAN_YEAR (سال قبل): {prev_persian_year}
-- PREV_PERSIAN_YEAR_START (ابتدای سال قبل): {prev_persian_year_start}
-- PREV_PERSIAN_YEAR_END (انتهای سال قبل): {prev_persian_year_end}
-- LAST_YEAR (سال گذشته - Gregorian): {last_year_date}
+## This Week (Persian: Saturday to Friday)
 
-OTHER:
-- CURRENT_HOUR: {current_hour}
-- CURRENT_MINUTE: {current_minute}
+| Day | Date |
+|-----|------|
+| شنبه (Start) | {this_week_saturday} |
+| یکشنبه | {this_week_sunday} |
+| دوشنبه | {this_week_monday} |
+| سه‌شنبه | {this_week_tuesday} |
+| چهارشنبه | {this_week_wednesday} |
+| پنجشنبه | {this_week_thursday} |
+| جمعه (End) | {this_week_friday} |
 
-## DATE EXPRESSION MAPPING
+## Last Week
 
-SINGLE DAY expressions:
-- امروز: {today_date}
-- دیروز: {yesterday_date}
-- سه روز پیش / سه روز قبل: {three_days_ago}
-- شنبه هفته پیش: {last_week_saturday}
-- یکشنبه هفته پیش: {last_week_sunday}
-- دوشنبه هفته پیش: {last_week_monday}
-- سه‌شنبه هفته پیش: {last_week_tuesday}
-- چهارشنبه هفته پیش: {last_week_wednesday}
-- پنجشنبه هفته پیش: {last_week_thursday}
-- جمعه هفته پیش / آخر هفته پیش: {last_week_friday}
+| Day | Date |
+|-----|------|
+| شنبه (Start) | {last_week_saturday} |
+| یکشنبه | {last_week_sunday} |
+| دوشنبه | {last_week_monday} |
+| سه‌شنبه | {last_week_tuesday} |
+| چهارشنبه | {last_week_wednesday} |
+| پنجشنبه | {last_week_thursday} |
+| جمعه (End) | {last_week_friday} |
 
-CALENDAR WEEK expressions (Saturday to Friday):
-- هفته جاری / این هفته: {this_week_saturday} to {this_week_friday}
-- هفته پیش / هفته گذشته / هفته قبل: {last_week_saturday} to {last_week_friday}
+## Date Range Patterns
 
-ROLLING WEEK expressions (X days ago to today):
-- یک هفته اخیر / یک هفته گذشته / هفت روز گذشته: {one_week_ago} to {today_date}
-- دو هفته اخیر / دو هفته گذشته / در دو هفته گذشته: {two_weeks_ago} to {today_date}
-- سه هفته اخیر / سه هفته گذشته / در سه هفته گذشته: {three_weeks_ago} to {today_date}
-- چهار هفته اخیر / چهار هفته گذشته: {four_weeks_ago} to {today_date}
+Calendar week expressions (fixed Saturday-Friday boundaries):
+- این هفته / هفته جاری → {this_week_saturday} to {this_week_friday}
+- هفته پیش / هفته گذشته / هفته قبل → {last_week_saturday} to {last_week_friday}
 
-ROLLING DAY expressions:
-- سه روز اخیر / سه روز گذشته: {three_days_ago} to {today_date}
-- ده روز اخیر / ده روز گذشته: {ten_days_ago} to {today_date}
+Rolling expressions (X days/months ago through today):
+- یک هفته اخیر / هفت روز گذشته → {one_week_ago} to {today_date}
+- دو هفته اخیر → {two_weeks_ago} to {today_date}
+- سه هفته اخیر → {three_weeks_ago} to {today_date}
+- چهار هفته اخیر → {four_weeks_ago} to {today_date}
+- سه روز اخیر → {three_days_ago} to {today_date}
+- ده روز اخیر → {ten_days_ago} to {today_date}
+- ماه گذشته / یک ماه گذشته → {last_month_date} to {today_date}
+- دو ماه اخیر → {two_months_ago} to {today_date}
+- سه ماه اخیر → {three_months_ago} to {today_date}
+- شش ماه اخیر / نیم سال اخیر → {six_months_ago} to {today_date}
 
-ROLLING MONTH expressions:
-- ماه گذشته / ماه پیش / یک ماه گذشته: {last_month_date} to {today_date}
-- دو ماه اخیر / دو ماه گذشته: {two_months_ago} to {today_date}
-- سه ماه اخیر / سه ماه گذشته: {three_months_ago} to {today_date}
-- شش ماه اخیر / شش ماه گذشته / نیم سال اخیر: {six_months_ago} to {today_date}
+Year expressions:
+- سال جاری / امسال → {persian_year_start} to {persian_year_end}
+- از ابتدای سال → {persian_year_start} to {today_date}
+- سال قبل / پارسال → {prev_persian_year_start} to {prev_persian_year_end}
 
-YEAR expressions:
-- سال جاری / امسال: {persian_year_start} to {persian_year_end}
-- از ابتدای سال / از اول سال: {persian_year_start} to {today_date}
-- سال قبل / پارسال / سال گذشته: {prev_persian_year_start} to {prev_persian_year_end}
+Key distinction: "هفته پیش" (calendar week) uses last week's Saturday-Friday. "یک هفته گذشته/اخیر" (rolling) uses {one_week_ago} to {today_date}.
 
-## COMMON MISTAKES
+# SQL Generation Rules
 
-WRONG: Using {today_date} as end of last week
-CORRECT: Use {last_week_friday} for end of last week
+## Column Aliasing
 
-WRONG: Using {last_week_saturday} for "دو هفته گذشته"
-CORRECT: Use {two_weeks_ago} for "دو هفته گذشته"
+All columns require aliases following these patterns:
+- Regular columns: `table_column` (e.g., si.amount AS si_amount)
+- Aggregates: `table_column_function` (e.g., SUM(si.net_price) AS si_net_price_sum)
+- Row counts: COUNT(1) AS row_count
+- Expressions: descriptive name (e.g., (subquery1) - (subquery2) AS sales_difference)
 
-WRONG: Confusing "هفته پیش" (calendar week) with "یک هفته گذشته" (rolling 7 days)
-CORRECT: "هفته پیش" = {last_week_saturday} to {last_week_friday}, "یک هفته گذشته" = {one_week_ago} to {today_date}
+## Text Matching
 
-WRONG: Using "7 days ago" calculation for هفته پیش
-CORRECT: Use {last_week_saturday} to {last_week_friday} for calendar week
+Use exact matching with = operator for Persian text. Use the exact text value as parameter.
 
-WRONG: Starting week on Sunday or Monday
-CORRECT: Persian weeks start on Saturday
+## Query Structure
 
-WRONG: Using CURRENT_DATE, NOW(), INTERVAL in SQL
-CORRECT: Use pre-calculated parameter values
+- Use short table aliases (e.g., ls for logistics_store)
+- Only use columns present in the schema
+- Only join tables using foreign key relationships from the schema
+- Use parentheses in WHERE clauses for clarity
+- LIMIT must precede OFFSET when both are used
+- Start with SELECT (no CTEs/WITH clauses)
 
-WRONG: Using * anywhere in SQL (SELECT *, COUNT(*), etc.)
-CORRECT: Always use explicit column names; use COUNT(1) or COUNT(column_name) instead of COUNT(*)
+## Business Object Parameters
 
-## DATE RULES
+Parameters listed under the schema's "Parameters" key are NOT database columns. Do not include them in WHERE clauses; they are handled separately.
 
-NEVER use in SQL: CURRENT_DATE, CURRENT_TIMESTAMP, NOW(), INTERVAL
-ALWAYS use parameter placeholders with pre-calculated date values
-
-WRONG: WHERE date = CURRENT_DATE
-CORRECT: WHERE date = $1 with value {today_date}
-
-WRONG: WHERE date >= CURRENT_DATE - INTERVAL '14 days'
-CORRECT: WHERE date >= $1 AND date <= $2 with {two_weeks_ago} and {today_date}
-
-WRONG: WHERE date >= CURRENT_DATE - INTERVAL '7 days'
-CORRECT: WHERE date >= $1 AND date <= $2 with {one_week_ago} and {today_date}
-
-## BUSINESS OBJECT PARAMETERS
-
-Business Object Parameters (in schema under "Parameters" key) are NOT database columns.
-Do NOT include them in SQL WHERE clauses.
-They will be handled separately in parameter extraction.
-
-Example: If user mentions "شرکت شفا" and it's a business object parameter, do not add it to WHERE clause.
-
-## RETURN NULL SQL FOR:
+# Return Null SQL When
 
 Return {{"SQL": null, "parameters": {{}}}} for:
-1. Data modification (INSERT, UPDATE, DELETE)
-2. Schema changes (CREATE, ALTER, DROP, TRUNCATE)
-3. Data control (GRANT, REVOKE)
-4. Transaction control (COMMIT, ROLLBACK)
-5. Multiple queries needed
-6. Ambiguous requests
-7. "How to" questions
-8. Admin tasks
-9. Procedural logic or loops
-10. Anything not answerable with single SELECT
+- Data modification or schema changes
+- Multiple queries required
+- Ambiguous or procedural requests
+- "How to" questions or admin tasks
+- Required columns not in schema
 
-## SQL PARAMETERIZATION
+# Schema
 
-Use $1, $2, $3, etc. for all values in SQL
-Every placeholder needs corresponding entry in parameters dictionary
-Never include literal values directly in SQL
-Include all values as placeholders (strings, numbers, dates)
-
-## PERSIAN TEXT HANDLING
-
-Use exact matching with = operator for Persian text: column = $1
-Use the exact text value as parameter value
-Do not translate Persian to English or vice versa
-
-## COLUMN ALIASING RULES
-
-ALL columns must be aliased using these patterns:
-
-Regular columns: table_column
-Example: si.amount AS si_amount
-
-Aggregate functions: table_column_function
-- SUM(si.net_price) AS si_net_price_sum
-- COUNT(si.id) AS si_id_count
-- COUNT(1) AS row_count
-- AVG(si.amount) AS si_amount_avg
-- MIN(liv.date) AS liv_date_min
-- MAX(lii.qty) AS lii_qty_max
-
-Subquery aggregates: subquery_column_function
-Example: MIN(A.daily_sum) AS A_daily_sum_min
-
-Expressions: descriptive_name
-Example: (subquery1) - (subquery2) AS sales_difference
-
-## SQL RULES
-
-- NEVER use * anywhere in SQL - this includes SELECT *, COUNT(*), or any other usage of *
-- For counting rows, use COUNT(1) or COUNT(primary_key_column) instead of COUNT(*)
-- Always list columns explicitly in SELECT statements
-- NEVER use CTE (WITH clause) - start with SELECT
-- Always use short table aliases (e.g., ls for logistics_store)
-- If using LIMIT and OFFSET together, LIMIT must come before OFFSET
-- Use parentheses in WHERE clauses for clarity
-- Only use columns that exist in provided schema
-- Only join tables using foreign key relationships in schema
-
-## ASTERISK (*) PROHIBITION
-
-The asterisk character (*) is STRICTLY FORBIDDEN in all SQL output.
-
-NEVER use:
-- SELECT *
-- SELECT table.*
-- COUNT(*)
-- Any expression containing *
-
-ALWAYS use instead:
-- SELECT column1, column2, column3 (explicit column names)
-- SELECT t.column1, t.column2 (with table alias)
-- COUNT(1) or COUNT(column_name) for row counting
-
-WRONG: SELECT * FROM orders
-CORRECT: SELECT o.id, o.date, o.amount FROM orders o
-
-WRONG: SELECT COUNT(*) FROM products
-CORRECT: SELECT COUNT(1) AS row_count FROM products p
-
-WRONG: SELECT COUNT(*) AS total FROM sales
-CORRECT: SELECT COUNT(1) AS total FROM sales s
-
-WRONG: SELECT t.*, s.name FROM table1 t JOIN table2 s ON ...
-CORRECT: SELECT t.id, t.date, t.amount, s.name FROM table1 t JOIN table2 s ON ...
-
-## PROCESSING STEPS
-
-1. Can this be answered with single SELECT?
-   No -> return null SQL
-   Yes -> continue
-
-2. Do all required columns exist in schema?
-   No -> return null SQL
-   Yes -> continue
-
-3. Identify all values to parameterize:
-   - Assign $1, $2, $3, etc. sequentially
-   - Create parameters dictionary with string keys and ACTUAL VALUES
-   - Use pre-calculated date values for dates
-   - Use exact text values for text matching
-
-4. Generate SQL with:
-   - All values as parameter placeholders
-   - All columns properly aliased
-   - All aggregate functions properly aliased
-   - NO asterisks (*) anywhere - use explicit columns and COUNT(1)
-
-5. Validate SQL is correct and contains no asterisks
-   No -> return null SQL
-   Yes -> return complete JSON
-
-## VERIFICATION CHECKLIST
-
-Before outputting, verify:
-- NO asterisks (*) appear anywhere in the SQL (not in SELECT, not in COUNT, nowhere)
-- COUNT uses COUNT(1) or COUNT(column_name), never COUNT(*)
-- All columns are explicitly named, no SELECT * or table.*
-- "هفته پیش" (calendar) uses {last_week_saturday} to {last_week_friday}
-- "یک هفته گذشته/اخیر" (rolling) uses {one_week_ago} to {today_date}
-- "دو هفته گذشته/اخیر" uses {two_weeks_ago} to {today_date}
-- "سه هفته گذشته/اخیر" uses {three_weeks_ago} to {today_date}
-- "این هفته" uses {this_week_saturday} to {this_week_friday}
-- "ماه گذشته" uses {last_month_date} to {today_date}
-- "دو ماه گذشته" uses {two_months_ago} to {today_date}
-- "سه ماه گذشته" uses {three_months_ago} to {today_date}
-- "شش ماه گذشته" uses {six_months_ago} to {today_date}
-- آخر هفته in context of هفته پیش = {last_week_friday} (NOT today)
-- Week boundaries are Saturday-Friday
-- All columns are aliased correctly
-- All parameters have ACTUAL VALUES (not descriptions)
-- No SQL date functions used (CURRENT_DATE, NOW, INTERVAL)
-- Text matching uses = operator with exact values (no ILIKE, no wildcards)
-
-## SCHEMA
 {schema}
 
-## DATE CONTEXT SUMMARY
+# Examples
 
-SINGLE DAY VALUES:
-- Today: {today_date}
-- Yesterday: {yesterday_date}
-- Three days ago: {three_days_ago}
-- One week ago: {one_week_ago}
-- Ten days ago: {ten_days_ago}
-- Two weeks ago: {two_weeks_ago}
-- Three weeks ago: {three_weeks_ago}
-- Four weeks ago: {four_weeks_ago}
-
-MONTH VALUES:
-- Last month start: {last_month_date}
-- Two months ago: {two_months_ago}
-- Three months ago: {three_months_ago}
-- Six months ago: {six_months_ago}
-
-CALENDAR WEEK RANGES:
-- This Week: {this_week_saturday} to {this_week_friday}
-- Last Week: {last_week_saturday} to {last_week_friday}
-
-ROLLING RANGES (use with TO={today_date}):
-- One week: FROM {one_week_ago}
-- Two weeks: FROM {two_weeks_ago}
-- Three weeks: FROM {three_weeks_ago}
-- Four weeks: FROM {four_weeks_ago}
-- One month: FROM {last_month_date}
-- Two months: FROM {two_months_ago}
-- Three months: FROM {three_months_ago}
-- Six months: FROM {six_months_ago}
-
-YEAR RANGES:
-- Persian Year: {persian_year_start} to {persian_year_end}
-- Previous Persian Year: {prev_persian_year_start} to {prev_persian_year_end}
-
-## EXAMPLES
 {examples}
 
-## QUERY
-{query}
+# Query
 
-OUTPUT ONLY THE JSON. NO OTHER TEXT.
+{query}
 """
 
 BUSINESS_OBJECT_PARAMETER_EXTRACTOR_PROMPT = """
