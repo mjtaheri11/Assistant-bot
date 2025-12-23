@@ -792,6 +792,7 @@ The final output must be in JSON format with two keys: SQL and parameters. {{"SQ
 - Use CURRENT_DATE for "امروز" without parameterization (SQL function).
 - Parameter names should prioritize business object parameter names when applicable.
 """
+
 SQL_CONVERTER_MODIFIED_WITH_PARAMETERS_TEMPLATE = """
 You are a PostgreSQL SELECT query generator. Convert natural language queries into parameterized SQL.
 
@@ -813,6 +814,13 @@ Return ONLY this JSON structure with no surrounding text or markdown:
 6. LITERAL PARAMETERS: Parameter values must be actual values, not descriptions
    - Correct: "1": "1404/01/01"
    - Wrong: "1": "start of Persian year"
+7. COUNT WITH COLUMNS: Never use COUNT(1) or COUNT(*). Always use COUNT(column_name) with a valid column from the schema
+   - Correct: COUNT(si.id) AS si_id_count
+   - Wrong: COUNT(1) AS row_count
+   - Wrong: COUNT(*) AS row_count
+8. ILIKE FOR TEXT MATCHING: Use ILIKE operator instead of = for text/string comparisons to enable case-insensitive matching
+   - Correct: WHERE table.column ILIKE $1
+   - Wrong: WHERE table.column = $1
 
 # Date Reference
 
@@ -896,12 +904,13 @@ Key distinction: "هفته پیش" (calendar week) uses last week's Saturday-Fri
 All columns require aliases following these patterns:
 - Regular columns: `table_column` (e.g., si.amount AS si_amount)
 - Aggregates: `table_column_function` (e.g., SUM(si.net_price) AS si_net_price_sum)
-- Row counts: COUNT(1) AS row_count
+- Row counts: COUNT(primary_key_column) AS table_pk_count (e.g., COUNT(si.id) AS si_id_count)
 - Expressions: descriptive name (e.g., (subquery1) - (subquery2) AS sales_difference)
 
 ## Text Matching
 
-Use exact matching with = operator for Persian text. Use the exact text value as parameter.
+Use case-insensitive matching with ILIKE operator for text/string comparisons. Use the text value as parameter.
+- Example: WHERE ls.name ILIKE $1 with parameter "1": "انبار مرکزی"
 
 ## Query Structure
 

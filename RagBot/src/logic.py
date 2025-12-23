@@ -1126,7 +1126,7 @@ async def chat_responder_(
     response_type: str = config["database"]["response_type"],
     use_cache: bool = config["database"]["use_cache"],
     detected_module: str = "",
-    use_oss: bool = True, 
+    use_oss: bool = False, 
     sql_mode: bool = True
 ) -> Union[tuple[str, str, str, str], tuple[str, str, str, bool, List[str]]]:
     """
