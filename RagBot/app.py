@@ -828,7 +828,7 @@ def main():
                                         text-align: right;
                                     }
                                     </style>
-                                    """, unsafe_allow_html=True)
+                                    """, unsafe_allow_html=True, help=help_msg)
 
                                     # Now use regular markdown (no unsafe_allow_html needed)
                                     st.markdown(content)

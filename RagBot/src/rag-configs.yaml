@@ -49,7 +49,7 @@ modules:
     aboutsg: درباره همکاران سیستم
     platform: پلتفرم
   
-  proposable_modules:
+  qa_proposable_modules:
     - انبار
     - جبران خدمات
     - خزانه داری
@@ -58,6 +58,13 @@ modules:
     - مدیریت ارتباط با مشتری
     - مودیان مالیاتی
     - گزارش ساز
+
+  sql_proposable_modules:
+    - انبار
+    - خزانه داری
+    - دفتر کل
+    - فروش
+    - مدیریت ارتباط با مشتری
 
   available_sql_modules:
     - انبار

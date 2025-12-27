@@ -30,7 +30,7 @@ from .retriever import Retriever
 from .config import config
 from .cache import Cache
 from .utils import json_cleaning, json_cleaning_1, calculate_date_context, format_documents_as_sql_examples, convert_sql_parameters, integrate_params, add_param_keys
-from .business_objects import LOGISTICS_SALES_MODIFIED, FINANCIAL_BO_MODIFIED, CRM_BO, LOGISTICS_MODIFIED
+from .business_objects import LOGISTICS_SALES_MODIFIED, FINANCIAL_BO_MODIFIED, CRM_BO, LOGISTICS_MODIFIED, TREASURY_BO
 from .semantic_router import SemanticRouterPipeline
 from .default_examples import DEFAULT_EXAMPLES
 from langchain.chat_models import ChatOpenAI
@@ -742,7 +742,8 @@ async def prepare_final_context(
     query_embedding,
     database_index: str = None,
     input_module: str = "",
-    num_retrieve_context=config["retriever"]["retrieved_rank2_documents"]
+    num_retrieve_context=config["retriever"]["retrieved_rank2_documents"], 
+    use_sql_modules: bool = False
 ):
     """
     Unified function supporting both develop branch (simple context)
@@ -765,7 +766,10 @@ async def prepare_final_context(
         )
         return result
 
-    proposable_modules = set(config["modules"]["proposable_modules"])
+    if use_sql_modules:
+        proposable_modules = set(config["modules"]["sql_proposable_modules"])
+    else:
+        proposable_modules = set(config["modules"]["qa_proposable_modules"])
     detected_modules = [result["module"] for result in context_with_metadata]
     module_frequencies = Counter(detected_modules)
 
@@ -1152,11 +1156,11 @@ async def chat_responder_(
 
     query_embedding = await embed_query(paraphrased_utterance)
     route_response = await get_route_for_utterance(clients, paraphrased_utterance, query_embedding, use_oss)
-
+    use_sql_modules = True if route_response == "sql" else False
     if detected_module:
-        do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, input_module=detected_module, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context)
+        do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, input_module=detected_module, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context, use_sql_modules=use_sql_modules)
     else:
-        do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context)
+        do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context, use_sql_modules=use_sql_modules)
 
     if route_response == "chitchat":
         response = await chitchat_responder(clients, paraphrased_utterance, context=context, history=history, use_oss=use_oss)
