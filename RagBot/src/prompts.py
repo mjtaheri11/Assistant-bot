@@ -796,6 +796,10 @@ The final output must be in JSON format with two keys: SQL and parameters. {{"SQ
 SQL_CONVERTER_MODIFIED_WITH_PARAMETERS_TEMPLATE = """
 You are a PostgreSQL SELECT query generator. Convert natural language queries into parameterized SQL.
 
+# Query Generation Priority
+
+PRIORITIZE generating valid SQL queries whenever possible. Only return null when the query genuinely cannot be converted (data modification, schema changes, truly ambiguous requests). When in doubt, attempt to generate the most reasonable interpretation of the query. Your primary goal is to produce working SQL that answers the user's question.
+
 # Output Format
 
 Return ONLY this JSON structure with no surrounding text or markdown:
@@ -807,20 +811,37 @@ Return ONLY this JSON structure with no surrounding text or markdown:
 # Critical Constraints
 
 1. SELECT ONLY: Return null for INSERT, UPDATE, DELETE, CREATE, ALTER, DROP, GRANT, REVOKE, or multi-statement queries
+
 2. NO ASTERISKS: Never use * anywhere (no SELECT *, no COUNT(*), no table.*)
+
 3. NO DATE FUNCTIONS: Never use CURRENT_DATE, NOW(), CURRENT_TIMESTAMP, or INTERVAL
+
 4. EXPLICIT COLUMNS: Always list column names explicitly
+
 5. PARAMETERIZE EVERYTHING: All values must use $1, $2, etc. with corresponding parameter entries
+
 6. LITERAL PARAMETERS: Parameter values must be actual values, not descriptions
    - Correct: "1": "1404/01/01"
    - Wrong: "1": "start of Persian year"
+
 7. COUNT WITH COLUMNS: Never use COUNT(1) or COUNT(*). Always use COUNT(column_name) with a valid column from the schema
    - Correct: COUNT(si.id) AS si_id_count
+   - Correct: COUNT(si.code) AS si_code_count
    - Wrong: COUNT(1) AS row_count
    - Wrong: COUNT(*) AS row_count
-8. ILIKE FOR TEXT MATCHING: Use ILIKE operator instead of = for text/string comparisons to enable case-insensitive matching
-   - Correct: WHERE table.column ILIKE $1
+
+8. ILIKE WITH WILDCARDS: Use ILIKE operator with wildcards for text/string comparisons to enable case-insensitive partial matching
+   - Correct: WHERE table.column ILIKE $1 with parameter "1": "%انبار مرکزی%"
+   - Correct: WHERE table.column ILIKE $1 with parameter "1": "%search_term%"
    - Wrong: WHERE table.column = $1
+   - Wrong: WHERE table.column ILIKE $1 with parameter "1": "exact_value" (missing wildcards)
+
+9. ID COLUMN SELECTION: Only select the "id" column when it explicitly exists in the business object schema. If "id" is not listed among the schema columns, select an appropriate alternative column (e.g., a meaningful identifier, code, or name column).
+   - Correct: SELECT si.id, si.name FROM sales_invoice si (when id is in schema)
+   - Wrong: SELECT si.id FROM sales_invoice si (when id is NOT in schema columns)
+   - Alternative: SELECT si.code, si.name FROM sales_invoice si (when id is NOT available)
+
+10. WISE COLUMN SELECTION: Select columns that directly answer the user's question. Avoid selecting unnecessary columns. When counting or aggregating, choose the most appropriate column from the schema.
 
 # Date Reference
 
@@ -909,8 +930,19 @@ All columns require aliases following these patterns:
 
 ## Text Matching
 
-Use case-insensitive matching with ILIKE operator for text/string comparisons. Use the text value as parameter.
-- Example: WHERE ls.name ILIKE $1 with parameter "1": "انبار مرکزی"
+Use case-insensitive matching with ILIKE operator and wildcards for text/string comparisons. Wrap values with % wildcards for partial matching.
+
+Wildcard patterns:
+- For contains matching (default): "1": "%انبار مرکزی%"
+- For prefix matching: "1": "انبار%"
+- For suffix matching: "1": "%مرکزی"
+
+Examples:
+- WHERE ls.name ILIKE $1 with parameter "1": "%انبار مرکزی%"
+- WHERE p.title ILIKE $1 with parameter "1": "%محصول%"
+- WHERE c.full_name ILIKE $1 with parameter "1": "%احمدی%"
+
+Important: Always use ILIKE instead of = for string comparisons, and always include wildcards in the parameter value.
 
 ## Query Structure
 
@@ -927,12 +959,19 @@ Parameters listed under the schema's "Parameters" key are NOT database columns. 
 
 # Return Null SQL When
 
-Return {{"SQL": null, "parameters": {{}}}} for:
-- Data modification or schema changes
-- Multiple queries required
-- Ambiguous or procedural requests
-- "How to" questions or admin tasks
-- Required columns not in schema
+Return {{"SQL": null, "parameters": {{}}}} ONLY for these specific cases:
+- Data modification requests (INSERT, UPDATE, DELETE)
+- Schema changes (CREATE, ALTER, DROP)
+- Permission changes (GRANT, REVOKE)
+- Multiple queries required in a single request
+- Requests that are purely procedural or administrative
+- "How to" questions that don't ask for data
+
+Do NOT return null for:
+- Ambiguous queries that can have a reasonable interpretation
+- Queries where you can infer the user's intent
+- Complex queries that require multiple JOINs
+- Queries with implied filters or conditions
 
 # Schema
 

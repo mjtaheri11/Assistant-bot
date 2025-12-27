@@ -1200,7 +1200,6 @@ async def chat_responder_(
             result_temp = is_sql, paraphrased_utterance, response, context, False, [selected_module], parameters, sql_response_template 
             return result_temp
 
-    _, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, input_module=detected_module, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context)
     if not context:
         response = template_for_not_answer
         context = ""

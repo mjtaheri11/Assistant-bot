@@ -6,7 +6,7 @@
     "table": "crm_customer",
     "question": "تعداد کل مشتریان چقدر است؟",
     "sql": {
-      "SQL": "SELECT COUNT(cc.id) AS cc_id_count FROM crm_customer AS cc",
+      "SQL": "SELECT COUNT(cc.fullname) AS cc_fullname_count FROM crm_customer AS cc",
       "parameters": {}
     }
   },
@@ -17,7 +17,7 @@
     "table": "crm_lead",
     "question": "چند سرنخ داریم؟",
     "sql": {
-      "SQL": "SELECT COUNT(cl.id) AS cl_id_count FROM crm_lead AS cl",
+      "SQL": "SELECT COUNT(cl.firstname) AS cl_firstname_count FROM crm_lead AS cl",
       "parameters": {}
     }
   },
@@ -28,7 +28,7 @@
     "table": "crm_opportunity",
     "question": "تعداد فرصت‌های فروش",
     "sql": {
-      "SQL": "SELECT COUNT(co.id) AS co_id_count FROM crm_opportunity AS co",
+      "SQL": "SELECT COUNT(co.name) AS co_name_count FROM crm_opportunity AS co",
       "parameters": {}
     }
   },
@@ -39,7 +39,7 @@
     "table": "crm_campaign",
     "question": "چند کمپین ثبت شده؟",
     "sql": {
-      "SQL": "SELECT COUNT(cc.id) AS cc_id_count FROM crm_campaign AS cc",
+      "SQL": "SELECT COUNT(cc.name) AS cc_name_count FROM crm_campaign AS cc",
       "parameters": {}
     }
   },
@@ -50,7 +50,7 @@
     "table": "crm_quote",
     "question": "تعداد پیش فاکتورها",
     "sql": {
-      "SQL": "SELECT COUNT(cq.id) AS cq_id_count FROM crm_quote AS cq",
+      "SQL": "SELECT COUNT(cq.number) AS cq_number_count FROM crm_quote AS cq",
       "parameters": {}
     }
   },
@@ -61,7 +61,7 @@
     "table": "crm_contact",
     "question": "چند نفر در لیست افراد ثبت شده؟",
     "sql": {
-      "SQL": "SELECT COUNT(cct.id) AS cct_id_count FROM crm_contact AS cct",
+      "SQL": "SELECT COUNT(cct.first_name) AS cct_first_name_count FROM crm_contact AS cct",
       "parameters": {}
     }
   },
@@ -72,7 +72,7 @@
     "table": "crm_customerrequest",
     "question": "تعداد درخواست‌های مشتری",
     "sql": {
-      "SQL": "SELECT COUNT(ccr.id) AS ccr_id_count FROM crm_customerrequest AS ccr",
+      "SQL": "SELECT COUNT(ccr.code) AS ccr_code_count FROM crm_customerrequest AS ccr",
       "parameters": {}
     }
   },
@@ -83,7 +83,7 @@
     "table": "crm_quoteitem",
     "question": "چند قلم پیش فاکتور ثبت شده؟",
     "sql": {
-      "SQL": "SELECT COUNT(cqi.id) AS cqi_id_count FROM crm_quoteitem AS cqi",
+      "SQL": "SELECT COUNT(cqi.unit_title) AS cqi_unit_title_count FROM crm_quoteitem AS cqi",
       "parameters": {}
     }
   },
@@ -94,7 +94,7 @@
     "table": "crm_opportunityitem",
     "question": "تعداد اقلام فرصت",
     "sql": {
-      "SQL": "SELECT COUNT(coi.id) AS coi_id_count FROM crm_opportunityitem AS coi",
+      "SQL": "SELECT COUNT(coi.product_title) AS coi_product_title_count FROM crm_opportunityitem AS coi",
       "parameters": {}
     }
   },
@@ -248,7 +248,7 @@
     "table": "crm_customerPhone",
     "question": "تعداد شماره تماس‌های ثبت شده برای مشتریان",
     "sql": {
-      "SQL": "SELECT COUNT(ccp.id) AS ccp_id_count FROM crm_customerPhone AS ccp",
+      "SQL": "SELECT COUNT(ccp.number_c) AS ccp_number_c_count FROM crm_customerPhone AS ccp",
       "parameters": {}
     }
   },
@@ -259,7 +259,7 @@
     "table": "crm_leadPhone",
     "question": "چند شماره تماس برای سرنخ‌ها ثبت شده؟",
     "sql": {
-      "SQL": "SELECT COUNT(clp.id) AS clp_id_count FROM crm_leadPhone AS clp",
+      "SQL": "SELECT COUNT(clp.number_c) AS clp_number_c_count FROM crm_leadPhone AS clp",
       "parameters": {}
     }
   },
@@ -270,7 +270,7 @@
     "table": "crm_contactPhone",
     "question": "تعداد شماره تماس افراد",
     "sql": {
-      "SQL": "SELECT COUNT(ccp.id) AS ccp_id_count FROM crm_contactPhone AS ccp",
+      "SQL": "SELECT COUNT(ccp.number_c) AS ccp_number_c_count FROM crm_contactPhone AS ccp",
       "parameters": {}
     }
   },
@@ -281,7 +281,7 @@
     "table": "crm_customerEmail",
     "question": "چند ایمیل برای مشتریان ثبت شده؟",
     "sql": {
-      "SQL": "SELECT COUNT(cce.id) AS cce_id_count FROM crm_customerEmail AS cce",
+      "SQL": "SELECT COUNT(cce.email) AS cce_email_count FROM crm_customerEmail AS cce",
       "parameters": {}
     }
   },
@@ -292,7 +292,7 @@
     "table": "crm_leadEmail",
     "question": "تعداد ایمیل‌های سرنخ",
     "sql": {
-      "SQL": "SELECT COUNT(cle.id) AS cle_id_count FROM crm_leadEmail AS cle",
+      "SQL": "SELECT COUNT(cle.email) AS cle_email_count FROM crm_leadEmail AS cle",
       "parameters": {}
     }
   },
@@ -303,7 +303,7 @@
     "table": "crm_contactEmail",
     "question": "چند ایمیل برای افراد ثبت شده؟",
     "sql": {
-      "SQL": "SELECT COUNT(cce.id) AS cce_id_count FROM crm_contactEmail AS cce",
+      "SQL": "SELECT COUNT(cce.email) AS cce_email_count FROM crm_contactEmail AS cce",
       "parameters": {}
     }
   },
@@ -314,7 +314,7 @@
     "table": "crm_customerAddress",
     "question": "تعداد آدرس‌های مشتریان",
     "sql": {
-      "SQL": "SELECT COUNT(cca.id) AS cca_id_count FROM crm_customerAddress AS cca",
+      "SQL": "SELECT COUNT(cca.title) AS cca_title_count FROM crm_customerAddress AS cca",
       "parameters": {}
     }
   },
@@ -325,7 +325,7 @@
     "table": "crm_leadAddress",
     "question": "چند آدرس برای سرنخ‌ها ثبت شده؟",
     "sql": {
-      "SQL": "SELECT COUNT(cla.id) AS cla_id_count FROM crm_leadAddress AS cla",
+      "SQL": "SELECT COUNT(cla.title) AS cla_title_count FROM crm_leadAddress AS cla",
       "parameters": {}
     }
   },
@@ -392,7 +392,7 @@
     "sql": {
       "SQL": "SELECT cc.name AS cc_name, cc.start_date AS cc_start_date, cc.end_date AS cc_end_date, cc.budget AS cc_budget FROM crm_campaign AS cc WHERE cc.status ILIKE $1",
       "parameters": {
-        "1": "فعال"
+        "1": "%فعال%"
       }
     }
   },
@@ -403,10 +403,10 @@
     "table": "crm_lead",
     "question": "سرنخ‌های تبدیل نشده با جذابیت بالا",
     "sql": {
-      "SQL": "SELECT cl.firstname AS cl_firstname, cl.lastname AS cl_lastname, cl.rate AS cl_rate, cl.primary_phone AS cl_primary_phone FROM crm_lead AS cl WHERE cl.rate ILIKE $1 AND cl.lead_state != $2",
+      "SQL": "SELECT cl.firstname AS cl_firstname, cl.lastname AS cl_lastname, cl.rate AS cl_rate, cl.primary_phone AS cl_primary_phone FROM crm_lead AS cl WHERE cl.rate ILIKE $1 AND cl.lead_state NOT ILIKE $2",
       "parameters": {
         "1": "%بالا%",
-        "2": "تبدیل شده"
+        "2": "%تبدیل شده%"
       }
     }
   },
@@ -432,7 +432,7 @@
     "sql": {
       "SQL": "SELECT ccr.code AS ccr_code, ccr.title AS ccr_title, ccr.submission_date AS ccr_submission_date, ccr.stage AS ccr_stage FROM crm_customerrequest AS ccr WHERE ccr.priority ILIKE $1",
       "parameters": {
-        "1": "فوری"
+        "1": "%فوری%"
       }
     }
   },
@@ -458,7 +458,7 @@
     "sql": {
       "SQL": "SELECT co.name AS co_name, co.customer_title AS co_customer_title, co.price AS co_price, co.close_date AS co_close_date FROM crm_opportunity AS co WHERE co.stage ILIKE $1",
       "parameters": {
-        "1": "برنده شده"
+        "1": "%برنده شده%"
       }
     }
   },
@@ -469,7 +469,7 @@
     "table": "crm_lead",
     "question": "تعداد سرنخ‌ها به تفکیک منبع",
     "sql": {
-      "SQL": "SELECT cl.source AS cl_source, COUNT(cl.id) AS cl_id_count FROM crm_lead AS cl GROUP BY cl.source ORDER BY cl_id_count DESC",
+      "SQL": "SELECT cl.source AS cl_source, COUNT(cl.firstname) AS cl_firstname_count FROM crm_lead AS cl GROUP BY cl.source ORDER BY cl_firstname_count DESC",
       "parameters": {}
     }
   },
@@ -480,7 +480,7 @@
     "table": "crm_opportunity",
     "question": "تعداد فرصت به تفکیک مرحله",
     "sql": {
-      "SQL": "SELECT co.stage AS co_stage, COUNT(co.id) AS co_id_count FROM crm_opportunity AS co GROUP BY co.stage",
+      "SQL": "SELECT co.stage AS co_stage, COUNT(co.name) AS co_name_count FROM crm_opportunity AS co GROUP BY co.stage",
       "parameters": {}
     }
   },
@@ -491,7 +491,7 @@
     "table": "crm_customer",
     "question": "تعداد مشتری به تفکیک نوع",
     "sql": {
-      "SQL": "SELECT cc.customer_type AS cc_customer_type, COUNT(cc.id) AS cc_id_count FROM crm_customer AS cc GROUP BY cc.customer_type",
+      "SQL": "SELECT cc.customer_type AS cc_customer_type, COUNT(cc.fullname) AS cc_fullname_count FROM crm_customer AS cc GROUP BY cc.customer_type",
       "parameters": {}
     }
   },
@@ -502,7 +502,7 @@
     "table": "crm_customerrequest",
     "question": "تعداد درخواست به تفکیک اولویت",
     "sql": {
-      "SQL": "SELECT ccr.priority AS ccr_priority, COUNT(ccr.id) AS ccr_id_count FROM crm_customerrequest AS ccr GROUP BY ccr.priority ORDER BY ccr_id_count DESC",
+      "SQL": "SELECT ccr.priority AS ccr_priority, COUNT(ccr.code) AS ccr_code_count FROM crm_customerrequest AS ccr GROUP BY ccr.priority ORDER BY ccr_code_count DESC",
       "parameters": {}
     }
   },
@@ -528,7 +528,7 @@
     "sql": {
       "SQL": "SELECT cl.firstname AS cl_firstname, cl.lastname AS cl_lastname, cl.lost_reason AS cl_lost_reason FROM crm_lead AS cl WHERE cl.lead_state ILIKE $1",
       "parameters": {
-        "1": "از دست رفته"
+        "1": "%از دست رفته%"
       }
     }
   },
@@ -554,7 +554,7 @@
     "sql": {
       "SQL": "SELECT cc.fullname AS cc_fullname, cc.code AS cc_code, cc.primary_phone AS cc_primary_phone FROM crm_customer AS cc WHERE cc.customer_type ILIKE $1",
       "parameters": {
-        "1": "حقوقی"
+        "1": "%حقوقی%"
       }
     }
   },
@@ -608,7 +608,7 @@
     "sql": {
       "SQL": "SELECT ccr.code AS ccr_code, ccr.title AS ccr_title, ccr.owner_display AS ccr_owner_display FROM crm_customerrequest AS ccr WHERE ccr.stage ILIKE $1",
       "parameters": {
-        "1": "در حال بررسی"
+        "1": "%در حال بررسی%"
       }
     }
   },
@@ -621,7 +621,7 @@
     "sql": {
       "SQL": "SELECT SUM(co.price) AS co_price_sum FROM crm_opportunity AS co WHERE co.stage ILIKE $1 AND co.close_date >= $2 AND co.close_date <= $3",
       "parameters": {
-        "1": "برنده شده",
+        "1": "%برنده شده%",
         "2": "{persian_year_start}",
         "3": "{persian_year_end}"
       }
@@ -634,7 +634,7 @@
     "table": "crm_quote",
     "question": "تعداد پیش فاکتور به تفکیک حوزه فروش",
     "sql": {
-      "SQL": "SELECT cq.sales_area_title AS cq_sales_area_title, COUNT(cq.id) AS cq_id_count FROM crm_quote AS cq GROUP BY cq.sales_area_title",
+      "SQL": "SELECT cq.sales_area_title AS cq_sales_area_title, COUNT(cq.number) AS cq_number_count FROM crm_quote AS cq GROUP BY cq.sales_area_title",
       "parameters": {}
     }
   },
@@ -695,7 +695,7 @@
     "table": "crm_lead",
     "question": "تعداد سرنخ به تفکیک مرحله",
     "sql": {
-      "SQL": "SELECT cl.lead_state AS cl_lead_state, COUNT(cl.id) AS cl_id_count FROM crm_lead AS cl GROUP BY cl.lead_state",
+      "SQL": "SELECT cl.lead_state AS cl_lead_state, COUNT(cl.firstname) AS cl_firstname_count FROM crm_lead AS cl GROUP BY cl.lead_state",
       "parameters": {}
     }
   },
@@ -773,7 +773,7 @@
     "sql": {
       "SQL": "SELECT cc.fullname AS cc_fullname, ccc.name AS ccc_name, ccc.start_date AS ccc_start_date, ccc.budget AS ccc_budget FROM crm_customer AS cc JOIN crm_customerCampaign AS ccc ON cc.id = ccc.customer_id WHERE ccc.stage ILIKE $1",
       "parameters": {
-        "1": "فعال"
+        "1": "%فعال%"
       }
     }
   },
@@ -784,7 +784,7 @@
     "table": "crm_customer, crm_customerGrouping",
     "question": "تعداد مشتری به تفکیک گروه‌بندی",
     "sql": {
-      "SQL": "SELECT ccg.grouping_title AS ccg_grouping_title, ccg.group_title AS ccg_group_title, COUNT(cc.id) AS cc_id_count FROM crm_customer AS cc JOIN crm_customerGrouping AS ccg ON cc.id = ccg.customer_id GROUP BY ccg.grouping_title, ccg.group_title ORDER BY cc_id_count DESC",
+      "SQL": "SELECT ccg.grouping_title AS ccg_grouping_title, ccg.group_title AS ccg_group_title, COUNT(cc.fullname) AS cc_fullname_count FROM crm_customer AS cc JOIN crm_customerGrouping AS ccg ON cc.id = ccg.customer_id GROUP BY ccg.grouping_title, ccg.group_title ORDER BY cc_fullname_count DESC",
       "parameters": {}
     }
   },
@@ -797,7 +797,7 @@
     "sql": {
       "SQL": "SELECT cl.firstname AS cl_firstname, cl.lastname AS cl_lastname, clo.name AS clo_name, clo.price AS clo_price, clo.stage AS clo_stage FROM crm_lead AS cl JOIN crm_leadOpportunity AS clo ON cl.opportunity_id = clo.id WHERE clo.stage ILIKE $1",
       "parameters": {
-        "1": "برنده شده"
+        "1": "%برنده شده%"
       }
     }
   },
@@ -821,7 +821,7 @@
     "sql": {
       "SQL": "SELECT cl.firstname AS cl_firstname, cl.lastname AS cl_lastname, cl.convert_date AS cl_convert_date, clc.fullname AS clc_fullname, clc.code AS clc_code FROM crm_lead AS cl JOIN crm_leadCustomer AS clc ON cl.customer_id = clc.id WHERE cl.lead_state ILIKE $1",
       "parameters": {
-        "1": "تبدیل شده"
+        "1": "%تبدیل شده%"
       }
     }
   },
@@ -845,7 +845,7 @@
     "sql": {
       "SQL": "SELECT co.name AS co_name, co.customer_title AS co_customer_title, coi.product_title AS coi_product_title, coi.amount AS coi_amount, coi.net_price AS coi_net_price FROM crm_opportunity AS co JOIN crm_opportunityitem AS coi ON co.id = coi.opportunity_id WHERE co.stage ILIKE $1",
       "parameters": {
-        "1": "برنده شده"
+        "1": "%برنده شده%"
       }
     }
   },
@@ -940,9 +940,9 @@
     "table": "crm_campaign, crm_campaignLead",
     "question": "تعداد سرنخ هر کمپین فعال",
     "sql": {
-      "SQL": "SELECT cc.name AS cc_name, cc.budget AS cc_budget, COUNT(ccl.id) AS ccl_id_count FROM crm_campaign AS cc JOIN crm_campaignLead AS ccl ON cc.id = ccl.campaign_id WHERE cc.status ILIKE $1 GROUP BY cc.name, cc.budget ORDER BY ccl_id_count DESC",
+      "SQL": "SELECT cc.name AS cc_name, cc.budget AS cc_budget, COUNT(ccl.firstname) AS ccl_firstname_count FROM crm_campaign AS cc JOIN crm_campaignLead AS ccl ON cc.id = ccl.campaign_id WHERE cc.status ILIKE $1 GROUP BY cc.name, cc.budget ORDER BY ccl_firstname_count DESC",
       "parameters": {
-        "1": "فعال"
+        "1": "%فعال%"
       }
     }
   },
@@ -968,7 +968,7 @@
     "sql": {
       "SQL": "SELECT cc.name AS cc_name, ccc.first_name AS ccc_first_name, ccc.last_name AS ccc_last_name, ccc.title AS ccc_title, ccc.primary_phone AS ccc_primary_phone FROM crm_campaign AS cc JOIN crm_campaignContact AS ccc ON cc.id = ccc.campaign_id WHERE cc.status ILIKE $1",
       "parameters": {
-        "1": "فعال"
+        "1": "%فعال%"
       }
     }
   },
@@ -979,7 +979,7 @@
     "table": "crm_campaign, crm_campaignOpportunity",
     "question": "مجموع مبلغ فرصت‌های هر کمپین",
     "sql": {
-      "SQL": "SELECT cc.name AS cc_name, cc.budget AS cc_budget, SUM(cco.price) AS cco_price_sum, COUNT(cco.id) AS cco_id_count FROM crm_campaign AS cc JOIN crm_campaignOpportunity AS cco ON cc.id = cco.campaign_id GROUP BY cc.name, cc.budget ORDER BY cco_price_sum DESC",
+      "SQL": "SELECT cc.name AS cc_name, cc.budget AS cc_budget, SUM(cco.price) AS cco_price_sum, COUNT(cco.name) AS cco_name_count FROM crm_campaign AS cc JOIN crm_campaignOpportunity AS cco ON cc.id = cco.campaign_id GROUP BY cc.name, cc.budget ORDER BY cco_price_sum DESC",
       "parameters": {}
     }
   },
@@ -1017,7 +1017,7 @@
     "sql": {
       "SQL": "SELECT ccr.code AS ccr_code, ccr.title AS ccr_title, ccr.submission_date AS ccr_submission_date, ccrc.fullname AS ccrc_fullname, ccrc.customer_type AS ccrc_customer_type FROM crm_customerrequest AS ccr JOIN crm_customerrequestcustomer AS ccrc ON ccr.customer_id = ccrc.id WHERE ccr.priority ILIKE $1",
       "parameters": {
-        "1": "فوری"
+        "1": "%فوری%"
       }
     }
   },
@@ -1030,7 +1030,7 @@
     "sql": {
       "SQL": "SELECT cc.fullname AS cc_fullname, cc.code AS cc_code, ccp.title AS ccp_title, ccp.number_c AS ccp_number_c FROM crm_customer AS cc JOIN crm_customerPhone AS ccp ON cc.id = ccp.customer_id WHERE cc.customer_type ILIKE $1",
       "parameters": {
-        "1": "حقوقی"
+        "1": "%حقوقی%"
       }
     }
   },
@@ -1041,10 +1041,10 @@
     "table": "crm_customer, crm_customerEmail",
     "question": "ایمیل‌های اصلی مشتریان صنعت دارویی",
     "sql": {
-      "SQL": "SELECT cc.fullname AS cc_fullname, cc.industry AS cc_industry, cce.email AS cce_email FROM crm_customer AS cc JOIN crm_customerEmail AS cce ON cc.id = cce.customer_id WHERE cc.industry ILIKE $1 AND cce.is_primary = $2",
+      "SQL": "SELECT cc.fullname AS cc_fullname, cc.industry AS cc_industry, cce.email AS cce_email FROM crm_customer AS cc JOIN crm_customerEmail AS cce ON cc.id = cce.customer_id WHERE cc.industry ILIKE $1 AND cce.is_primary ILIKE $2",
       "parameters": {
         "1": "%دارو%",
-        "2": "true"
+        "2": "%true%"
       }
     }
   },
@@ -1057,7 +1057,7 @@
     "sql": {
       "SQL": "SELECT cl.firstname AS cl_firstname, cl.lastname AS cl_lastname, clp.number_c AS clp_number_c, clp.title AS clp_title FROM crm_lead AS cl JOIN crm_leadPhone AS clp ON cl.id = clp.lead_id WHERE cl.lead_state ILIKE $1",
       "parameters": {
-        "1": "جدید"
+        "1": "%جدید%"
       }
     }
   },
@@ -1094,9 +1094,9 @@
     "table": "crm_contact, crm_contactEmail",
     "question": "ایمیل‌های اصلی افراد",
     "sql": {
-      "SQL": "SELECT cct.first_name AS cct_first_name, cct.last_name AS cct_last_name, cce.email AS cce_email FROM crm_contact AS cct JOIN crm_contactEmail AS cce ON cct.id = cce.contact_id WHERE cce.is_primary = $1",
+      "SQL": "SELECT cct.first_name AS cct_first_name, cct.last_name AS cct_last_name, cce.email AS cce_email FROM crm_contact AS cct JOIN crm_contactEmail AS cce ON cct.id = cce.contact_id WHERE cce.is_primary ILIKE $1",
       "parameters": {
-        "1": "true"
+        "1": "%true%"
       }
     }
   },
@@ -1120,7 +1120,7 @@
     "table": "crm_customer, crm_customerOpportunity",
     "question": "مجموع مبلغ فرصت‌های هر مشتری امسال",
     "sql": {
-      "SQL": "SELECT cc.fullname AS cc_fullname, SUM(cco.price) AS cco_price_sum, COUNT(cco.id) AS cco_id_count FROM crm_customer AS cc JOIN crm_customerOpportunity AS cco ON cc.id = cco.customer_id WHERE cco.close_date >= $1 AND cco.close_date <= $2 GROUP BY cc.fullname ORDER BY cco_price_sum DESC",
+      "SQL": "SELECT cc.fullname AS cc_fullname, SUM(cco.price) AS cco_price_sum, COUNT(cco.name) AS cco_name_count FROM crm_customer AS cc JOIN crm_customerOpportunity AS cco ON cc.id = cco.customer_id WHERE cco.close_date >= $1 AND cco.close_date <= $2 GROUP BY cc.fullname ORDER BY cco_price_sum DESC",
       "parameters": {
         "1": "{persian_year_start}",
         "2": "{persian_year_end}"
@@ -1134,7 +1134,7 @@
     "table": "crm_customer, crm_customerQuote",
     "question": "مجموع پیش فاکتورهای هر مشتری ماه گذشته",
     "sql": {
-      "SQL": "SELECT cc.fullname AS cc_fullname, cc.code AS cc_code, SUM(ccq.net_price) AS ccq_net_price_sum, COUNT(ccq.id) AS ccq_id_count FROM crm_customer AS cc JOIN crm_customerQuote AS ccq ON cc.id = ccq.customer_id WHERE ccq.date >= $1 AND ccq.date <= $2 GROUP BY cc.fullname, cc.code ORDER BY ccq_net_price_sum DESC",
+      "SQL": "SELECT cc.fullname AS cc_fullname, cc.code AS cc_code, SUM(ccq.net_price) AS ccq_net_price_sum, COUNT(ccq.title) AS ccq_title_count FROM crm_customer AS cc JOIN crm_customerQuote AS ccq ON cc.id = ccq.customer_id WHERE ccq.date >= $1 AND ccq.date <= $2 GROUP BY cc.fullname, cc.code ORDER BY ccq_net_price_sum DESC",
       "parameters": {
         "1": "{last_month_date}",
         "2": "{today_date}"
@@ -1150,10 +1150,10 @@
     "sql": {
       "SQL": "SELECT (SELECT COALESCE(SUM(co.price), 0) FROM crm_opportunity AS co WHERE co.stage ILIKE $1 AND co.close_date >= $2 AND co.close_date <= $3) - (SELECT COALESCE(SUM(co.price), 0) FROM crm_opportunity AS co WHERE co.stage ILIKE $4 AND co.close_date >= $5 AND co.close_date <= $6) AS price_difference",
       "parameters": {
-        "1": "برنده شده",
+        "1": "%برنده شده%",
         "2": "{this_week_saturday}",
         "3": "{this_week_friday}",
-        "4": "برنده شده",
+        "4": "%برنده شده%",
         "5": "{last_week_saturday}",
         "6": "{last_week_friday}"
       }
@@ -1179,12 +1179,12 @@
     "table": "crm_lead",
     "question": "تفاوت تعداد سرنخ‌های جدید این هفته با هفته گذشته",
     "sql": {
-      "SQL": "SELECT (SELECT COUNT(cl.id) FROM crm_lead AS cl WHERE cl.lead_state ILIKE $1 AND cl.created_at >= $2 AND cl.created_at <= $3) - (SELECT COUNT(cl.id) FROM crm_lead AS cl WHERE cl.lead_state ILIKE $4 AND cl.created_at >= $5 AND cl.created_at <= $6) AS lead_difference",
+      "SQL": "SELECT (SELECT COUNT(cl.firstname) FROM crm_lead AS cl WHERE cl.lead_state ILIKE $1 AND cl.created_at >= $2 AND cl.created_at <= $3) - (SELECT COUNT(cl.firstname) FROM crm_lead AS cl WHERE cl.lead_state ILIKE $4 AND cl.created_at >= $5 AND cl.created_at <= $6) AS lead_difference",
       "parameters": {
-        "1": "جدید",
+        "1": "%جدید%",
         "2": "{this_week_saturday}",
         "3": "{this_week_friday}",
-        "4": "جدید",
+        "4": "%جدید%",
         "5": "{last_week_saturday}",
         "6": "{last_week_friday}"
       }
@@ -1197,7 +1197,7 @@
     "table": "crm_quote, crm_quoteitem",
     "question": "میانگین تعداد اقلام پیش فاکتورهای ماه گذشته",
     "sql": {
-      "SQL": "SELECT AVG(A.item_count) AS A_item_count_avg FROM (SELECT COUNT(cqi.id) AS item_count FROM crm_quote AS cq JOIN crm_quoteitem AS cqi ON cq.id = cqi.quote_id WHERE cq.date >= $1 AND cq.date <= $2 GROUP BY cq.id) AS A",
+      "SQL": "SELECT AVG(A.item_count) AS A_item_count_avg FROM (SELECT COUNT(cqi.unit_title) AS item_count FROM crm_quote AS cq JOIN crm_quoteitem AS cqi ON cq.id = cqi.quote_id WHERE cq.date >= $1 AND cq.date <= $2 GROUP BY cq.id) AS A",
       "parameters": {
         "1": "{last_month_date}",
         "2": "{today_date}"
@@ -1211,9 +1211,9 @@
     "table": "crm_opportunity, crm_opportunityitem",
     "question": "فرصت‌هایی با بیش از 5 قلم که برنده شده‌اند",
     "sql": {
-      "SQL": "SELECT co.name AS co_name, co.customer_title AS co_customer_title, co.price AS co_price, COUNT(coi.id) AS coi_id_count FROM crm_opportunity AS co JOIN crm_opportunityitem AS coi ON co.id = coi.opportunity_id WHERE co.stage ILIKE $1 GROUP BY co.name, co.customer_title, co.price HAVING COUNT(coi.id) > $2",
+      "SQL": "SELECT co.name AS co_name, co.customer_title AS co_customer_title, co.price AS co_price, COUNT(coi.product_title) AS coi_product_title_count FROM crm_opportunity AS co JOIN crm_opportunityitem AS coi ON co.id = coi.opportunity_id WHERE co.stage ILIKE $1 GROUP BY co.name, co.customer_title, co.price HAVING COUNT(coi.product_title) > $2",
       "parameters": {
-        "1": "برنده شده",
+        "1": "%برنده شده%",
         "2": "5"
       }
     }
@@ -1225,9 +1225,9 @@
     "table": "crm_campaign, crm_campaignOpportunity",
     "question": "کمپین‌هایی با نرخ تبدیل فرصت بالا (فرصت‌های برنده شده به کل)",
     "sql": {
-      "SQL": "SELECT cc.name AS cc_name, cc.budget AS cc_budget, COUNT(CASE WHEN cco.stage ILIKE $1 THEN 1 END) AS won_count, COUNT(cco.id) AS total_count FROM crm_campaign AS cc JOIN crm_campaignOpportunity AS cco ON cc.id = cco.campaign_id GROUP BY cc.name, cc.budget HAVING COUNT(cco.id) > $2 ORDER BY won_count DESC",
+      "SQL": "SELECT cc.name AS cc_name, cc.budget AS cc_budget, COUNT(CASE WHEN cco.stage ILIKE $1 THEN 1 END) AS won_count, COUNT(cco.name) AS total_count FROM crm_campaign AS cc JOIN crm_campaignOpportunity AS cco ON cc.id = cco.campaign_id GROUP BY cc.name, cc.budget HAVING COUNT(cco.name) > $2 ORDER BY won_count DESC",
       "parameters": {
-        "1": "برنده شده",
+        "1": "%برنده شده%",
         "2": "0"
       }
     }

@@ -462,7 +462,7 @@ async def process_uploaded_files(
             print(f"Warning: Could not remove temp directory {temp_dir}: {e}")
 
 
-def find_database_collection_with_postgres(database_id: str = None):
+async def find_database_collection_with_postgres(database_id: str = None):
     """
     Find database collection and fetch company/assistant names from PostgreSQL.
     This is the recommended approach for production use.
@@ -494,7 +494,7 @@ def find_database_collection_with_postgres(database_id: str = None):
         
         # Fetch company_name and assistant_name from PostgreSQL
         postgres = Postgres()
-        database_info = postgres.get_database_by_id(database_id)  # You'll need this method
+        database_info = await postgres.find_company_assistant_names(database_id)  # You'll need this method
         
         company_name = database_info.get("company_name")
         assistant_name = database_info.get("assistant_name")
@@ -791,7 +791,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request, clients: d
                 elapsed_time = time.time() - start_time
             else:
                 database_id_dict = await postgres.find_database_id(session_id)
-                matched_index, company_name, assistant_name = find_database_collection_with_postgres(database_id_dict["database_id"])
+                matched_index, company_name, assistant_name = await find_database_collection_with_postgres(database_id_dict["database_id"])
                 selected_history = [
                     [h["query"], h["response"]] if len(h["query"]) < 60 
                     else [h["paraphrased_query"], h["response"]]

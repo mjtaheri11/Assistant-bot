@@ -6,7 +6,7 @@
     "table": "financial_vouchers",
     "question": "تعداد کل اقلام سند حسابداری چقدر است؟",
     "sql": {
-      "SQL": "SELECT COUNT(fv.id) AS fv_id_count FROM financial_vouchers AS fv",
+      "SQL": "SELECT COUNT(fv.voucher_number) AS fv_voucher_number_count FROM financial_vouchers AS fv",
       "parameters": {}
     }
   },
@@ -17,7 +17,7 @@
     "table": "financial_vouchers",
     "question": "چند قلم سند حسابداری ثبت شده؟",
     "sql": {
-      "SQL": "SELECT COUNT(fv.id) AS fv_id_count FROM financial_vouchers AS fv",
+      "SQL": "SELECT COUNT(fv.voucher_number) AS fv_voucher_number_count FROM financial_vouchers AS fv",
       "parameters": {}
     }
   },
@@ -433,7 +433,7 @@
     "sql": {
       "SQL": "SELECT fv.voucher_number AS fv_voucher_number, fv.voucher_date AS fv_voucher_date, fv.voucher_state AS fv_voucher_state FROM financial_vouchers AS fv WHERE fv.voucher_state ILIKE $1",
       "parameters": {
-        "1": "تایید شده"
+        "1": "%تایید شده%"
       }
     }
   },
@@ -446,7 +446,7 @@
     "sql": {
       "SQL": "SELECT fv.voucher_number AS fv_voucher_number, fv.voucher_date AS fv_voucher_date, fv.voucher_state AS fv_voucher_state FROM financial_vouchers AS fv WHERE fv.voucher_state ILIKE $1",
       "parameters": {
-        "1": "ثبت موقت"
+        "1": "%موقت%"
       }
     }
   },
@@ -459,7 +459,7 @@
     "sql": {
       "SQL": "SELECT fv.voucher_number AS fv_voucher_number, fv.voucher_date AS fv_voucher_date, fv.voucher_state AS fv_voucher_state FROM financial_vouchers AS fv WHERE fv.voucher_state ILIKE $1",
       "parameters": {
-        "1": "ثبت قطعی"
+        "1": "%قطعی%"
       }
     }
   },
@@ -524,7 +524,7 @@
     "table": "financial_vouchers",
     "question": "تعداد اسناد به تفکیک وضعیت",
     "sql": {
-      "SQL": "SELECT fv.voucher_state AS fv_voucher_state, COUNT(fv.id) AS fv_id_count FROM financial_vouchers AS fv GROUP BY fv.voucher_state ORDER BY fv_id_count DESC",
+      "SQL": "SELECT fv.voucher_state AS fv_voucher_state, COUNT(fv.voucher_number) AS fv_voucher_number_count FROM financial_vouchers AS fv GROUP BY fv.voucher_state ORDER BY fv_voucher_number_count DESC",
       "parameters": {}
     }
   },
@@ -535,7 +535,7 @@
     "table": "financial_vouchers",
     "question": "تعداد اسناد به تفکیک نوع سند",
     "sql": {
-      "SQL": "SELECT fv.voucher_type_title AS fv_voucher_type_title, COUNT(fv.id) AS fv_id_count FROM financial_vouchers AS fv GROUP BY fv.voucher_type_title ORDER BY fv_id_count DESC",
+      "SQL": "SELECT fv.voucher_type_title AS fv_voucher_type_title, COUNT(fv.voucher_number) AS fv_voucher_number_count FROM financial_vouchers AS fv GROUP BY fv.voucher_type_title ORDER BY fv_voucher_number_count DESC",
       "parameters": {}
     }
   },
@@ -623,7 +623,7 @@
     "table": "financial_vouchers",
     "question": "تعداد اسناد صادر شده توسط هر کاربر",
     "sql": {
-      "SQL": "SELECT fv.creator_name AS fv_creator_name, COUNT(fv.id) AS fv_id_count FROM financial_vouchers AS fv GROUP BY fv.creator_name ORDER BY fv_id_count DESC",
+      "SQL": "SELECT fv.creator_name AS fv_creator_name, COUNT(fv.voucher_number) AS fv_voucher_number_count FROM financial_vouchers AS fv GROUP BY fv.creator_name ORDER BY fv_voucher_number_count DESC",
       "parameters": {}
     }
   },
@@ -726,7 +726,7 @@
     "table": "financial_vouchers",
     "question": "مجموع گردش بدهکار و بستانکار به تفکیک نوع سند از ابتدای سال",
     "sql": {
-      "SQL": "SELECT fv.voucher_type_title AS fv_voucher_type_title, SUM(fv.debit) AS fv_debit_sum, SUM(fv.credit) AS fv_credit_sum, COUNT(fv.id) AS fv_id_count FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 GROUP BY fv.voucher_type_title ORDER BY fv_debit_sum DESC",
+      "SQL": "SELECT fv.voucher_type_title AS fv_voucher_type_title, SUM(fv.debit) AS fv_debit_sum, SUM(fv.credit) AS fv_credit_sum, COUNT(fv.voucher_number) AS fv_voucher_number_count FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 GROUP BY fv.voucher_type_title ORDER BY fv_debit_sum DESC",
       "parameters": {
         "1": "{persian_year_start}"
       }
@@ -820,7 +820,7 @@
     "sql": {
       "SQL": "SELECT fv.voucher_number AS fv_voucher_number, fv.voucher_date AS fv_voucher_date, fv.voucher_state AS fv_voucher_state, fv.debit AS fv_debit FROM financial_vouchers AS fv WHERE fv.voucher_state ILIKE $1 AND fv.debit > $2 AND fv.voucher_date >= $3",
       "parameters": {
-        "1": "تایید شده",
+        "1": "%تایید شده%",
         "2": "500000000",
         "3": "{persian_year_start}"
       }
@@ -835,7 +835,7 @@
     "sql": {
       "SQL": "SELECT fv.voucher_number AS fv_voucher_number, fv.voucher_date AS fv_voucher_date, fv.debit AS fv_debit, fv.credit AS fv_credit FROM financial_vouchers AS fv WHERE fv.voucher_state ILIKE $1 AND fv.voucher_date >= $2 AND fv.voucher_date <= $3 AND (fv.debit > $4 OR fv.credit > $5)",
       "parameters": {
-        "1": "ثبت موقت",
+        "1": "%موقت%",
         "2": "{last_week_saturday}",
         "3": "{last_week_friday}",
         "4": "100000000",
@@ -863,7 +863,7 @@
     "table": "financial_vouchers",
     "question": "گردش به تفکیک شعبه و ماه از ابتدای سال",
     "sql": {
-      "SQL": "SELECT fv.header_branch_title AS fv_header_branch_title, SUM(fv.debit) AS fv_debit_sum, SUM(fv.credit) AS fv_credit_sum, COUNT(DISTINCT fv.voucher_number) AS voucher_count FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 GROUP BY fv.header_branch_title ORDER BY fv_debit_sum DESC",
+      "SQL": "SELECT fv.header_branch_title AS fv_header_branch_title, SUM(fv.debit) AS fv_debit_sum, SUM(fv.credit) AS fv_credit_sum, COUNT(DISTINCT fv.voucher_number) AS fv_voucher_number_count FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 GROUP BY fv.header_branch_title ORDER BY fv_debit_sum DESC",
       "parameters": {
         "1": "{persian_year_start}"
       }
@@ -908,7 +908,7 @@
     "table": "financial_vouchers",
     "question": "مقایسه تعداد اسناد امروز با دیروز",
     "sql": {
-      "SQL": "SELECT (SELECT COUNT(fv.id) FROM financial_vouchers AS fv WHERE fv.voucher_date = $1) - (SELECT COUNT(fv.id) FROM financial_vouchers AS fv WHERE fv.voucher_date = $2) AS count_difference",
+      "SQL": "SELECT (SELECT COUNT(fv.voucher_number) FROM financial_vouchers AS fv WHERE fv.voucher_date = $1) - (SELECT COUNT(fv.voucher_number) FROM financial_vouchers AS fv WHERE fv.voucher_date = $2) AS count_difference",
       "parameters": {
         "1": "{today_date}",
         "2": "{yesterday_date}"
@@ -975,7 +975,7 @@
     "table": "financial_vouchers",
     "question": "حساب‌های کل با بیش از 100 قلم سند از ابتدای سال",
     "sql": {
-      "SQL": "SELECT fv.gl_code AS fv_gl_code, fv.gl_title AS fv_gl_title, COUNT(fv.id) AS fv_id_count, SUM(fv.debit) AS fv_debit_sum, SUM(fv.credit) AS fv_credit_sum FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 GROUP BY fv.gl_code, fv.gl_title HAVING COUNT(fv.id) > $2 ORDER BY fv_id_count DESC",
+      "SQL": "SELECT fv.gl_code AS fv_gl_code, fv.gl_title AS fv_gl_title, COUNT(fv.voucher_number) AS fv_voucher_number_count, SUM(fv.debit) AS fv_debit_sum, SUM(fv.credit) AS fv_credit_sum FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 GROUP BY fv.gl_code, fv.gl_title HAVING COUNT(fv.voucher_number) > $2 ORDER BY fv_voucher_number_count DESC",
       "parameters": {
         "1": "{persian_year_start}",
         "2": "100"
@@ -1017,7 +1017,7 @@
     "table": "financial_vouchers",
     "question": "گردش ارزی به تفکیک نوع ارز از ابتدای سال",
     "sql": {
-      "SQL": "SELECT fv.voucher_currency_title AS fv_voucher_currency_title, SUM(fv.currency_debit) AS fv_currency_debit_sum, SUM(fv.currency_credit) AS fv_currency_credit_sum, COUNT(fv.id) AS fv_id_count FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 GROUP BY fv.voucher_currency_title ORDER BY fv_currency_debit_sum DESC",
+      "SQL": "SELECT fv.voucher_currency_title AS fv_voucher_currency_title, SUM(fv.currency_debit) AS fv_currency_debit_sum, SUM(fv.currency_credit) AS fv_currency_credit_sum, COUNT(fv.voucher_number) AS fv_voucher_number_count FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 GROUP BY fv.voucher_currency_title ORDER BY fv_currency_debit_sum DESC",
       "parameters": {
         "1": "{persian_year_start}"
       }
@@ -1030,7 +1030,7 @@
     "table": "financial_vouchers",
     "question": "عملکرد صادرکنندگان سند از ابتدای سال",
     "sql": {
-      "SQL": "SELECT fv.creator_name AS fv_creator_name, COUNT(fv.id) AS fv_id_count, SUM(fv.debit) AS fv_debit_sum, SUM(fv.credit) AS fv_credit_sum FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 GROUP BY fv.creator_name ORDER BY fv_id_count DESC",
+      "SQL": "SELECT fv.creator_name AS fv_creator_name, COUNT(fv.voucher_number) AS fv_voucher_number_count, SUM(fv.debit) AS fv_debit_sum, SUM(fv.credit) AS fv_credit_sum FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 GROUP BY fv.creator_name ORDER BY fv_voucher_number_count DESC",
       "parameters": {
         "1": "{persian_year_start}"
       }
@@ -1114,7 +1114,7 @@
     "table": "financial_vouchers",
     "question": "مقایسه تعداد اسناد سال جاری با سال قبل",
     "sql": {
-      "SQL": "SELECT (SELECT COUNT(fv.id) FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 AND fv.voucher_date <= $2) AS current_year_count, (SELECT COUNT(fv.id) FROM financial_vouchers AS fv WHERE fv.voucher_date >= $3 AND fv.voucher_date <= $4) AS previous_year_count",
+      "SQL": "SELECT (SELECT COUNT(fv.voucher_number) FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 AND fv.voucher_date <= $2) AS current_year_count, (SELECT COUNT(fv.voucher_number) FROM financial_vouchers AS fv WHERE fv.voucher_date >= $3 AND fv.voucher_date <= $4) AS previous_year_count",
       "parameters": {
         "1": "{persian_year_start}",
         "2": "{persian_year_end}",
@@ -1144,7 +1144,7 @@
     "table": "financial_vouchers",
     "question": "گردش به تفکیک نقش طرف تجاری از ابتدای سال",
     "sql": {
-      "SQL": "SELECT fv.business_party_role AS fv_business_party_role, SUM(fv.debit) AS fv_debit_sum, SUM(fv.credit) AS fv_credit_sum, COUNT(fv.id) AS fv_id_count FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 AND fv.business_party_role IS NOT NULL GROUP BY fv.business_party_role ORDER BY fv_debit_sum DESC",
+      "SQL": "SELECT fv.business_party_role AS fv_business_party_role, SUM(fv.debit) AS fv_debit_sum, SUM(fv.credit) AS fv_credit_sum, COUNT(fv.voucher_number) AS fv_voucher_number_count FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 AND fv.business_party_role IS NOT NULL GROUP BY fv.business_party_role ORDER BY fv_debit_sum DESC",
       "parameters": {
         "1": "{persian_year_start}"
       }
@@ -1183,7 +1183,7 @@
     "table": "financial_vouchers",
     "question": "تعداد اسناد تایید شده و تایید نشده به تفکیک شعبه از ابتدای سال",
     "sql": {
-      "SQL": "SELECT fv.header_branch_title AS fv_header_branch_title, fv.voucher_state AS fv_voucher_state, COUNT(fv.id) AS fv_id_count FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 GROUP BY fv.header_branch_title, fv.voucher_state ORDER BY fv.header_branch_title, fv_id_count DESC",
+      "SQL": "SELECT fv.header_branch_title AS fv_header_branch_title, fv.voucher_state AS fv_voucher_state, COUNT(fv.voucher_number) AS fv_voucher_number_count FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 GROUP BY fv.header_branch_title, fv.voucher_state ORDER BY fv.header_branch_title, fv_voucher_number_count DESC",
       "parameters": {
         "1": "{persian_year_start}"
       }
