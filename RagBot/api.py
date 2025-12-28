@@ -79,6 +79,10 @@ async def lifespan(app: FastAPI):
         api_key=os.getenv("OSS_API_KEY") 
     )
     
+    llm_clients["openrouter"] = AsyncOpenAI(
+        base_url=os.getenv("OPENROUTER_API_BASE"), 
+        api_key=os.getenv("OPENROUTER_API_KEY") 
+    )
     print("Clients initialized.")
     yield
     

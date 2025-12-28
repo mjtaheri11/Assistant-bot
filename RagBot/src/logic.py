@@ -772,7 +772,7 @@ async def prepare_final_context(
         proposable_modules = set(config["modules"]["qa_proposable_modules"])
     detected_modules = [result["module"] for result in context_with_metadata]
     module_frequencies = Counter(detected_modules)
-
+    print(module_frequencies)
     if len(module_frequencies) < 2:
         detected_modules_lst = list(module_frequencies.keys())
         result = _handle_single_module_case(
