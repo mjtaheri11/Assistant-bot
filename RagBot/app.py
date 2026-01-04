@@ -214,7 +214,6 @@ def chat_request(
     use_cache: bool = True,
     api_url: str = BASE_URL,
     sql_mode: bool = True,
-    use_oss: bool = False
 ):
 
     # Define the request data
@@ -226,7 +225,6 @@ def chat_request(
         "response_type": answer_type,
         "use_cache": use_cache,
         "sql_mode": sql_mode,
-        "use_oss": use_oss
     }
     if database_id:
         chat_data["database_id"] = database_id
@@ -719,7 +717,6 @@ def main():
                             does_evaluate=st.session_state["does_evaluate"],
                             use_cache=st.session_state["use_cache"],
                             sql_mode=st.session_state["sql_mode"],
-                            use_oss=st.session_state["model_selector"]
                         )
                         do_suggest, is_sql, choices, message_id, response, query = (
                             chat_response["do_suggest"],

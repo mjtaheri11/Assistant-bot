@@ -17,10 +17,12 @@ from langfuse import observe, get_client
 from dotenv import load_dotenv
 from contextlib import asynccontextmanager
 from openai import AsyncOpenAI
-from src.shear_parser import convert_word_to_markdown, SoleChunker, preprocess_markdown_file
 import tempfile
 from pathlib import Path
 import aiofiles
+
+from src.shear_parser import convert_word_to_markdown, SoleChunker, preprocess_markdown_file
+from src.llm_clients import llm_manager
 # Langfuse configuration
 load_dotenv()
 
@@ -56,41 +58,12 @@ from src.utils import substitute_sql_parameters, integrate_params
 from langchain.schema import Document
 from qdrant_client import QdrantClient
 
-llm_clients = {}
-
-def get_client_llm():
-    return llm_clients
-    
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # --- Startup ---
-    
-    # Initialize the Standard OpenAI Client
-    llm_clients["gpt"] = AsyncOpenAI(
-        base_url=os.getenv("GPT_API_BASE"), 
-        api_key=os.getenv("GPT_API_KEY")
-    )
-    
-    # Initialize the Local Client (e.g., Ollama, vLLM, LocalAI)
-    # Note: 'base_url' points to your local server
-    # Note: 'api_key' is required by the SDK but often ignored by local servers
-    llm_clients["oss"] = AsyncOpenAI(
-        base_url=os.getenv("OSS_API_BASE"), 
-        api_key=os.getenv("OSS_API_KEY") 
-    )
-    
-    llm_clients["openrouter"] = AsyncOpenAI(
-        base_url=os.getenv("OPENROUTER_API_BASE"), 
-        api_key=os.getenv("OPENROUTER_API_KEY") 
-    )
-    print("Clients initialized.")
+    await llm_manager.initialize()
     yield
-    
-    # --- Shutdown ---
-    # Close both connections cleanly
-    await llm_clients["oss"].close()
-    await llm_clients["gpt"].close()
-    print("Clients closed.")
+    await llm_manager.close()
+
 
 RESPONSE_TEMPLATE_FOR_NO_ANSWER = "متاسفانه، پاسخی به سوال شما یافت نشد."
 app = FastAPI(title="Digital Assistant", lifespan=lifespan, root_path=os.getenv("FASTAPI_ROOT_PATH")) # should be added to env variables
@@ -118,7 +91,7 @@ class ChatRequest(BaseModel):
     error_payload: Optional[str] = ""
     is_sync: Optional[bool] = True
     sql_mode: Optional[bool] = True  # Toggle between legacy and SQL agent mode
-    use_oss: Optional[bool] = False
+
 
 class ChatResponse(BaseModel):
     message_id: str
@@ -724,7 +697,7 @@ async def create_session(create_session_request: Optional[CreateSessionRequest] 
     },
 )
 @observe()
-async def chat_responder(chat_request: ChatRequest, request: Request, clients: dict = Depends(get_client_llm)):
+async def chat_responder(chat_request: ChatRequest, request: Request):
     REQUEST_COUNT.labels(endpoint=CHAT_ENDPOINT).inc()
     start_time = time.time()
     is_sql = False
@@ -812,7 +785,6 @@ async def chat_responder(chat_request: ChatRequest, request: Request, clients: d
                     )
                     
                     is_sql, paraphrased_utterance, response, context, do_clarify, modules, parameters, response_template = await chat_responder_(
-                        clients=clients,
                         history=selected_history,
                         user_utterance=chat_request.query,
                         database_index=matched_index,
@@ -821,7 +793,6 @@ async def chat_responder(chat_request: ChatRequest, request: Request, clients: d
                         response_type=chat_request.response_type,
                         use_cache=chat_request.use_cache,
                         detected_module=chat_request.query,
-                        use_oss=chat_request.use_oss, 
                         sql_mode=chat_request.sql_mode
                     )
                     assert do_clarify == False, "on_click should not return do_clarify=True"
@@ -847,7 +818,6 @@ async def chat_responder(chat_request: ChatRequest, request: Request, clients: d
                         user_query=chat_request.query,
                     )
                     is_sql, paraphrased_utterance, response, context, do_clarify, modules, parameters, response_template = await chat_responder_(
-                        clients=clients,
                         history=selected_history,
                         user_utterance=chat_request.query,
                         database_index=matched_index,
@@ -856,7 +826,6 @@ async def chat_responder(chat_request: ChatRequest, request: Request, clients: d
                         response_type=chat_request.response_type,
                         use_cache=chat_request.use_cache,
                         detected_module="",
-                        use_oss=chat_request.use_oss, 
                         sql_mode=chat_request.sql_mode
                     )
                     

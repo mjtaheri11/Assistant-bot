@@ -30,12 +30,13 @@ from .retriever import Retriever
 from .config import config
 from .cache import Cache
 from .utils import json_cleaning, json_cleaning_1, calculate_date_context, format_documents_as_sql_examples, convert_sql_parameters, integrate_params, add_param_keys
-from .business_objects import LOGISTICS_SALES_MODIFIED, FINANCIAL_BO_MODIFIED, CRM_BO, LOGISTICS_MODIFIED, TREASURY_BO
+from .business_objects import LOGISTICS_SALES_MODIFIED, FINANCIAL_BO_MODIFIED, CRM_BO, LOGISTICS_MODIFIED #, TREASURY_BO
 from .semantic_router import SemanticRouterPipeline
 from .default_examples import DEFAULT_EXAMPLES
 from langchain.chat_models import ChatOpenAI
 from langfuse import observe
 import hashlib
+from .llm_clients import llm_manager
 
 # Load environment variables from .env file
 load_dotenv()
@@ -426,21 +427,6 @@ def hash_string(input_string):
 
     return hex_digest
 
-def model_selector(use_oss, clients):
-    if use_oss:
-        extra = {}
-        print(clients)
-        client_model = {"client": clients["oss"], "extra":extra, "model_name": os.environ.get("OSS_LLM_MODEL_NAME", GPT_OSS_NAME)}
-    else:
-        extra = {
-                # "top_k": 1,
-                # "do_sample": False,
-                # "seed": 42,
-                # "sampling_method": "greedy",
-                # "reasoning_effort": "medium"
-            }
-        client_model = {"client": clients["gpt"], "extra":extra,  "model_name": os.environ.get("GPT_LLM_MODEL_NAME", "gpt-5.1-2025-11-13")}
-    return client_model
 
 @observe()
 async def get_chat_response_legacy(
@@ -487,11 +473,25 @@ async def get_chat_response_legacy(
     
     return result
 
+def extract_response_text(response, config) -> str:
+    """Extract text from either Responses API or Chat Completions API response."""
+    if config.supports_reasoning:
+        # Responses API: response.output[0].content[0].text
+        for item in response.output:
+            if hasattr(item, 'content'):
+                for content in item.content:
+                    if hasattr(content, 'text'):
+                        return content.text
+        return ""
+    else:
+        # Chat Completions API: response.choices[0].message.content
+        return response.choices[0].message.content or ""
+
+
 @observe()
 async def get_chat_response(
         prompt: str, 
-        client_model,
-        
+        model_name,
     ) -> str:
 
     print("Character Length of the prompt: ", len(prompt))
@@ -506,18 +506,15 @@ async def get_chat_response(
     ]
 
     try:
-        # Call the AsyncOpenAI client
-        response = await client_model["client"].chat.completions.create(
-            model=client_model["model_name"],
-            messages=messages,
-            temperature=1,
-            extra_body=client_model["extra"] # Pass the extra parameters here
-        )
+        response = await llm_manager.complete(model_name, messages)
 
-        # Extract the content from the response
-        result = response.choices[0].message.content
-        return result
-
+        # Extract text
+        _, config = llm_manager.get_model(model_name)
+        if config.supports_reasoning:
+            text = response.output[0].content[0].text
+        else:
+            text = response.choices[0].message.content
+        return text
     except Exception as e:
         # Basic error handling
         print(f"Error generating response: {e}")
@@ -551,10 +548,9 @@ def history_serializer(history: List[tuple[str, str]]) -> str:
 
 
 async def process_sql_response(
-    clients,
     paraphrased_utterance: str,
     selected_module: str,
-    use_oss: bool,
+    model_name: str = config["api_default"]["sql_responder_model_name"],
     context: str = "",
 ) -> tuple[bool, str, dict | None, str | None]:
     """
@@ -563,11 +559,9 @@ async def process_sql_response(
     if not context:
         context = DEFAULT_EXAMPLES
     response_dict_str = await sql_responder_(
-        clients,
         paraphrased_utterance,
         selected_module,
         context=context,
-        use_oss=use_oss
     )
     
     response_dict = json.loads(response_dict_str)
@@ -583,11 +577,9 @@ async def process_sql_response(
     
     sql_with_params = integrate_params(response, response_dict["parameters"])    
     bo_parameters_with_template = await parameters_responder(
-        clients,
         paraphrased_utterance,
         sql_with_params,
         selected_module,
-        use_oss
     )
     bo_parameters_with_template_dict = json.loads(bo_parameters_with_template)
     parameters_dict = finalize_parameters(response_dict, bo_parameters_with_template_dict)
@@ -600,7 +592,12 @@ async def process_sql_response(
 
 
 @observe()
-async def utterance_paraphraser(clients, history: List[tuple[str, str]], user_utterance: str, assistant_name: str = None, use_oss:bool = True) -> str:
+async def utterance_paraphraser(
+        history: List[tuple[str, str]], 
+        user_utterance: str, 
+        assistant_name: str = None, 
+        model_name: str = config["api_default"]["utterance_paraphraser_model_name"]
+    ) -> str:
     serialized_history = history_serializer(history)
     
     if assistant_name:
@@ -616,48 +613,41 @@ async def utterance_paraphraser(clients, history: List[tuple[str, str]], user_ut
             history=serialized_history,
             question=user_utterance,
         )
-    client_model = model_selector(use_oss, clients)
-    response_1 = await get_chat_response(prompt, client_model)
+
+    response_1 = await get_chat_response(prompt, model_name=model_name)
     response = json_cleaning_1(response_1)
     return response
 
 
-@observe()
-async def query_responder(
-    clients, 
-    query: str, 
-    context: str, 
-    history: List[tuple[str, str]],
-    company_name: str = None, 
-    assistant_name: str = None, 
-    answer_type: str = "normal", 
-    use_oss: bool = True, 
-    ) -> str:
+async def get_chat_response(prompt: str, model_name: str) -> str:
+    # 1. Initialize
+    if not llm_manager._initialized:
+        await llm_manager.initialize()
 
-    serialized_history = history_serializer(history)
+    # 2. Config & Role Selection
+    _, config = llm_manager.get_model(model_name)
     
-    # Use develop branch format with multiple prompt types
-    if answer_type == "concise":
-        rag_system_prompt = RAG_CONCISE_SYSTEM_PROMPT
-    elif answer_type == "normal":
-        rag_system_prompt = RAG_NORMAL_SYSTEM_PROMPT
-    elif answer_type == "explanatory":
-        rag_system_prompt = RAG_EXPLANATORY_SYSTEM_PROMPT
-    else:
-        rag_system_prompt = RAG_NORMAL_SYSTEM_PROMPT
+    # Use "user" for responses API models to be safe
+    role = "system" 
+    messages = [{"role": role, "content": prompt}]
+    print("promtp word length:", len(prompt.split()))
+    print("prompt character length:", len(prompt))
+
+    try:
+        # 3. Generate
+        response = await llm_manager.complete(model_name, messages)
         
-    prompt = rag_system_prompt.format(
-        context=context,
-        company_name=company_name,
-        assistant_name=assistant_name,
-        question=query,
-        conversation_history=serialized_history
-    )
-    client_model = model_selector(use_oss, clients)
-    response = await get_chat_response(prompt, client_model)
-    response = json_cleaning(response)
-    
-    return response
+        # 4. Extract (Now using the robust regex fallback)
+        text = llm_manager.extract_text(response, model_name)
+        
+        # Debug print to verify
+        # print(f"Extracted Text: {text[:100]}...") 
+        
+        return text
+
+    except Exception as e:
+        print(f"Error generating response: {e}")
+        raise e
 
 
 async def embed_query(query):
@@ -669,32 +659,28 @@ async def embed_query(query):
 
 @observe()
 async def chitchat_responder(
-    clients,
     query: str,
     context: str, 
     history: List[tuple[str, str]],
-    use_oss: bool, 
+    model_name: bool, 
     ):
     serialized_history = history_serializer(history)
     prompt = CHITCHAT_PROMPT.format(user_question=query, 
                              context=context, 
                              history=serialized_history
                              )
-    client_model = model_selector(use_oss, clients)
-    response = await get_chat_response(prompt, client_model)
-    
+    response = await get_chat_response(prompt, model_name)
     return response
 
     
 @observe()
-async def answer_validator(clients, question: str, context: str, answer: str, use_oss: bool) -> str:
+async def answer_validator(question: str, context: str, answer: str, model_name: str = config["api_default"]["answer_validator_model_name"]) -> str:
     prompt = ANSWER_VALIDATOR_PROMPT.format(
         context=context,
         question=question,
         answer=answer,
     )
-    client_model = model_selector(use_oss, clients)
-    response = await get_chat_response(prompt, client_model)
+    response = await get_chat_response(prompt, model_name)
     return response
 
 
@@ -963,8 +949,8 @@ def get_schema_for_module(detected_module: str) -> str:
         return LOGISTICS_SALES_MODIFIED
     elif module in ("مدیریت ارتباط با مشتری"):
         return CRM_BO
-    elif module in ("خزانه داری"):
-        return TREASURY_BO
+    # elif module in ("خزانه داری"):
+    #     return TREASURY_BO
     else:
         # Fallback: combine both schemas
         return LOGISTICS_SALES_MODIFIED + "\n" + FINANCIAL_BO_MODIFIED
@@ -972,21 +958,19 @@ def get_schema_for_module(detected_module: str) -> str:
 
 @observe()
 async def sql_responder_(
-    clients,
     query: str,
     detected_module: str = "", 
     context: str = "",
-    use_oss: bool = False,
+    model_name: str = config["api_default"]["sql_responder_model_name"],
     ):
     """
     Unified SQL responder supporting both simple schema list and module-based schema selection.
     """
     schema = get_schema_for_module(detected_module)
     bo_prompt = format_sql_prompt(query, schema=schema, examples=context)
-    model_client = model_selector(use_oss, clients)
     raw_json_response = await get_chat_response(
         bo_prompt, 
-        model_client
+        model_name
     )
     response = json_cleaning(raw_json_response)
     return response
@@ -994,11 +978,10 @@ async def sql_responder_(
 
 @observe()
 async def parameters_responder(
-    clients,
     paraphrased_utterance, 
     sql_query,
     detected_module: str,
-    use_oss: bool = True,
+    model_name: str = config["api_default"]["parameter_responder_model_name"],
     ):
 
     sql_proposed_tables = extract_tables_simple(sql_query)
@@ -1007,8 +990,7 @@ async def parameters_responder(
     selections = {table: ['parameters'] for table in sql_proposed_tables}
     bo_parameters_schema = subselect_yaml(yaml_schema, selections, "yaml")
     prompt = format_param_responder_prompt(paraphrased_utterance, sql_query, bo_parameters_schema, BUSINESS_OBJECT_PARAMETER_EXTRACTOR_PROMPT)
-    model_client = model_selector(use_oss, clients)
-    raw_json_response = await get_chat_response(prompt, model_client)
+    raw_json_response = await get_chat_response(prompt, model_name)
     response = json_cleaning(raw_json_response)
     return response
 
@@ -1022,10 +1004,9 @@ def _get_chitchat_cache_key(utterance: str) -> str:
 
 
 async def _determine_final_route(
-    clients, 
     utterance: str,
     query_embedding: List,
-    use_oss: bool = False,
+    model_name: str = config["api_default"]["module_route_model_name"],
 ) -> str:
 
     router_config = config["router_model"]
@@ -1062,14 +1043,13 @@ async def _determine_final_route(
         plausible_routes = ['chitchat', 'illegal', 'irrelevant', 'sql', 'qa']
 
     # Use an LLM to disambiguate between plausible routes
-    client_model = model_selector(use_oss, clients)
     result = await get_chat_response(
-        SEMANTIC_ROUTER.format(user_query=utterance, class_list=plausible_routes), client_model
+        SEMANTIC_ROUTER.format(user_query=utterance, class_list=plausible_routes), model_name
     )
     return result
 
 @observe()
-async def get_route_for_utterance(clients, utterance: str, query_embedding: List, use_oss: bool = False) -> str:
+async def get_route_for_utterance(utterance: str, query_embedding: List, model_name: str = config["api_default"]["module_route_model_name"]) -> str:
     CHITCHAT_ROUTE = "chitchat"
     
     # It's better to instantiate clients once and reuse them
@@ -1090,7 +1070,7 @@ async def get_route_for_utterance(clients, utterance: str, query_embedding: List
         return CHITCHAT_ROUTE
 
     # 3. Determine the final route using the logic in the helper function
-    final_route = await _determine_final_route(clients, utterance, query_embedding, use_oss)
+    final_route = await _determine_final_route(utterance, query_embedding, model_name)
 
     # 4. Cache the result for future requests
     # Note: The original code had a commented-out line to cache all routes.
@@ -1119,9 +1099,48 @@ def _post_process_rag_response(response: str, company_name: str) -> str:
         return template_for_not_context.format(company_name=company_name)
     return response
 
+
+@observe()
+async def query_responder(
+    query: str, 
+    context: str, 
+    history: List[tuple[str, str]],
+    company_name: str = None, 
+    assistant_name: str = None, 
+    answer_type: str = "concise", 
+    model_name: str = config["api_default"]["query_responder_model_name"]
+    ) -> str:
+
+    serialized_history = history_serializer(history)
+    
+    # Use develop branch format with multiple prompt types
+    if answer_type == "concise":
+        rag_system_prompt = RAG_CONCISE_SYSTEM_PROMPT
+    elif answer_type == "normal":
+        rag_system_prompt = RAG_NORMAL_SYSTEM_PROMPT
+    elif answer_type == "explanatory":
+        rag_system_prompt = RAG_EXPLANATORY_SYSTEM_PROMPT
+    else:
+        rag_system_prompt = RAG_NORMAL_SYSTEM_PROMPT
+        
+    prompt = rag_system_prompt.format(
+        context=context,
+        company_name=company_name,
+        assistant_name=assistant_name,
+        question=query,
+        conversation_history=serialized_history
+    )
+
+    raw_json_response = await get_chat_response(
+        prompt, 
+        model_name
+    )
+    response = json_cleaning(raw_json_response)
+    return response
+
+
 @observe()
 async def chat_responder_(
-    clients,
     history: List[tuple[str, str]],
     user_utterance: str,
     database_index: str = config["database"]["collection_name"],
@@ -1130,7 +1149,6 @@ async def chat_responder_(
     response_type: str = config["database"]["response_type"],
     use_cache: bool = config["database"]["use_cache"],
     detected_module: str = "",
-    use_oss: bool = False, 
     sql_mode: bool = True
 ) -> Union[tuple[str, str, str, str], tuple[str, str, str, bool, List[str]]]:
     """
@@ -1147,7 +1165,7 @@ async def chat_responder_(
             result_temp = is_sql, user_utterance, response, "", False, [], parameters, sql_response_template
             return result_temp
 
-    paraphrased_utterance = await utterance_paraphraser(clients, history, user_utterance, use_oss=use_oss)
+    paraphrased_utterance = await utterance_paraphraser(history, user_utterance)
     if use_cache:
         response, _ = await get_cache_response(paraphrased_utterance)
         if response:
@@ -1155,7 +1173,7 @@ async def chat_responder_(
             return result_temp
 
     query_embedding = await embed_query(paraphrased_utterance)
-    route_response = await get_route_for_utterance(clients, paraphrased_utterance, query_embedding, use_oss)
+    route_response = await get_route_for_utterance(paraphrased_utterance, query_embedding)
     use_sql_modules = True if route_response == "sql" else False
     if detected_module:
         do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, input_module=detected_module, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context, use_sql_modules=use_sql_modules)
@@ -1163,7 +1181,7 @@ async def chat_responder_(
         do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context, use_sql_modules=use_sql_modules)
 
     if route_response == "chitchat":
-        response = await chitchat_responder(clients, paraphrased_utterance, context=context, history=history, use_oss=use_oss)
+        response = await chitchat_responder(paraphrased_utterance, context=context, history=history)
         result_temp = is_sql, paraphrased_utterance, response, context, False, [], parameters, sql_response_template
         return result_temp
     
@@ -1192,10 +1210,8 @@ async def chat_responder_(
             assert do_clarify == False, "The problem related to the prepare final context module. Do clarify should be False"
             assert len(modules_2) == 1, "The problem related to the prepare final context module. length of modules should be one"
             is_sql, response, parameters, sql_response_template = await process_sql_response(
-                clients,
                 paraphrased_utterance,
                 selected_module,
-                use_oss,
                 context,
             )
             if not is_sql: 
@@ -1211,16 +1227,13 @@ async def chat_responder_(
         return result_temp
 
     response = await query_responder(
-        clients,
         paraphrased_utterance,
         context,
         history,
         company_name=company_name,
         assistant_name=assistant_name,
         answer_type=response_type,
-        use_oss=use_oss,
     )
-
     if "محدوده دانش من " in response:
         response = template_for_not_answer
     if "خارج از حوزه کاری" in response:

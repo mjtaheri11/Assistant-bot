@@ -204,3 +204,159 @@ router_model:
   model_name: svm
   beta_threshold: 0
   alpha_threshold: 1
+
+# LLM Model Configuration - Model parameters only
+
+api_default:
+  temperature: 0.7
+  max_tokens: 4096
+  module_route_model_name: gpt-4.1
+  query_responder_model_name: gpt-5-mini
+  answer_validator_model_name: gpt-4.1
+  utterance_paraphraser_model_name: gpt-4.1
+  parameter_responder_model_name: gpt-5.1-codex-max
+  sql_responder_model_name: gpt-5.1-codex-max
+  
+
+api_models:
+  gpt-5.2:
+    provider: gpt
+    model_id: "gpt-5.2-2025-12-11"
+    context_window: 400000
+    max_output_tokens: 128000
+    api_type: "chat"
+    supports_reasoning: true
+    default_reasoning_effort: "medium"  # none, low, medium, high, xhigh
+    temperature: 0.7
+
+  gpt-5.2-pro:
+    provider: gpt
+    model_id: "gpt-5.2-pro"
+    context_window: 400000
+    max_output_tokens: 128000
+    api_type: "chat"
+    supports_reasoning: true
+    default_reasoning_effort: "high"
+    temperature: 0.7
+
+  # GPT-5.1
+  gpt-5.1:
+    provider: gpt
+    model_id: "gpt-5.1-2025-11-13"
+    context_window: 200000
+    max_output_tokens: 100000
+    api_type: "chat"
+    supports_reasoning: true
+    default_reasoning_effort: "none"  # GPT-5.1 defaults to none
+    temperature: 0.7
+
+  gpt-5.1-codex-max:
+    provider: gpt
+    model_id: "gpt-5.1-codex-max"
+    context_window: 200000
+    max_output_tokens: 100000
+    api_type: "chat"
+    api_type: "responses"
+    supports_reasoning: true
+    default_reasoning_effort: "medium"
+    temperature: 0.3
+
+  # GPT-5
+  gpt-5:
+    provider: gpt
+    model_id: "gpt-5-2025-08-07"
+    context_window: 200000
+    max_output_tokens: 100000
+    api_type: "chat"
+    supports_reasoning: true
+    default_reasoning_effort: "medium"  # GPT-5 defaults to medium
+    temperature: 0.7
+
+  gpt-5-mini:
+    provider: gpt
+    model_id: "gpt-5-mini"
+    context_window: 200000
+    max_output_tokens: 65536
+    api_type: "chat"
+    supports_reasoning: true
+    default_reasoning_effort: "medium"
+    temperature: 0.7
+
+  gpt-5-nano:
+    provider: gpt
+    model_id: "gpt-5-nano"
+    context_window: 200000
+    max_output_tokens: 32768
+    api_type: "chat"
+    supports_reasoning: true
+    default_reasoning_effort: "low"
+    temperature: 0.7
+
+  # GPT-4.1 - Non-reasoning, 1M context
+  gpt-4.1:
+    provider: gpt
+    model_id: "gpt-4.1"
+    context_window: 1000000
+    max_output_tokens: 32768
+    api_type: "chat"
+    supports_reasoning: false
+    temperature: 0.7
+
+  gpt-4.1-mini:
+    provider: gpt
+    model_id: "gpt-4.1-mini"
+    context_window: 1000000
+    max_output_tokens: 16384
+    api_type: "chat"
+    supports_reasoning: false
+    temperature: 0.7
+
+  gpt-4.1-nano:
+    provider: gpt
+    model_id: "gpt-4.1-nano"
+    context_window: 1000000
+    max_output_tokens: 16384
+    api_type: "chat"
+    supports_reasoning: false
+    temperature: 0.7
+
+  # OSS Models (Local/Ollama/vLLM)
+  # Set api_type to "completions" if your server only supports legacy /v1/completions
+  llama-3.3-70b:
+    provider: oss
+    model_id: "llama-3.3-70b-instruct"
+    context_window: 131072
+    max_output_tokens: 8192
+    api_type: "chat"  # Change to "completions" if your server requires it
+    supports_reasoning: false
+    temperature: 0.7
+
+  qwen-2.5-72b:
+    provider: oss
+    model_id: "qwen2.5-72b-instruct"
+    context_window: 131072
+    max_output_tokens: 8192
+    api_type: "chat"  # Change to "completions" if your server requires it
+    supports_reasoning: false
+    temperature: 0.7
+
+  # Example legacy completions model (for servers that only support /v1/completions)
+  # Uncomment and modify as needed:
+  # oss-legacy-model:
+  #   provider: oss
+  #   model_id: "your-model-name"
+  #   context_window: 8192
+  #   max_output_tokens: 4096
+  #   api_type: "completions"  # Uses /v1/completions endpoint
+  #   supports_reasoning: false
+  #   temperature: 0.7
+
+  # OpenRouter
+  claude-sonnet-4:
+    provider: openrouter
+    model_id: "anthropic/claude-sonnet-4"
+    context_window: 200000
+    max_output_tokens: 64000
+    api_type: "chat"
+    supports_reasoning: false
+    temperature: 0.7
