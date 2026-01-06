@@ -1199,7 +1199,7 @@ async def chat_responder_(
             detected_database_index = config["database"]["sql_collection_name"]
         else:
             detected_database_index = database_index
-
+            
     if route_response == "sql" and sql_mode:
         selected_module = modules[0] 
         if selected_module in config["modules"]["available_sql_modules"]:
@@ -1223,7 +1223,7 @@ async def chat_responder_(
     if not context:
         response = template_for_not_answer
         context = ""
-        result_temp = is_sql, paraphrased_utterance, response, context, False, [], parameters, sql_response_template, parameters, sql_response_template
+        result_temp = is_sql, paraphrased_utterance, response, context, False, [], parameters, sql_response_template
         return result_temp
 
     response = await query_responder(

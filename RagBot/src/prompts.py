@@ -561,9 +561,10 @@ Return ONLY this JSON structure with no surrounding text or markdown:
    - Correct: "1": "1404/01/01"
    - Wrong: "1": "start of Persian year"
 
-7. COUNT WITH COLUMNS: Never use COUNT(1) or COUNT(*). Always use COUNT(column_name) with a valid column from the schema
-   - Correct: COUNT(si.id) AS si_id_count
-   - Correct: COUNT(si.code) AS si_code_count
+7. COUNT WITH COLUMNS: Never use COUNT(1) or COUNT(*). Always use COUNT(column_name) with a valid non-id column from the schema. Prefer counting by code, name, or another meaningful business column.
+   - Correct: COUNT(si.code) AS si_code_count IF AND ONLY IF "code" exists as a column field
+   - Correct: COUNT(si.invoice_number) AS si_invoice_number_count
+   - Wrong: COUNT(si.id) AS si_id_count
    - Wrong: COUNT(1) AS row_count
    - Wrong: COUNT(*) AS row_count
 
@@ -573,10 +574,12 @@ Return ONLY this JSON structure with no surrounding text or markdown:
    - Wrong: WHERE table.column = $1
    - Wrong: WHERE table.column ILIKE $1 with parameter "1": "exact_value" (missing wildcards)
 
-9. ID COLUMN SELECTION: Only select the "id" column when it explicitly exists in the business object schema. If "id" is not listed among the schema columns, select an appropriate alternative column (e.g., a meaningful identifier, code, or name column).
-   - Correct: SELECT si.id, si.name FROM sales_invoice si (when id is in schema)
-   - Wrong: SELECT si.id FROM sales_invoice si (when id is NOT in schema columns)
-   - Alternative: SELECT si.code, si.name FROM sales_invoice si (when id is NOT available)
+9. ID COLUMN SELECTION: NEVER select the "id" column, even if it exists in the schema. Always select meaningful alternative columns instead (e.g., code, name, title, or other business-relevant identifier columns). The "id" column is an internal database identifier and provides no value to end users.
+   - Correct: SELECT si.code, si.name FROM sales_invoice si
+   - Correct: SELECT p.code, p.title FROM product p
+   - Wrong: SELECT si.id, si.name FROM sales_invoice si
+   - Wrong: SELECT si.id FROM sales_invoice si
+   - Wrong: COUNT(si.id) - use COUNT(si.code) or another meaningful column instead
 
 10. WISE COLUMN SELECTION: Select columns that directly answer the user's question. Avoid selecting unnecessary columns. When counting or aggregating, choose the most appropriate column from the schema.
 
