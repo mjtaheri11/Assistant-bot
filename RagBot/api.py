@@ -50,7 +50,9 @@ from src.logic import (
     chat_responder_,
     sql_responder_,
     utterance_paraphraser,
-    parameters_responder
+    parameters_responder,
+    retrieve_context_with_metadata,
+    embed_query
 )
 from src.logs import non_generative_agent_logger, simple_logger
 from src.utils import substitute_sql_parameters, integrate_params
@@ -589,13 +591,15 @@ async def get_faq(
     query: str = Query(..., alias="query"),
     session_id: str = Query(..., alias="session_id"),
 ):
+    # needs_clarification, _ = await is_somewhat_uniform(module_frequencies)
     try:
         postgres = Postgres()
         database_id_dict = await postgres.find_database_id(session_id)
         database_id = database_id_dict["database_id"]
-        retriever = Retriever()
-        context_lst = await retriever.retrieve_context(query, database_id, reverse=False, split=True)
-        context = "\n\n ============= \n\n".join([context["text"] for context in context_lst])
+        if not database_id:
+            database_id = config["database"]["collection_name"]
+        context_with_metadata, _ = await retrieve_context_with_metadata(query=query, database_index=database_id)
+        context = "\n\n ============= \n\n".join([context["text"] for context in context_with_metadata])
         return FaqResponse(response=context.strip())
     except HTTPException as e:
         raise e

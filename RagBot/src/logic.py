@@ -706,7 +706,6 @@ async def is_somewhat_uniform(freq_dict: dict, threshold: float = MODULE_PROPOSE
 @observe()
 async def retrieve_context_with_metadata(query: str, input_modules: List = None, database_index: str = None, num_retrieve_context: int = config["retriever"]["retrieved_rank2_documents"]) -> Tuple[List,List]:
     retriever = Retriever()
-    
     if input_modules:
         context_with_metadata, query_embedding = await retriever.retrieve_context(
             query, 
@@ -1206,7 +1205,7 @@ async def chat_responder_(
 
             do_clarify, modules_2 , context = await prepare_final_context(paraphrased_utterance, database_index=config["database"]["sql_collection_name"], query_embedding=query_embedding, input_module=selected_module, num_retrieve_context=num_retrieve_context)
             if len(modules_2) == 0:
-                modules_2 = modules
+                modules_2 = modules 
             assert do_clarify == False, "The problem related to the prepare final context module. Do clarify should be False"
             assert len(modules_2) == 1, "The problem related to the prepare final context module. length of modules should be one"
             is_sql, response, parameters, sql_response_template = await process_sql_response(

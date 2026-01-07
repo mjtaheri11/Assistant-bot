@@ -163,7 +163,7 @@ reranker:
 # configurations for retriever
 retriever:
   retrieved_documents: 40
-  retrieved_rank2_documents: 5
+  retrieved_rank2_documents: 7
   sql_retrieved_rank2_documents: 25
   retriever_threshold: 0.0
   alpha_threshold: 0.5
@@ -211,7 +211,7 @@ api_default:
   temperature: 0.7
   max_tokens: 4096
   module_route_model_name: gpt-4.1
-  query_responder_model_name: gpt-5-mini
+  query_responder_model_name: gpt-4.1
   answer_validator_model_name: gpt-4.1
   utterance_paraphraser_model_name: gpt-4.1
   parameter_responder_model_name: gpt-5.1-codex-max
