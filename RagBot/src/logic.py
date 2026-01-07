@@ -662,7 +662,7 @@ async def chitchat_responder(
     query: str,
     context: str, 
     history: List[tuple[str, str]],
-    model_name: bool, 
+    model_name: bool = config["api_default"]["chitchat_responder_model_name"], 
     ):
     serialized_history = history_serializer(history)
     prompt = CHITCHAT_PROMPT.format(user_question=query, 
@@ -1174,20 +1174,22 @@ async def chat_responder_(
     query_embedding = await embed_query(paraphrased_utterance)
     route_response = await get_route_for_utterance(paraphrased_utterance, query_embedding)
     use_sql_modules = True if route_response == "sql" else False
-    if detected_module:
-        do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, input_module=detected_module, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context, use_sql_modules=use_sql_modules)
-    else:
-        do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context, use_sql_modules=use_sql_modules)
-
+    # response = await chitchat_responder(paraphrased_utterance, context=context, history=history)
     if route_response == "chitchat":
-        response = await chitchat_responder(paraphrased_utterance, context=context, history=history)
+        response = RESPONSE_TEMPLATE_FOR_NO_ANSWER
+        context = ""
         result_temp = is_sql, paraphrased_utterance, response, context, False, [], parameters, sql_response_template
         return result_temp
     
     if route_response == "illegal" or route_response =="irrelevant":
         result_temp = is_sql, paraphrased_utterance, template_for_not_answer, "", False, [], parameters, sql_response_template
         return result_temp
-    
+
+    if detected_module:
+        do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, input_module=detected_module, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context, use_sql_modules=use_sql_modules)
+    else:
+        do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context, use_sql_modules=use_sql_modules)
+        
     if do_clarify:
         result_temp = is_sql, paraphrased_utterance, MODULE_CLARIFICATION_RESPONSE_TEMPLATE, "", do_clarify, modules, parameters, sql_response_template
         return result_temp
