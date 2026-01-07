@@ -63,7 +63,8 @@ OSS_API_BASE = os.getenv("OSS_API_BASE", "http://gpt-oss-120b-predictor.admin.sv
 GPT_API_BASE = os.getenv("GPT_API_BASE", "https://api.openai.com/v1/")
 QWEN3_CODER_API_BASE = os.getenv("QWEN3_CODER_API_BASE", "http://qwen3-coder-30b-predictor.admin.svc.cluster.local/v1")
 
-MODULE_PROPOSER_THRESHOLD = float(os.getenv("MODULE_PROPOSER_THRESHOLD", 0.75))
+QA_MODULE_PROPOSER_THRESHOLD = float(os.getenv("QA_MODULE_PROPOSER_THRESHOLD", 0.75))
+SQL_MODULE_PROPOSER_THRESHOLD = float(os.getenv("SQL_MODULE_PROPOSER_THRESHOLD", 0.75))
 
 template_for_chitchat_answers = """من اینجا هستم تا تنها به سوالات مربوط به محصولات نسل چهارم شرکت همکاران سیستم پاسخ دهم. لطفاً سوالات خود را در مورد راه‌حل‌های نسل چهارم ما مطرح کنید."""
 template_for_not_answer = "پاسخ به این سوال در محدوده پاسخگویی من نیست."
@@ -685,7 +686,7 @@ async def answer_validator(question: str, context: str, answer: str, model_name:
 
 
 @observe()
-async def is_somewhat_uniform(freq_dict: dict, threshold: float = MODULE_PROPOSER_THRESHOLD) -> tuple[bool, float]:
+async def is_somewhat_uniform(freq_dict: dict, threshold: float = QA_MODULE_PROPOSER_THRESHOLD) -> tuple[bool, float]:
     """
     Checks if the frequency distribution in a dictionary is somewhat uniform
     based on the Coefficient of Variation (CV).
@@ -728,7 +729,8 @@ async def prepare_final_context(
     database_index: str = None,
     input_module: str = "",
     num_retrieve_context=config["retriever"]["retrieved_rank2_documents"], 
-    use_sql_modules: bool = False
+    use_sql_modules: bool = False, 
+    clarification_threshold: float = .7
 ):
     """
     Unified function supporting both develop branch (simple context)
@@ -769,7 +771,7 @@ async def prepare_final_context(
 
     print(module_frequencies)
 
-    needs_clarification, _ = await is_somewhat_uniform(module_frequencies)
+    needs_clarification, _ = await is_somewhat_uniform(module_frequencies, threshold=clarification_threshold)
 
     if not needs_clarification:
         max_value = max(module_frequencies.values())
@@ -1185,11 +1187,16 @@ async def chat_responder_(
         result_temp = is_sql, paraphrased_utterance, template_for_not_answer, "", False, [], parameters, sql_response_template
         return result_temp
 
-    if detected_module:
-        do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, input_module=detected_module, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context, use_sql_modules=use_sql_modules)
+    if route_response == "sql":
+        clarification_threshold = SQL_MODULE_PROPOSER_THRESHOLD
     else:
-        do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context, use_sql_modules=use_sql_modules)
-        
+        clarification_threshold = QA_MODULE_PROPOSER_THRESHOLD
+
+    if detected_module:
+        do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, input_module=detected_module, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context, use_sql_modules=use_sql_modules, clarification_threshold=clarification_threshold)
+    else:
+        do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context, use_sql_modules=use_sql_modules, clarification_threshold=clarification_threshold)
+
     if do_clarify:
         result_temp = is_sql, paraphrased_utterance, MODULE_CLARIFICATION_RESPONSE_TEMPLATE, "", do_clarify, modules, parameters, sql_response_template
         return result_temp
