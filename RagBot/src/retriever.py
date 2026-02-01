@@ -122,6 +122,7 @@ class TritonEmbeddings(Embeddings):
         try:
             input_ids = tokenized_inputs["input_ids"]
             attention_mask = tokenized_inputs["attention_mask"]
+            
             # Check shapes match
             if input_ids.shape != attention_mask.shape:
                 logger.error(f"Shape mismatch: input_ids {input_ids.shape} vs attention_mask {attention_mask.shape}")
@@ -141,13 +142,13 @@ class TritonEmbeddings(Embeddings):
             
             if seq_length > self.max_length:
                 logger.warning(f"Sequence length {seq_length} exceeds max_length {self.max_length}")
-                # This is actually okay because we truncate, but log it
             
             # Check for invalid token IDs
-            vocab_size = self.tokenizer.vocab_size
-            if np.any(input_ids >= vocab_size) or np.any(input_ids < 0):
-                logger.error(f"Invalid token IDs found. Vocab size: {vocab_size}, "
-                           f"Min ID: {input_ids.min()}, Max ID: {input_ids.max()}")
+            # Use len(tokenizer) instead of vocab_size to include special tokens
+            total_vocab_size = len(self.tokenizer)
+            if np.any(input_ids >= total_vocab_size) or np.any(input_ids < 0):
+                logger.error(f"Invalid token IDs found. Total vocab size: {total_vocab_size}, "
+                        f"Min ID: {input_ids.min()}, Max ID: {input_ids.max()}")
                 return False
             
             logger.debug(f"Validation passed: batch_size={batch_size}, seq_length={seq_length}")
@@ -156,7 +157,7 @@ class TritonEmbeddings(Embeddings):
         except Exception as e:
             logger.error(f"Error validating inputs: {e}")
             return False
-
+            
     @staticmethod
     def _prepare_triton_request(tokenized_inputs: Dict[str, np.ndarray]) -> Dict:
         """
@@ -585,7 +586,7 @@ class TritonBGEReranker:
         self,
         model_name: str = "bge",
         triton_url: str = "http://triton-server.admin.svc.cluster.local",
-        tokenizer_path: str = "BAAI/bge-reranker-large",
+        tokenizer_path: str = config["reranker"]["flag_model"]["model_path"],
         max_length: int = 512,
         timeout: int = 60,
         batch_size: int = 32
@@ -1182,7 +1183,7 @@ class ModelManager:
         self.reranker_model = TritonBGEReranker(
             model_name=reranker_config.get("model_name"),
             triton_url=reranker_config.get("triton_url", "http://triton-server.admin.svc.cluster.local"),
-            tokenizer_path=reranker_config.get("tokenizer_path", "BAAI/bge-reranker-large"),
+            tokenizer_path=reranker_config.get("flag_model").get("model_path", "BAAI/bge-reranker-large"),
             max_length=reranker_config.get("max_length", 512),
             timeout=reranker_config.get("timeout", 60),
             batch_size=reranker_config.get("batch_size", 32)
@@ -1463,7 +1464,7 @@ class Retriever(object):
         query, 
         collection_name=None, 
         k=None, 
-        module_filter=None, reverse=True, use_reranker=None, query_embedding=None) -> Tuple[List, List]:
+        module_filter=None, reverse=True, use_reranker=True, query_embedding=None) -> Tuple[List, List]:
         """
         Retrieve context with optional reranking.
         

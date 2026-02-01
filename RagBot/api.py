@@ -92,7 +92,8 @@ class ChatRequest(BaseModel):
     on_click: Optional[bool] = False
     error_payload: Optional[str] = ""
     is_sync: Optional[bool] = True
-    sql_mode: Optional[bool] = True  # Toggle between legacy and SQL agent mode
+    sql_mode: Optional[bool] = False  # Toggle between legacy and SQL agent mode
+    model_name: Optional[str] = ""
 
 
 class ChatResponse(BaseModel):
@@ -104,6 +105,7 @@ class ChatResponse(BaseModel):
     choices: List[str] = []
     parameters: Optional[dict] = {}
     response_template: str = ""
+    elapsed_time: float = 0.0
 
 class CreateSessionRequest(BaseModel):
     tenant_name: Optional[str] = ""
@@ -599,7 +601,7 @@ async def get_faq(
         if not database_id:
             database_id = config["database"]["collection_name"]
         context_with_metadata, _ = await retrieve_context_with_metadata(query=query, database_index=database_id)
-        context = "\n\n ============= \n\n".join([context["text"] for context in context_with_metadata])
+        context = "\n\n ============= \n\n".join([context["text"] + "\n" + context["module"] for context in reversed(context_with_metadata)])
         return FaqResponse(response=context.strip())
     except HTTPException as e:
         raise e
@@ -797,6 +799,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         response_type=chat_request.response_type,
                         use_cache=chat_request.use_cache,
                         detected_module=chat_request.query,
+                        model_name=chat_request.model_name,
                         sql_mode=chat_request.sql_mode
                     )
                     assert do_clarify == False, "on_click should not return do_clarify=True"
@@ -830,14 +833,14 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         response_type=chat_request.response_type,
                         use_cache=chat_request.use_cache,
                         detected_module="",
+                        model_name=chat_request.model_name,
                         sql_mode=chat_request.sql_mode
                     )
-                    
                     if do_clarify:
                         do_suggest = True
                         elapsed_time = time.time() - start_time
                         _ = await postgres.insert_message_choices(message_id, *modules)
-                        message_id = await postgres.update_last_chat_row(
+                        _ = await postgres.update_last_chat_row(
                             session_id,
                             paraphrased_utterance,
                             response,
@@ -853,7 +856,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                     else:
                         elapsed_time = time.time() - start_time
                         modules_str = modules[0] if modules else "cache"
-                        message_id = await postgres.update_last_chat_row(
+                        _ = await postgres.update_last_chat_row(
                             session_id,
                             paraphrased_utterance,
                             response,
@@ -901,7 +904,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                 "parameters": parameters
             }
         )
-        
+        response = response.replace("→", "←")
         return ChatResponse(
             response=response,
             message_id=message_id,
@@ -910,7 +913,8 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
             choices=choices,
             do_suggest=do_suggest,
             parameters=parameters,
-            response_template=response_template
+            response_template=response_template,
+            elapsed_time=elapsed_time
         )
 
     except HTTPException as e:

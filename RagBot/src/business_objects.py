@@ -2478,3 +2478,39 @@ treasury_cheque:
       amount: "مبلغ"
   relations: null
 """
+
+PARTIAL_LOGISTICS = """
+logistics_allparts:
+  title: "اطلاعات اقلام کالا با جزییات کامل"
+  context: "logistics"
+  parameters: {}
+  attributes:
+    string_type:
+      company_name: "عنوان شرکت"
+      fiscal_year_title: "عنوان سال مالی"
+      branch_title: "عنوان شعبه"
+      plant_code: "کد مرکز نگهداری"
+      plant_name: "عنوان مرکز نگهداری"
+      store_code: "کد انبار"
+      store_name: "عنوان انبار"
+      storage_type_title: "نوع انبار"
+      product_code: "کد کالا"
+      product_title: "عنوان کالا"
+      part_account_category_title: "عنوان طبقه حساب کالا"
+      pricing_method: "روش قیمت گذاری کالا"
+      part_type: "نوع کالا"
+      part_usage: "نوع کارکرد کالا"
+      counter_part_type: "نقش طرف مقابل سند"
+      voucher_type: "نوع سند"
+      type_of_effect: "نوع تاثیر بر موجودی"
+      voucher_unit: "واحد سنجش سند"
+      part_major_unit_title: "واحد سنجش اصلی کالا"
+      second_unit_title: "عنوان واحد دوم"
+    date_type:
+      voucher_date: "تاریخ سند"
+    int64_type:
+      quantity: "مقدار"
+      major_quantity: "مقدار به واحد اصلی"
+      second_quantity: "مقدار به واحد دوم"
+  relations: []
+"""

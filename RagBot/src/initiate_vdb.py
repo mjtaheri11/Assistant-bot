@@ -252,7 +252,6 @@ def create_vector_database_from_config(
             # Attempt re-init or fail
             logger.info("Global client was None, attempting re-init...")
             qdrant_client = _initialize_qdrant_client()
-
     if embedding_model is None:
         from src.retriever import ModelManager
         logger.info("Loading default embedding model from Manager")

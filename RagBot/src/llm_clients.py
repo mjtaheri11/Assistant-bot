@@ -195,7 +195,11 @@ class LLMClientManager:
             
         else:
             # Default: Chat API
-            return await client.chat.completions.create(messages=messages, **params)
+            try:
+                return await client.chat.completions.create(messages=messages, **params)
+            except:
+                import pdb
+                pdb.set_trace()
 
     def extract_text(self, response: Any, model_name: str) -> str:
         """

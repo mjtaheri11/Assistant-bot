@@ -97,29 +97,30 @@ class Cache:
         Ensures the Qdrant collection exists. If `recreate` is True, it deletes
         the old collection and creates a new one with the required payload indices.
         """
-        if recreate:
-            # Delete the collection if it already exists and recreation is requested.
-            self._client.delete_collection(collection_name=self._collection_name)
-            self._client.create_collection(
-                collection_name=self._collection_name,
-                vectors_config=VectorParams(
-                    size=self._embedding_dim,
-                    distance=Distance.COSINE,
-                ),
-            )
-            # Create a payload index on the 'query' field for efficient keyword-based filtering.
+        # if recreate:
+        #     # Delete the collection if it already exists and recreation is requested.
+        self._client.delete_collection(collection_name=self._collection_name)
+        
+        self._client.create_collection(
+            collection_name=self._collection_name,
+            vectors_config=VectorParams(
+                size=self._embedding_dim,
+                distance=Distance.COSINE,
+            ),
+        )
+        # Create a payload index on the 'query' field for efficient keyword-based filtering.
+        self._client.create_payload_index(
+            collection_name=self._collection_name,
+            field_name="query",
+            field_schema=models.PayloadSchemaType.KEYWORD,
+        )
+        # Create payload indices on numeric fields for efficient range filtering and sorting.
+        for field in ["thumb_up", "thumb_down", "flag"]:
             self._client.create_payload_index(
                 collection_name=self._collection_name,
-                field_name="query",
-                field_schema=models.PayloadSchemaType.KEYWORD,
+                field_name=field,
+                field_schema=models.PayloadSchemaType.INTEGER,
             )
-            # Create payload indices on numeric fields for efficient range filtering and sorting.
-            for field in ["thumb_up", "thumb_down", "flag"]:
-                self._client.create_payload_index(
-                    collection_name=self._collection_name,
-                    field_name=field,
-                    field_schema=models.PayloadSchemaType.INTEGER,
-                )
 
     def get_exact_cache(self, query: str) -> Optional[str]:
         """Get exact match from Redis cache."""
@@ -555,7 +556,7 @@ def temp():
         )
 
     cache = Cache()
-    cache.initialize(recreate=True, qdrant_client_instance=qdrant_client_temp)
+    cache.initialize(recreate=False, qdrant_client_instance=qdrant_client_temp)
     for query in lst_1:
         cache.increment_thumb_up(query, response, "")
 
@@ -563,3 +564,7 @@ def temp():
         cache.increment_thumb_up(query, response_2, "")
 
     print("Done!")
+
+
+# if __name__ == "__main__":
+#     temp()

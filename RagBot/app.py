@@ -213,7 +213,7 @@ def chat_request(
     does_evaluate: bool = False,
     use_cache: bool = True,
     api_url: str = BASE_URL,
-    sql_mode: bool = True,
+    sql_mode: bool = False,
 ):
 
     # Define the request data

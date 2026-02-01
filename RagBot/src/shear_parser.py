@@ -5,18 +5,21 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import List, Union
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer#, AutoModel
 
 from markitdown import MarkItDown
 
 from .config import config
 
-MAX_CHUNK_SIZE = 5000
-MAX_TOKEN_SIZE = 8192
+
+MAX_CHUNK_SIZE = config["embedding_model"]["max_length"]
+MAX_TOKEN_SIZE = config["embedding_model"]["max_length"]
+MAX_SUB_HEADER_TOKEN_PERCENTAGE = 0.3
 
 
 SUPPORTED_FILE_EXTENSIONS = ['.docx', '.doc', '.md']
-tokenizer = AutoTokenizer.from_pretrained('Qwen/Qwen3-Embedding-4B', padding_side='left')
+tokenizer = AutoTokenizer.from_pretrained(config["embedding_model"]["tokenizer_path"], padding_side='left')
+# model = AutoModel.from_pretrained(config["embedding_model"]["model_path"]).eval()
 
 
 # ============================================================================
@@ -38,6 +41,9 @@ class ProcessDocs:
         with open(filename, "rb") as file:
             self.doc = file.read()
         self.md = MarkItDown(enable_plugins=False)
+        # filename = filename.replace(".docx", ".md")
+        # with open(filename, "w", encoding="utf-8") as file:
+        #     self.doc = file.write(self.md)
     
     @staticmethod
     def remove_stray_backslashes(input_string: str) -> str:
@@ -218,7 +224,17 @@ class BaseChunker(ABC):
         self.tokenizer = AutoTokenizer.from_pretrained(config['embedding_model']['model_path'])
         with open(md_file_address, "r", encoding="utf-8") as f:
             self._all_of_doc_list = f.readlines()
+            # self._all_of_doc_list = self._handle_no_title(self._all_of_doc_list)
             self._retain_only_headers = True
+
+    @staticmethod
+    def _handle_no_title(list_to_revise):
+        list_to_revise_new = []
+        if list_to_revise[0].startswith("#"):
+            list_to_revise_new.append("Dummy Title")
+            list_to_revise_new.append("\n")
+        list_to_revise_new.extend(list_to_revise)
+        return list_to_revise_new
 
     @staticmethod
     def get_number_of_sharps(my_string):
@@ -388,7 +404,7 @@ class SoleChunker(HierarchicalChunker):
                     continue
                 counter_of_pointer = counter_of_list
                 while True:
-                    if counter_of_pointer == len(list_to_expand) or list_to_expand[counter_of_pointer][key]:
+                    if counter_of_pointer == len(list_to_expand) or list_to_expand[counter_of_pointer][key] != value:
                         break
                     dict_to_consider = list_to_expand[counter_of_pointer]
                     self._update_list_final(value, dict_to_consider, list_final)
@@ -404,10 +420,13 @@ class SoleChunker(HierarchicalChunker):
                 continue
             if dict_to_consider[i] == value:
                 value_to_append = dict_to_consider[i]
+                is_main_part = 1
             else:
                 value_to_append = dict_to_consider[i].split("\n")[0]
-            if value_to_append not in list_final[-1]:
-                list_final[-1].append(value_to_append)
+                is_main_part = 0
+            texts_in_last = [w[0] for w in list_final[-1]]
+            if len(list_final[-1]) == 0 or value_to_append not in texts_in_last:
+                list_final[-1].append((value_to_append, is_main_part))
 
     @staticmethod
     def __get_chunk_list__(paragraph, max_allowed_tokens):
@@ -448,9 +467,9 @@ class SoleChunker(HierarchicalChunker):
         count_num_tokens = 0
         is_chunked = False
         need_rechunk_yet = True
-        max_length = 8192
+        max_length = MAX_CHUNK_SIZE
         for elem in list_to_rechunk:
-            len_elems = len(tokenizer(elem, padding=True, truncation=True, max_length=max_length, return_tensors="pt",))
+            len_elems = len(tokenizer.tokenize(elem))
             count_num_tokens = count_num_tokens + len_elems
 
         if count_num_tokens >= MAX_TOKEN_SIZE:
@@ -459,7 +478,7 @@ class SoleChunker(HierarchicalChunker):
             max_elem_header = max_elem[:index_to_cut]
             rest_part = max_elem[index_to_cut:]
             rest_part_len_token = len(
-                tokenizer(rest_part, padding=True, truncation=True, max_length=max_length, return_tensors="pt", ))
+                tokenizer.tokenize(rest_part))
             other_part_len_token = count_num_tokens - rest_part_len_token
             reserved_part_max_len_token = MAX_TOKEN_SIZE - other_part_len_token
             splitted_text, need_rechunk_yet = self.get_splitted_text(reserved_part_max_len_token, rest_part, need_rechunk_yet)
@@ -484,10 +503,43 @@ class SoleChunker(HierarchicalChunker):
         else:
             return ["\n".join(w) for w in chunk_pieces]
 
+    @staticmethod
+    def __count_num_hashtags__(elem):
+        num_headings = len(elem) - len(elem.lstrip("#"))
+        return num_headings
 
-    def __call__(self, retain_only_headers=True, remove_imgs=True):
+    def __remove_more_than_next_level_headings(self, list_final):
+        num_headings_main = None
+        list_final_removed = [[]]
+        number_of_tokens_main = 0
+        number_of_tokens_headings = 0
+        for chunk_list in list_final:
+            for elem, is_main in chunk_list:
+                if is_main:
+                    num_headings_main = self.__count_num_hashtags__(elem)
+                if num_headings_main is None:
+                    list_final_removed[-1].append(elem)
+                else:
+                    num_headings_elem = self.__count_num_hashtags__(elem)
+                    if num_headings_elem <= num_headings_main + 1:
+                        length_of_texts = len(tokenizer.tokenize(elem))
+                        number_of_tokens_main = number_of_tokens_main + length_of_texts
+                        if num_headings_elem == num_headings_main + 1:
+                            number_of_tokens_headings = number_of_tokens_headings + length_of_texts
+                            if number_of_tokens_headings / number_of_tokens_main > MAX_SUB_HEADER_TOKEN_PERCENTAGE:
+                                break
+                        list_final_removed[-1].append(elem)
+            list_final_removed.append([])
+        return list_final_removed
+
+    def __cut_more_than_top_headings(self, list_final):
+        pass
+
+    def __call__(self, retain_only_headers=True, remove_imgs=True, remove_grandsons=True):
         list_to_expand = super().__call__(retain_only_headers, remove_imgs)
         list_final = self.hierarchy_to_sole(list_to_expand)
+        list_final = [w for w in list_final if len(w) > 0]
+        list_final = self.__remove_more_than_next_level_headings(list_final)
         list_final = [w for w in list_final if len(w) > 0]
         last_chunks = []
         for chunk in list_final:
@@ -503,5 +555,19 @@ class SoleChunker(HierarchicalChunker):
                 last_chunks.extend(self.chunk_piece_collector(list_rechunked))
             else:
                 last_chunks.append(self.chunk_piece_collector(list_rechunked))
+        alaki = [(len(tokenizer.tokenize(w)), w) for w in last_chunks if len(tokenizer.tokenize(w)) > MAX_CHUNK_SIZE]
+        if len(alaki) != 0:
+            print("bibi")
         return last_chunks
 
+if __name__ == '__main__':
+    from glob import glob
+    from tqdm import tqdm
+    # output_dir = r"E:\AI-DA-14041028\mds"
+    # file_paths = glob(r"E:\AI-DA-14041028\*.docx")
+    # convert_word_to_markdown(file_paths, output_dir)
+    list_of_all = glob(r"E:\AI-DA-14041028\mds\*.md")
+    # list_of_all = [r"E:\AI-DA-14041028\mds\CRM.md"]
+    for w in tqdm(list_of_all):
+        new_obj = SoleChunker(w)
+        chunked = new_obj(retain_only_headers=False, remove_imgs=True)

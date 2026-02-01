@@ -335,7 +335,7 @@ class SemanticRouterPipeline:
         return cls._instance
 
     def _initialize(self, inference_only=False, embedding_address=None, classifier_address=None, **kwargs):
-        self.__load_embedding_model(embedding_address, model=kwargs.get("embedding_model"))
+        # self.__load_embedding_model(embedding_address, model=kwargs.get("embedding_model"))
         self.__load_classifier_model(classifier_address, **kwargs)
         if not inference_only:
             self.__load__train_data__(**kwargs)
