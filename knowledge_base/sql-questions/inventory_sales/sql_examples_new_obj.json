@@ -4,10 +4,11 @@
       "complexity": "simple",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "لیست تمام کالاها",
+      "question": "لیست انبارها را نشان بده",
       "sql": {
-        "SQL": "SELECT DISTINCT la.product_code AS la_product_code, la.product_title AS la_product_title FROM logistics_allparts AS la ORDER BY la.product_code",
-        "parameters": {}
+        "SQL": "SELECT DISTINCT la.store_code AS la_store_code, la.store_name AS la_store_name FROM logistics_allparts AS la ORDER BY la.store_code",
+        "parameters": {},
+        "response_template": "کد و عنوان انبارها (بدون تکرار)، مرتب‌شده بر اساس کد انبار:"
       }
     },
     {
@@ -15,10 +16,11 @@
       "complexity": "simple",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "لیست انبارها",
+      "question": "لیست کالاها",
       "sql": {
-        "SQL": "SELECT DISTINCT la.store_code AS la_store_code, la.store_name AS la_store_name FROM logistics_allparts AS la ORDER BY la.store_code",
-        "parameters": {}
+        "SQL": "SELECT DISTINCT la.product_code AS la_product_code, la.product_title AS la_product_title FROM logistics_allparts AS la ORDER BY la.product_code",
+        "parameters": {},
+        "response_template": "کد و عنوان کالاها (بدون تکرار)، مرتب‌شده بر اساس کد کالا:"
       }
     },
     {
@@ -26,10 +28,11 @@
       "complexity": "simple",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "لیست مراکز نگهداری",
+      "question": "شعب موجود در سیستم انبار",
       "sql": {
-        "SQL": "SELECT DISTINCT la.plant_code AS la_plant_code, la.plant_name AS la_plant_name FROM logistics_allparts AS la ORDER BY la.plant_code",
-        "parameters": {}
+        "SQL": "SELECT DISTINCT la.branch_title AS la_branch_title FROM logistics_allparts AS la ORDER BY la.branch_title",
+        "parameters": {},
+        "response_template": "عنوان شعب (بدون تکرار)، مرتب‌شده بر اساس عنوان شعبه:"
       }
     },
     {
@@ -37,10 +40,11 @@
       "complexity": "simple",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "لیست شعب",
+      "question": "مراکز نگهداری را لیست کن",
       "sql": {
-        "SQL": "SELECT DISTINCT la.branch_title AS la_branch_title FROM logistics_allparts AS la ORDER BY la.branch_title",
-        "parameters": {}
+        "SQL": "SELECT DISTINCT la.plant_code AS la_plant_code, la.plant_name AS la_plant_name FROM logistics_allparts AS la ORDER BY la.plant_code",
+        "parameters": {},
+        "response_template": "کد و عنوان مراکز نگهداری (بدون تکرار)، مرتب‌شده بر اساس کد مرکز نگهداری:"
       }
     },
     {
@@ -48,10 +52,11 @@
       "complexity": "simple",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "لیست انواع کالا",
+      "question": "انواع سند انبار چیست؟",
       "sql": {
-        "SQL": "SELECT DISTINCT la.part_type AS la_part_type FROM logistics_allparts AS la WHERE la.part_type IS NOT NULL ORDER BY la.part_type",
-        "parameters": {}
+        "SQL": "SELECT DISTINCT la.voucher_type AS la_voucher_type FROM logistics_allparts AS la ORDER BY la.voucher_type",
+        "parameters": {},
+        "response_template": "انواع سند انبار (بدون تکرار)، مرتب‌شده بر اساس نوع سند:"
       }
     },
     {
@@ -59,10 +64,11 @@
       "complexity": "simple",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "لیست انواع سند",
+      "question": "طبقات حساب کالا",
       "sql": {
-        "SQL": "SELECT DISTINCT la.voucher_type AS la_voucher_type FROM logistics_allparts AS la WHERE la.voucher_type IS NOT NULL ORDER BY la.voucher_type",
-        "parameters": {}
+        "SQL": "SELECT DISTINCT la.part_account_category_title AS la_part_account_category_title FROM logistics_allparts AS la ORDER BY la.part_account_category_title",
+        "parameters": {},
+        "response_template": "عنوان طبقات حساب کالا (بدون تکرار)، مرتب‌شده بر اساس عنوان طبقه حساب:"
       }
     },
     {
@@ -70,10 +76,11 @@
       "complexity": "simple",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "لیست روش‌های قیمت‌گذاری کالا",
+      "question": "انواع کالا را نشان بده",
       "sql": {
-        "SQL": "SELECT DISTINCT la.pricing_method AS la_pricing_method FROM logistics_allparts AS la WHERE la.pricing_method IS NOT NULL ORDER BY la.pricing_method",
-        "parameters": {}
+        "SQL": "SELECT DISTINCT la.part_type AS la_part_type FROM logistics_allparts AS la ORDER BY la.part_type",
+        "parameters": {},
+        "response_template": "انواع کالا (بدون تکرار)، مرتب‌شده بر اساس نوع کالا:"
       }
     },
     {
@@ -81,10 +88,11 @@
       "complexity": "simple",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "لیست طبقات حساب کالا",
+      "question": "انواع کارکرد کالا",
       "sql": {
-        "SQL": "SELECT DISTINCT la.part_account_category_title AS la_part_account_category_title FROM logistics_allparts AS la WHERE la.part_account_category_title IS NOT NULL ORDER BY la.part_account_category_title",
-        "parameters": {}
+        "SQL": "SELECT DISTINCT la.part_usage AS la_part_usage FROM logistics_allparts AS la ORDER BY la.part_usage",
+        "parameters": {},
+        "response_template": "انواع کارکرد کالا (بدون تکرار)، مرتب‌شده بر اساس نوع کارکرد:"
       }
     },
     {
@@ -92,10 +100,11 @@
       "complexity": "simple",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "لیست انواع تاثیر بر موجودی",
+      "question": "واحدهای سنجش اصلی کالاها",
       "sql": {
-        "SQL": "SELECT DISTINCT la.type_of_effect AS la_type_of_effect FROM logistics_allparts AS la WHERE la.type_of_effect IS NOT NULL ORDER BY la.type_of_effect",
-        "parameters": {}
+        "SQL": "SELECT DISTINCT la.part_major_unit_title AS la_part_major_unit_title FROM logistics_allparts AS la ORDER BY la.part_major_unit_title",
+        "parameters": {},
+        "response_template": "واحدهای سنجش اصلی کالا (بدون تکرار)، مرتب‌شده بر اساس عنوان واحد:"
       }
     },
     {
@@ -103,604 +112,742 @@
       "complexity": "simple",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "لیست انواع نقش طرف مقابل سند",
+      "question": "روش‌های قیمت‌گذاری کالاها چیست؟",
       "sql": {
-        "SQL": "SELECT DISTINCT la.counter_part_type AS la_counter_part_type FROM logistics_allparts AS la WHERE la.counter_part_type IS NOT NULL ORDER BY la.counter_part_type",
-        "parameters": {}
+        "SQL": "SELECT DISTINCT la.pricing_method AS la_pricing_method FROM logistics_allparts AS la ORDER BY la.pricing_method",
+        "parameters": {},
+        "response_template": "روش‌های قیمت‌گذاری کالا (بدون تکرار)، مرتب‌شده بر اساس روش قیمت‌گذاری:"
       }
     },
     {
       "id": 11,
-      "complexity": "medium",
+      "complexity": "simple",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "مجموع مقدار کالاها به تفکیک انبار",
+      "question": "اسناد خرید انبار",
       "sql": {
-        "SQL": "SELECT la.store_code AS la_store_code, la.store_name AS la_store_name, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la GROUP BY la.store_code, la.store_name ORDER BY la_quantity_sum DESC",
-        "parameters": {}
+        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, la.store_name AS la_store_name, la.voucher_date AS la_voucher_date, la.permanent_voucher_quantity AS la_permanent_voucher_quantity FROM logistics_allparts AS la WHERE la.voucher_type = $1 ORDER BY la.voucher_date DESC",
+        "parameters": {
+          "1": "خرید"
+        },
+        "response_template": "کد کالا، عنوان کالا، عنوان انبار، تاریخ سند و مقدار دائم سند برای اسناد خرید، مرتب‌شده بر اساس تاریخ سند نزولی:"
       }
     },
     {
       "id": 12,
-      "complexity": "medium",
+      "complexity": "simple",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "مجموع مقدار کالاها به تفکیک مرکز نگهداری",
+      "question": "اسناد فروش انبار",
       "sql": {
-        "SQL": "SELECT la.plant_code AS la_plant_code, la.plant_name AS la_plant_name, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la GROUP BY la.plant_code, la.plant_name ORDER BY la_quantity_sum DESC",
-        "parameters": {}
+        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, la.store_name AS la_store_name, la.voucher_date AS la_voucher_date, la.permanent_voucher_quantity AS la_permanent_voucher_quantity FROM logistics_allparts AS la WHERE la.voucher_type = $1 ORDER BY la.voucher_date DESC",
+        "parameters": {
+          "1": "فروش"
+        },
+        "response_template": "کد کالا، عنوان کالا، عنوان انبار، تاریخ سند و مقدار دائم سند برای اسناد فروش، مرتب‌شده بر اساس تاریخ سند نزولی:"
       }
     },
     {
       "id": 13,
-      "complexity": "medium",
+      "complexity": "simple",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "مجموع مقدار کالاها به تفکیک شعبه",
+      "question": "اسناد مصرف انبار",
       "sql": {
-        "SQL": "SELECT la.branch_title AS la_branch_title, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la GROUP BY la.branch_title ORDER BY la_quantity_sum DESC",
-        "parameters": {}
+        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, la.store_name AS la_store_name, la.voucher_date AS la_voucher_date, la.permanent_voucher_quantity AS la_permanent_voucher_quantity FROM logistics_allparts AS la WHERE la.voucher_type = $1 ORDER BY la.voucher_date DESC",
+        "parameters": {
+          "1": "مصرف"
+        },
+        "response_template": "کد کالا، عنوان کالا، عنوان انبار، تاریخ سند و مقدار دائم سند برای اسناد مصرف، مرتب‌شده بر اساس تاریخ سند نزولی:"
       }
     },
     {
       "id": 14,
-      "complexity": "medium",
+      "complexity": "simple",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "مجموع مقدار کالاها به تفکیک نوع کالا",
+      "question": "اسناد برگشتی انبار",
       "sql": {
-        "SQL": "SELECT la.part_type AS la_part_type, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la WHERE la.part_type IS NOT NULL GROUP BY la.part_type ORDER BY la_quantity_sum DESC",
-        "parameters": {}
+        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, la.voucher_type AS la_voucher_type, la.store_name AS la_store_name, la.voucher_date AS la_voucher_date, la.permanent_voucher_quantity AS la_permanent_voucher_quantity FROM logistics_allparts AS la WHERE la.is_return = true ORDER BY la.voucher_date DESC",
+        "parameters": {},
+        "response_template": "کد کالا، عنوان کالا، نوع سند، عنوان انبار، تاریخ سند و مقدار دائم سند برای اسناد برگشتی، مرتب‌شده بر اساس تاریخ سند نزولی:"
       }
     },
     {
       "id": 15,
-      "complexity": "medium",
+      "complexity": "simple",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "مجموع مقدار کالاها به تفکیک نوع سند",
+      "question": "اسناد تولید انبار",
       "sql": {
-        "SQL": "SELECT la.voucher_type AS la_voucher_type, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la WHERE la.voucher_type IS NOT NULL GROUP BY la.voucher_type ORDER BY la_quantity_sum DESC",
-        "parameters": {}
+        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, la.store_name AS la_store_name, la.voucher_date AS la_voucher_date, la.permanent_voucher_quantity AS la_permanent_voucher_quantity FROM logistics_allparts AS la WHERE la.voucher_type = $1 ORDER BY la.voucher_date DESC",
+        "parameters": {
+          "1": "تولید"
+        },
+        "response_template": "کد کالا، عنوان کالا، عنوان انبار، تاریخ سند و مقدار دائم سند برای اسناد تولید، مرتب‌شده بر اساس تاریخ سند نزولی:"
       }
     },
     {
       "id": 16,
+      "complexity": "simple",
+      "module": "انبار",
+      "table": "logistics_allparts",
+      "question": "اسناد ضایعات انبار",
+      "sql": {
+        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, la.store_name AS la_store_name, la.voucher_date AS la_voucher_date, la.discard_voucher_quantity AS la_discard_voucher_quantity FROM logistics_allparts AS la WHERE la.voucher_type = $1 ORDER BY la.voucher_date DESC",
+        "parameters": {
+          "1": "ضایعات"
+        },
+        "response_template": "کد کالا، عنوان کالا، عنوان انبار، تاریخ سند و مقدار ضایعات سند برای اسناد ضایعات، مرتب‌شده بر اساس تاریخ سند نزولی:"
+      }
+    },
+    {
+      "id": 17,
+      "complexity": "simple",
+      "module": "انبار",
+      "table": "logistics_allparts",
+      "question": "کالاهایی که عنوان آنها شامل روغن باشد",
+      "sql": {
+        "SQL": "SELECT DISTINCT la.product_code AS la_product_code, la.product_title AS la_product_title FROM logistics_allparts AS la WHERE la.product_title ILIKE $1 ORDER BY la.product_code",
+        "parameters": {
+          "1": "%روغن%"
+        },
+        "response_template": "کد و عنوان کالاهایی که عنوان آن‌ها شامل «روغن» است (بدون تکرار)، مرتب‌شده بر اساس کد کالا:"
+      }
+    },
+    {
+      "id": 18,
+      "complexity": "simple",
+      "module": "انبار",
+      "table": "logistics_allparts",
+      "question": "اسناد انبار مرکزی",
+      "sql": {
+        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, la.voucher_type AS la_voucher_type, la.voucher_date AS la_voucher_date, la.permanent_voucher_quantity AS la_permanent_voucher_quantity FROM logistics_allparts AS la WHERE la.store_name ILIKE $1 ORDER BY la.voucher_date DESC",
+        "parameters": {
+          "1": "%مرکزی%"
+        },
+        "response_template": "کد کالا، عنوان کالا، نوع سند، تاریخ سند و مقدار دائم سند برای انبارهایی که عنوان آن‌ها شامل «مرکزی» است، مرتب‌شده بر اساس تاریخ سند نزولی:"
+      }
+    },
+    {
+      "id": 19,
+      "complexity": "simple",
+      "module": "انبار",
+      "table": "logistics_allparts",
+      "question": "اسناد امروز",
+      "sql": {
+        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, la.voucher_type AS la_voucher_type, la.store_name AS la_store_name, la.permanent_voucher_quantity AS la_permanent_voucher_quantity FROM logistics_allparts AS la WHERE la.voucher_date = $1",
+        "parameters": {
+          "1": "{today_date}"
+        },
+        "response_template": "کد کالا، عنوان کالا، نوع سند، عنوان انبار و مقدار دائم سند برای تاریخ {today_date}:"
+      }
+    },
+    {
+      "id": 20,
+      "complexity": "simple",
+      "module": "انبار",
+      "table": "logistics_allparts",
+      "question": "اسناد دیروز",
+      "sql": {
+        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, la.voucher_type AS la_voucher_type, la.store_name AS la_store_name, la.permanent_voucher_quantity AS la_permanent_voucher_quantity FROM logistics_allparts AS la WHERE la.voucher_date = $1",
+        "parameters": {
+          "1": "{yesterday_date}"
+        },
+        "response_template": "کد کالا، عنوان کالا، نوع سند، عنوان انبار و مقدار دائم سند برای تاریخ {yesterday_date}:"
+      }
+    },
+    {
+      "id": 21,
+      "complexity": "simple",
+      "module": "انبار",
+      "table": "logistics_allparts",
+      "question": "اسناد انتقال بین انبار",
+      "sql": {
+        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, la.store_name AS la_store_name, la.voucher_date AS la_voucher_date, la.permanent_voucher_quantity AS la_permanent_voucher_quantity FROM logistics_allparts AS la WHERE la.voucher_type = $1 ORDER BY la.voucher_date DESC",
+        "parameters": {
+          "1": "انتقال بین انبار"
+        },
+        "response_template": "کد کالا، عنوان کالا، عنوان انبار، تاریخ سند و مقدار دائم سند برای اسناد انتقال بین انبار، مرتب‌شده بر اساس تاریخ سند نزولی:"
+      }
+    },
+    {
+      "id": 22,
+      "complexity": "simple",
+      "module": "انبار",
+      "table": "logistics_allparts",
+      "question": "اسناد امانی",
+      "sql": {
+        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, la.store_name AS la_store_name, la.voucher_date AS la_voucher_date, la.permanent_voucher_quantity AS la_permanent_voucher_quantity FROM logistics_allparts AS la WHERE la.voucher_type = $1 ORDER BY la.voucher_date DESC",
+        "parameters": {
+          "1": "امانی"
+        },
+        "response_template": "کد کالا، عنوان کالا، عنوان انبار، تاریخ سند و مقدار دائم سند برای اسناد امانی، مرتب‌شده بر اساس تاریخ سند نزولی:"
+      }
+    },
+    {
+      "id": 23,
+      "complexity": "simple",
+      "module": "انبار",
+      "table": "logistics_allparts",
+      "question": "اسناد انبارگردانی",
+      "sql": {
+        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, la.store_name AS la_store_name, la.voucher_date AS la_voucher_date, la.permanent_voucher_quantity AS la_permanent_voucher_quantity FROM logistics_allparts AS la WHERE la.voucher_type = $1 ORDER BY la.voucher_date DESC",
+        "parameters": {
+          "1": "انبارگردانی"
+        },
+        "response_template": "کد کالا، عنوان کالا، عنوان انبار، تاریخ سند و مقدار دائم سند برای اسناد انبارگردانی، مرتب‌شده بر اساس تاریخ سند نزولی:"
+      }
+    },
+    {
+      "id": 24,
+      "complexity": "simple",
+      "module": "انبار",
+      "table": "logistics_allparts",
+      "question": "لیست شرکت‌ها",
+      "sql": {
+        "SQL": "SELECT DISTINCT la.company_name AS la_company_name FROM logistics_allparts AS la ORDER BY la.company_name",
+        "parameters": {},
+        "response_template": "عنوان شرکت‌ها (بدون تکرار)، مرتب‌شده بر اساس عنوان شرکت:"
+      }
+    },
+    {
+      "id": 25,
+      "complexity": "simple",
+      "module": "انبار",
+      "table": "logistics_allparts",
+      "question": "اسناد با تاثیر دائم بر موجودی",
+      "sql": {
+        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, la.voucher_type AS la_voucher_type, la.store_name AS la_store_name, la.voucher_date AS la_voucher_date, la.permanent_quantity AS la_permanent_quantity FROM logistics_allparts AS la WHERE la.type_of_effect = $1 ORDER BY la.voucher_date DESC",
+        "parameters": {
+          "1": "دائم"
+        },
+        "response_template": "کد کالا، عنوان کالا، نوع سند، عنوان انبار، تاریخ سند و مقدار دائم به واحد اصلی برای اسنادی با تاثیر «دائم» بر موجودی، مرتب‌شده بر اساس تاریخ سند نزولی:"
+      }
+    },
+    {
+      "id": 26,
+      "complexity": "simple",
+      "module": "انبار",
+      "table": "logistics_allparts",
+      "question": "نوع‌های انبار",
+      "sql": {
+        "SQL": "SELECT DISTINCT la.storage_type_title AS la_storage_type_title FROM logistics_allparts AS la ORDER BY la.storage_type_title",
+        "parameters": {},
+        "response_template": "انواع انبار (بدون تکرار)، مرتب‌شده بر اساس نوع انبار:"
+      }
+    },
+    {
+      "id": 27,
+      "complexity": "simple",
+      "module": "انبار",
+      "table": "logistics_allparts",
+      "question": "سال‌های مالی موجود",
+      "sql": {
+        "SQL": "SELECT DISTINCT la.fiscal_year_title AS la_fiscal_year_title FROM logistics_allparts AS la ORDER BY la.fiscal_year_title",
+        "parameters": {},
+        "response_template": "عنوان سال‌های مالی (بدون تکرار)، مرتب‌شده بر اساس عنوان سال مالی:"
+      }
+    },
+    {
+      "id": 28,
+      "complexity": "simple",
+      "module": "انبار",
+      "table": "logistics_allparts",
+      "question": "کالاهای انبار شعبه تهران",
+      "sql": {
+        "SQL": "SELECT DISTINCT la.product_code AS la_product_code, la.product_title AS la_product_title, la.store_name AS la_store_name FROM logistics_allparts AS la WHERE la.branch_title ILIKE $1 ORDER BY la.product_code",
+        "parameters": {
+          "1": "%تهران%"
+        },
+        "response_template": "کد کالا، عنوان کالا و عنوان انبار (بدون تکرار) برای شعب شامل «تهران»، مرتب‌شده بر اساس کد کالا:"
+      }
+    },
+    {
+      "id": 29,
+      "complexity": "medium",
+      "module": "انبار",
+      "table": "logistics_allparts",
+      "question": "تعداد اسناد به تفکیک نوع سند",
+      "sql": {
+        "SQL": "SELECT la.voucher_type AS la_voucher_type, COUNT(la.product_code) AS la_product_code_count FROM logistics_allparts AS la GROUP BY la.voucher_type ORDER BY la_product_code_count DESC",
+        "parameters": {},
+        "response_template": "نوع سند و تعداد اسناد، به تفکیک نوع سند، مرتب‌شده از بیشترین به کمترین:"
+      }
+    },
+    {
+      "id": 30,
+      "complexity": "medium",
+      "module": "انبار",
+      "table": "logistics_allparts",
+      "question": "مجموع مقدار دائم هر انبار",
+      "sql": {
+        "SQL": "SELECT la.store_code AS la_store_code, la.store_name AS la_store_name, SUM(la.permanent_quantity) AS la_permanent_quantity_sum FROM logistics_allparts AS la GROUP BY la.store_code, la.store_name ORDER BY la_permanent_quantity_sum DESC",
+        "parameters": {},
+        "response_template": "کد انبار، عنوان انبار و مجموع مقدار دائم به واحد اصلی، به تفکیک انبار، مرتب‌شده از بیشترین به کمترین:"
+      }
+    },
+    {
+      "id": 31,
+      "complexity": "medium",
+      "module": "انبار",
+      "table": "logistics_allparts",
+      "question": "مجموع مقدار خرید به تفکیک کالا",
+      "sql": {
+        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, SUM(la.permanent_quantity) AS la_permanent_quantity_sum FROM logistics_allparts AS la WHERE la.voucher_type = $1 GROUP BY la.product_code, la.product_title ORDER BY la_permanent_quantity_sum DESC",
+        "parameters": {
+          "1": "خرید"
+        },
+        "response_template": "کد کالا، عنوان کالا و مجموع مقدار دائم به واحد اصلی برای اسناد خرید، به تفکیک کالا، مرتب‌شده از بیشترین به کمترین:"
+      }
+    },
+    {
+      "id": 32,
+      "complexity": "medium",
+      "module": "انبار",
+      "table": "logistics_allparts",
+      "question": "تعداد کالاهای هر انبار",
+      "sql": {
+        "SQL": "SELECT la.store_code AS la_store_code, la.store_name AS la_store_name, COUNT(DISTINCT la.product_code) AS la_product_code_count_distinct FROM logistics_allparts AS la GROUP BY la.store_code, la.store_name ORDER BY la_product_code_count_distinct DESC",
+        "parameters": {},
+        "response_template": "کد انبار، عنوان انبار و تعداد کالاهای منحصر به فرد، به تفکیک انبار، مرتب‌شده از بیشترین به کمترین:"
+      }
+    },
+    {
+      "id": 33,
+      "complexity": "medium",
+      "module": "انبار",
+      "table": "logistics_allparts",
+      "question": "مجموع مصرف هر کالا",
+      "sql": {
+        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, SUM(la.permanent_quantity) AS la_permanent_quantity_sum FROM logistics_allparts AS la WHERE la.voucher_type = $1 GROUP BY la.product_code, la.product_title ORDER BY la_permanent_quantity_sum DESC",
+        "parameters": {
+          "1": "مصرف"
+        },
+        "response_template": "کد کالا، عنوان کالا و مجموع مقدار دائم به واحد اصلی برای اسناد مصرف، به تفکیک کالا، مرتب‌شده از بیشترین به کمترین:"
+      }
+    },
+    {
+      "id": 34,
+      "complexity": "medium",
+      "module": "انبار",
+      "table": "logistics_allparts",
+      "question": "مجموع فروش به تفکیک شعبه",
+      "sql": {
+        "SQL": "SELECT la.branch_title AS la_branch_title, SUM(la.permanent_quantity) AS la_permanent_quantity_sum FROM logistics_allparts AS la WHERE la.voucher_type = $1 GROUP BY la.branch_title ORDER BY la_permanent_quantity_sum DESC",
+        "parameters": {
+          "1": "فروش"
+        },
+        "response_template": "عنوان شعبه و مجموع مقدار دائم به واحد اصلی برای اسناد فروش، به تفکیک شعبه، مرتب‌شده از بیشترین به کمترین:"
+      }
+    },
+    {
+      "id": 35,
+      "complexity": "medium",
+      "module": "انبار",
+      "table": "logistics_allparts",
+      "question": "تعداد اسناد هر شعبه",
+      "sql": {
+        "SQL": "SELECT la.branch_title AS la_branch_title, COUNT(la.product_code) AS la_product_code_count FROM logistics_allparts AS la GROUP BY la.branch_title ORDER BY la_product_code_count DESC",
+        "parameters": {},
+        "response_template": "عنوان شعبه و تعداد اسناد، به تفکیک شعبه، مرتب‌شده از بیشترین به کمترین:"
+      }
+    },
+    {
+      "id": 36,
+      "complexity": "medium",
+      "module": "انبار",
+      "table": "logistics_allparts",
+      "question": "۱۰ کالای پرمصرف‌ترین",
+      "sql": {
+        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, SUM(la.permanent_quantity) AS la_permanent_quantity_sum FROM logistics_allparts AS la WHERE la.voucher_type = $1 GROUP BY la.product_code, la.product_title ORDER BY la_permanent_quantity_sum DESC LIMIT 10",
+        "parameters": {
+          "1": "مصرف"
+        },
+        "response_template": "کد کالا، عنوان کالا و مجموع مقدار دائم به واحد اصلی برای ۱۰ کالای اول با بیشترین مصرف:"
+      }
+    },
+    {
+      "id": 37,
+      "complexity": "medium",
+      "module": "انبار",
+      "table": "logistics_allparts",
+      "question": "مجموع ضایعات هر کالا",
+      "sql": {
+        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, SUM(la.discard_quantity) AS la_discard_quantity_sum FROM logistics_allparts AS la GROUP BY la.product_code, la.product_title ORDER BY la_discard_quantity_sum DESC",
+        "parameters": {},
+        "response_template": "کد کالا، عنوان کالا و مجموع مقدار ضایعات به واحد اصلی، به تفکیک کالا، مرتب‌شده از بیشترین به کمترین:"
+      }
+    },
+    {
+      "id": 38,
+      "complexity": "medium",
+      "module": "انبار",
+      "table": "logistics_allparts",
+      "question": "مجموع مقدار موقت هر انبار",
+      "sql": {
+        "SQL": "SELECT la.store_code AS la_store_code, la.store_name AS la_store_name, SUM(la.temporary_quantity) AS la_temporary_quantity_sum FROM logistics_allparts AS la GROUP BY la.store_code, la.store_name ORDER BY la_temporary_quantity_sum DESC",
+        "parameters": {},
+        "response_template": "کد انبار، عنوان انبار و مجموع مقدار موقت به واحد اصلی، به تفکیک انبار، مرتب‌شده از بیشترین به کمترین:"
+      }
+    },
+    {
+      "id": 39,
+      "complexity": "medium",
+      "module": "انبار",
+      "table": "logistics_allparts",
+      "question": "تعداد اسناد برگشتی به تفکیک نوع سند",
+      "sql": {
+        "SQL": "SELECT la.voucher_type AS la_voucher_type, COUNT(la.product_code) AS la_product_code_count FROM logistics_allparts AS la WHERE la.is_return = true GROUP BY la.voucher_type ORDER BY la_product_code_count DESC",
+        "parameters": {},
+        "response_template": "نوع سند و تعداد اسناد برگشتی، به تفکیک نوع سند، مرتب‌شده از بیشترین به کمترین:"
+      }
+    },
+    {
+      "id": 40,
+      "complexity": "medium",
+      "module": "انبار",
+      "table": "logistics_allparts",
+      "question": "اسناد خرید این هفته",
+      "sql": {
+        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, la.store_name AS la_store_name, la.voucher_date AS la_voucher_date, la.permanent_voucher_quantity AS la_permanent_voucher_quantity FROM logistics_allparts AS la WHERE la.voucher_type = $1 AND la.voucher_date BETWEEN $2 AND $3 ORDER BY la.voucher_date",
+        "parameters": {
+          "1": "خرید",
+          "2": "{this_week_saturday}",
+          "3": "{this_week_friday}"
+        },
+        "response_template": "کد کالا، عنوان کالا، عنوان انبار، تاریخ سند و مقدار دائم سند برای اسناد خرید از {this_week_saturday} تا {this_week_friday}، مرتب‌شده بر اساس تاریخ سند:"
+      }
+    },
+    {
+      "id": 41,
+      "complexity": "medium",
+      "module": "انبار",
+      "table": "logistics_allparts",
+      "question": "اسناد فروش هفته گذشته",
+      "sql": {
+        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, la.store_name AS la_store_name, la.voucher_date AS la_voucher_date, la.permanent_voucher_quantity AS la_permanent_voucher_quantity FROM logistics_allparts AS la WHERE la.voucher_type = $1 AND la.voucher_date BETWEEN $2 AND $3 ORDER BY la.voucher_date",
+        "parameters": {
+          "1": "فروش",
+          "2": "{last_week_saturday}",
+          "3": "{last_week_friday}"
+        },
+        "response_template": "کد کالا، عنوان کالا، عنوان انبار، تاریخ سند و مقدار دائم سند برای اسناد فروش از {last_week_saturday} تا {last_week_friday}، مرتب‌شده بر اساس تاریخ سند:"
+      }
+    },
+    {
+      "id": 42,
+      "complexity": "medium",
+      "module": "انبار",
+      "table": "logistics_allparts",
+      "question": "مجموع خرید از ابتدای سال تا امروز",
+      "sql": {
+        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, SUM(la.permanent_quantity) AS la_permanent_quantity_sum FROM logistics_allparts AS la WHERE la.voucher_type = $1 AND la.voucher_date BETWEEN $2 AND $3 GROUP BY la.product_code, la.product_title ORDER BY la_permanent_quantity_sum DESC",
+        "parameters": {
+          "1": "خرید",
+          "2": "{persian_year_start}",
+          "3": "{today_date}"
+        },
+        "response_template": "کد کالا، عنوان کالا و مجموع مقدار دائم به واحد اصلی برای اسناد خرید از {persian_year_start} تا {today_date}، به تفکیک کالا، مرتب‌شده از بیشترین به کمترین:"
+      }
+    },
+    {
+      "id": 43,
       "complexity": "medium",
       "module": "انبار",
       "table": "logistics_allparts",
       "question": "تعداد اسناد به تفکیک نوع تاثیر بر موجودی",
       "sql": {
-        "SQL": "SELECT la.type_of_effect AS la_type_of_effect, COUNT(*) AS record_count FROM logistics_allparts AS la WHERE la.type_of_effect IS NOT NULL GROUP BY la.type_of_effect ORDER BY record_count DESC",
-        "parameters": {}
-      }
-    },
-    {
-      "id": 17,
-      "complexity": "medium",
-      "module": "انبار",
-      "table": "logistics_allparts",
-      "question": "مجموع مقدار کالاها به تفکیک طبقه حساب کالا",
-      "sql": {
-        "SQL": "SELECT la.part_account_category_title AS la_part_account_category_title, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la WHERE la.part_account_category_title IS NOT NULL GROUP BY la.part_account_category_title ORDER BY la_quantity_sum DESC",
-        "parameters": {}
-      }
-    },
-    {
-      "id": 18,
-      "complexity": "medium",
-      "module": "انبار",
-      "table": "logistics_allparts",
-      "question": "مجموع مقدار به واحد اصلی به تفکیک کالا",
-      "sql": {
-        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, SUM(la.major_quantity) AS la_major_quantity_sum FROM logistics_allparts AS la GROUP BY la.product_code, la.product_title ORDER BY la_major_quantity_sum DESC",
-        "parameters": {}
-      }
-    },
-    {
-      "id": 19,
-      "complexity": "medium",
-      "module": "انبار",
-      "table": "logistics_allparts",
-      "question": "تعداد کالاهای منحصر به فرد در هر انبار",
-      "sql": {
-        "SQL": "SELECT la.store_code AS la_store_code, la.store_name AS la_store_name, COUNT(DISTINCT la.product_code) AS unique_product_count FROM logistics_allparts AS la GROUP BY la.store_code, la.store_name ORDER BY unique_product_count DESC",
-        "parameters": {}
-      }
-    },
-    {
-      "id": 20,
-      "complexity": "medium",
-      "module": "انبار",
-      "table": "logistics_allparts",
-      "question": "تعداد کالاهای منحصر به فرد در هر مرکز نگهداری",
-      "sql": {
-        "SQL": "SELECT la.plant_code AS la_plant_code, la.plant_name AS la_plant_name, COUNT(DISTINCT la.product_code) AS unique_product_count FROM logistics_allparts AS la GROUP BY la.plant_code, la.plant_name ORDER BY unique_product_count DESC",
-        "parameters": {}
-      }
-    },
-    {
-      "id": 21,
-      "complexity": "medium",
-      "module": "انبار",
-      "table": "logistics_allparts",
-      "question": "مجموع مقدار کالاها به تفکیک سال مالی",
-      "sql": {
-        "SQL": "SELECT la.fiscal_year_title AS la_fiscal_year_title, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la GROUP BY la.fiscal_year_title ORDER BY la.fiscal_year_title",
-        "parameters": {}
-      }
-    },
-    {
-      "id": 22,
-      "complexity": "medium",
-      "module": "انبار",
-      "table": "logistics_allparts",
-      "question": "مجموع مقدار کالاها به تفکیک شرکت",
-      "sql": {
-        "SQL": "SELECT la.company_name AS la_company_name, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la GROUP BY la.company_name ORDER BY la_quantity_sum DESC",
-        "parameters": {}
-      }
-    },
-    {
-      "id": 23,
-      "complexity": "medium",
-      "module": "انبار",
-      "table": "logistics_allparts",
-      "question": "مجموع مقدار کالاها به تفکیک نوع کارکرد کالا",
-      "sql": {
-        "SQL": "SELECT la.part_usage AS la_part_usage, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la WHERE la.part_usage IS NOT NULL GROUP BY la.part_usage ORDER BY la_quantity_sum DESC",
-        "parameters": {}
-      }
-    },
-    {
-      "id": 24,
-      "complexity": "medium",
-      "module": "انبار",
-      "table": "logistics_allparts",
-      "question": "مجموع مقدار کالاها به تفکیک نوع انبار",
-      "sql": {
-        "SQL": "SELECT la.storage_type_title AS la_storage_type_title, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la WHERE la.storage_type_title IS NOT NULL GROUP BY la.storage_type_title ORDER BY la_quantity_sum DESC",
-        "parameters": {}
-      }
-    },
-    {
-      "id": 25,
-      "complexity": "medium",
-      "module": "انبار",
-      "table": "logistics_allparts",
-      "question": "مقدار کالاها به تفکیک تاریخ سند",
-      "sql": {
-        "SQL": "SELECT la.voucher_date AS la_voucher_date, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la GROUP BY la.voucher_date ORDER BY la.voucher_date DESC",
-        "parameters": {}
-      }
-    },
-    {
-      "id": 26,
-      "complexity": "hard",
-      "module": "انبار",
-      "table": "logistics_allparts",
-      "question": "مجموع مقدار کالاها به تفکیک انبار و نوع تاثیر بر موجودی",
-      "sql": {
-        "SQL": "SELECT la.store_code AS la_store_code, la.store_name AS la_store_name, la.type_of_effect AS la_type_of_effect, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la WHERE la.type_of_effect IS NOT NULL GROUP BY la.store_code, la.store_name, la.type_of_effect ORDER BY la.store_code, la_quantity_sum DESC",
-        "parameters": {}
-      }
-    },
-    {
-      "id": 27,
-      "complexity": "hard",
-      "module": "انبار",
-      "table": "logistics_allparts",
-      "question": "مجموع مقدار کالاها به تفکیک مرکز نگهداری و انبار",
-      "sql": {
-        "SQL": "SELECT la.plant_code AS la_plant_code, la.plant_name AS la_plant_name, la.store_code AS la_store_code, la.store_name AS la_store_name, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la GROUP BY la.plant_code, la.plant_name, la.store_code, la.store_name ORDER BY la.plant_code, la_quantity_sum DESC",
-        "parameters": {}
-      }
-    },
-    {
-      "id": 28,
-      "complexity": "hard",
-      "module": "انبار",
-      "table": "logistics_allparts",
-      "question": "مجموع مقدار کالاها به تفکیک شعبه و مرکز نگهداری",
-      "sql": {
-        "SQL": "SELECT la.branch_title AS la_branch_title, la.plant_code AS la_plant_code, la.plant_name AS la_plant_name, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la GROUP BY la.branch_title, la.plant_code, la.plant_name ORDER BY la.branch_title, la_quantity_sum DESC",
-        "parameters": {}
-      }
-    },
-    {
-      "id": 29,
-      "complexity": "hard",
-      "module": "انبار",
-      "table": "logistics_allparts",
-      "question": "مجموع مقدار کالاها به تفکیک شرکت و شعبه",
-      "sql": {
-        "SQL": "SELECT la.company_name AS la_company_name, la.branch_title AS la_branch_title, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la GROUP BY la.company_name, la.branch_title ORDER BY la.company_name, la_quantity_sum DESC",
-        "parameters": {}
-      }
-    },
-    {
-      "id": 30,
-      "complexity": "hard",
-      "module": "انبار",
-      "table": "logistics_allparts",
-      "question": "مجموع مقدار کالاها به تفکیک نوع کالا و طبقه حساب کالا",
-      "sql": {
-        "SQL": "SELECT la.part_type AS la_part_type, la.part_account_category_title AS la_part_account_category_title, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la WHERE la.part_type IS NOT NULL AND la.part_account_category_title IS NOT NULL GROUP BY la.part_type, la.part_account_category_title ORDER BY la.part_type, la_quantity_sum DESC",
-        "parameters": {}
-      }
-    },
-    {
-      "id": 31,
-      "complexity": "hard",
-      "module": "انبار",
-      "table": "logistics_allparts",
-      "question": "مجموع مقدار کالاها به تفکیک نوع سند و نوع تاثیر بر موجودی",
-      "sql": {
-        "SQL": "SELECT la.voucher_type AS la_voucher_type, la.type_of_effect AS la_type_of_effect, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la WHERE la.voucher_type IS NOT NULL AND la.type_of_effect IS NOT NULL GROUP BY la.voucher_type, la.type_of_effect ORDER BY la.voucher_type, la_quantity_sum DESC",
-        "parameters": {}
-      }
-    },
-    {
-      "id": 32,
-      "complexity": "hard",
-      "module": "انبار",
-      "table": "logistics_allparts",
-      "question": "مجموع مقدار کالاها به تفکیک سال مالی و شعبه",
-      "sql": {
-        "SQL": "SELECT la.fiscal_year_title AS la_fiscal_year_title, la.branch_title AS la_branch_title, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la GROUP BY la.fiscal_year_title, la.branch_title ORDER BY la.fiscal_year_title, la_quantity_sum DESC",
-        "parameters": {}
-      }
-    },
-    {
-      "id": 33,
-      "complexity": "hard",
-      "module": "انبار",
-      "table": "logistics_allparts",
-      "question": "مجموع مقدار کالاها به تفکیک روش قیمت‌گذاری و نوع کالا",
-      "sql": {
-        "SQL": "SELECT la.pricing_method AS la_pricing_method, la.part_type AS la_part_type, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la WHERE la.pricing_method IS NOT NULL AND la.part_type IS NOT NULL GROUP BY la.pricing_method, la.part_type ORDER BY la.pricing_method, la_quantity_sum DESC",
-        "parameters": {}
-      }
-    },
-    {
-      "id": 34,
-      "complexity": "hard",
-      "module": "انبار",
-      "table": "logistics_allparts",
-      "question": "مجموع مقدار به واحد اصلی و واحد دوم به تفکیک کالا",
-      "sql": {
-        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, la.part_major_unit_title AS la_part_major_unit_title, la.second_unit_title AS la_second_unit_title, SUM(la.major_quantity) AS la_major_quantity_sum, SUM(la.second_quantity) AS la_second_quantity_sum FROM logistics_allparts AS la GROUP BY la.product_code, la.product_title, la.part_major_unit_title, la.second_unit_title ORDER BY la_major_quantity_sum DESC",
-        "parameters": {}
-      }
-    },
-    {
-      "id": 35,
-      "complexity": "hard",
-      "module": "انبار",
-      "table": "logistics_allparts",
-      "question": "مجموع مقدار کالاها به تفکیک انبار و نوع کالا",
-      "sql": {
-        "SQL": "SELECT la.store_code AS la_store_code, la.store_name AS la_store_name, la.part_type AS la_part_type, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la WHERE la.part_type IS NOT NULL GROUP BY la.store_code, la.store_name, la.part_type ORDER BY la.store_code, la_quantity_sum DESC",
-        "parameters": {}
-      }
-    },
-    {
-      "id": 36,
-      "complexity": "hard",
-      "module": "انبار",
-      "table": "logistics_allparts",
-      "question": "مجموع مقدار کالاها به تفکیک مرکز نگهداری و نوع سند",
-      "sql": {
-        "SQL": "SELECT la.plant_code AS la_plant_code, la.plant_name AS la_plant_name, la.voucher_type AS la_voucher_type, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la WHERE la.voucher_type IS NOT NULL GROUP BY la.plant_code, la.plant_name, la.voucher_type ORDER BY la.plant_code, la_quantity_sum DESC",
-        "parameters": {}
-      }
-    },
-    {
-      "id": 37,
-      "complexity": "hard",
-      "module": "انبار",
-      "table": "logistics_allparts",
-      "question": "ده کالای پرتراکنش در سیستم",
-      "sql": {
-        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, COUNT(*) AS transaction_count FROM logistics_allparts AS la GROUP BY la.product_code, la.product_title ORDER BY transaction_count DESC LIMIT 10",
-        "parameters": {}
-      }
-    },
-    {
-      "id": 38,
-      "complexity": "hard",
-      "module": "انبار",
-      "table": "logistics_allparts",
-      "question": "ده انبار با بیشترین مقدار کالا",
-      "sql": {
-        "SQL": "SELECT la.store_code AS la_store_code, la.store_name AS la_store_name, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la GROUP BY la.store_code, la.store_name ORDER BY la_quantity_sum DESC LIMIT 10",
-        "parameters": {}
-      }
-    },
-    {
-      "id": 39,
-      "complexity": "hard",
-      "module": "انبار",
-      "table": "logistics_allparts",
-      "question": "ده مرکز نگهداری با بیشترین تنوع کالا",
-      "sql": {
-        "SQL": "SELECT la.plant_code AS la_plant_code, la.plant_name AS la_plant_name, COUNT(DISTINCT la.product_code) AS unique_product_count FROM logistics_allparts AS la GROUP BY la.plant_code, la.plant_name ORDER BY unique_product_count DESC LIMIT 10",
-        "parameters": {}
-      }
-    },
-    {
-      "id": 40,
-      "complexity": "hard",
-      "module": "انبار",
-      "table": "logistics_allparts",
-      "question": "مجموع مقدار ورودی و خروجی کالاها به تفکیک انبار",
-      "sql": {
-        "SQL": "SELECT la.store_code AS la_store_code, la.store_name AS la_store_name, SUM(CASE WHEN la.type_of_effect = 'افزایشی' THEN la.quantity ELSE 0 END) AS incoming_quantity, SUM(CASE WHEN la.type_of_effect = 'کاهشی' THEN la.quantity ELSE 0 END) AS outgoing_quantity FROM logistics_allparts AS la GROUP BY la.store_code, la.store_name ORDER BY la.store_code",
-        "parameters": {}
-      }
-    },
-    {
-      "id": 41,
-      "complexity": "hard",
-      "module": "انبار",
-      "table": "logistics_allparts",
-      "question": "مجموع مقدار ورودی و خروجی کالاها به تفکیک کالا",
-      "sql": {
-        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, SUM(CASE WHEN la.type_of_effect = 'افزایشی' THEN la.quantity ELSE 0 END) AS incoming_quantity, SUM(CASE WHEN la.type_of_effect = 'کاهشی' THEN la.quantity ELSE 0 END) AS outgoing_quantity FROM logistics_allparts AS la GROUP BY la.product_code, la.product_title ORDER BY la.product_code",
-        "parameters": {}
-      }
-    },
-    {
-      "id": 42,
-      "complexity": "hard",
-      "module": "انبار",
-      "table": "logistics_allparts",
-      "question": "مجموع مقدار کالاها به تفکیک شعبه، مرکز نگهداری و انبار",
-      "sql": {
-        "SQL": "SELECT la.branch_title AS la_branch_title, la.plant_code AS la_plant_code, la.plant_name AS la_plant_name, la.store_code AS la_store_code, la.store_name AS la_store_name, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la GROUP BY la.branch_title, la.plant_code, la.plant_name, la.store_code, la.store_name ORDER BY la.branch_title, la.plant_code, la_quantity_sum DESC",
-        "parameters": {}
-      }
-    },
-    {
-      "id": 43,
-      "complexity": "hard",
-      "module": "انبار",
-      "table": "logistics_allparts",
-      "question": "مجموع مقدار کالاها به تفکیک شرکت، شعبه و سال مالی",
-      "sql": {
-        "SQL": "SELECT la.company_name AS la_company_name, la.branch_title AS la_branch_title, la.fiscal_year_title AS la_fiscal_year_title, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la GROUP BY la.company_name, la.branch_title, la.fiscal_year_title ORDER BY la.company_name, la.branch_title, la.fiscal_year_title",
-        "parameters": {}
+        "SQL": "SELECT la.type_of_effect AS la_type_of_effect, COUNT(la.product_code) AS la_product_code_count FROM logistics_allparts AS la GROUP BY la.type_of_effect ORDER BY la_product_code_count DESC",
+        "parameters": {},
+        "response_template": "نوع تاثیر بر موجودی و تعداد اسناد، به تفکیک نوع تاثیر، مرتب‌شده از بیشترین به کمترین:"
       }
     },
     {
       "id": 44,
-      "complexity": "hard",
+      "complexity": "medium",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "مقایسه مقدار کالاها در انبارهای مختلف یک مرکز نگهداری",
+      "question": "مجموع خرید هر طبقه حساب کالا",
       "sql": {
-        "SQL": "SELECT la.plant_code AS la_plant_code, la.plant_name AS la_plant_name, la.store_code AS la_store_code, la.store_name AS la_store_name, SUM(la.quantity) AS la_quantity_sum, COUNT(DISTINCT la.product_code) AS unique_product_count FROM logistics_allparts AS la GROUP BY la.plant_code, la.plant_name, la.store_code, la.store_name ORDER BY la.plant_code, la_quantity_sum DESC",
-        "parameters": {}
+        "SQL": "SELECT la.part_account_category_title AS la_part_account_category_title, SUM(la.permanent_quantity) AS la_permanent_quantity_sum FROM logistics_allparts AS la WHERE la.voucher_type = $1 GROUP BY la.part_account_category_title ORDER BY la_permanent_quantity_sum DESC",
+        "parameters": {
+          "1": "خرید"
+        },
+        "response_template": "عنوان طبقه حساب کالا و مجموع مقدار دائم به واحد اصلی برای اسناد خرید، به تفکیک طبقه حساب، مرتب‌شده از بیشترین به کمترین:"
       }
     },
     {
       "id": 45,
-      "complexity": "hard",
+      "complexity": "medium",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "تحلیل گردش کالا به تفکیک نقش طرف مقابل سند",
+      "question": "تعداد اسناد هر سال مالی",
       "sql": {
-        "SQL": "SELECT la.counter_part_type AS la_counter_part_type, la.type_of_effect AS la_type_of_effect, SUM(la.quantity) AS la_quantity_sum, COUNT(*) AS transaction_count FROM logistics_allparts AS la WHERE la.counter_part_type IS NOT NULL GROUP BY la.counter_part_type, la.type_of_effect ORDER BY la.counter_part_type, la_quantity_sum DESC",
-        "parameters": {}
+        "SQL": "SELECT la.fiscal_year_title AS la_fiscal_year_title, COUNT(la.product_code) AS la_product_code_count FROM logistics_allparts AS la GROUP BY la.fiscal_year_title ORDER BY la.fiscal_year_title",
+        "parameters": {},
+        "response_template": "عنوان سال مالی و تعداد اسناد، به تفکیک سال مالی، مرتب‌شده بر اساس عنوان سال مالی:"
       }
     },
     {
       "id": 46,
-      "complexity": "hard",
+      "complexity": "medium",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "مجموع مقدار کالاها به تفکیک واحد سنجش سند",
+      "question": "تعداد اسناد به تفکیک وضعیت",
       "sql": {
-        "SQL": "SELECT la.voucher_unit AS la_voucher_unit, SUM(la.quantity) AS la_quantity_sum, COUNT(*) AS record_count FROM logistics_allparts AS la WHERE la.voucher_unit IS NOT NULL GROUP BY la.voucher_unit ORDER BY la_quantity_sum DESC",
-        "parameters": {}
+        "SQL": "SELECT la.state AS la_state, COUNT(la.product_code) AS la_product_code_count FROM logistics_allparts AS la GROUP BY la.state ORDER BY la_product_code_count DESC",
+        "parameters": {},
+        "response_template": "وضعیت و تعداد اسناد، به تفکیک وضعیت، مرتب‌شده از بیشترین به کمترین:"
       }
     },
     {
       "id": 47,
-      "complexity": "hard",
+      "complexity": "medium",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "مجموع مقدار کالاها به تفکیک واحد سنجش اصلی کالا",
+      "question": "۵ انبار با بیشترین تعداد سند",
       "sql": {
-        "SQL": "SELECT la.part_major_unit_title AS la_part_major_unit_title, SUM(la.major_quantity) AS la_major_quantity_sum, COUNT(DISTINCT la.product_code) AS unique_product_count FROM logistics_allparts AS la WHERE la.part_major_unit_title IS NOT NULL GROUP BY la.part_major_unit_title ORDER BY la_major_quantity_sum DESC",
-        "parameters": {}
+        "SQL": "SELECT la.store_code AS la_store_code, la.store_name AS la_store_name, COUNT(la.product_code) AS la_product_code_count FROM logistics_allparts AS la GROUP BY la.store_code, la.store_name ORDER BY la_product_code_count DESC LIMIT 5",
+        "parameters": {},
+        "response_template": "کد انبار، عنوان انبار و تعداد اسناد برای ۵ انبار اول با بیشترین تعداد سند:"
       }
     },
     {
       "id": 48,
-      "complexity": "hard",
+      "complexity": "medium",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "تعداد تراکنش‌ها به تفکیک انبار و تاریخ سند",
+      "question": "مجموع مقدار دائم و موقت هر کالا",
       "sql": {
-        "SQL": "SELECT la.store_code AS la_store_code, la.store_name AS la_store_name, la.voucher_date AS la_voucher_date, COUNT(*) AS transaction_count, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la GROUP BY la.store_code, la.store_name, la.voucher_date ORDER BY la.store_code, la.voucher_date DESC",
-        "parameters": {}
+        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, SUM(la.permanent_quantity) AS la_permanent_quantity_sum, SUM(la.temporary_quantity) AS la_temporary_quantity_sum FROM logistics_allparts AS la GROUP BY la.product_code, la.product_title ORDER BY la_permanent_quantity_sum DESC",
+        "parameters": {},
+        "response_template": "کد کالا، عنوان کالا، مجموع مقدار دائم و مجموع مقدار موقت به واحد اصلی، به تفکیک کالا، مرتب‌شده بر اساس مقدار دائم نزولی:"
       }
     },
     {
       "id": 49,
-      "complexity": "hard",
+      "complexity": "medium",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "روند تغییرات موجودی به تفکیک تاریخ و نوع تاثیر",
+      "question": "مجموع اسناد تولید در سه ماه اخیر",
       "sql": {
-        "SQL": "SELECT la.voucher_date AS la_voucher_date, la.type_of_effect AS la_type_of_effect, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la WHERE la.type_of_effect IS NOT NULL GROUP BY la.voucher_date, la.type_of_effect ORDER BY la.voucher_date, la.type_of_effect",
-        "parameters": {}
+        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, SUM(la.permanent_quantity) AS la_permanent_quantity_sum FROM logistics_allparts AS la WHERE la.voucher_type = $1 AND la.voucher_date BETWEEN $2 AND $3 GROUP BY la.product_code, la.product_title ORDER BY la_permanent_quantity_sum DESC",
+        "parameters": {
+          "1": "تولید",
+          "2": "{three_months_ago}",
+          "3": "{today_date}"
+        },
+        "response_template": "کد کالا، عنوان کالا و مجموع مقدار دائم به واحد اصلی برای اسناد تولید از {three_months_ago} تا {today_date}، به تفکیک کالا، مرتب‌شده از بیشترین به کمترین:"
       }
     },
     {
       "id": 50,
-      "complexity": "hard",
+      "complexity": "medium",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "کالاهایی که در بیش از یک انبار موجود هستند",
+      "question": "تعداد اسناد شرکت‌های مختلف",
       "sql": {
-        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, COUNT(DISTINCT la.store_code) AS store_count, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la GROUP BY la.product_code, la.product_title HAVING COUNT(DISTINCT la.store_code) > 1 ORDER BY store_count DESC",
-        "parameters": {}
+        "SQL": "SELECT la.company_name AS la_company_name, COUNT(la.product_code) AS la_product_code_count FROM logistics_allparts AS la GROUP BY la.company_name ORDER BY la_product_code_count DESC",
+        "parameters": {},
+        "response_template": "عنوان شرکت و تعداد اسناد، به تفکیک شرکت، مرتب‌شده از بیشترین به کمترین:"
       }
     },
     {
       "id": 51,
-      "complexity": "hard",
+      "complexity": "medium",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "کالاهایی که در بیش از یک مرکز نگهداری موجود هستند",
+      "question": "مجموع اسناد انبارگردانی سیستمی به تفکیک انبار",
       "sql": {
-        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, COUNT(DISTINCT la.plant_code) AS plant_count, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la GROUP BY la.product_code, la.product_title HAVING COUNT(DISTINCT la.plant_code) > 1 ORDER BY plant_count DESC",
-        "parameters": {}
+        "SQL": "SELECT la.store_code AS la_store_code, la.store_name AS la_store_name, SUM(la.permanent_voucher_quantity) AS la_permanent_voucher_quantity_sum FROM logistics_allparts AS la WHERE la.voucher_type = $1 GROUP BY la.store_code, la.store_name ORDER BY la_permanent_voucher_quantity_sum DESC",
+        "parameters": {
+          "1": "انبارگردانی سیستمی"
+        },
+        "response_template": "کد انبار، عنوان انبار و مجموع مقدار دائم سند برای اسناد انبارگردانی سیستمی، به تفکیک انبار، مرتب‌شده از بیشترین به کمترین:"
       }
     },
     {
       "id": 52,
-      "complexity": "hard",
+      "complexity": "medium",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "انبارهایی که بیش از ده نوع کالا دارند",
+      "question": "نقش طرف مقابل سند در اسناد فروش",
       "sql": {
-        "SQL": "SELECT la.store_code AS la_store_code, la.store_name AS la_store_name, COUNT(DISTINCT la.product_code) AS unique_product_count, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la GROUP BY la.store_code, la.store_name HAVING COUNT(DISTINCT la.product_code) > 10 ORDER BY unique_product_count DESC",
-        "parameters": {}
+        "SQL": "SELECT la.counter_part_type AS la_counter_part_type, COUNT(la.product_code) AS la_product_code_count FROM logistics_allparts AS la WHERE la.voucher_type = $1 GROUP BY la.counter_part_type ORDER BY la_product_code_count DESC",
+        "parameters": {
+          "1": "فروش"
+        },
+        "response_template": "نقش طرف مقابل سند و تعداد اسناد برای اسناد فروش، به تفکیک نقش طرف مقابل، مرتب‌شده از بیشترین به کمترین:"
       }
     },
     {
       "id": 53,
-      "complexity": "hard",
+      "complexity": "medium",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "میانگین مقدار کالاها به تفکیک انبار",
+      "question": "مقدار خرید واحد دوم به تفکیک کالا",
       "sql": {
-        "SQL": "SELECT la.store_code AS la_store_code, la.store_name AS la_store_name, AVG(la.quantity) AS la_quantity_avg, SUM(la.quantity) AS la_quantity_sum, COUNT(*) AS transaction_count FROM logistics_allparts AS la GROUP BY la.store_code, la.store_name ORDER BY la_quantity_avg DESC",
-        "parameters": {}
+        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, la.second_unit_title AS la_second_unit_title, SUM(la.permanent_second_quantity) AS la_permanent_second_quantity_sum FROM logistics_allparts AS la WHERE la.voucher_type = $1 GROUP BY la.product_code, la.product_title, la.second_unit_title ORDER BY la_permanent_second_quantity_sum DESC",
+        "parameters": {
+          "1": "خرید"
+        },
+        "response_template": "کد کالا، عنوان کالا، عنوان واحد دوم و مجموع مقدار دائم به واحد دوم برای اسناد خرید، به تفکیک کالا و واحد دوم، مرتب‌شده از بیشترین به کمترین:"
       }
     },
     {
       "id": 54,
-      "complexity": "hard",
+      "complexity": "medium",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "میانگین مقدار کالاها به تفکیک نوع کالا",
+      "question": "اسناد تبدیل کالا",
       "sql": {
-        "SQL": "SELECT la.part_type AS la_part_type, AVG(la.quantity) AS la_quantity_avg, SUM(la.quantity) AS la_quantity_sum, COUNT(*) AS transaction_count FROM logistics_allparts AS la WHERE la.part_type IS NOT NULL GROUP BY la.part_type ORDER BY la_quantity_avg DESC",
-        "parameters": {}
+        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, la.store_name AS la_store_name, la.voucher_date AS la_voucher_date, la.permanent_voucher_quantity AS la_permanent_voucher_quantity, la.is_return AS la_is_return FROM logistics_allparts AS la WHERE la.voucher_type = $1 ORDER BY la.voucher_date DESC",
+        "parameters": {
+          "1": "تبدیل کالا"
+        },
+        "response_template": "کد کالا، عنوان کالا، عنوان انبار، تاریخ سند، مقدار دائم سند و وضعیت برگشتی برای اسناد تبدیل کالا، مرتب‌شده بر اساس تاریخ سند نزولی:"
       }
     },
     {
       "id": 55,
-      "complexity": "hard",
+      "complexity": "medium",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "مقایسه مقدار ورودی و خروجی به تفکیک سال مالی",
+      "question": "تعداد کالاها به تفکیک نوع کالا",
       "sql": {
-        "SQL": "SELECT la.fiscal_year_title AS la_fiscal_year_title, SUM(CASE WHEN la.type_of_effect = 'افزایشی' THEN la.quantity ELSE 0 END) AS incoming_quantity, SUM(CASE WHEN la.type_of_effect = 'کاهشی' THEN la.quantity ELSE 0 END) AS outgoing_quantity, SUM(CASE WHEN la.type_of_effect = 'افزایشی' THEN la.quantity ELSE 0 END) - SUM(CASE WHEN la.type_of_effect = 'کاهشی' THEN la.quantity ELSE 0 END) AS net_quantity FROM logistics_allparts AS la GROUP BY la.fiscal_year_title ORDER BY la.fiscal_year_title",
-        "parameters": {}
+        "SQL": "SELECT la.part_type AS la_part_type, COUNT(DISTINCT la.product_code) AS la_product_code_count_distinct FROM logistics_allparts AS la GROUP BY la.part_type ORDER BY la_product_code_count_distinct DESC",
+        "parameters": {},
+        "response_template": "نوع کالا و تعداد کالاهای منحصر به فرد، به تفکیک نوع کالا، مرتب‌شده از بیشترین به کمترین:"
       }
     },
     {
       "id": 56,
-      "complexity": "hard",
+      "complexity": "medium",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "مقایسه مقدار ورودی و خروجی به تفکیک شعبه",
+      "question": "اسناد ابتدای دوره",
       "sql": {
-        "SQL": "SELECT la.branch_title AS la_branch_title, SUM(CASE WHEN la.type_of_effect = 'افزایشی' THEN la.quantity ELSE 0 END) AS incoming_quantity, SUM(CASE WHEN la.type_of_effect = 'کاهشی' THEN la.quantity ELSE 0 END) AS outgoing_quantity, SUM(CASE WHEN la.type_of_effect = 'افزایشی' THEN la.quantity ELSE 0 END) - SUM(CASE WHEN la.type_of_effect = 'کاهشی' THEN la.quantity ELSE 0 END) AS net_quantity FROM logistics_allparts AS la GROUP BY la.branch_title ORDER BY net_quantity DESC",
-        "parameters": {}
+        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, la.store_name AS la_store_name, la.voucher_date AS la_voucher_date, la.permanent_quantity AS la_permanent_quantity FROM logistics_allparts AS la WHERE la.voucher_type = $1 ORDER BY la.store_name, la.voucher_date",
+        "parameters": {
+          "1": "ابتدای دوره"
+        },
+        "response_template": "کد کالا، عنوان کالا، عنوان انبار، تاریخ سند و مقدار دائم به واحد اصلی برای اسناد ابتدای دوره، مرتب‌شده بر اساس عنوان انبار و تاریخ سند:"
       }
     },
     {
       "id": 57,
-      "complexity": "hard",
+      "complexity": "medium",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "مقایسه مقدار ورودی و خروجی به تفکیک نوع کالا",
+      "question": "اسناد پایان دوره",
       "sql": {
-        "SQL": "SELECT la.part_type AS la_part_type, SUM(CASE WHEN la.type_of_effect = 'افزایشی' THEN la.quantity ELSE 0 END) AS incoming_quantity, SUM(CASE WHEN la.type_of_effect = 'کاهشی' THEN la.quantity ELSE 0 END) AS outgoing_quantity, SUM(CASE WHEN la.type_of_effect = 'افزایشی' THEN la.quantity ELSE 0 END) - SUM(CASE WHEN la.type_of_effect = 'کاهشی' THEN la.quantity ELSE 0 END) AS net_quantity FROM logistics_allparts AS la WHERE la.part_type IS NOT NULL GROUP BY la.part_type ORDER BY net_quantity DESC",
-        "parameters": {}
+        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, la.store_name AS la_store_name, la.voucher_date AS la_voucher_date, la.permanent_quantity AS la_permanent_quantity FROM logistics_allparts AS la WHERE la.voucher_type = $1 ORDER BY la.store_name, la.voucher_date",
+        "parameters": {
+          "1": "پایان دوره"
+        },
+        "response_template": "کد کالا، عنوان کالا، عنوان انبار، تاریخ سند و مقدار دائم به واحد اصلی برای اسناد پایان دوره، مرتب‌شده بر اساس عنوان انبار و تاریخ سند:"
       }
     },
     {
       "id": 58,
-      "complexity": "hard",
+      "complexity": "medium",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "مجموع مقدار کالاها به تفکیک کالا و انبار",
+      "question": "مقدار خرید ده روز اخیر به تفکیک انبار",
       "sql": {
-        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, la.store_code AS la_store_code, la.store_name AS la_store_name, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la GROUP BY la.product_code, la.product_title, la.store_code, la.store_name ORDER BY la.product_code, la_quantity_sum DESC",
-        "parameters": {}
+        "SQL": "SELECT la.store_code AS la_store_code, la.store_name AS la_store_name, SUM(la.permanent_quantity) AS la_permanent_quantity_sum FROM logistics_allparts AS la WHERE la.voucher_type = $1 AND la.voucher_date BETWEEN $2 AND $3 GROUP BY la.store_code, la.store_name ORDER BY la_permanent_quantity_sum DESC",
+        "parameters": {
+          "1": "خرید",
+          "2": "{ten_days_ago}",
+          "3": "{today_date}"
+        },
+        "response_template": "کد انبار، عنوان انبار و مجموع مقدار دائم به واحد اصلی برای اسناد خرید از {ten_days_ago} تا {today_date}، به تفکیک انبار، مرتب‌شده از بیشترین به کمترین:"
       }
     },
     {
       "id": 59,
-      "complexity": "hard",
+      "complexity": "medium",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "مجموع مقدار کالاها به تفکیک کالا و مرکز نگهداری",
+      "question": "اسناد تحویل دارایی ثابت",
       "sql": {
-        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, la.plant_code AS la_plant_code, la.plant_name AS la_plant_name, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la GROUP BY la.product_code, la.product_title, la.plant_code, la.plant_name ORDER BY la.product_code, la_quantity_sum DESC",
-        "parameters": {}
+        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, la.store_name AS la_store_name, la.voucher_date AS la_voucher_date, la.permanent_quantity AS la_permanent_quantity FROM logistics_allparts AS la WHERE la.voucher_type = $1 ORDER BY la.voucher_date DESC",
+        "parameters": {
+          "1": "تحویل دارایی ثابت"
+        },
+        "response_template": "کد کالا، عنوان کالا، عنوان انبار، تاریخ سند و مقدار دائم به واحد اصلی برای اسناد تحویل دارایی ثابت، مرتب‌شده بر اساس تاریخ سند نزولی:"
       }
     },
     {
       "id": 60,
-      "complexity": "hard",
+      "complexity": "medium",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "تحلیل گردش کالا به تفکیک طبقه حساب و نوع تاثیر",
+      "question": "اسناد ترکیب و تفکیک کالا",
       "sql": {
-        "SQL": "SELECT la.part_account_category_title AS la_part_account_category_title, la.type_of_effect AS la_type_of_effect, SUM(la.quantity) AS la_quantity_sum, COUNT(*) AS transaction_count FROM logistics_allparts AS la WHERE la.part_account_category_title IS NOT NULL AND la.type_of_effect IS NOT NULL GROUP BY la.part_account_category_title, la.type_of_effect ORDER BY la.part_account_category_title, la_quantity_sum DESC",
-        "parameters": {}
+        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, la.store_name AS la_store_name, la.voucher_date AS la_voucher_date, la.permanent_voucher_quantity AS la_permanent_voucher_quantity FROM logistics_allparts AS la WHERE la.voucher_type = $1 ORDER BY la.voucher_date DESC",
+        "parameters": {
+          "1": "ترکیب و تفکیک"
+        },
+        "response_template": "کد کالا، عنوان کالا، عنوان انبار، تاریخ سند و مقدار دائم سند برای اسناد ترکیب و تفکیک، مرتب‌شده بر اساس تاریخ سند نزولی:"
       }
     },
     {
       "id": 61,
-      "complexity": "hard",
+      "complexity": "medium",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "تحلیل گردش کالا به تفکیک نوع کارکرد و نوع تاثیر",
+      "question": "مقدار فروش شش ماه اخیر به تفکیک شعبه",
       "sql": {
-        "SQL": "SELECT la.part_usage AS la_part_usage, la.type_of_effect AS la_type_of_effect, SUM(la.quantity) AS la_quantity_sum, COUNT(*) AS transaction_count FROM logistics_allparts AS la WHERE la.part_usage IS NOT NULL AND la.type_of_effect IS NOT NULL GROUP BY la.part_usage, la.type_of_effect ORDER BY la.part_usage, la_quantity_sum DESC",
-        "parameters": {}
+        "SQL": "SELECT la.branch_title AS la_branch_title, SUM(la.permanent_quantity) AS la_permanent_quantity_sum FROM logistics_allparts AS la WHERE la.voucher_type = $1 AND la.voucher_date BETWEEN $2 AND $3 GROUP BY la.branch_title ORDER BY la_permanent_quantity_sum DESC",
+        "parameters": {
+          "1": "فروش",
+          "2": "{six_months_ago}",
+          "3": "{today_date}"
+        },
+        "response_template": "عنوان شعبه و مجموع مقدار دائم به واحد اصلی برای اسناد فروش از {six_months_ago} تا {today_date}، به تفکیک شعبه، مرتب‌شده از بیشترین به کمترین:"
       }
     },
     {
       "id": 62,
-      "complexity": "hard",
+      "complexity": "medium",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "پنج کالای با بیشترین مقدار ورودی",
+      "question": "اسناد مربوط به کالای پیچ",
       "sql": {
-        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, SUM(la.quantity) AS incoming_quantity FROM logistics_allparts AS la WHERE la.type_of_effect = 'افزایشی' GROUP BY la.product_code, la.product_title ORDER BY incoming_quantity DESC LIMIT 5",
-        "parameters": {}
+        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, la.voucher_type AS la_voucher_type, la.store_name AS la_store_name, la.voucher_date AS la_voucher_date, la.permanent_voucher_quantity AS la_permanent_voucher_quantity FROM logistics_allparts AS la WHERE la.product_title ILIKE $1 ORDER BY la.voucher_date DESC",
+        "parameters": {
+          "1": "%پیچ%"
+        },
+        "response_template": "کد کالا، عنوان کالا، نوع سند، عنوان انبار، تاریخ سند و مقدار دائم سند برای کالاهایی که عنوان آن‌ها شامل «پیچ» است، مرتب‌شده بر اساس تاریخ سند نزولی:"
       }
     },
     {
       "id": 63,
-      "complexity": "hard",
+      "complexity": "medium",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "پنج کالای با بیشترین مقدار خروجی",
+      "question": "مقدار دائم به واحد اصلی به تفکیک واحد سنجش",
       "sql": {
-        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, SUM(la.quantity) AS outgoing_quantity FROM logistics_allparts AS la WHERE la.type_of_effect = 'کاهشی' GROUP BY la.product_code, la.product_title ORDER BY outgoing_quantity DESC LIMIT 5",
-        "parameters": {}
+        "SQL": "SELECT la.part_major_unit_title AS la_part_major_unit_title, SUM(la.permanent_quantity) AS la_permanent_quantity_sum FROM logistics_allparts AS la GROUP BY la.part_major_unit_title ORDER BY la_permanent_quantity_sum DESC",
+        "parameters": {},
+        "response_template": "واحد سنجش اصلی و مجموع مقدار دائم به واحد اصلی، به تفکیک واحد سنجش، مرتب‌شده از بیشترین به کمترین:"
       }
     },
     {
       "id": 64,
-      "complexity": "hard",
+      "complexity": "medium",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "مجموع مقدار کالاها به تفکیک نوع انبار و نوع کالا",
+      "question": "اسناد سال قبل",
       "sql": {
-        "SQL": "SELECT la.storage_type_title AS la_storage_type_title, la.part_type AS la_part_type, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la WHERE la.storage_type_title IS NOT NULL AND la.part_type IS NOT NULL GROUP BY la.storage_type_title, la.part_type ORDER BY la.storage_type_title, la_quantity_sum DESC",
-        "parameters": {}
+        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, la.voucher_type AS la_voucher_type, la.store_name AS la_store_name, la.voucher_date AS la_voucher_date, la.permanent_voucher_quantity AS la_permanent_voucher_quantity FROM logistics_allparts AS la WHERE la.voucher_date BETWEEN $1 AND $2 ORDER BY la.voucher_date",
+        "parameters": {
+          "1": "{prev_persian_year_start}",
+          "2": "{prev_persian_year_end}"
+        },
+        "response_template": "کد کالا، عنوان کالا، نوع سند، عنوان انبار، تاریخ سند و مقدار دائم سند برای اسناد از {prev_persian_year_start} تا {prev_persian_year_end}، مرتب‌شده بر اساس تاریخ سند:"
       }
     },
     {
@@ -708,10 +855,14 @@
       "complexity": "hard",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "مجموع مقدار کالاها به تفکیک نوع انبار و نوع سند",
+      "question": "مجموع خرید و فروش هر کالا و تفاوت آنها",
       "sql": {
-        "SQL": "SELECT la.storage_type_title AS la_storage_type_title, la.voucher_type AS la_voucher_type, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la WHERE la.storage_type_title IS NOT NULL AND la.voucher_type IS NOT NULL GROUP BY la.storage_type_title, la.voucher_type ORDER BY la.storage_type_title, la_quantity_sum DESC",
-        "parameters": {}
+        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, SUM(CASE WHEN la.voucher_type = $1 THEN la.permanent_quantity ELSE 0 END) AS la_purchase_quantity_sum, SUM(CASE WHEN la.voucher_type = $2 THEN la.permanent_quantity ELSE 0 END) AS la_sales_quantity_sum, SUM(CASE WHEN la.voucher_type = $1 THEN la.permanent_quantity ELSE 0 END) - SUM(CASE WHEN la.voucher_type = $2 THEN la.permanent_quantity ELSE 0 END) AS la_quantity_difference FROM logistics_allparts AS la WHERE la.voucher_type IN ($1, $2) GROUP BY la.product_code, la.product_title ORDER BY la_quantity_difference DESC",
+        "parameters": {
+          "1": "خرید",
+          "2": "فروش"
+        },
+        "response_template": "کد کالا، عنوان کالا، مجموع مقدار خرید، مجموع مقدار فروش و تفاوت خرید و فروش به واحد اصلی، به تفکیک کالا، مرتب‌شده بر اساس تفاوت نزولی:"
       }
     },
     {
@@ -719,10 +870,11 @@
       "complexity": "hard",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "تعداد تراکنش و مجموع مقدار به تفکیک شرکت و نوع سند",
+      "question": "نسبت ضایعات به مقدار دائم در هر کالا",
       "sql": {
-        "SQL": "SELECT la.company_name AS la_company_name, la.voucher_type AS la_voucher_type, COUNT(*) AS transaction_count, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la WHERE la.voucher_type IS NOT NULL GROUP BY la.company_name, la.voucher_type ORDER BY la.company_name, la_quantity_sum DESC",
-        "parameters": {}
+        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, SUM(la.permanent_quantity) AS la_permanent_quantity_sum, SUM(la.discard_quantity) AS la_discard_quantity_sum, CASE WHEN SUM(la.permanent_quantity) > 0 THEN ROUND(CAST(SUM(la.discard_quantity) AS DECIMAL) / SUM(la.permanent_quantity) * 100, 2) ELSE NULL END AS la_discard_ratio FROM logistics_allparts AS la GROUP BY la.product_code, la.product_title ORDER BY la_discard_ratio DESC NULLS LAST",
+        "parameters": {},
+        "response_template": "کد کالا، عنوان کالا، مجموع مقدار دائم، مجموع مقدار ضایعات و نسبت ضایعات به دائم (درصد)، به تفکیک کالا، مرتب‌شده بر اساس نسبت ضایعات نزولی:"
       }
     },
     {
@@ -730,10 +882,13 @@
       "complexity": "hard",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "مجموع مقدار به واحد اصلی به تفکیک انبار و کالا",
+      "question": "مقدار اسناد انبارگردانی به تفکیک انبار",
       "sql": {
-        "SQL": "SELECT la.store_code AS la_store_code, la.store_name AS la_store_name, la.product_code AS la_product_code, la.product_title AS la_product_title, la.part_major_unit_title AS la_part_major_unit_title, SUM(la.major_quantity) AS la_major_quantity_sum FROM logistics_allparts AS la GROUP BY la.store_code, la.store_name, la.product_code, la.product_title, la.part_major_unit_title ORDER BY la.store_code, la_major_quantity_sum DESC",
-        "parameters": {}
+        "SQL": "SELECT la.store_code AS la_store_code, la.store_name AS la_store_name, SUM(la.permanent_voucher_quantity) AS la_permanent_voucher_quantity_sum FROM logistics_allparts AS la WHERE la.voucher_type = $1 GROUP BY la.store_code, la.store_name ORDER BY la_permanent_voucher_quantity_sum DESC",
+        "parameters": {
+          "1": "انبارگردانی"
+        },
+        "response_template": "کد انبار، عنوان انبار و مجموع مقدار دائم سند برای اسناد انبارگردانی، به تفکیک انبار، مرتب‌شده از بیشترین به کمترین:"
       }
     },
     {
@@ -741,10 +896,11 @@
       "complexity": "hard",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "انبارهایی با میانگین مقدار بالای صد",
+      "question": "مقایسه مقدار دائم و موقت و ضایعات هر انبار",
       "sql": {
-        "SQL": "SELECT la.store_code AS la_store_code, la.store_name AS la_store_name, AVG(la.quantity) AS la_quantity_avg, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la GROUP BY la.store_code, la.store_name HAVING AVG(la.quantity) > 100 ORDER BY la_quantity_avg DESC",
-        "parameters": {}
+        "SQL": "SELECT la.store_code AS la_store_code, la.store_name AS la_store_name, SUM(la.permanent_quantity) AS la_permanent_quantity_sum, SUM(la.temporary_quantity) AS la_temporary_quantity_sum, SUM(la.discard_quantity) AS la_discard_quantity_sum FROM logistics_allparts AS la GROUP BY la.store_code, la.store_name ORDER BY la_permanent_quantity_sum DESC",
+        "parameters": {},
+        "response_template": "کد انبار، عنوان انبار، مجموع مقدار دائم، مجموع مقدار موقت و مجموع مقدار ضایعات به واحد اصلی، به تفکیک انبار، مرتب‌شده بر اساس مقدار دائم نزولی:"
       }
     },
     {
@@ -752,10 +908,14 @@
       "complexity": "hard",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "کالاهایی با مجموع مقدار بالای هزار",
+      "question": "انبارهایی که بیشتر از ۱۰۰ سند خرید دارند",
       "sql": {
-        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la GROUP BY la.product_code, la.product_title HAVING SUM(la.quantity) > 1000 ORDER BY la_quantity_sum DESC",
-        "parameters": {}
+        "SQL": "SELECT la.store_code AS la_store_code, la.store_name AS la_store_name, COUNT(la.product_code) AS la_product_code_count FROM logistics_allparts AS la WHERE la.voucher_type = $1 GROUP BY la.store_code, la.store_name HAVING COUNT(la.product_code) > $2 ORDER BY la_product_code_count DESC",
+        "parameters": {
+          "1": "خرید",
+          "2": "100"
+        },
+        "response_template": "کد انبار، عنوان انبار و تعداد اسناد خرید برای انبارهایی که بیش از ۱۰۰ سند خرید دارند، مرتب‌شده از بیشترین به کمترین:"
       }
     },
     {
@@ -763,10 +923,11 @@
       "complexity": "hard",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "مجموع مقدار ورودی و خروجی به تفکیک مرکز نگهداری",
+      "question": "مقایسه اسناد برگشتی و غیربرگشتی به تفکیک نوع سند",
       "sql": {
-        "SQL": "SELECT la.plant_code AS la_plant_code, la.plant_name AS la_plant_name, SUM(CASE WHEN la.type_of_effect = 'افزایشی' THEN la.quantity ELSE 0 END) AS incoming_quantity, SUM(CASE WHEN la.type_of_effect = 'کاهشی' THEN la.quantity ELSE 0 END) AS outgoing_quantity, SUM(CASE WHEN la.type_of_effect = 'افزایشی' THEN la.quantity ELSE 0 END) - SUM(CASE WHEN la.type_of_effect = 'کاهشی' THEN la.quantity ELSE 0 END) AS net_quantity FROM logistics_allparts AS la GROUP BY la.plant_code, la.plant_name ORDER BY net_quantity DESC",
-        "parameters": {}
+        "SQL": "SELECT la.voucher_type AS la_voucher_type, SUM(CASE WHEN la.is_return = false THEN la.permanent_quantity ELSE 0 END) AS la_non_return_quantity_sum, SUM(CASE WHEN la.is_return = true THEN la.permanent_quantity ELSE 0 END) AS la_return_quantity_sum FROM logistics_allparts AS la GROUP BY la.voucher_type ORDER BY la_non_return_quantity_sum DESC",
+        "parameters": {},
+        "response_template": "نوع سند، مجموع مقدار دائم غیربرگشتی و مجموع مقدار دائم برگشتی به واحد اصلی، به تفکیک نوع سند، مرتب‌شده بر اساس مقدار غیربرگشتی نزولی:"
       }
     },
     {
@@ -774,10 +935,15 @@
       "complexity": "hard",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "مجموع مقدار ورودی و خروجی به تفکیک طبقه حساب کالا",
+      "question": "روند ماهانه خرید در سال جاری",
       "sql": {
-        "SQL": "SELECT la.part_account_category_title AS la_part_account_category_title, SUM(CASE WHEN la.type_of_effect = 'افزایشی' THEN la.quantity ELSE 0 END) AS incoming_quantity, SUM(CASE WHEN la.type_of_effect = 'کاهشی' THEN la.quantity ELSE 0 END) AS outgoing_quantity, SUM(CASE WHEN la.type_of_effect = 'افزایشی' THEN la.quantity ELSE 0 END) - SUM(CASE WHEN la.type_of_effect = 'کاهشی' THEN la.quantity ELSE 0 END) AS net_quantity FROM logistics_allparts AS la WHERE la.part_account_category_title IS NOT NULL GROUP BY la.part_account_category_title ORDER BY net_quantity DESC",
-        "parameters": {}
+        "SQL": "SELECT SUBSTRING(la.voucher_date, 1, 7) AS la_voucher_month, SUM(la.permanent_quantity) AS la_permanent_quantity_sum, COUNT(la.product_code) AS la_product_code_count FROM logistics_allparts AS la WHERE la.voucher_type = $1 AND la.voucher_date BETWEEN $2 AND $3 GROUP BY SUBSTRING(la.voucher_date, 1, 7) ORDER BY la_voucher_month",
+        "parameters": {
+          "1": "خرید",
+          "2": "{persian_year_start}",
+          "3": "{persian_year_end}"
+        },
+        "response_template": "ماه، مجموع مقدار دائم به واحد اصلی و تعداد اسناد خرید در سال جاری ({persian_year_start} تا {persian_year_end})، به تفکیک ماه، مرتب‌شده بر اساس ماه:"
       }
     },
     {
@@ -785,10 +951,11 @@
       "complexity": "hard",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "تحلیل ماهانه گردش کالا",
+      "question": "نسبت برگشتی به کل اسناد هر نوع سند",
       "sql": {
-        "SQL": "SELECT EXTRACT(YEAR FROM la.voucher_date) AS year, EXTRACT(MONTH FROM la.voucher_date) AS month, SUM(la.quantity) AS la_quantity_sum, COUNT(*) AS transaction_count FROM logistics_allparts AS la WHERE la.voucher_date IS NOT NULL GROUP BY EXTRACT(YEAR FROM la.voucher_date), EXTRACT(MONTH FROM la.voucher_date) ORDER BY year, month",
-        "parameters": {}
+        "SQL": "SELECT la.voucher_type AS la_voucher_type, COUNT(la.product_code) AS la_total_count, SUM(CASE WHEN la.is_return = true THEN 1 ELSE 0 END) AS la_return_count, CASE WHEN COUNT(la.product_code) > 0 THEN ROUND(CAST(SUM(CASE WHEN la.is_return = true THEN 1 ELSE 0 END) AS DECIMAL) / COUNT(la.product_code) * 100, 2) ELSE NULL END AS la_return_ratio FROM logistics_allparts AS la GROUP BY la.voucher_type ORDER BY la_return_ratio DESC NULLS LAST",
+        "parameters": {},
+        "response_template": "نوع سند، تعداد کل اسناد، تعداد اسناد برگشتی و نسبت برگشتی به کل (درصد)، به تفکیک نوع سند، مرتب‌شده بر اساس نسبت برگشتی نزولی:"
       }
     },
     {
@@ -796,10 +963,14 @@
       "complexity": "hard",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "تحلیل ماهانه گردش کالا به تفکیک نوع تاثیر",
+      "question": "کالاهایی که هم خرید و هم فروش داشته‌اند",
       "sql": {
-        "SQL": "SELECT EXTRACT(YEAR FROM la.voucher_date) AS year, EXTRACT(MONTH FROM la.voucher_date) AS month, la.type_of_effect AS la_type_of_effect, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la WHERE la.voucher_date IS NOT NULL AND la.type_of_effect IS NOT NULL GROUP BY EXTRACT(YEAR FROM la.voucher_date), EXTRACT(MONTH FROM la.voucher_date), la.type_of_effect ORDER BY year, month, la.type_of_effect",
-        "parameters": {}
+        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, SUM(CASE WHEN la.voucher_type = $1 THEN la.permanent_quantity ELSE 0 END) AS la_purchase_sum, SUM(CASE WHEN la.voucher_type = $2 THEN la.permanent_quantity ELSE 0 END) AS la_sales_sum FROM logistics_allparts AS la WHERE la.voucher_type IN ($1, $2) GROUP BY la.product_code, la.product_title HAVING SUM(CASE WHEN la.voucher_type = $1 THEN la.permanent_quantity ELSE 0 END) > 0 AND SUM(CASE WHEN la.voucher_type = $2 THEN la.permanent_quantity ELSE 0 END) > 0 ORDER BY la_purchase_sum DESC",
+        "parameters": {
+          "1": "خرید",
+          "2": "فروش"
+        },
+        "response_template": "کد کالا، عنوان کالا، مجموع مقدار خرید و مجموع مقدار فروش به واحد اصلی برای کالاهایی که هم سند خرید و هم سند فروش دارند، مرتب‌شده بر اساس مقدار خرید نزولی:"
       }
     },
     {
@@ -807,10 +978,13 @@
       "complexity": "hard",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "پراکندگی کالاها در انبارها",
+      "question": "کالاهایی که ضایعات آنها بیش از ۱۰ درصد مقدار دائم است",
       "sql": {
-        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, COUNT(DISTINCT la.store_code) AS store_count, COUNT(DISTINCT la.plant_code) AS plant_count, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la GROUP BY la.product_code, la.product_title ORDER BY store_count DESC, la_quantity_sum DESC",
-        "parameters": {}
+        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, SUM(la.permanent_quantity) AS la_permanent_quantity_sum, SUM(la.discard_quantity) AS la_discard_quantity_sum, ROUND(CAST(SUM(la.discard_quantity) AS DECIMAL) / NULLIF(SUM(la.permanent_quantity), 0) * 100, 2) AS la_discard_pct FROM logistics_allparts AS la GROUP BY la.product_code, la.product_title HAVING SUM(la.permanent_quantity) > 0 AND ROUND(CAST(SUM(la.discard_quantity) AS DECIMAL) / NULLIF(SUM(la.permanent_quantity), 0) * 100, 2) > $1 ORDER BY la_discard_pct DESC",
+        "parameters": {
+          "1": "10"
+        },
+        "response_template": "کد کالا، عنوان کالا، مجموع مقدار دائم، مجموع ضایعات و درصد ضایعات برای کالاهایی که نسبت ضایعات آن‌ها بیش از ۱۰ درصد است، مرتب‌شده بر اساس درصد ضایعات نزولی:"
       }
     },
     {
@@ -818,10 +992,14 @@
       "complexity": "hard",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "مجموع مقدار کالاها به تفکیک شرکت، شعبه، مرکز نگهداری و انبار",
+      "question": "کالاهایی که فقط مصرف داشته و خرید نداشته‌اند",
       "sql": {
-        "SQL": "SELECT la.company_name AS la_company_name, la.branch_title AS la_branch_title, la.plant_code AS la_plant_code, la.plant_name AS la_plant_name, la.store_code AS la_store_code, la.store_name AS la_store_name, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la GROUP BY la.company_name, la.branch_title, la.plant_code, la.plant_name, la.store_code, la.store_name ORDER BY la.company_name, la.branch_title, la.plant_code, la_quantity_sum DESC",
-        "parameters": {}
+        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, SUM(la.permanent_quantity) AS la_permanent_quantity_sum FROM logistics_allparts AS la WHERE la.voucher_type = $1 AND la.product_code NOT IN (SELECT la2.product_code FROM logistics_allparts AS la2 WHERE la2.voucher_type = $2) GROUP BY la.product_code, la.product_title ORDER BY la_permanent_quantity_sum DESC",
+        "parameters": {
+          "1": "مصرف",
+          "2": "خرید"
+        },
+        "response_template": "کد کالا، عنوان کالا و مجموع مقدار مصرف به واحد اصلی برای کالاهایی که فقط سند مصرف دارند و سند خریدی ندارند، مرتب‌شده از بیشترین به کمترین:"
       }
     },
     {
@@ -829,10 +1007,17 @@
       "complexity": "hard",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "کالاهایی که فقط در یک انبار موجود هستند",
+      "question": "مقدار خرید و مصرف و ضایعات هر کالا در سال جاری",
       "sql": {
-        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, MIN(la.store_code) AS la_store_code, MIN(la.store_name) AS la_store_name, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la GROUP BY la.product_code, la.product_title HAVING COUNT(DISTINCT la.store_code) = 1 ORDER BY la_quantity_sum DESC",
-        "parameters": {}
+        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, SUM(CASE WHEN la.voucher_type = $1 THEN la.permanent_quantity ELSE 0 END) AS la_purchase_sum, SUM(CASE WHEN la.voucher_type = $2 THEN la.permanent_quantity ELSE 0 END) AS la_consumption_sum, SUM(CASE WHEN la.voucher_type = $3 THEN la.permanent_quantity ELSE 0 END) AS la_discard_sum FROM logistics_allparts AS la WHERE la.voucher_date BETWEEN $4 AND $5 AND la.voucher_type IN ($1, $2, $3) GROUP BY la.product_code, la.product_title ORDER BY la_purchase_sum DESC",
+        "parameters": {
+          "1": "خرید",
+          "2": "مصرف",
+          "3": "ضایعات",
+          "4": "{persian_year_start}",
+          "5": "{persian_year_end}"
+        },
+        "response_template": "کد کالا، عنوان کالا، مجموع خرید، مجموع مصرف و مجموع ضایعات به واحد اصلی در سال جاری ({persian_year_start} تا {persian_year_end})، به تفکیک کالا، مرتب‌شده بر اساس مقدار خرید نزولی:"
       }
     },
     {
@@ -840,10 +1025,14 @@
       "complexity": "hard",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "انبارهایی که فقط یک نوع کالا دارند",
+      "question": "۱۰ کالای با بیشترین ضایعات در یک ماه اخیر",
       "sql": {
-        "SQL": "SELECT la.store_code AS la_store_code, la.store_name AS la_store_name, MIN(la.product_code) AS la_product_code, MIN(la.product_title) AS la_product_title, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la GROUP BY la.store_code, la.store_name HAVING COUNT(DISTINCT la.product_code) = 1 ORDER BY la_quantity_sum DESC",
-        "parameters": {}
+        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, SUM(la.discard_quantity) AS la_discard_quantity_sum FROM logistics_allparts AS la WHERE la.voucher_date BETWEEN $1 AND $2 GROUP BY la.product_code, la.product_title ORDER BY la_discard_quantity_sum DESC LIMIT 10",
+        "parameters": {
+          "1": "{last_month_date}",
+          "2": "{today_date}"
+        },
+        "response_template": "کد کالا، عنوان کالا و مجموع ضایعات به واحد اصلی از {last_month_date} تا {today_date}، برای ۱۰ کالای اول با بیشترین ضایعات:"
       }
     },
     {
@@ -851,10 +1040,16 @@
       "complexity": "hard",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "مقایسه واحد اصلی و واحد دوم به تفکیک کالا",
+      "question": "مقایسه مقدار ورودی و خروجی هر انبار",
       "sql": {
-        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, la.part_major_unit_title AS la_part_major_unit_title, la.second_unit_title AS la_second_unit_title, SUM(la.major_quantity) AS la_major_quantity_sum, SUM(la.second_quantity) AS la_second_quantity_sum, CASE WHEN SUM(la.second_quantity) > 0 THEN ROUND(CAST(SUM(la.major_quantity) AS DECIMAL) / SUM(la.second_quantity), 2) ELSE NULL END AS conversion_ratio FROM logistics_allparts AS la WHERE la.second_quantity IS NOT NULL AND la.second_quantity > 0 GROUP BY la.product_code, la.product_title, la.part_major_unit_title, la.second_unit_title ORDER BY la_major_quantity_sum DESC",
-        "parameters": {}
+        "SQL": "SELECT la.store_code AS la_store_code, la.store_name AS la_store_name, SUM(CASE WHEN la.voucher_type IN ($1, $2) THEN la.permanent_quantity ELSE 0 END) AS la_incoming_sum, SUM(CASE WHEN la.voucher_type IN ($3, $4) THEN la.permanent_quantity ELSE 0 END) AS la_outgoing_sum FROM logistics_allparts AS la GROUP BY la.store_code, la.store_name ORDER BY la.store_code",
+        "parameters": {
+          "1": "خرید",
+          "2": "تولید",
+          "3": "فروش",
+          "4": "مصرف"
+        },
+        "response_template": "کد انبار، عنوان انبار، مجموع مقدار ورودی (خرید و تولید) و مجموع مقدار خروجی (فروش و مصرف) به واحد اصلی، به تفکیک انبار، مرتب‌شده بر اساس کد انبار:"
       }
     },
     {
@@ -862,10 +1057,11 @@
       "complexity": "hard",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "تعداد روزهای فعال به تفکیک انبار",
+      "question": "تعداد کالاهای منحصر به فرد هر شعبه به تفکیک نوع سند",
       "sql": {
-        "SQL": "SELECT la.store_code AS la_store_code, la.store_name AS la_store_name, COUNT(DISTINCT la.voucher_date) AS active_days, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la WHERE la.voucher_date IS NOT NULL GROUP BY la.store_code, la.store_name ORDER BY active_days DESC",
-        "parameters": {}
+        "SQL": "SELECT la.branch_title AS la_branch_title, la.voucher_type AS la_voucher_type, COUNT(DISTINCT la.product_code) AS la_product_code_count_distinct FROM logistics_allparts AS la GROUP BY la.branch_title, la.voucher_type ORDER BY la.branch_title, la_product_code_count_distinct DESC",
+        "parameters": {},
+        "response_template": "عنوان شعبه، نوع سند و تعداد کالاهای منحصر به فرد، به تفکیک شعبه و نوع سند، مرتب‌شده بر اساس شعبه و تعداد نزولی:"
       }
     },
     {
@@ -873,10 +1069,11 @@
       "complexity": "hard",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "تعداد روزهای فعال به تفکیک کالا",
+      "question": "مراکز نگهداری با بیشترین تنوع نوع سند",
       "sql": {
-        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, COUNT(DISTINCT la.voucher_date) AS active_days, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la WHERE la.voucher_date IS NOT NULL GROUP BY la.product_code, la.product_title ORDER BY active_days DESC",
-        "parameters": {}
+        "SQL": "SELECT la.plant_code AS la_plant_code, la.plant_name AS la_plant_name, COUNT(DISTINCT la.voucher_type) AS la_voucher_type_count_distinct FROM logistics_allparts AS la GROUP BY la.plant_code, la.plant_name ORDER BY la_voucher_type_count_distinct DESC LIMIT 10",
+        "parameters": {},
+        "response_template": "کد مرکز نگهداری، عنوان مرکز نگهداری و تعداد انواع سند منحصر به فرد، برای ۱۰ مرکز اول با بیشترین تنوع نوع سند:"
       }
     },
     {
@@ -884,10 +1081,14 @@
       "complexity": "hard",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "آخرین تاریخ تراکنش به تفکیک انبار",
+      "question": "تعداد اسناد هر کالا به تفکیک نوع سند در یک ماه اخیر",
       "sql": {
-        "SQL": "SELECT la.store_code AS la_store_code, la.store_name AS la_store_name, MAX(la.voucher_date) AS last_transaction_date FROM logistics_allparts AS la WHERE la.voucher_date IS NOT NULL GROUP BY la.store_code, la.store_name ORDER BY last_transaction_date DESC",
-        "parameters": {}
+        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, la.voucher_type AS la_voucher_type, COUNT(la.product_code) AS la_product_code_count FROM logistics_allparts AS la WHERE la.voucher_date BETWEEN $1 AND $2 GROUP BY la.product_code, la.product_title, la.voucher_type ORDER BY la.product_code, la_product_code_count DESC",
+        "parameters": {
+          "1": "{last_month_date}",
+          "2": "{today_date}"
+        },
+        "response_template": "کد کالا، عنوان کالا، نوع سند و تعداد اسناد از {last_month_date} تا {today_date}، به تفکیک کالا و نوع سند، مرتب‌شده بر اساس کد کالا و تعداد نزولی:"
       }
     },
     {
@@ -895,10 +1096,11 @@
       "complexity": "hard",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "آخرین تاریخ تراکنش به تفکیک کالا",
+      "question": "تنوع نوع کالا در هر انبار",
       "sql": {
-        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, MAX(la.voucher_date) AS last_transaction_date FROM logistics_allparts AS la WHERE la.voucher_date IS NOT NULL GROUP BY la.product_code, la.product_title ORDER BY last_transaction_date DESC",
-        "parameters": {}
+        "SQL": "SELECT la.store_code AS la_store_code, la.store_name AS la_store_name, COUNT(DISTINCT la.part_type) AS la_part_type_count_distinct, COUNT(DISTINCT la.product_code) AS la_product_code_count_distinct FROM logistics_allparts AS la GROUP BY la.store_code, la.store_name ORDER BY la_part_type_count_distinct DESC",
+        "parameters": {},
+        "response_template": "کد انبار، عنوان انبار، تعداد انواع کالای منحصر به فرد و تعداد کالاهای منحصر به فرد، به تفکیک انبار، مرتب‌شده بر اساس تعداد انواع کالا نزولی:"
       }
     },
     {
@@ -906,10 +1108,16 @@
       "complexity": "hard",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "اولین و آخرین تاریخ تراکنش به تفکیک انبار",
+      "question": "گردش کالاهای تولیدی در شعبه اصفهان از ابتدای سال",
       "sql": {
-        "SQL": "SELECT la.store_code AS la_store_code, la.store_name AS la_store_name, MIN(la.voucher_date) AS first_transaction_date, MAX(la.voucher_date) AS last_transaction_date FROM logistics_allparts AS la WHERE la.voucher_date IS NOT NULL GROUP BY la.store_code, la.store_name ORDER BY la.store_code",
-        "parameters": {}
+        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, la.store_name AS la_store_name, SUM(la.permanent_voucher_quantity) AS la_permanent_voucher_quantity_sum FROM logistics_allparts AS la WHERE la.voucher_type = $1 AND la.branch_title ILIKE $2 AND la.voucher_date BETWEEN $3 AND $4 GROUP BY la.product_code, la.product_title, la.store_name ORDER BY la_permanent_voucher_quantity_sum DESC",
+        "parameters": {
+          "1": "تولید",
+          "2": "%اصفهان%",
+          "3": "{persian_year_start}",
+          "4": "{today_date}"
+        },
+        "response_template": "کد کالا، عنوان کالا، عنوان انبار و مجموع مقدار دائم سند برای اسناد تولید در شعب شامل «اصفهان» از {persian_year_start} تا {today_date}، به تفکیک کالا و انبار، مرتب‌شده از بیشترین به کمترین:"
       }
     },
     {
@@ -917,10 +1125,15 @@
       "complexity": "hard",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "مقایسه مقدار کالاها بین شرکت‌های مختلف",
+      "question": "مقایسه اسناد برگشتی و غیر برگشتی خرید در سه ماه اخیر به تفکیک انبار",
       "sql": {
-        "SQL": "SELECT la.company_name AS la_company_name, COUNT(DISTINCT la.product_code) AS unique_product_count, COUNT(DISTINCT la.store_code) AS unique_store_count, SUM(la.quantity) AS la_quantity_sum, COUNT(*) AS transaction_count FROM logistics_allparts AS la GROUP BY la.company_name ORDER BY la_quantity_sum DESC",
-        "parameters": {}
+        "SQL": "SELECT la.store_code AS la_store_code, la.store_name AS la_store_name, SUM(CASE WHEN la.is_return = false THEN la.permanent_voucher_quantity ELSE 0 END) AS la_non_return_quantity, SUM(CASE WHEN la.is_return = true THEN la.permanent_voucher_quantity ELSE 0 END) AS la_return_quantity FROM logistics_allparts AS la WHERE la.voucher_type = $1 AND la.voucher_date BETWEEN $2 AND $3 GROUP BY la.store_code, la.store_name ORDER BY la_non_return_quantity DESC",
+        "parameters": {
+          "1": "خرید",
+          "2": "{three_months_ago}",
+          "3": "{today_date}"
+        },
+        "response_template": "کد انبار، عنوان انبار، مقدار اسناد غیر برگشتی و مقدار اسناد برگشتی خرید از {three_months_ago} تا {today_date}، به تفکیک انبار، مرتب‌شده بر اساس مقدار غیر برگشتی نزولی:"
       }
     },
     {
@@ -928,10 +1141,15 @@
       "complexity": "hard",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "تحلیل گردش کالا به تفکیک روش قیمت‌گذاری",
+      "question": "روند ماهانه فروش در سال جاری به تفکیک شعبه",
       "sql": {
-        "SQL": "SELECT la.pricing_method AS la_pricing_method, la.type_of_effect AS la_type_of_effect, SUM(la.quantity) AS la_quantity_sum, COUNT(*) AS transaction_count, COUNT(DISTINCT la.product_code) AS unique_product_count FROM logistics_allparts AS la WHERE la.pricing_method IS NOT NULL GROUP BY la.pricing_method, la.type_of_effect ORDER BY la.pricing_method, la_quantity_sum DESC",
-        "parameters": {}
+        "SQL": "SELECT la.branch_title AS la_branch_title, SUBSTRING(la.voucher_date, 1, 7) AS la_voucher_month, SUM(la.permanent_quantity) AS la_permanent_quantity_sum FROM logistics_allparts AS la WHERE la.voucher_type = $1 AND la.voucher_date BETWEEN $2 AND $3 GROUP BY la.branch_title, SUBSTRING(la.voucher_date, 1, 7) ORDER BY la.branch_title, la_voucher_month",
+        "parameters": {
+          "1": "فروش",
+          "2": "{persian_year_start}",
+          "3": "{persian_year_end}"
+        },
+        "response_template": "عنوان شعبه، ماه و مجموع مقدار فروش دائم به واحد اصلی در سال جاری ({persian_year_start} تا {persian_year_end})، به تفکیک شعبه و ماه، مرتب‌شده بر اساس شعبه و ماه:"
       }
     },
     {
@@ -939,10 +1157,14 @@
       "complexity": "hard",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "مجموع مقدار و تعداد تراکنش به تفکیک سال مالی و نوع سند",
+      "question": "کالاهایی با بیشترین تعداد سند در ماه گذشته",
       "sql": {
-        "SQL": "SELECT la.fiscal_year_title AS la_fiscal_year_title, la.voucher_type AS la_voucher_type, SUM(la.quantity) AS la_quantity_sum, COUNT(*) AS transaction_count FROM logistics_allparts AS la WHERE la.voucher_type IS NOT NULL GROUP BY la.fiscal_year_title, la.voucher_type ORDER BY la.fiscal_year_title, la_quantity_sum DESC",
-        "parameters": {}
+        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, COUNT(la.product_code) AS la_product_code_count FROM logistics_allparts AS la WHERE la.voucher_date BETWEEN $1 AND $2 GROUP BY la.product_code, la.product_title ORDER BY la_product_code_count DESC LIMIT 20",
+        "parameters": {
+          "1": "{last_month_date}",
+          "2": "{today_date}"
+        },
+        "response_template": "کد کالا، عنوان کالا و تعداد اسناد از {last_month_date} تا {today_date}، برای ۲۰ کالای اول با بیشترین تعداد سند:"
       }
     },
     {
@@ -950,10 +1172,15 @@
       "complexity": "hard",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "بررسی توزیع کالاها بین شعب مختلف",
+      "question": "مجموع مقدار انتقال بین انبار به تفکیک انبار و کالا در دو هفته اخیر",
       "sql": {
-        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, COUNT(DISTINCT la.branch_title) AS branch_count, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la GROUP BY la.product_code, la.product_title ORDER BY branch_count DESC, la_quantity_sum DESC",
-        "parameters": {}
+        "SQL": "SELECT la.store_code AS la_store_code, la.store_name AS la_store_name, la.product_code AS la_product_code, la.product_title AS la_product_title, SUM(la.permanent_quantity) AS la_permanent_quantity_sum FROM logistics_allparts AS la WHERE la.voucher_type = $1 AND la.voucher_date BETWEEN $2 AND $3 GROUP BY la.store_code, la.store_name, la.product_code, la.product_title ORDER BY la.store_code, la_permanent_quantity_sum DESC",
+        "parameters": {
+          "1": "انتقال بین انبار",
+          "2": "{two_weeks_ago}",
+          "3": "{today_date}"
+        },
+        "response_template": "کد انبار، عنوان انبار، کد کالا، عنوان کالا و مجموع مقدار دائم به واحد اصلی برای اسناد انتقال بین انبار از {two_weeks_ago} تا {today_date}، به تفکیک انبار و کالا، مرتب‌شده بر اساس کد انبار و مقدار نزولی:"
       }
     },
     {
@@ -961,10 +1188,13 @@
       "complexity": "hard",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "کالاهایی که در تمام شعب موجود هستند",
+      "question": "مقایسه مقدار دائم سند و مقدار واحد اصلی در اسناد خرید هر انبار",
       "sql": {
-        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, COUNT(DISTINCT la.branch_title) AS branch_count, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la GROUP BY la.product_code, la.product_title HAVING COUNT(DISTINCT la.branch_title) = (SELECT COUNT(DISTINCT branch_title) FROM logistics_allparts) ORDER BY la_quantity_sum DESC",
-        "parameters": {}
+        "SQL": "SELECT la.store_code AS la_store_code, la.store_name AS la_store_name, SUM(la.permanent_voucher_quantity) AS la_permanent_voucher_quantity_sum, SUM(la.permanent_quantity) AS la_permanent_quantity_sum FROM logistics_allparts AS la WHERE la.voucher_type = $1 GROUP BY la.store_code, la.store_name ORDER BY la_permanent_voucher_quantity_sum DESC",
+        "parameters": {
+          "1": "خرید"
+        },
+        "response_template": "کد انبار، عنوان انبار، مجموع مقدار دائم سند و مجموع مقدار دائم به واحد اصلی برای اسناد خرید، به تفکیک انبار، مرتب‌شده بر اساس مقدار دائم سند نزولی:"
       }
     },
     {
@@ -972,10 +1202,13 @@
       "complexity": "hard",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "میانگین تراکنش روزانه به تفکیک انبار",
+      "question": "کالاهایی با بالاترین نسبت برگشتی خرید",
       "sql": {
-        "SQL": "SELECT la.store_code AS la_store_code, la.store_name AS la_store_name, COUNT(*) AS total_transactions, COUNT(DISTINCT la.voucher_date) AS active_days, ROUND(CAST(COUNT(*) AS DECIMAL) / NULLIF(COUNT(DISTINCT la.voucher_date), 0), 2) AS avg_daily_transactions FROM logistics_allparts AS la WHERE la.voucher_date IS NOT NULL GROUP BY la.store_code, la.store_name ORDER BY avg_daily_transactions DESC",
-        "parameters": {}
+        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, SUM(CASE WHEN la.is_return = false THEN la.permanent_quantity ELSE 0 END) AS la_purchase_sum, SUM(CASE WHEN la.is_return = true THEN la.permanent_quantity ELSE 0 END) AS la_return_sum, CASE WHEN SUM(CASE WHEN la.is_return = false THEN la.permanent_quantity ELSE 0 END) > 0 THEN ROUND(CAST(ABS(SUM(CASE WHEN la.is_return = true THEN la.permanent_quantity ELSE 0 END)) AS DECIMAL) / SUM(CASE WHEN la.is_return = false THEN la.permanent_quantity ELSE 0 END) * 100, 2) ELSE NULL END AS la_return_pct FROM logistics_allparts AS la WHERE la.voucher_type = $1 GROUP BY la.product_code, la.product_title HAVING SUM(CASE WHEN la.is_return = false THEN la.permanent_quantity ELSE 0 END) > 0 ORDER BY la_return_pct DESC NULLS LAST LIMIT 20",
+        "parameters": {
+          "1": "خرید"
+        },
+        "response_template": "کد کالا، عنوان کالا، مجموع خرید، مجموع برگشتی و نسبت برگشتی (درصد) برای ۲۰ کالای اول با بالاترین نسبت برگشتی خرید:"
       }
     },
     {
@@ -983,10 +1216,11 @@
       "complexity": "hard",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "بررسی تنوع نوع کالا در هر انبار",
+      "question": "تعداد و مقدار اسناد هر نوع انبار به تفکیک نوع سند",
       "sql": {
-        "SQL": "SELECT la.store_code AS la_store_code, la.store_name AS la_store_name, COUNT(DISTINCT la.part_type) AS part_type_count, COUNT(DISTINCT la.product_code) AS unique_product_count, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la GROUP BY la.store_code, la.store_name ORDER BY part_type_count DESC",
-        "parameters": {}
+        "SQL": "SELECT la.storage_type_title AS la_storage_type_title, la.voucher_type AS la_voucher_type, COUNT(la.product_code) AS la_product_code_count, SUM(la.permanent_quantity) AS la_permanent_quantity_sum FROM logistics_allparts AS la GROUP BY la.storage_type_title, la.voucher_type ORDER BY la.storage_type_title, la_product_code_count DESC",
+        "parameters": {},
+        "response_template": "نوع انبار، نوع سند، تعداد اسناد و مجموع مقدار دائم به واحد اصلی، به تفکیک نوع انبار و نوع سند، مرتب‌شده بر اساس نوع انبار و تعداد نزولی:"
       }
     },
     {
@@ -994,10 +1228,13 @@
       "complexity": "hard",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "بررسی تنوع طبقه حساب کالا در هر انبار",
+      "question": "مقایسه مقدار واحد اصلی و واحد دوم در اسناد خرید هر کالا",
       "sql": {
-        "SQL": "SELECT la.store_code AS la_store_code, la.store_name AS la_store_name, COUNT(DISTINCT la.part_account_category_title) AS category_count, COUNT(DISTINCT la.product_code) AS unique_product_count, SUM(la.quantity) AS la_quantity_sum FROM logistics_allparts AS la GROUP BY la.store_code, la.store_name ORDER BY category_count DESC",
-        "parameters": {}
+        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, la.part_major_unit_title AS la_part_major_unit_title, la.second_unit_title AS la_second_unit_title, SUM(la.permanent_quantity) AS la_permanent_quantity_sum, SUM(la.permanent_second_quantity) AS la_permanent_second_quantity_sum FROM logistics_allparts AS la WHERE la.voucher_type = $1 GROUP BY la.product_code, la.product_title, la.part_major_unit_title, la.second_unit_title ORDER BY la_permanent_quantity_sum DESC",
+        "parameters": {
+          "1": "خرید"
+        },
+        "response_template": "کد کالا، عنوان کالا، واحد اصلی، واحد دوم، مجموع مقدار به واحد اصلی و مجموع مقدار به واحد دوم برای اسناد خرید، به تفکیک کالا، مرتب‌شده بر اساس مقدار واحد اصلی نزولی:"
       }
     },
     {
@@ -1005,10 +1242,16 @@
       "complexity": "hard",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "مجموع مقدار کالاها با فیلتر بر نوع تاثیر افزایشی",
+      "question": "۲۰ کالای پرفروش از ابتدای سال تا الان در شعبه مشهد",
       "sql": {
-        "SQL": "SELECT la.store_code AS la_store_code, la.store_name AS la_store_name, la.product_code AS la_product_code, la.product_title AS la_product_title, SUM(la.quantity) AS incoming_quantity FROM logistics_allparts AS la WHERE la.type_of_effect = 'افزایشی' GROUP BY la.store_code, la.store_name, la.product_code, la.product_title ORDER BY incoming_quantity DESC",
-        "parameters": {}
+        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, SUM(la.permanent_quantity) AS la_permanent_quantity_sum FROM logistics_allparts AS la WHERE la.voucher_type = $1 AND la.branch_title ILIKE $2 AND la.voucher_date BETWEEN $3 AND $4 GROUP BY la.product_code, la.product_title ORDER BY la_permanent_quantity_sum DESC LIMIT 20",
+        "parameters": {
+          "1": "فروش",
+          "2": "%مشهد%",
+          "3": "{persian_year_start}",
+          "4": "{today_date}"
+        },
+        "response_template": "کد کالا، عنوان کالا و مجموع مقدار فروش دائم به واحد اصلی در شعب شامل «مشهد» از {persian_year_start} تا {today_date}، برای ۲۰ کالای اول با بیشترین فروش:"
       }
     },
     {
@@ -1016,10 +1259,11 @@
       "complexity": "hard",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "مجموع مقدار کالاها با فیلتر بر نوع تاثیر کاهشی",
+      "question": "مجموع مقدار اسناد هر طبقه حساب به تفکیک نوع سند و شعبه",
       "sql": {
-        "SQL": "SELECT la.store_code AS la_store_code, la.store_name AS la_store_name, la.product_code AS la_product_code, la.product_title AS la_product_title, SUM(la.quantity) AS outgoing_quantity FROM logistics_allparts AS la WHERE la.type_of_effect = 'کاهشی' GROUP BY la.store_code, la.store_name, la.product_code, la.product_title ORDER BY outgoing_quantity DESC",
-        "parameters": {}
+        "SQL": "SELECT la.branch_title AS la_branch_title, la.part_account_category_title AS la_part_account_category_title, la.voucher_type AS la_voucher_type, SUM(la.permanent_quantity) AS la_permanent_quantity_sum FROM logistics_allparts AS la GROUP BY la.branch_title, la.part_account_category_title, la.voucher_type ORDER BY la.branch_title, la.part_account_category_title, la_permanent_quantity_sum DESC",
+        "parameters": {},
+        "response_template": "عنوان شعبه، عنوان طبقه حساب کالا، نوع سند و مجموع مقدار دائم به واحد اصلی، به تفکیک شعبه، طبقه حساب و نوع سند، مرتب‌شده بر اساس شعبه، طبقه حساب و مقدار نزولی:"
       }
     },
     {
@@ -1027,10 +1271,15 @@
       "complexity": "hard",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "نسبت ورودی به خروجی به تفکیک کالا",
+      "question": "کالاهایی که در هفته اخیر انتقال بین انبار داشته‌اند",
       "sql": {
-        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, SUM(CASE WHEN la.type_of_effect = 'افزایشی' THEN la.quantity ELSE 0 END) AS incoming_quantity, SUM(CASE WHEN la.type_of_effect = 'کاهشی' THEN la.quantity ELSE 0 END) AS outgoing_quantity, CASE WHEN SUM(CASE WHEN la.type_of_effect = 'کاهشی' THEN la.quantity ELSE 0 END) > 0 THEN ROUND(CAST(SUM(CASE WHEN la.type_of_effect = 'افزایشی' THEN la.quantity ELSE 0 END) AS DECIMAL) / SUM(CASE WHEN la.type_of_effect = 'کاهشی' THEN la.quantity ELSE 0 END), 2) ELSE NULL END AS in_out_ratio FROM logistics_allparts AS la GROUP BY la.product_code, la.product_title ORDER BY in_out_ratio DESC NULLS LAST",
-        "parameters": {}
+        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, la.store_name AS la_store_name, la.voucher_date AS la_voucher_date, la.permanent_quantity AS la_permanent_quantity, la.is_return AS la_is_return FROM logistics_allparts AS la WHERE la.voucher_type = $1 AND la.voucher_date BETWEEN $2 AND $3 ORDER BY la.voucher_date DESC, la.product_code",
+        "parameters": {
+          "1": "انتقال بین انبار",
+          "2": "{one_week_ago}",
+          "3": "{today_date}"
+        },
+        "response_template": "کد کالا، عنوان کالا، عنوان انبار، تاریخ سند، مقدار دائم به واحد اصلی و وضعیت برگشتی برای اسناد انتقال بین انبار از {one_week_ago} تا {today_date}، مرتب‌شده بر اساس تاریخ سند نزولی و کد کالا:"
       }
     },
     {
@@ -1038,10 +1287,17 @@
       "complexity": "hard",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "نسبت ورودی به خروجی به تفکیک انبار",
+      "question": "مقایسه مقدار خرید سال جاری و سال قبل به تفکیک شعبه",
       "sql": {
-        "SQL": "SELECT la.store_code AS la_store_code, la.store_name AS la_store_name, SUM(CASE WHEN la.type_of_effect = 'افزایشی' THEN la.quantity ELSE 0 END) AS incoming_quantity, SUM(CASE WHEN la.type_of_effect = 'کاهشی' THEN la.quantity ELSE 0 END) AS outgoing_quantity, CASE WHEN SUM(CASE WHEN la.type_of_effect = 'کاهشی' THEN la.quantity ELSE 0 END) > 0 THEN ROUND(CAST(SUM(CASE WHEN la.type_of_effect = 'افزایشی' THEN la.quantity ELSE 0 END) AS DECIMAL) / SUM(CASE WHEN la.type_of_effect = 'کاهشی' THEN la.quantity ELSE 0 END), 2) ELSE NULL END AS in_out_ratio FROM logistics_allparts AS la GROUP BY la.store_code, la.store_name ORDER BY in_out_ratio DESC NULLS LAST",
-        "parameters": {}
+        "SQL": "SELECT la.branch_title AS la_branch_title, SUM(CASE WHEN la.voucher_date BETWEEN $2 AND $3 THEN la.permanent_quantity ELSE 0 END) AS la_current_year_sum, SUM(CASE WHEN la.voucher_date BETWEEN $4 AND $5 THEN la.permanent_quantity ELSE 0 END) AS la_prev_year_sum FROM logistics_allparts AS la WHERE la.voucher_type = $1 AND (la.voucher_date BETWEEN $2 AND $3 OR la.voucher_date BETWEEN $4 AND $5) GROUP BY la.branch_title ORDER BY la_current_year_sum DESC",
+        "parameters": {
+          "1": "خرید",
+          "2": "{persian_year_start}",
+          "3": "{persian_year_end}",
+          "4": "{prev_persian_year_start}",
+          "5": "{prev_persian_year_end}"
+        },
+        "response_template": "عنوان شعبه، مجموع خرید سال جاری ({persian_year_start} تا {persian_year_end}) و مجموع خرید سال قبل ({prev_persian_year_start} تا {prev_persian_year_end}) به واحد اصلی، به تفکیک شعبه، مرتب‌شده بر اساس مقدار سال جاری نزولی:"
       }
     },
     {
@@ -1049,10 +1305,16 @@
       "complexity": "hard",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "تحلیل جامع گردش کالا به تفکیک شرکت و سال مالی",
+      "question": "مقدار خرید غیربرگشتی انبار شعبه تبریز در چهار هفته اخیر",
       "sql": {
-        "SQL": "SELECT la.company_name AS la_company_name, la.fiscal_year_title AS la_fiscal_year_title, COUNT(DISTINCT la.product_code) AS unique_product_count, COUNT(DISTINCT la.store_code) AS unique_store_count, SUM(CASE WHEN la.type_of_effect = 'افزایشی' THEN la.quantity ELSE 0 END) AS incoming_quantity, SUM(CASE WHEN la.type_of_effect = 'کاهشی' THEN la.quantity ELSE 0 END) AS outgoing_quantity, SUM(la.quantity) AS total_quantity, COUNT(*) AS transaction_count FROM logistics_allparts AS la GROUP BY la.company_name, la.fiscal_year_title ORDER BY la.company_name, la.fiscal_year_title",
-        "parameters": {}
+        "SQL": "SELECT la.store_code AS la_store_code, la.store_name AS la_store_name, la.product_code AS la_product_code, la.product_title AS la_product_title, SUM(la.permanent_quantity) AS la_permanent_quantity_sum FROM logistics_allparts AS la WHERE la.voucher_type = $1 AND la.is_return = false AND la.branch_title ILIKE $2 AND la.voucher_date BETWEEN $3 AND $4 GROUP BY la.store_code, la.store_name, la.product_code, la.product_title ORDER BY la_permanent_quantity_sum DESC",
+        "parameters": {
+          "1": "خرید",
+          "2": "%تبریز%",
+          "3": "{four_weeks_ago}",
+          "4": "{today_date}"
+        },
+        "response_template": "کد انبار، عنوان انبار، کد کالا، عنوان کالا و مجموع مقدار دائم به واحد اصلی برای اسناد خرید غیربرگشتی در شعب شامل «تبریز» از {four_weeks_ago} تا {today_date}، به تفکیک انبار و کالا، مرتب‌شده از بیشترین به کمترین:"
       }
     },
     {
@@ -1060,10 +1322,11 @@
       "complexity": "hard",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "داشبورد جامع وضعیت انبارها",
+      "question": "مقدار ضایعات واحد دوم به تفکیک مرکز نگهداری و کالا",
       "sql": {
-        "SQL": "SELECT la.store_code AS la_store_code, la.store_name AS la_store_name, la.storage_type_title AS la_storage_type_title, COUNT(DISTINCT la.product_code) AS unique_product_count, COUNT(DISTINCT la.part_type) AS part_type_count, SUM(CASE WHEN la.type_of_effect = 'افزایشی' THEN la.quantity ELSE 0 END) AS incoming_quantity, SUM(CASE WHEN la.type_of_effect = 'کاهشی' THEN la.quantity ELSE 0 END) AS outgoing_quantity, COUNT(*) AS transaction_count, MIN(la.voucher_date) AS first_transaction, MAX(la.voucher_date) AS last_transaction FROM logistics_allparts AS la GROUP BY la.store_code, la.store_name, la.storage_type_title ORDER BY transaction_count DESC",
-        "parameters": {}
+        "SQL": "SELECT la.plant_code AS la_plant_code, la.plant_name AS la_plant_name, la.product_code AS la_product_code, la.product_title AS la_product_title, SUM(la.discard_second_quantity) AS la_discard_second_quantity_sum FROM logistics_allparts AS la GROUP BY la.plant_code, la.plant_name, la.product_code, la.product_title HAVING SUM(la.discard_second_quantity) <> 0 ORDER BY la_discard_second_quantity_sum DESC",
+        "parameters": {},
+        "response_template": "کد مرکز نگهداری، عنوان مرکز نگهداری، کد کالا، عنوان کالا و مجموع مقدار ضایعات به واحد دوم (غیر صفر)، به تفکیک مرکز نگهداری و کالا، مرتب‌شده از بیشترین به کمترین:"
       }
     },
     {
@@ -1071,10 +1334,16 @@
       "complexity": "hard",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "داشبورد جامع وضعیت کالاها",
+      "question": "مقایسه تولید و مصرف هر کالا در دو ماه اخیر",
       "sql": {
-        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, la.part_type AS la_part_type, la.part_account_category_title AS la_part_account_category_title, COUNT(DISTINCT la.store_code) AS store_count, COUNT(DISTINCT la.plant_code) AS plant_count, SUM(CASE WHEN la.type_of_effect = 'افزایشی' THEN la.major_quantity ELSE 0 END) AS incoming_major_quantity, SUM(CASE WHEN la.type_of_effect = 'کاهشی' THEN la.major_quantity ELSE 0 END) AS outgoing_major_quantity, COUNT(*) AS transaction_count FROM logistics_allparts AS la GROUP BY la.product_code, la.product_title, la.part_type, la.part_account_category_title ORDER BY transaction_count DESC",
-        "parameters": {}
+        "SQL": "SELECT la.product_code AS la_product_code, la.product_title AS la_product_title, SUM(CASE WHEN la.voucher_type = $1 THEN la.permanent_quantity ELSE 0 END) AS la_production_sum, SUM(CASE WHEN la.voucher_type = $2 THEN la.permanent_quantity ELSE 0 END) AS la_consumption_sum, SUM(CASE WHEN la.voucher_type = $1 THEN la.permanent_quantity ELSE 0 END) - SUM(CASE WHEN la.voucher_type = $2 THEN la.permanent_quantity ELSE 0 END) AS la_difference FROM logistics_allparts AS la WHERE la.voucher_type IN ($1, $2) AND la.voucher_date BETWEEN $3 AND $4 GROUP BY la.product_code, la.product_title ORDER BY la_difference DESC",
+        "parameters": {
+          "1": "تولید",
+          "2": "مصرف",
+          "3": "{two_months_ago}",
+          "4": "{today_date}"
+        },
+        "response_template": "کد کالا، عنوان کالا، مجموع تولید، مجموع مصرف و تفاوت تولید و مصرف به واحد اصلی از {two_months_ago} تا {today_date}، به تفکیک کالا، مرتب‌شده بر اساس تفاوت نزولی:"
       }
     },
     {
@@ -1082,10 +1351,13 @@
       "complexity": "hard",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "تحلیل جامع مراکز نگهداری",
+      "question": "تعداد اسناد هر روش قیمت‌گذاری و نوع کارکرد در اسناد خرید",
       "sql": {
-        "SQL": "SELECT la.plant_code AS la_plant_code, la.plant_name AS la_plant_name, la.branch_title AS la_branch_title, COUNT(DISTINCT la.store_code) AS store_count, COUNT(DISTINCT la.product_code) AS unique_product_count, COUNT(DISTINCT la.part_type) AS part_type_count, SUM(la.quantity) AS total_quantity, COUNT(*) AS transaction_count, MIN(la.voucher_date) AS first_transaction, MAX(la.voucher_date) AS last_transaction FROM logistics_allparts AS la GROUP BY la.plant_code, la.plant_name, la.branch_title ORDER BY total_quantity DESC",
-        "parameters": {}
+        "SQL": "SELECT la.pricing_method AS la_pricing_method, la.part_usage AS la_part_usage, COUNT(la.product_code) AS la_product_code_count, SUM(la.permanent_quantity) AS la_permanent_quantity_sum FROM logistics_allparts AS la WHERE la.voucher_type = $1 GROUP BY la.pricing_method, la.part_usage ORDER BY la_product_code_count DESC",
+        "parameters": {
+          "1": "خرید"
+        },
+        "response_template": "روش قیمت‌گذاری، نوع کارکرد کالا، تعداد اسناد و مجموع مقدار دائم به واحد اصلی برای اسناد خرید، به تفکیک روش قیمت‌گذاری و نوع کارکرد، مرتب‌شده بر اساس تعداد نزولی:"
       }
     },
     {
@@ -1093,10 +1365,14 @@
       "complexity": "hard",
       "module": "انبار",
       "table": "logistics_allparts",
-      "question": "گزارش جامع گردش کالا با تمام ابعاد تحلیلی",
+      "question": "خلاصه گردش انبار به تفکیک شعبه و مرکز نگهداری در سه هفته اخیر",
       "sql": {
-        "SQL": "SELECT la.company_name AS la_company_name, la.branch_title AS la_branch_title, la.plant_name AS la_plant_name, la.store_name AS la_store_name, la.part_type AS la_part_type, la.voucher_type AS la_voucher_type, la.type_of_effect AS la_type_of_effect, COUNT(DISTINCT la.product_code) AS unique_product_count, SUM(la.quantity) AS la_quantity_sum, SUM(la.major_quantity) AS la_major_quantity_sum, COUNT(*) AS transaction_count FROM logistics_allparts AS la WHERE la.part_type IS NOT NULL AND la.voucher_type IS NOT NULL AND la.type_of_effect IS NOT NULL GROUP BY la.company_name, la.branch_title, la.plant_name, la.store_name, la.part_type, la.voucher_type, la.type_of_effect ORDER BY la.company_name, la.branch_title, la.plant_name, la_quantity_sum DESC",
-        "parameters": {}
+        "SQL": "SELECT la.branch_title AS la_branch_title, la.plant_code AS la_plant_code, la.plant_name AS la_plant_name, COUNT(la.product_code) AS la_product_code_count, COUNT(DISTINCT la.product_code) AS la_distinct_product_count, SUM(la.permanent_quantity) AS la_permanent_quantity_sum, SUM(la.temporary_quantity) AS la_temporary_quantity_sum, SUM(la.discard_quantity) AS la_discard_quantity_sum FROM logistics_allparts AS la WHERE la.voucher_date BETWEEN $1 AND $2 GROUP BY la.branch_title, la.plant_code, la.plant_name ORDER BY la.branch_title, la_product_code_count DESC",
+        "parameters": {
+          "1": "{three_weeks_ago}",
+          "2": "{today_date}"
+        },
+        "response_template": "عنوان شعبه، کد و عنوان مرکز نگهداری، تعداد اسناد، تعداد کالاهای منحصر به فرد، مجموع مقدار دائم، مجموع مقدار موقت و مجموع مقدار ضایعات به واحد اصلی از {three_weeks_ago} تا {today_date}، به تفکیک شعبه و مرکز نگهداری، مرتب‌شده بر اساس شعبه و تعداد اسناد نزولی:"
       }
     }
   ]

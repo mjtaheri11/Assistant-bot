@@ -2501,16 +2501,182 @@ logistics_allparts:
       part_type: "نوع کالا"
       part_usage: "نوع کارکرد کالا"
       counter_part_type: "نقش طرف مقابل سند"
-      voucher_type: "نوع سند"
-      type_of_effect: "نوع تاثیر بر موجودی"
       voucher_unit: "واحد سنجش سند"
       part_major_unit_title: "واحد سنجش اصلی کالا"
       second_unit_title: "عنوان واحد دوم"
+      state: "وضعیت"
     date_type:
       voucher_date: "تاریخ سند"
     int64_type:
-      quantity: "مقدار"
-      major_quantity: "مقدار به واحد اصلی"
-      second_quantity: "مقدار به واحد دوم"
+      permanent_voucher_quantity: "مقدار دائم سند" 
+      temporary_voucher_quantity: "مقدار موقت سند" 
+      discard_voucher_quantity: "مقدار ضایعات سند" 
+      permanent_quantity: "مقدار به واحد اصلی دائم"
+      temporary_quantity: "مقدار به واحد اصلی موقت"
+      discard_quantity: "مقدار به واحد اصلی ضایعات"
+      permanent_second_quantity: "مقدار به واحد دوم دائم"
+      temporary_second_quantity: "مقدار به واحد دوم موقت"
+      discard_second_quantity: "مقدار به واحد دوم ضایعات"
+    bool_type:
+      is_return: "برگشتی"
+    enum_type:
+      type_of_effect:
+        title: "نوع تاثیر بر موجودی"
+        allowed_values:
+          - "دائم"
+          - "موقت"
+          - "ضایعات"
+      di
+      voucher_type:
+        title: "نوع سند"
+        allowed_values:
+          - "خرید"
+          - "تولید"
+          - "مصرف"
+          - "ضایعات"
+          - "انتقال بین انبار"
+          - "فروش"
+          - "انبارگردانی"
+          - "امانی"
+          - "تبدیل کالا"
+          - "سایر"
+          - "پایان دوره"
+          - "ابتدای دوره"
+          - "تحویل دارایی ثابت"
+          - "پایان سال"
+          - "ابتدای سال"
+          - "استقرار"
+          - "ترکیب و تفکیک"
+          - "انبارگردانی سیستمی"
   relations: []
+"""
+
+PARTIAL_LOGISTICS_DDL = """
+-- Table: logistics_allparts
+-- Description: اطلاعات اقلام کالا با جزییات کامل (هر سطر = یک قلم در یک سند انبار)
+-- Business Rules:
+--   * type_of_effect مشخص می‌کند کدام ستون‌های کمّی فعال‌اند: 'دائم'→permanent_*, 'موقت'→temporary_*, 'ضایعات'→discard_*
+--   * واحد اصلی: part_major_unit_title | واحد دوم (اختیاری): second_unit_title
+
+CREATE TABLE logistics_allparts (
+    -- سلسله‌مراتب سازمانی
+    company_name           VARCHAR,   -- عنوان شرکت
+    fiscal_year_title      VARCHAR,   -- عنوان سال مالی (مثلاً '1402', '1403')
+    branch_title           VARCHAR,   -- عنوان شعبه
+
+    -- سلسله‌مراتب انبار
+    plant_code             VARCHAR,   -- کد مرکز نگهداری
+    plant_name             VARCHAR,   -- عنوان مرکز نگهداری
+    store_code             VARCHAR,   -- کد انبار
+    store_name             VARCHAR,   -- عنوان انبار
+    storage_type_title     VARCHAR,   -- نوع انبار
+
+    -- اطلاعات کالا
+    product_code           VARCHAR,   -- کد کالا (شناسه یکتا)
+    product_title          VARCHAR,   -- عنوان کالا
+    part_account_category_title VARCHAR, -- عنوان طبقه حساب کالا
+    pricing_method         VARCHAR,   -- روش قیمت‌گذاری کالا
+    part_type              VARCHAR,   -- نوع کالا
+    part_usage             VARCHAR,   -- نوع کارکرد کالا
+
+    -- اطلاعات سند
+    counter_part_type      VARCHAR,   -- نقش طرف مقابل سند
+    voucher_unit           VARCHAR,   -- واحد سنجش سند
+    part_major_unit_title  VARCHAR,   -- واحد سنجش اصلی کالا
+    second_unit_title      VARCHAR,   -- عنوان واحد دوم (اختیاری، ممکن است خالی باشد)
+    state                  VARCHAR,   -- وضعیت سند
+    voucher_date           DATE,      -- تاریخ سند
+
+    -- مقادیر کمّی سند (بر حسب واحد سند) 
+    permanent_voucher_quantity  BIGINT, -- مقدار دائم سند
+    temporary_voucher_quantity  BIGINT, -- مقدار موقت سند
+    discard_voucher_quantity    BIGINT, -- مقدار ضایعات سند
+
+    -- مقادیر کمّی (بر حسب واحد اصلی)
+    permanent_quantity          BIGINT, -- مقدار به واحد اصلی دائم
+    temporary_quantity          BIGINT, -- مقدار به واحد اصلی موقت
+    discard_quantity            BIGINT, -- مقدار به واحد اصلی ضایعات
+
+    -- مقادیر کمّی (بر حسب واحد دوم)
+    permanent_second_quantity   BIGINT, -- مقدار به واحد دوم دائم
+    temporary_second_quantity   BIGINT, -- مقدار به واحد دوم موقت
+    discard_second_quantity     BIGINT, -- مقدار به واحد دوم ضایعات
+
+    -- بولی
+    is_return              BOOLEAN,   -- برگشتی (true=سند برگشت، مقادیر کمّی منفی)
+
+    -- نوع تاثیر بر موجودی — مقادیر مجاز: 'دائم', 'موقت', 'ضایعات'
+    type_of_effect         VARCHAR,
+
+    -- نوع سند — مقادیر مجاز: 'خرید', 'تولید', 'مصرف', 'ضایعات', 'انتقال بین انبار', 'فروش', 'انبارگردانی', 'امانی', 'تبدیل کالا', 'سایر', 'پایان دوره', 'ابتدای دوره', 'تحویل دارایی ثابت', 'پایان سال', 'ابتدای سال', 'استقرار', 'ترکیب و تفکیک', 'انبارگردانی سیستمی'
+    voucher_type           VARCHAR
+);
+"""
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 3. M-SCHEMA STYLE — Alternative semi-structured format
+#    Use this for: If you want to follow SOTA XiYan-SQL approach
+#    Research basis: M-Schema outperforms DDL by avg +2.03% on BIRD benchmark
+# ═══════════════════════════════════════════════════════════════════════════════
+
+PARTIAL_LOGISTICS_SCHEMA_STYLE = """
+【DB_ID】 logistics
+
+# Table: logistics_allparts
+# Description: اطلاعات اقلام کالا با جزییات کامل — هر سطر = یک قلم در یک سند انبار
+# Rules: مقادیر کمّی: مثبت اگر is_return=false، منفی اگر is_return=true
+#         type_of_effect → permanent_*/temporary_*/discard_* columns
+
+## Columns:
+  -- سلسله‌مراتب سازمانی
+  - company_name (VARCHAR): عنوان شرکت
+  - fiscal_year_title (VARCHAR): عنوان سال مالی. Values: ['1402', '1403', ...]
+  - branch_title (VARCHAR): عنوان شعبه
+
+  -- سلسله‌مراتب انبار
+  - plant_code (VARCHAR): کد مرکز نگهداری
+  - plant_name (VARCHAR): عنوان مرکز نگهداری
+  - store_code (VARCHAR): کد انبار
+  - store_name (VARCHAR): عنوان انبار
+  - storage_type_title (VARCHAR): نوع انبار
+
+  -- اطلاعات کالا
+  - product_code (VARCHAR): کد کالا
+  - product_title (VARCHAR): عنوان کالا
+  - part_account_category_title (VARCHAR): عنوان طبقه حساب کالا
+  - pricing_method (VARCHAR): روش قیمت‌گذاری کالا
+  - part_type (VARCHAR): نوع کالا
+  - part_usage (VARCHAR): نوع کارکرد کالا
+
+  -- اطلاعات سند
+  - counter_part_type (VARCHAR): نقش طرف مقابل سند
+  - voucher_unit (VARCHAR): واحد سنجش سند
+  - part_major_unit_title (VARCHAR): واحد سنجش اصلی کالا
+  - second_unit_title (VARCHAR): عنوان واحد دوم
+  - state (VARCHAR): وضعیت
+  - voucher_date (DATE): تاریخ سند
+
+  -- مقادیر کمّی سند (واحد سند) 
+  - permanent_voucher_quantity (BIGINT): مقدار دائم سند
+  - temporary_voucher_quantity (BIGINT): مقدار موقت سند
+  - discard_voucher_quantity (BIGINT): مقدار ضایعات سند
+
+  -- مقادیر کمّی (واحد اصلی)
+  - permanent_quantity (BIGINT): مقدار به واحد اصلی دائم
+  - temporary_quantity (BIGINT): مقدار به واحد اصلی موقت
+  - discard_quantity (BIGINT): مقدار به واحد اصلی ضایعات
+
+  -- مقادیر کمّی (واحد دوم)
+  - permanent_second_quantity (BIGINT): مقدار به واحد دوم دائم
+  - temporary_second_quantity (BIGINT): مقدار به واحد دوم موقت
+  - discard_second_quantity (BIGINT): مقدار به واحد دوم ضایعات
+
+  -- بولی و شمارشی
+  - is_return (BOOLEAN): برگشتی 
+  - type_of_effect (VARCHAR): نوع تاثیر بر موجودی. Values: ['دائم', 'موقت', 'ضایعات']
+  - voucher_type (VARCHAR): نوع سند. Values: ['خرید', 'تولید', 'مصرف', 'ضایعات', 'انتقال بین انبار', 'فروش', 'انبارگردانی', 'امانی', 'تبدیل کالا', 'سایر', 'پایان دوره', 'ابتدای دوره', 'تحویل دارایی ثابت', 'پایان سال', 'ابتدای سال', 'استقرار', 'ترکیب و تفکیک', 'انبارگردانی سیستمی']
+
+【Foreign Keys】
+  (none)
 """

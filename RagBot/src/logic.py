@@ -21,7 +21,7 @@ from .prompts import (
     RAG_NORMAL_SYSTEM_PROMPT,
     UTTERANCE_PARAPHRASER_PROMPT,
     CHITCHAT_PROMPT,
-    SQL_CONVERTER_MODIFIED_WITH_PARAMETERS_TEMPLATE,
+    SQL_CONVERTER_MODIFIED_WITH_PARAMETERS_TEMPLATE_V2,
     ANSWER_VALIDATOR_PROMPT,
     SEMANTIC_ROUTER,
     BUSINESS_OBJECT_PARAMETER_EXTRACTOR_PROMPT
@@ -30,7 +30,8 @@ from .retriever import Retriever
 from .config import config
 from .cache import Cache
 from .utils import json_cleaning, json_cleaning_1, calculate_date_context, format_documents_as_sql_examples, convert_sql_parameters, integrate_params, add_param_keys
-from .business_objects import LOGISTICS_SALES_MODIFIED, FINANCIAL_BO_MODIFIED, CRM_BO, LOGISTICS_MODIFIED #, TREASURY_BO
+# from .business_objects import LOGISTICS_SALES_MODIFIED, FINANCIAL_BO_MODIFIED, CRM_BO, LOGISTICS_MODIFIED #, TREASURY_BO
+from .business_objects import PARTIAL_LOGISTICS, PARTIAL_LOGISTICS_DDL, PARTIAL_LOGISTICS_SCHEMA_STYLE
 from .semantic_router import SemanticRouterPipeline
 from .default_examples import DEFAULT_EXAMPLES
 from langchain.chat_models import ChatOpenAI
@@ -299,7 +300,7 @@ def calculate_date_context() -> dict:
 def format_sql_prompt(
     query: str, 
     schema: str, 
-    target_prompt: str = SQL_CONVERTER_MODIFIED_WITH_PARAMETERS_TEMPLATE,
+    target_prompt: str = SQL_CONVERTER_MODIFIED_WITH_PARAMETERS_TEMPLATE_V2,
     examples: Optional[str] = None
 ) -> str:
     """
@@ -341,7 +342,7 @@ def replace_placeholders(text: str, context: dict) -> str:
     pattern = r'\{([a-zA-Z_][a-zA-Z0-9_]*)\}'
     return re.sub(pattern, replacer, text)
 
-def format_param_responder_prompt(query: str, sql_query: str, schema: str, target_prompt: str = SQL_CONVERTER_MODIFIED_WITH_PARAMETERS_TEMPLATE) -> str:
+def format_param_responder_prompt(query: str, sql_query: str, schema: str, target_prompt: str = SQL_CONVERTER_MODIFIED_WITH_PARAMETERS_TEMPLATE_V2) -> str:
     """
     Format the SQL converter prompt with all date context values using current datetime.
     
@@ -437,11 +438,6 @@ async def get_chat_response_legacy(
         api_base=OSS_API_BASE
     ) -> str:
 
-    print("Character Length of the prompt: ", len(prompt))
-    print("words length of the prompt: ", len(prompt.split()))
-
-    print("LLM_API_BASE:", api_base)
-    print("LLM_API_KEY:", api_key)
     print("LLM_MODEL_NAME:", model_name)
     # Use OpenRouter if available, otherwise fall back to original configuration
     if api_base and model_name and api_key:
@@ -489,38 +485,37 @@ def extract_response_text(response, config) -> str:
         return response.choices[0].message.content or ""
 
 
-@observe()
-async def get_chat_response(
-        prompt: str, 
-        model_name,
-        reasoning_effort="medium"
-    ) -> str:
+# @observe()
+# async def get_chat_response(
+#         prompt: str, 
+#         model_name,
+#     ) -> str:
 
-    print("Character Length of the prompt: ", len(prompt))
-    print("words length of the prompt: ", len(prompt.split()))
+#     print("Character Length of the prompt: ", len(prompt))
+#     print("words length of the prompt: ", len(prompt.split()))
 
     
 
-    # Prepare messages in the standard OpenAI dictionary format
-    # The original code used SystemMessage, so we use "role": "system"
-    messages = [
-        {"role": "system", "content": prompt}
-    ]
+#     # Prepare messages in the standard OpenAI dictionary format
+#     # The original code used SystemMessage, so we use "role": "system"
+#     messages = [
+#         {"role": "system", "content": prompt}
+#     ]
 
-    try:
-        response = await llm_manager.complete(model_name, messages, reasoning_effort=reasoning_effort)
+#     try:
+#         response = await llm_manager.complete(model_name, messages)
 
-        # Extract text
-        _, config = llm_manager.get_model(model_name)
-        if config.supports_reasoning:
-            text = response.output[0].content[0].text
-        else:
-            text = response.choices[0].message.content
-        return text
-    except Exception as e:
-        # Basic error handling
-        print(f"Error generating response: {e}")
-        raise e
+#         # Extract text
+#         _, config = llm_manager.get_model(model_name)
+#         if config.supports_reasoning:
+#             text = response.output[0].content[0].text
+#         else:
+#             text = response.choices[0].message.content
+#         return text
+#     except Exception as e:
+#         # Basic error handling
+#         print(f"Error generating response: {e}")
+#         raise e
 
 @observe()
 async def get_cache_response(
@@ -580,18 +575,18 @@ async def process_sql_response(
         response_dict["parameters"] = add_param_keys(response_dict["parameters"])
     
     sql_with_params = integrate_params(response, response_dict["parameters"])    
-    bo_parameters_with_template = await parameters_responder(
-        paraphrased_utterance,
-        sql_with_params,
-        selected_module,
-    )
-    bo_parameters_with_template_dict = json.loads(bo_parameters_with_template)
-    parameters_dict = finalize_parameters(response_dict, bo_parameters_with_template_dict)
+    # bo_parameters_with_template = await parameters_responder(
+    #     paraphrased_utterance,
+    #     sql_with_params,
+    #     selected_module,
+    # )
+    # bo_parameters_with_template_dict = json.loads(bo_parameters_with_template)
+    # parameters_dict = finalize_parameters(response_dict, bo_parameters_with_template_dict)
     return (
         True,
         response,
-        parameters_dict["parameters"],
-        parameters_dict["response_template"]
+        response_dict["parameters"],
+        response_dict["response_template"]
     )
 
 
@@ -601,7 +596,7 @@ async def utterance_paraphraser(
         user_utterance: str, 
         assistant_name: str = None, 
         model_name: str = "", 
-        reasoning_effort: str = "medium"
+        reasoning_effort: str = "high"
     ) -> str:
     serialized_history = history_serializer(history)
     if not model_name:
@@ -639,6 +634,9 @@ async def get_chat_response(prompt: str, model_name: str, reasoning_effort="high
     print("promtp word length:", len(prompt.split()))
     print("prompt character length:", len(prompt))
 
+    print("Character Length of the prompt: ", len(prompt))
+    print("words length of the prompt: ", len(prompt.split()))
+    print("model_name:", model_name)
     try:
         # 3. Generate
         response = await llm_manager.complete(model_name, messages, reasoning_effort=reasoning_effort)
@@ -710,7 +708,7 @@ async def is_somewhat_uniform(freq_dict: dict, threshold: float = QA_MODULE_PROP
     else:
         stdev_freq = statistics.stdev(frequencies)
         cv = stdev_freq / mean_freq
-        final_result = (cv <= threshold, mean_freq)
+        final_result = (cv <= threshold, mean_freq) # Thsi should be changed to less than, not equal or less than
     return final_result
 
 
@@ -819,6 +817,11 @@ def _format_single_document(doc: dict, index: int = 1) -> str:
     
     # If no SQL, return the text directly
     if not sql_query:
+        # Append video links if present
+        video_links = doc.get("video_links", [])
+        if video_links:
+            video_links_str = ", ".join(video_links)
+            text += f"=> [ویدیوی مرتبط: {video_links_str}]"
         return doc["text"]
     
     # Format as SQL example
@@ -836,7 +839,8 @@ def _format_single_document(doc: dict, index: int = 1) -> str:
     metadata = doc.get("metadata", {})
     complexity = metadata.get("complexity", "")
     domain = metadata.get("domain", "")
-    
+    response_template = doc.get("response_template", "")
+
     example_header = f"Example {index}"
     if complexity or domain:
         example_header += f" - {domain.capitalize() if domain else ''}"
@@ -845,7 +849,7 @@ def _format_single_document(doc: dict, index: int = 1) -> str:
     
     return f"""{example_header}:
 Query: {question}
-{{"SQL": "{sql_query}", "parameters": {{{params_formatted}}}}}"""
+{{"SQL": "{sql_query}", "parameters": {{{params_formatted}}}, "response_template": {response_template}}}"""
 
 
 def _format_documents_as_string(context_with_metadata: List[dict]) -> str:
@@ -932,6 +936,7 @@ def format_retrieved_as_prompt_examples(
             "source": doc.metadata.get("source", "unknown"),
             "sql": doc.metadata.get("sql", ""),
             "parameters": doc.metadata.get("parameters", "{}"),
+            "response_template": doc.metadata.get("response_template", ""),
             "metadata": doc.metadata
         }
         formatted_docs.append(formatted_doc)
@@ -972,14 +977,16 @@ async def sql_responder_(
     detected_module: str = "", 
     context: str = "",
     model_name: str = "",
-    reasoning_effort="medium"
+    reasoning_effort="high"
     ):
     """
     Unified SQL responder supporting both simple schema list and module-based schema selection.
     """
     if not model_name:
         model_name = config["api_default"]["sql_responder_model_name"]
-    schema = get_schema_for_module(detected_module)
+    # schema = get_schema_for_module(detected_module)
+    # schema = PARTIAL_LOGISTICS
+    schema = PARTIAL_LOGISTICS_DDL
     bo_prompt = format_sql_prompt(query, schema=schema, examples=context)
     raw_json_response = await get_chat_response(
         bo_prompt, 
@@ -1175,8 +1182,8 @@ async def chat_responder_(
     response_type: str = config["database"]["response_type"],
     use_cache: bool = config["database"]["use_cache"],
     detected_module: str = "",
-    sql_mode: bool = False,
-    model_name: str = "" 
+    sql_mode: bool = True,
+    route_for_utterance: bool = False
 ) -> Union[tuple[str, str, str, str], tuple[str, str, str, bool, List[str]]]:
     """
     Unified chat responder supporting both develop branch (simple RAG) and feature/add-sql-agent (SQL + module handling)
@@ -1193,6 +1200,7 @@ async def chat_responder_(
             return result_temp
 
     paraphrased_utterance = await utterance_paraphraser(history, user_utterance)
+    print(paraphrased_utterance)
     if use_cache:
         response, _ = await get_cache_response(paraphrased_utterance)
         if response:
@@ -1200,7 +1208,10 @@ async def chat_responder_(
             return result_temp
 
     query_embedding = await embed_query(paraphrased_utterance)
-    route_response = await get_route_for_utterance(paraphrased_utterance, query_embedding)
+    if sql_mode: 
+        route_response = await get_route_for_utterance(paraphrased_utterance, query_embedding)
+    else:
+        route_response = "qa"
     use_sql_modules = True if route_response == "sql" else False
     if route_response == "chitchat":
         response = RESPONSE_TEMPLATE_FOR_NO_ANSWER
@@ -1214,9 +1225,10 @@ async def chat_responder_(
 
     if route_response == "sql":
         clarification_threshold = SQL_MODULE_PROPOSER_THRESHOLD
+        database_index = config["database"]["sql_collection_name"]
     else:
         clarification_threshold = QA_MODULE_PROPOSER_THRESHOLD
-
+    
     if detected_module:
         do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, input_module=detected_module, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context, use_sql_modules=use_sql_modules, clarification_threshold=clarification_threshold)
     else:

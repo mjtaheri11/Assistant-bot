@@ -40,7 +40,7 @@ class Cache:
     def __new__(cls, *args, **kwargs):
         """Implements the singleton pattern to ensure only one instance of the cache exists."""
         if not cls._instance:
-            cls._instance = super().__new__(cls)  # <--- FIXED
+            cls._instance = super().__new__(cls)
             cls._instance.initialize(**kwargs)
         return cls._instance
 
@@ -49,7 +49,7 @@ class Cache:
         """Reset the singleton instance"""
         cls._instance = None
 
-    def initialize(self, exact_cache: bool = True, recreate: bool = False, qdrant_client_instance=None) -> None:
+    def initialize(self, exact_cache: bool = False, recreate: bool = False, qdrant_client_instance=None) -> None:
         """
         Initialize the cache with a Qdrant client.
 
@@ -87,40 +87,47 @@ class Cache:
         sample_embedding = self.embedding_model.embed_query("sample")
         self._embedding_dim = len(sample_embedding)
 
-        # Ensure collection exists
+        # Ensure collection exists (preserves data on restart by default)
         self._ensure_collection_exists(recreate=recreate)
 
         self._initialized = True
 
-    def _ensure_collection_exists(self, recreate) -> None:
+    def _ensure_collection_exists(self, recreate: bool) -> None:
         """
-        Ensures the Qdrant collection exists. If `recreate` is True, it deletes
-        the old collection and creates a new one with the required payload indices.
+        Ensures the Qdrant collection exists.
+
+        Aligned with initiate_vdb._recreate_collection_if_needed:
+        - If the collection exists and `recreate` is True, delete and recreate it.
+        - If the collection exists and `recreate` is False, leave it as-is (preserves data).
+        - If the collection does not exist, create it fresh.
         """
-        # if recreate:
-        #     # Delete the collection if it already exists and recreation is requested.
-        self._client.delete_collection(collection_name=self._collection_name)
-        
-        self._client.create_collection(
-            collection_name=self._collection_name,
-            vectors_config=VectorParams(
-                size=self._embedding_dim,
-                distance=Distance.COSINE,
-            ),
-        )
-        # Create a payload index on the 'query' field for efficient keyword-based filtering.
-        self._client.create_payload_index(
-            collection_name=self._collection_name,
-            field_name="query",
-            field_schema=models.PayloadSchemaType.KEYWORD,
-        )
-        # Create payload indices on numeric fields for efficient range filtering and sorting.
-        for field in ["thumb_up", "thumb_down", "flag"]:
+        exists = self._client.collection_exists(collection_name=self._collection_name)
+
+        if exists and recreate:
+            self._client.delete_collection(collection_name=self._collection_name)
+            exists = False
+
+        if not exists:
+            self._client.create_collection(
+                collection_name=self._collection_name,
+                vectors_config=VectorParams(
+                    size=self._embedding_dim,
+                    distance=Distance.COSINE,
+                ),
+            )
+            # Create a payload index on the 'query' field for efficient keyword-based filtering.
             self._client.create_payload_index(
                 collection_name=self._collection_name,
-                field_name=field,
-                field_schema=models.PayloadSchemaType.INTEGER,
+                field_name="query",
+                field_schema=models.PayloadSchemaType.KEYWORD,
             )
+            # Create payload indices on numeric fields for efficient range filtering and sorting.
+            for field in ["thumb_up", "thumb_down", "flag"]:
+                self._client.create_payload_index(
+                    collection_name=self._collection_name,
+                    field_name=field,
+                    field_schema=models.PayloadSchemaType.INTEGER,
+                )
 
     def get_exact_cache(self, query: str) -> Optional[str]:
         """Get exact match from Redis cache."""
@@ -148,7 +155,7 @@ class Cache:
         """
         Generate a deterministic UUID from query string.
         This ensures the same query always maps to the same point ID.
-        """  # noqa: E501
+        """
         return str(uuid.uuid5(uuid.NAMESPACE_DNS, query))
 
     def _insert_row(
@@ -364,7 +371,7 @@ class Cache:
         must_conditions = []
         for key, value in filters.items():
             if isinstance(value, dict):
-                # FIX: Strip the '$' from keys like '$gte' so they become 'gte'
+                # Strip the '$' from keys like '$gte' so they become 'gte'
                 range_params = {
                     k.replace("$", ""): v
                     for k, v in value.items()
@@ -402,7 +409,6 @@ class Cache:
 
         all_results = []
         offset = None
-        results, next_offset = [], None
 
         while True:
             try:
@@ -449,6 +455,7 @@ class Cache:
         )
 
         all_results = []
+        offset = None  # FIX: initialize offset before use
 
         while True:
             try:
@@ -487,11 +494,12 @@ class Cache:
 
 # Example usage and testing
 def temp():
-    """A temporary async function for demonstrating and testing the Cache class."""
-    response = "سلام. من دستیار دیجیتال نسل 4 هستم. می‌توانم در مورد ماژول‌های دفتر کل، انبار، گزارش ساز و خزانه داری به شما کمک کنم. پرسش خود را بپرسید تا در صورت امکان، پاسخ آن را ارائه دهم."
+    """A temporary function for demonstrating and testing the Cache class."""
+    response = "سلام. من دستیار دیجیتال نسل 4 هستم. می‌توانم در مورد ماژول‌های دفتر کل، انبار، مدیریت ارتباط با مشتری، جبران خدمات، تامین، فروش، گزارش ساز و خزانه داری به شما کمک کنم. پرسش خود را بپرسید تا در صورت امکان، پاسخ آن را ارائه دهم."
     lst_1 = [
         "سلام. خوبی؟",
         "سلام. حالت چطوره",
+        "سلام وقت بخیر",
         "سلام خوبی",
         "سلام خوبی؟",
         "سلام حالت خوبه",
@@ -566,5 +574,5 @@ def temp():
     print("Done!")
 
 
-# if __name__ == "__main__":
-#     temp()
+if __name__ == "__main__":
+    temp()

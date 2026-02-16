@@ -19,6 +19,8 @@ ReasoningEffort = Literal["none", "minimal", "low", "medium", "high", "xhigh"]
 # Added "responses" to supported API types
 ApiType = Literal["chat", "completions", "responses"]
 
+FALLBACK_MODEL = "oss"
+
 
 @dataclass
 class ModelConfig:
@@ -33,7 +35,7 @@ class ModelConfig:
     supports_reasoning: bool = False
     default_reasoning_effort: ReasoningEffort | None = None
     temperature: float = 0.7
-    max_tokens: int = 4096
+    max_tokens: int = 16000
 
     def get_params(
         self,
@@ -55,20 +57,9 @@ class ModelConfig:
         
         # --- LOGIC FOR RESPONSES API ---
         if self.api_type == "responses":
-            # The Responses API usually handles params differently.
-            # Based on your snippet, it takes 'input', 'tools', etc.
-            # We assume it might accept max_completion_tokens if it's a reasoning model,
-            # but we must be careful not to send 'messages' as a param (it uses 'input').
-            
-            # If it supports reasoning/effort, we add them:
             if self.supports_reasoning:
-                # Use max_completion_tokens? (Assumption based on model type)
-                # If the API rejects this, we might need to remove it, but 
-                # generally newer endpoints prefer max_completion_tokens.
-                # However, strictly adhering to your snippet, we focus on model/input.
                 pass 
             
-            # Pass extra params (tools, etc.)
             params.update(extra)
             return params
 
@@ -138,12 +129,12 @@ class LLMClientManager:
                 provider=merged["provider"],
                 model_id=merged["model_id"],
                 context_window=merged.get("context_window", 128000),
-                max_output_tokens=merged.get("max_output_tokens", 4096),
-                api_type=merged.get("api_type", "chat"), # Defaults to chat
+                max_output_tokens=merged.get("max_output_tokens", 16000),
+                api_type=merged.get("api_type", "chat"),
                 supports_reasoning=merged.get("supports_reasoning", False),
                 default_reasoning_effort=merged.get("default_reasoning_effort"),
                 temperature=merged.get("temperature", 0.7),
-                max_tokens=merged.get("max_tokens", 4096),
+                max_tokens=merged.get("max_tokens", 16000),
             )
 
     def get_model(self, model_name: str) -> tuple[AsyncOpenAI, ModelConfig]:
@@ -151,6 +142,26 @@ class LLMClientManager:
             raise ValueError(f"Model '{model_name}' not found.")
         config = self._models[model_name]
         return self._clients[config.provider], config
+
+    async def _execute_call(
+        self,
+        client: AsyncOpenAI,
+        config: ModelConfig,
+        messages: list[dict[str, str]],
+        params: dict[str, Any],
+    ) -> Any:
+        """Execute a single API call based on config.api_type."""
+        if config.api_type == "responses":
+            return await client.responses.create(
+                input=messages,
+                **params
+            )
+        elif config.api_type == "completions":
+            prompt = messages_to_prompt(messages)
+            params.pop("messages", None)
+            return await client.completions.create(prompt=prompt, **params)
+        else:
+            return await client.chat.completions.create(messages=messages, **params)
 
     async def complete(
         self,
@@ -163,43 +174,59 @@ class LLMClientManager:
         **extra: Any,
     ) -> Any:
         """
-        Execute completion with strict API routing:
+        Execute completion with strict API routing and fallback to OSS on failure.
         1. Chat -> client.chat.completions.create
         2. Responses -> client.responses.create
         3. Legacy -> client.completions.create
+
+        On failure, if the model is not already the fallback, retry once with the
+        fallback (OSS) model and log the event.
         """
-        client, config = self.get_model(model_name)
-        
-        params = config.get_params(
+        client, model_config = self.get_model(model_name)
+
+        params = model_config.get_params(
             reasoning_effort=reasoning_effort,
             temperature=temperature,
             max_tokens=max_tokens,
             **extra,
         )
-        
-        # --- ROUTING LOGIC ---
-        
-        if config.api_type == "responses":
-            # The Responses API takes 'input' instead of 'messages'
-            # The structure of 'messages' ([{"role": "user", ...}]) is compatible 
-            # with 'ResponseInputParam' for text messages.
-            return await client.responses.create(
-                input=messages, 
-                **params
+
+        try:
+            return await self._execute_call(client, model_config, messages, params)
+        except Exception as exc:
+            if model_name == FALLBACK_MODEL:
+                # Already on the fallback model — nothing left to try
+                logger.error(
+                    "Fallback model '%s' itself failed: %s", FALLBACK_MODEL, exc
+                )
+                raise
+
+            logger.warning(
+                "Model '%s' failed (%s: %s). Retrying with fallback model '%s'...",
+                model_name,
+                type(exc).__name__,
+                exc,
+                FALLBACK_MODEL,
             )
-            
-        elif config.api_type == "completions":
-            prompt = messages_to_prompt(messages)
-            params.pop("messages", None) 
-            return await client.completions.create(prompt=prompt, **params)
-            
-        else:
-            # Default: Chat API
+
+            # Build params for the fallback model
+            fallback_client, fallback_config = self.get_model(FALLBACK_MODEL)
+            fallback_params = fallback_config.get_params(
+                reasoning_effort=reasoning_effort,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                **extra,
+            )
+
             try:
-                return await client.chat.completions.create(messages=messages, **params)
-            except:
-                import pdb
-                pdb.set_trace()
+                return await self._execute_call(
+                    fallback_client, fallback_config, messages, fallback_params
+                )
+            except Exception as fallback_exc:
+                logger.error(
+                    "Fallback model '%s' also failed: %s", FALLBACK_MODEL, fallback_exc
+                )
+                raise
 
     def extract_text(self, response: Any, model_name: str) -> str:
         """
@@ -207,26 +234,18 @@ class LLMClientManager:
         """
         import re
         
-        # Convert to string to handle the case where response is a list/object 
-        # but behaves like the string repr you are seeing.
         s_response = str(response)
 
-        # --- STRATEGY 1: Parse the String Representation (Specific to your error) ---
-        # Target format: text=\'{"SQL": ...}\', type=
-        # We look for: text=  --> optional backslash --> quote --> (CONTENT) --> optional backslash --> quote --> , type=
+        # --- STRATEGY 1: Parse the String Representation ---
         match = re.search(r"text=\\?['\"](.*?)\\?['\"], type=", s_response, re.DOTALL)
         
         if match:
             extracted_text = match.group(1)
-            # The content inside repr() is often escaped (e.g., \" instead of "). 
-            # We must unescape it to get valid JSON.
-            # 1. Unescape literal backslash-quote sequences
             clean_text = extracted_text.replace(r"\'", "'").replace(r'\"', '"')
-            # 2. Unescape double backslashes
             clean_text = clean_text.replace(r"\\", "\\")
             return clean_text
 
-        # --- STRATEGY 2: Standard Object Access (If strictly an object) ---
+        # --- STRATEGY 2: Standard Object Access ---
         # Responses API (v1/responses)
         if hasattr(response, "output") and isinstance(response.output, list):
             text_parts = []
@@ -246,8 +265,6 @@ class LLMClientManager:
                 return response.choices[0].message.content or ""
             
         # --- STRATEGY 3: Last Resort JSON Extraction ---
-        # If all else fails, look for the first JSON-like block starting with "SQL"
-        # This is specific to your use case (generating SQL)
         json_match = re.search(r'(\{.*"SQL":.*\})', s_response, re.DOTALL)
         if json_match:
             return json_match.group(1)

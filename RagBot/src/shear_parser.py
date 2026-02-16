@@ -21,6 +21,10 @@ SUPPORTED_FILE_EXTENSIONS = ['.docx', '.doc', '.md']
 tokenizer = AutoTokenizer.from_pretrained(config["embedding_model"]["tokenizer_path"], padding_side='left')
 # model = AutoModel.from_pretrained(config["embedding_model"]["model_path"]).eval()
 
+def extract_video_links(text: str) -> List[str]:
+    """Extract video link patterns (e.g., videolink-gl005) from text."""
+    pattern = r'videolink-\w+'
+    return re.findall(pattern, text)
 
 # ============================================================================
 # DOCUMENT PREPROCESSING

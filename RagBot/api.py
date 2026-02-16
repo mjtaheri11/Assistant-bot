@@ -92,7 +92,7 @@ class ChatRequest(BaseModel):
     on_click: Optional[bool] = False
     error_payload: Optional[str] = ""
     is_sync: Optional[bool] = True
-    sql_mode: Optional[bool] = False  # Toggle between legacy and SQL agent mode
+    sql_mode: Optional[bool] = True  # Toggle between legacy and SQL agent mode
     model_name: Optional[str] = ""
 
 
@@ -252,13 +252,14 @@ def _json_item_to_document(item: Dict[str, Any]) -> Document:
     sql_obj = item.get("sql", {})
     sql_query = sql_obj.get("SQL", "")
     sql_parameters = sql_obj.get("parameters", {})
-    
+    response_template = sql_obj.get("response_template", "")
     metadata = {
         "sql": sql_query,
         "parameters": json.dumps(sql_parameters, ensure_ascii=False),
         "complexity": item.get("complexity", ""),
         "module": item.get("module", ""),
         "table": item.get("table", ""),
+        "response_template": response_template
     }
     
     return Document(page_content=question, metadata=metadata)
@@ -413,13 +414,19 @@ async def process_uploaded_files(
                         module = modules_dict[modified_filename]
                     else: 
                         module = "unknown"
+                    # Extract video links from chunk content
+                    video_links = extract_video_links(chunk_content)
+
                     metadata = {
                         "source": original_filename,
                         "chunk_index": idx,
                         "company_name": company_name,
                         "assistant_name": assistant_name,
-                        "module": module
+                        "module": module,
+                        "video_links": video_links
                     }
+                    # Remove video link patterns from the chunk text
+                    cleaned_content = re.sub(r'videolink-\w+', '', chunk_content).strip()
                     doc = Document(page_content=chunk_content, metadata=metadata)
                     documents.append(doc)
                 
@@ -498,10 +505,10 @@ def get_session_id(request: Request, content_request: BaseModel):
         raise HTTPException(status_code=422, detail="No Session-ID")
     return session_id
 
-async def get_user_code_tenant_name(content_request: BaseModel, postgres_obj: object):
-    user_tenant = await postgres_obj.get_user_code_tenant_name(content_request.session_id)
+async def get_user_code_tenant_name(session_id, postgres_obj: object):
+    user_tenant = await postgres_obj.get_user_code_tenant_name(session_id)
     return user_tenant["user_code"], user_tenant["tenant_name"]
-
+    
 def validate_query(query):
     if not query.strip():
         raise HTTPException(status_code=422, detail="Query is empty")
@@ -598,10 +605,15 @@ async def get_faq(
         postgres = Postgres()
         database_id_dict = await postgres.find_database_id(session_id)
         database_id = database_id_dict["database_id"]
-        if not database_id:
-            database_id = config["database"]["collection_name"]
+        # if not database_id:
+        #     database_id = config["database"]["collection_name"]
+        #     context_with_metadata, _ = await retrieve_context_with_metadata(query=query, database_index=database_id)
+        #     context = "\n\n ============= \n\n".join([context["text"] + "\n" + context["module"] for context in reversed(context_with_metadata)])
+
+        database_id = config["database"]["sql_collection_name"]
         context_with_metadata, _ = await retrieve_context_with_metadata(query=query, database_index=database_id)
-        context = "\n\n ============= \n\n".join([context["text"] + "\n" + context["module"] for context in reversed(context_with_metadata)])
+        context = "\n\n ============= \n\n".join(["```" + str(context) + "```" for context in reversed(context_with_metadata)])
+
         return FaqResponse(response=context.strip())
     except HTTPException as e:
         raise e
@@ -732,7 +744,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
             response_template = final_records.get("response_template", "")
         else:
             postgres = Postgres()
-            user_code, tenant_name = await get_user_code_tenant_name(chat_request, postgres)
+            user_code, tenant_name = await get_user_code_tenant_name(session_id, postgres)
             session_validation = await postgres.exist_session(session_id)
             if not session_validation:
                 raise HTTPException(
@@ -799,7 +811,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         response_type=chat_request.response_type,
                         use_cache=chat_request.use_cache,
                         detected_module=chat_request.query,
-                        model_name=chat_request.model_name,
+                        # model_name=chat_request.model_name,
                         sql_mode=chat_request.sql_mode
                     )
                     assert do_clarify == False, "on_click should not return do_clarify=True"
@@ -833,7 +845,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         response_type=chat_request.response_type,
                         use_cache=chat_request.use_cache,
                         detected_module="",
-                        model_name=chat_request.model_name,
+                        # model_name=chat_request.model_name,
                         sql_mode=chat_request.sql_mode
                     )
                     if do_clarify:
@@ -905,6 +917,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
             }
         )
         response = response.replace("→", "←")
+        
         return ChatResponse(
             response=response,
             message_id=message_id,
@@ -1792,6 +1805,7 @@ async def feedback(feedback_request: FeedbackRequest, request: Request):
     endpoint = FEEDBACK_ENDPOINT
     REQUEST_COUNT.labels(endpoint=endpoint).inc()
     start_time = time.time()
+    postgres = Postgres()
     try:
 
         session_id = get_session_id(request, feedback_request)
@@ -1808,8 +1822,8 @@ async def feedback(feedback_request: FeedbackRequest, request: Request):
 
         log_feedback_request(session_id)
         result = await process_feedback(feedback_request)
-
-        log_feedback_response(session_id, "", "", feedback_request, message_fields, start_time)
+        user_code, tenant_name = await get_user_code_tenant_name(session_id, postgres)
+        log_feedback_response(session_id, user_code, tenant_name, feedback_request, message_fields, start_time)
         return result
 
     except HTTPException as e:

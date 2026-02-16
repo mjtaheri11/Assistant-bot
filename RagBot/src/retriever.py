@@ -157,7 +157,7 @@ class TritonEmbeddings(Embeddings):
         except Exception as e:
             logger.error(f"Error validating inputs: {e}")
             return False
-            
+           
     @staticmethod
     def _prepare_triton_request(tokenized_inputs: Dict[str, np.ndarray]) -> Dict:
         """
@@ -1394,7 +1394,9 @@ class Retriever(object):
                 # Add these for NL2SQL use case:
                 "sql": doc.metadata.get("sql", ""),
                 "parameters": doc.metadata.get("parameters", "{}"),
-                "metadata": doc.metadata
+                "response_template": doc.metadata.get("response_template", ""),
+                "video_links": doc.metadata.get("video_links", []),
+                "metadata": doc.metadata,
             }
             formatted_docs.append(formatted_doc)
         
@@ -1447,7 +1449,12 @@ class Retriever(object):
                     "index": doc_info["index"],
                     "module": original_doc.metadata.get("module", "unknown"),
                     "source": original_doc.metadata.get("source", "unknown"),
-                    "score": doc_info["score"],  # Include score for reranked docs
+                    "score": doc_info["score"],
+                    # Add missing NL2SQL fields:
+                    "sql": original_doc.metadata.get("sql", ""),
+                    "parameters": original_doc.metadata.get("parameters", "{}"),
+                    "response_template": original_doc.metadata.get("response_template", ""),
+                    "video_links": original_doc.metadata.get("video_links", []),
                     "metadata": original_doc.metadata
                 }
                 result.append(formatted_doc)
@@ -1458,7 +1465,7 @@ class Retriever(object):
             return result
         else:
             return []
-    
+                
     async def retrieve_context(
         self, 
         query, 
@@ -1501,7 +1508,7 @@ class Retriever(object):
         if should_use_reranker and self.reranker_model_ is not None:
             # Use reranker
             logger.debug(f"Using reranker for query: {query[:50]}...")
-            result = await self._rerank_documents(query, documents, k, reverse)
+            result = self._rerank_documents(query, documents, k, reverse)
         else:
             # No reranking - just format and potentially limit documents
             logger.debug(f"Skipping reranker for query: {query[:50]}...")

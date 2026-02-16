@@ -8,8 +8,8 @@ database:
   use_cache: True
   dbname: my-vdb
   # collection_name: "default_collection_e5"
-  collection_name: "9f58aeea-82a5-4065-b709-033097ae32de"
-  sql_collection_name: "default_sql_collection"
+  collection_name: "default_collection"
+  sql_collection_name: "default_sql_collection_e5"
   documents:
     4thg-intro: معرفی سیستم یکپارچه نسل 4
     crm: مدیریت ارتباط با مشتری
@@ -24,16 +24,13 @@ database:
     treasury: خزانه داری
     sales: فروش
     taxpayer: مودیان مالیاتی
+    
 
 # Configurations for logging
 logging:
   level: debug
   file: app.log
   max_size: 10*1024*1024
-
-
-api:
-  port: 8686
 
 
 modules:
@@ -77,9 +74,6 @@ modules:
     - فروش
 
 postgres:
-  address: 172.26.0.6 # 172.26.0.5 # postgres # 172.26.0.6 # postgres # 172.20.0.6 # 192.168.208.2
-  database: chatbot
-  max_user_input_character_length: 200
   history_length: 3
 
 
@@ -94,13 +88,12 @@ cache:
   socket_timeout: 10
   # index_name: Hamzan
   persist_directory: ../db-cache
-  # index_name: default_cache_e5
-  index_name: default_cache_qwen3
+  index_name: default_cache_e5
   num_rank2_documents: 5
-  # embedding_model:
+  embedding_model:
 #    model_name: /home/jovyan/.cache/huggingface/hub/models--intfloat--multilingual-e5-large/snapshots/0dc5580a448e4284468b8909bae50fa925907bc5
-    # model_name: ../saved_models/models--intfloat--multilingual-e5-large/snapshots/0dc5580a448e4284468b8909bae50fa925907bc5
-    # device: cuda
+    model_name: ./saved_models/models--intfloat--multilingual-e5-large/snapshots/0dc5580a448e4284468b8909bae50fa925907bc5
+    device: cuda
 
   # configurations for reranker
   reranker:
@@ -121,38 +114,26 @@ cache:
     flag_field_name: flag
 
 
-# Configurations for streamlit
-streamlit:
-  host: 0.0.0.0
-  port: 8505
-
-
 # configurations for embedding model
 embedding_model:
-  # model_path: ../saved_models/models--intfloat--multilingual-e5-large/snapshots/0dc5580a448e4284468b8909bae50fa925907bc5
-  model_path: /home/jovyan/Assistant-bot/saved_models/Qwen3-Embedding-4B
+  model_path: ./saved_models/models--intfloat--multilingual-e5-large/snapshots/0dc5580a448e4284468b8909bae50fa925907bc5
   device: cuda
-  # Types => "triton" or "local"
+  # Type: "triton" or "local" or "openrouter"
   type: triton
   # Triton Embedding Configuration
-  # type: "openrouter"
-  # model_name: "e5"  # Model name in Triton server
-  model_name: qwen3
-  # triton_url: http://triton-server.admin.svc.cluster.local
-  # triton_url: https://sg-da-dev.ml.abramad.com/qwen3-embedding-soroush
-  triton_url: http://qwen3-embedding-soroush.cs-sg-da-dev.svc.cluster.local:82
-  # tokenizer_path: ../saved_models/models--intfloat--multilingual-e5-large/snapshots/0dc5580a448e4284468b8909bae50fa925907bc5
-  tokenizer_path: /home/jovyan/Assistant-bot/saved_models/Qwen3-Embedding-4B
-  max_length: 8192
+  model_name: "e5"  # Model name in Triton server
+  triton_url: http://triton-server.admin.svc.cluster.local
+  tokenizer_path: ./saved_models/models--intfloat--multilingual-e5-large/snapshots/0dc5580a448e4284468b8909bae50fa925907bc5
+  max_length: 512
   timeout: 30
-  batch_size: 1
+  batch_size: 32
+  # type: "openrouter"
 
 # configurations for reranker
 reranker:
-  # primary_model: flag
   type: triton
   # type: service
-  # model_name: bge  # Same model serving both embedding and reranking
+  model_name: bge  # Same model serving both embedding and reranking
   # model_name: Qwen3-Reranker-4B
   triton_url: http://triton-server.admin.svc.cluster.local
   max_length: 8192
@@ -160,11 +141,11 @@ reranker:
   api_url: http://qwen3-rr-4b-predictor.admin.svc.cluster.local/v2/rerank 
   batch_size: 32
   flag_model: 
-      model_path: ../saved_models/models--BAAI--bge-reranker-v2-m3
+      model_path: ./saved_models/models--BAAI--bge-reranker-v2-m3/snapshots/953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e
       device: cuda
   
   qwen_model: 
-      model_path: ../saved_models/qwen3-reranker
+      model_path: ./saved_models/qwen3-reranker
       device: cuda
       max_length: 8192
 
@@ -172,11 +153,11 @@ reranker:
 # configurations for retriever
 retriever:
   retrieved_documents: 40
-  retrieved_rank2_documents: 5
+  retrieved_rank2_documents: 10
   sql_retrieved_rank2_documents: 25
   retriever_threshold: 0.0
   alpha_threshold: 0.5
-  use_reranker: False
+  use_reranker: true
   
 
 # Evaluations configurations
@@ -207,13 +188,16 @@ followup_query_generator:
   number_of_suggested_queries: 3
 
 router_model:
-  address: ../saved_models/svm.joblib
+  # address: /home/jovyan/Assistant-bot/RagBot/resources_for_router/models_multilingual_e5_large/mlp.joblib
+  address: /home/jovyan/Assistant-bot/RagBot/resources_for_router/models_multilingual_e5_large/svm.joblib
   openrouter: "qwen/qwen3-embedding-4b"
-  embedding_model: "qwen3-embedding-4b"
+  # embedding_model: "qwen3-embedding-4b"
+  embedding_model: "multilingual-e5-large"
+  # model_name: mlp
   model_name: svm
   beta_threshold: 0.01
-  alpha_threshold: .6
-  use_joblib: False
+  alpha_threshold: .9
+  use_joblib: false
 
 # LLM Model Configuration - Model parameters only
 
@@ -227,13 +211,14 @@ api_default:
   # parameter_responder_model_name: gpt-5.1-codex-max
   # sql_responder_model_name: gpt-5.1-codex-max
   # chitchat_responder_model_name: gpt-4.1
-  module_route_model_name: oss
+  module_route_model_name: gpt-5.2-codex
   query_responder_model_name: oss
   answer_validator_model_name: oss
   utterance_paraphraser_model_name: oss
   parameter_responder_model_name: oss
-  sql_responder_model_name: oss
+  sql_responder_model_name: gpt-5.2-codex
   chitchat_responder_model_name: oss
+  
 
 api_models:
   gpt-5.2:
@@ -253,7 +238,7 @@ api_models:
     max_output_tokens: 128000
     api_type: "chat"
     supports_reasoning: true
-    default_reasoning_effort: "high"
+    default_reasoning_effort: "medium"
     temperature: 0.7
 
   # GPT-5.1
@@ -264,7 +249,7 @@ api_models:
     max_output_tokens: 100000
     api_type: "chat"
     supports_reasoning: true
-    default_reasoning_effort: "none"  # GPT-5.1 defaults to none
+    default_reasoning_effort: "medium"  # GPT-5.1 defaults to none
     temperature: 0.7
 
   gpt-5.1-codex-max:
@@ -272,11 +257,20 @@ api_models:
     model_id: "gpt-5.1-codex-max"
     context_window: 200000
     max_output_tokens: 100000
-    api_type: "chat"
     api_type: "responses"
     supports_reasoning: true
     default_reasoning_effort: "medium"
     temperature: 0.3
+
+  gpt-5.2-codex:
+    provider: gpt
+    model_id: "gpt-5.2-codex"
+    context_window: 200000
+    max_output_tokens: 100000
+    api_type: "responses"
+    supports_reasoning: true
+    default_reasoning_effort: "medium"
+    temperature: 0.1
 
   # GPT-5
   gpt-5:
@@ -383,6 +377,6 @@ api_models:
     model_id: "/gpt-120"
     api_type: "chat"
     supports_reasoning: true
-    default_reasoning_effort: "medium"
-    max_tokens: 8192
-    temperature: 0.1
+    default_reasoning_effort: "high"
+    max_tokens: 16000
+    temperature: 0.7
