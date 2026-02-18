@@ -17,6 +17,7 @@ from collections import Counter
 from typing import List, Tuple, Union, Set, Any, Optional
 from .prompts import (
     RAG_CONCISE_SYSTEM_PROMPT,
+    RAG_CONCISE_SYSTEM_PROMPT_WITH_VIDEO,
     RAG_EXPLANATORY_SYSTEM_PROMPT,
     RAG_NORMAL_SYSTEM_PROMPT,
     UTTERANCE_PARAPHRASER_PROMPT,
@@ -30,8 +31,14 @@ from .retriever import Retriever
 from .config import config
 from .cache import Cache
 from .utils import json_cleaning, json_cleaning_1, calculate_date_context, format_documents_as_sql_examples, convert_sql_parameters, integrate_params, add_param_keys
+
+# ========================
 # from .business_objects import LOGISTICS_SALES_MODIFIED, FINANCIAL_BO_MODIFIED, CRM_BO, LOGISTICS_MODIFIED #, TREASURY_BO
-from .business_objects import PARTIAL_LOGISTICS, PARTIAL_LOGISTICS_DDL, PARTIAL_LOGISTICS_SCHEMA_STYLE
+# from .business_objects import PARTIAL_LOGISTICS, PARTIAL_LOGISTICS_DDL, PARTIAL_LOGISTICS_SCHEMA_STYLE
+from .bo_loader import ALL_BOS_RAW
+from .bo_selector import get_schema_for_module
+# ========================
+
 from .semantic_router import SemanticRouterPipeline
 from .default_examples import DEFAULT_EXAMPLES
 from langchain.chat_models import ChatOpenAI
@@ -99,6 +106,13 @@ def finalize_parameters(a_dict, b_dict):
     # concatenation = {"parameters": a_dict["parameters"] | b_dict["parameters"]}
     concatenation = (a_dict | b_dict) | {"parameters": a_dict.get("parameters", {}) | b_dict.get("parameters", {})}
     return concatenation
+
+def _has_video_link(parameters: dict) -> bool:
+    """Check if parameters contain any video link references (videolink-*)."""
+    if not parameters:
+        return False
+    pattern = re.compile(r'videolink-\w+')
+    return any(pattern.search(str(v)) for v in parameters.values())
 
 def extract_tables_robust(sql: str, dialect: str = None) -> dict:
     """
@@ -821,7 +835,7 @@ def _format_single_document(doc: dict, index: int = 1) -> str:
         video_links = doc.get("video_links", [])
         if video_links:
             video_links_str = ", ".join(video_links)
-            text += f"=> [ویدیوی مرتبط: {video_links_str}]"
+            doc["text"] += f"=> [ویدیوی مرتبط: {video_links_str}]"
         return doc["text"]
     
     # Format as SQL example
@@ -944,54 +958,50 @@ def format_retrieved_as_prompt_examples(
     return _format_documents_as_string(formatted_docs)
 
     
-def get_schema_for_module(detected_module: str) -> str:
-    """
-    Returns the appropriate schema based on the detected module.
+# def get_schema_for_module(detected_module: str) -> str:
+#     """
+#     Returns the appropriate schema based on the detected module.
     
-    Args:
-        detected_module: The detected module name (e.g., 'دفتر کل', 'انبار', 'فروش')
+#     Args:
+#         detected_module: The detected module name (e.g., 'دفتر کل', 'انبار', 'فروش')
     
-    Returns:
-        The corresponding schema string for the module.
-    """
-    module = detected_module.strip()
+#     Returns:
+#         The corresponding schema string for the module.
+#     """
+#     module = detected_module.strip()
     
-    if module.strip() in ("دفتر کل", "دفترکل"):
-        return FINANCIAL_BO_MODIFIED
-    elif module.strip() in ("انبار"):
-        return LOGISTICS_MODIFIED
-    elif module.strip() in ("فروش"):
-        return LOGISTICS_SALES_MODIFIED
-    elif module in ("مدیریت ارتباط با مشتری"):
-        return CRM_BO
-    # elif module in ("خزانه داری"):
-    #     return TREASURY_BO
-    else:
-        # Fallback: combine both schemas
-        return LOGISTICS_SALES_MODIFIED + "\n" + FINANCIAL_BO_MODIFIED
+#     if module.strip() in ("دفتر کل", "دفترکل"):
+#         return FINANCIAL_BO_MODIFIED
+#     elif module.strip() in ("انبار"):
+#         return LOGISTICS_MODIFIED
+#     elif module.strip() in ("فروش"):
+#         return LOGISTICS_SALES_MODIFIED
+#     elif module in ("مدیریت ارتباط با مشتری"):
+#         return CRM_BO
+#     # elif module in ("خزانه داری"):
+#     #     return TREASURY_BO
+#     else:
+#         # Fallback: combine both schemas
+#         return LOGISTICS_SALES_MODIFIED + "\n" + FINANCIAL_BO_MODIFIED
 
 
 @observe()
 async def sql_responder_(
     query: str,
-    detected_module: str = "", 
+    detected_module: str = "",
     context: str = "",
     model_name: str = "",
     reasoning_effort="high"
-    ):
-    """
-    Unified SQL responder supporting both simple schema list and module-based schema selection.
-    """
+):
     if not model_name:
         model_name = config["api_default"]["sql_responder_model_name"]
-    # schema = get_schema_for_module(detected_module)
-    # schema = PARTIAL_LOGISTICS
-    schema = PARTIAL_LOGISTICS_DDL
+
+    schema_fmt = config.get("schema", {}).get("format", "create_table")
+    schema = get_schema_for_module(ALL_BOS_RAW, detected_module, fmt=schema_fmt)
+
     bo_prompt = format_sql_prompt(query, schema=schema, examples=context)
     raw_json_response = await get_chat_response(
-        bo_prompt, 
-        model_name, 
-        reasoning_effort=reasoning_effort
+        bo_prompt, model_name, reasoning_effort=reasoning_effort
     )
     response = json_cleaning(raw_json_response)
     return response
@@ -1009,7 +1019,9 @@ async def parameters_responder(
     if not model_name: 
         model_name = config["api_default"]["parameter_responder_model_name"]
     sql_proposed_tables = extract_tables_simple(sql_query)
-    schema = get_schema_for_module(detected_module)
+    # schema = get_schema_for_module(detected_module)
+    schema_fmt = config.get("schema", {}).get("format", "yaml_grouped")
+    schema = get_schema_for_module(ALL_BOS_RAW, detected_module, fmt=schema_fmt)
     yaml_schema = yaml.safe_load(schema)
     selections = {table: ['parameters'] for table in sql_proposed_tables}
     bo_parameters_schema = subselect_yaml(yaml_schema, selections, "yaml")
@@ -1138,16 +1150,16 @@ async def query_responder(
     assistant_name: str = None, 
     answer_type: str = "concise", 
     reasoning_effort="medium",
-    model_name: str = ""
-    ) -> str:
+    model_name: str = "",
+    use_video_links: bool = False
+    ) -> Tuple[str, dict]:
     if not model_name:
         model_name = config["api_default"]["query_responder_model_name"]
 
     serialized_history = history_serializer(history)
     
-    # Use develop branch format with multiple prompt types
     if answer_type == "concise":
-        rag_system_prompt = RAG_CONCISE_SYSTEM_PROMPT
+        rag_system_prompt = RAG_CONCISE_SYSTEM_PROMPT_WITH_VIDEO if use_video_links else RAG_CONCISE_SYSTEM_PROMPT
     elif answer_type == "normal":
         rag_system_prompt = RAG_NORMAL_SYSTEM_PROMPT
     elif answer_type == "explanatory":
@@ -1168,9 +1180,21 @@ async def query_responder(
         model_name, 
         reasoning_effort=reasoning_effort
     )
-    response = json_cleaning(raw_json_response)
-    return response
-
+    cleaned_response = json_cleaning(raw_json_response)
+    
+    if use_video_links:
+        try:
+            response_dict = json.loads(cleaned_response)
+            response_text = response_dict.get("response", cleaned_response)
+            video_parameters = response_dict.get("parameters", {})
+        except (json.JSONDecodeError, TypeError):
+            response_text = cleaned_response
+            video_parameters = {}
+    else:
+        response_text = cleaned_response
+        video_parameters = {}
+    
+    return response_text, video_parameters
 
 @observe()
 async def chat_responder_(
@@ -1183,7 +1207,8 @@ async def chat_responder_(
     use_cache: bool = config["database"]["use_cache"],
     detected_module: str = "",
     sql_mode: bool = True,
-    route_for_utterance: bool = False
+    route_for_utterance: bool = False,
+    use_video_links: bool = True  # <-- add this
 ) -> Union[tuple[str, str, str, str], tuple[str, str, str, bool, List[str]]]:
     """
     Unified chat responder supporting both develop branch (simple RAG) and feature/add-sql-agent (SQL + module handling)
@@ -1193,10 +1218,11 @@ async def chat_responder_(
     num_retrieve_context = config["retriever"]["retrieved_rank2_documents"]
     parameters = {}
     sql_response_template = ""
+    has_video_link = False
     if not detected_module and use_cache:
         response, _ = await get_cache_response(user_utterance)
         if response:
-            result_temp = is_sql, user_utterance, response, "", False, [], parameters, sql_response_template
+            result_temp = is_sql, user_utterance, response, "", False, [], parameters, sql_response_template, has_video_link
             return result_temp
 
     paraphrased_utterance = await utterance_paraphraser(history, user_utterance)
@@ -1204,7 +1230,7 @@ async def chat_responder_(
     if use_cache:
         response, _ = await get_cache_response(paraphrased_utterance)
         if response:
-            result_temp = is_sql, paraphrased_utterance, response, "", False, [], parameters, sql_response_template
+            result_temp = is_sql, paraphrased_utterance, response, "", False, [], parameters, sql_response_template, has_video_link
             return result_temp
 
     query_embedding = await embed_query(paraphrased_utterance)
@@ -1216,11 +1242,11 @@ async def chat_responder_(
     if route_response == "chitchat":
         response = RESPONSE_TEMPLATE_FOR_NO_ANSWER
         context = ""
-        result_temp = is_sql, paraphrased_utterance, response, context, False, [], parameters, sql_response_template
+        result_temp = is_sql, paraphrased_utterance, response, context, False, [], parameters, sql_response_template, has_video_link
         return result_temp
     
     if route_response == "illegal" or route_response =="irrelevant":
-        result_temp = is_sql, paraphrased_utterance, template_for_not_answer, "", False, [], parameters, sql_response_template
+        result_temp = is_sql, paraphrased_utterance, template_for_not_answer, "", False, [], parameters, sql_response_template, has_video_link
         return result_temp
 
     if route_response == "sql":
@@ -1235,7 +1261,7 @@ async def chat_responder_(
         do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context, use_sql_modules=use_sql_modules, clarification_threshold=clarification_threshold)
 
     if do_clarify:
-        result_temp = is_sql, paraphrased_utterance, MODULE_CLARIFICATION_RESPONSE_TEMPLATE, "", do_clarify, modules, parameters, sql_response_template
+        result_temp = is_sql, paraphrased_utterance, MODULE_CLARIFICATION_RESPONSE_TEMPLATE, "", do_clarify, modules, parameters, sql_response_template, has_video_link
         return result_temp
 
     if sql_mode:
@@ -1262,28 +1288,33 @@ async def chat_responder_(
             if not is_sql: 
                 parameters = {}
                 sql_response_template = ""  
-            result_temp = is_sql, paraphrased_utterance, response, context, False, [selected_module], parameters, sql_response_template 
+            result_temp = is_sql, paraphrased_utterance, response, context, False, [selected_module], parameters, sql_response_template, has_video_link
             return result_temp
 
     if not context:
         response = template_for_not_answer
         context = ""
-        result_temp = is_sql, paraphrased_utterance, response, context, False, [], parameters, sql_response_template
+        result_temp = is_sql, paraphrased_utterance, response, context, False, [], parameters, sql_response_template, has_video_link
         return result_temp
 
-    response = await query_responder(
+    response, video_parameters = await query_responder(
         paraphrased_utterance,
         context,
         history,
         company_name=company_name,
         assistant_name=assistant_name,
         answer_type=response_type,
+        use_video_links=use_video_links,
     )
     if "محدوده دانش من " in response:
         response = template_for_not_answer
+        video_parameters = {}
     if "خارج از حوزه کاری" in response:
         response = template_for_not_context.format(company_name=company_name)
-    result_temp = is_sql, paraphrased_utterance, response, context, do_clarify, modules, parameters, sql_response_template
+        video_parameters = {}
+    parameters = video_parameters
+    has_video_link = _has_video_link(parameters)
+    result_temp = is_sql, paraphrased_utterance, response, context, do_clarify, modules, parameters, sql_response_template, has_video_link
     return result_temp
 
 

@@ -32,6 +32,15 @@ logging:
   file: app.log
   max_size: 10*1024*1024
 
+schema:
+  format: "simple_ddl_md"
+  module_to_context:
+    "انبار": "logistics"
+    "فروش": "sales"
+    "دفتر کل": "financial"
+    "دفترکل": "financial"
+    "خزانه داری": "treasury"
+    "مدیریت ارتباط با مشتری": "crm"
 
 modules:
   names: 
@@ -76,6 +85,8 @@ modules:
 postgres:
   history_length: 3
 
+bo_config_dir: 
+  path: ./src
 
 cache:
   # host: redis-stack

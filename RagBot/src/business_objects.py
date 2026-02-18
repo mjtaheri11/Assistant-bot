@@ -2680,3 +2680,59 @@ PARTIAL_LOGISTICS_SCHEMA_STYLE = """
 【Foreign Keys】
   (none)
 """
+
+
+ALL_BOS_RAW = {
+    "enums": {
+        "logistics_allparts_effecttype": {
+            "title": "effectType",
+            "persianTitle": "نوع تاثیر بر موجودی",
+            "isMultiselect": True,
+            "values": [
+                {"value": "1", "title": "Permanent", "persianTitle": "دائم"},
+                {"value": "2", "title": "Temporary", "persianTitle": "موقت"},
+                {"value": "3", "title": "Discard", "persianTitle": "ضایعات"},
+            ],
+        },
+        "logistics_allparts_inventoryvouchertype": {
+            "title": "inventoryVoucherType",
+            "persianTitle": "نوع سند انبار",
+            "isMultiselect": True,
+            "values": [
+                {"value": "1", "persianTitle": "خرید", "title": "Purchase"},
+                {"value": "2", "persianTitle": "تولید", "title": "Production"},
+                {"value": "3", "persianTitle": "مصرف", "title": "Consumption"},
+                {"value": "4", "persianTitle": "ضایعات", "title": "Scrap"},
+                {"value": "5", "persianTitle": "انتقال بین انبار", "title": "IntraStockTransfer"},
+                {"value": "6", "persianTitle": "فروش", "title": "Sale"},
+            ],
+        },
+    },
+    "boNames": [
+        # ── logistics context ────────────────────────────────
+        {
+            "name": "logistics_allparts",
+            "title": "New all parts with detail",
+            "persianTitle": "اطلاعات اقلام کالا با جزییات کامل",
+            "columns": [
+                {"name": "company_name", "persianTitle": "عنوان شرکت", "enumId": "", "type": "String"},
+                {"name": "store_code", "persianTitle": "کد انبار", "enumId": "", "type": "String"},
+                {"name": "product_code", "persianTitle": "کد کالا", "enumId": "", "type": "String"},
+                {"name": "product_title", "persianTitle": "عنوان کالا", "enumId": "", "type": "String"},
+                {"name": "voucher_type", "persianTitle": "نوع سند", "enumId": "", "type": "String"},
+                {"name": "type_of_effect", "persianTitle": "نوع تاثیر بر موجودی", "enumId": "", "type": "String"},
+                {"name": "voucher_date", "persianTitle": "تاریخ سند", "enumId": "", "type": "Date"},
+                {"name": "permanent_quantity", "persianTitle": "مقدار دائم", "enumId": "", "type": "Int64"},
+                {"name": "is_return", "persianTitle": "برگشتی", "enumId": "", "type": "Bool"},
+            ],
+            "parameters": [],
+            "relations": [],
+        },
+        # Add more BOs here as they become available:
+        # ── sales context ────────────────────────────────────
+        # { "name": "sales_pricelistitem", ... },
+        # { "name": "sales_invoice", ... },
+        # ── financial context ────────────────────────────────
+        # { "name": "financial_journal", ... },
+    ],
+}

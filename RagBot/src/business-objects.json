@@ -1,0 +1,374 @@
+{
+    "enums": {
+      "logistics_allparts_effecttype": {
+        "title": "NEW_ALL_PART_WITH_DETAIL: effectType",
+        "persianTitle": "نوع تاثیر بر موجودی",
+        "isMultiselect": true,
+        "values": [
+          {
+            "value": "1",
+            "title": "NEW_ALL_PART_WITH_DETAIL: Permanent",
+            "persianTitle": "دائم"
+          },
+          {
+            "value": "2",
+            "title": "NEW_ALL_PART_WITH_DETAIL: Temporary",
+            "persianTitle": "موقت"
+          },
+          {
+            "value": "3",
+            "title": "NEW_ALL_PART_WITH_DETAIL: Discard",
+            "persianTitle": "ضایعات"
+          }
+        ]
+      },
+      "logistics_allparts_inventoryvouchertype": {
+        "title": "NEW_ALL_PART_WITH_DETAIL: inventoryVoucherType",
+        "persianTitle": "نوع سند انبار",
+        "isMultiselect": true,
+        "values": [
+          {
+            "value": "1",
+            "title": "NEW_ALL_PART_WITH_DETAIL: Purchase",
+            "persianTitle": "خرید"
+          },
+          {
+            "value": "2",
+            "title": "NEW_ALL_PART_WITH_DETAIL: Production",
+            "persianTitle": "تولید"
+          },
+          {
+            "value": "3",
+            "title": "NEW_ALL_PART_WITH_DETAIL: Consumption",
+            "persianTitle": "مصرف"
+          },
+          {
+            "value": "4",
+            "title": "NEW_ALL_PART_WITH_DETAIL: Scrap",
+            "persianTitle": "ضایعات"
+          },
+          {
+            "value": "5",
+            "title": "NEW_ALL_PART_WITH_DETAIL: IntraStockTransfer",
+            "persianTitle": "انتقال بین انبار"
+          },
+          {
+            "value": "6",
+            "title": "NEW_ALL_PART_WITH_DETAIL: Sale",
+            "persianTitle": "فروش"
+          },
+          {
+            "value": "7",
+            "title": "NEW_ALL_PART_WITH_DETAIL: ManualStockTaking",
+            "persianTitle": "انبارگردانی"
+          },
+          {
+            "value": "8",
+            "title": "NEW_ALL_PART_WITH_DETAIL: Consignment",
+            "persianTitle": "امانی"
+          },
+          {
+            "value": "9",
+            "title": "NEW_ALL_PART_WITH_DETAIL: PartTransfer",
+            "persianTitle": "تبدیل کالا"
+          },
+          {
+            "value": "10",
+            "title": "NEW_ALL_PART_WITH_DETAIL: Other",
+            "persianTitle": "سایر"
+          },
+          {
+            "value": "11",
+            "title": "NEW_ALL_PART_WITH_DETAIL: LastStockBalance",
+            "persianTitle": "پایان دوره"
+          },
+          {
+            "value": "12",
+            "title": "NEW_ALL_PART_WITH_DETAIL: FirstStockBalance",
+            "persianTitle": "ابتدای دوره"
+          },
+          {
+            "value": "13",
+            "title": "NEW_ALL_PART_WITH_DETAIL: FixedAsset",
+            "persianTitle": "تحویل دارایی ثابت"
+          },
+          {
+            "value": "14",
+            "title": "NEW_ALL_PART_WITH_DETAIL: YearEnd",
+            "persianTitle": "پایان سال"
+          },
+          {
+            "value": "15",
+            "title": "NEW_ALL_PART_WITH_DETAIL: YearStart",
+            "persianTitle": "ابتدای سال"
+          },
+          {
+            "value": "16",
+            "title": "NEW_ALL_PART_WITH_DETAIL: Lodgment",
+            "persianTitle": "استقرار"
+          },
+          {
+            "value": "17",
+            "title": "NEW_ALL_PART_WITH_DETAIL: AssembleDisassemble",
+            "persianTitle": "ترکیب و تفکیک"
+          },
+          {
+            "value": "18",
+            "title": "NEW_ALL_PART_WITH_DETAIL: SystematicStockTaking",
+            "persianTitle": "انبارگردانی سیستمی"
+          }
+        ]
+      }
+    },
+    "parameterCounts": {},
+    "boCount": 1,
+    "boNames": [
+      {
+        "name": "logistics_allparts",
+        "title": "New all parts with detail",
+        "persianTitle": "اطلاعات اقلام کالا با جزییات کامل",
+        "columns": [
+          {
+            "name": "company_name",
+            "title": "NEW_ALL_PART_WITH_DETAIL: COMPANY_NAME",
+            "persianTitle": "عنوان شرکت",
+            "enumId": "",
+            "type": "String"
+          },
+          {
+            "name": "fiscal_year_title",
+            "title": "NEW_ALL_PART_WITH_DETAIL: FISCAL_YEAR_TITLE",
+            "persianTitle": "عنوان سال مالی",
+            "enumId": "",
+            "type": "String"
+          },
+          {
+            "name": "branch_title",
+            "title": "NEW_ALL_PART_WITH_DETAIL: BRANCH_TITLE",
+            "persianTitle": "عنوان شعبه",
+            "enumId": "",
+            "type": "String"
+          },
+          {
+            "name": "plant_code",
+            "title": "NEW_ALL_PART_WITH_DETAIL: PLANT_CODE",
+            "persianTitle": "کد مرکز نگهداری",
+            "enumId": "",
+            "type": "String"
+          },
+          {
+            "name": "plant_name",
+            "title": "NEW_ALL_PART_WITH_DETAIL: PLANT_NAME",
+            "persianTitle": "عنوان مرکز نگهداری",
+            "enumId": "",
+            "type": "String"
+          },
+          {
+            "name": "store_code",
+            "title": "NEW_ALL_PART_WITH_DETAIL: STORE_CODE",
+            "persianTitle": "کد انبار",
+            "enumId": "",
+            "type": "String"
+          },
+          {
+            "name": "store_name",
+            "title": "NEW_ALL_PART_WITH_DETAIL: STORE_NAME",
+            "persianTitle": "عنوان انبار",
+            "enumId": "",
+            "type": "String"
+          },
+          {
+            "name": "storage_type_title",
+            "title": "NEW_ALL_PART_WITH_DETAIL: STORAGE_TYPE_TITLE",
+            "persianTitle": "نوع انبار",
+            "enumId": "",
+            "type": "String"
+          },
+          {
+            "name": "product_code",
+            "title": "NEW_ALL_PART_WITH_DETAIL: PRODUCT_CODE",
+            "persianTitle": "کد کالا",
+            "enumId": "",
+            "type": "String"
+          },
+          {
+            "name": "product_title",
+            "title": "NEW_ALL_PART_WITH_DETAIL: PRODUCT_TITLE",
+            "persianTitle": "عنوان کالا",
+            "enumId": "",
+            "type": "String"
+          },
+          {
+            "name": "part_account_category_title",
+            "title": "NEW_ALL_PART_WITH_DETAIL: PART_ACCOUNT_CATEGORY_TITLE",
+            "persianTitle": "عنوان طبقه حساب کالا",
+            "enumId": "",
+            "type": "String"
+          },
+          {
+            "name": "pricing_method",
+            "title": "NEW_ALL_PART_WITH_DETAIL: PRICING_METHOD",
+            "persianTitle": "روش قیمت گذاری کالا",
+            "enumId": "",
+            "type": "String"
+          },
+          {
+            "name": "part_type",
+            "title": "NEW_ALL_PART_WITH_DETAIL: PART_TYPE",
+            "persianTitle": "نوع کالا",
+            "enumId": "",
+            "type": "String"
+          },
+          {
+            "name": "part_usage",
+            "title": "NEW_ALL_PART_WITH_DETAIL: PART_USAGE",
+            "persianTitle": "نوع کارکرد کالا",
+            "enumId": "",
+            "type": "String"
+          },
+          {
+            "name": "counter_part_type",
+            "title": "NEW_ALL_PART_WITH_DETAIL: COUNTER_PART_TYPE",
+            "persianTitle": "نقش طرف مقابل سند",
+            "enumId": "",
+            "type": "String"
+          },
+          {
+            "name": "voucher_title",
+            "title": "NEW_ALL_PART_WITH_DETAIL: VOUCHER_TITLE",
+            "persianTitle": "عنوان سند",
+            "enumId": "",
+            "type": "String"
+          },
+          {
+            "name": "voucher_type",
+            "title": "NEW_ALL_PART_WITH_DETAIL: VOUCHER_TYPE",
+            "persianTitle": "نوع سند",
+            "enumId": "",
+            "type": "String"
+          },
+          {
+            "name": "direction",
+            "title": "NEW_ALL_PART_WITH_DETAIL: DIRECTION",
+            "persianTitle": "جهت سند",
+            "enumId": "",
+            "type": "String"
+          },
+          {
+            "name": "type_of_effect",
+            "title": "NEW_ALL_PART_WITH_DETAIL: TYPE_OF_EFFECT",
+            "persianTitle": "نوع تاثیر بر موجودی",
+            "enumId": "",
+            "type": "String"
+          },
+          {
+            "name": "voucher_date",
+            "title": "NEW_ALL_PART_WITH_DETAIL: VOUCHER_DATE",
+            "persianTitle": "تاریخ سند",
+            "enumId": "",
+            "type": "Date"
+          },
+          {
+            "name": "voucher_unit",
+            "title": "NEW_ALL_PART_WITH_DETAIL: VOUCHER_UNIT",
+            "persianTitle": "واحد سنجش سند",
+            "enumId": "",
+            "type": "String"
+          },
+          {
+            "name": "part_major_unit_title",
+            "title": "NEW_ALL_PART_WITH_DETAIL: part_major_unit_title",
+            "persianTitle": "واحد سنجش اصلی کالا",
+            "enumId": "",
+            "type": "String"
+          },
+          {
+            "name": "second_unit_title",
+            "title": "NEW_ALL_PART_WITH_DETAIL: second_unit_title",
+            "persianTitle": "عنوان واحد دوم",
+            "enumId": "",
+            "type": "String"
+          },
+          {
+            "name": "permanent_voucher_quantity",
+            "title": "NEW_ALL_PART_WITH_DETAIL: permanent_voucher_quantity",
+            "persianTitle": "مقدار دائم سند",
+            "enumId": "",
+            "type": "Int64"
+          },
+          {
+            "name": "temporary_voucher_quantity",
+            "title": "NEW_ALL_PART_WITH_DETAIL: temporary_voucher_quantity",
+            "persianTitle": "مقدار موقت سند",
+            "enumId": "",
+            "type": "Int64"
+          },
+          {
+            "name": "discard_voucher_quantity",
+            "title": "NEW_ALL_PART_WITH_DETAIL: discard_voucher_quantity",
+            "persianTitle": "مقدار ضایعات سند",
+            "enumId": "",
+            "type": "Int64"
+          },
+          {
+            "name": "permanent_quantity",
+            "title": "NEW_ALL_PART_WITH_DETAIL: permanent_quantity",
+            "persianTitle": "مقدار به واحد اصلی دائم",
+            "enumId": "",
+            "type": "Int64"
+          },
+          {
+            "name": "temporary_quantity",
+            "title": "NEW_ALL_PART_WITH_DETAIL: temporary_quantity",
+            "persianTitle": "مقدار به واحد اصلی موقت",
+            "enumId": "",
+            "type": "Int64"
+          },
+          {
+            "name": "discard_quantity",
+            "title": "NEW_ALL_PART_WITH_DETAIL: discard_quantity",
+            "persianTitle": "مقدار به واحد اصلی ضایعات",
+            "enumId": "",
+            "type": "Int64"
+          },
+          {
+            "name": "permanent_second_quantity",
+            "title": "NEW_ALL_PART_WITH_DETAIL: permanent_second_quantity",
+            "persianTitle": "مقدار به واحد دوم دائم",
+            "enumId": "",
+            "type": "Int64"
+          },
+          {
+            "name": "temporary_second_quantity",
+            "title": "NEW_ALL_PART_WITH_DETAIL: temporary_second_quantity",
+            "persianTitle": "مقدار به واحد دوم موقت",
+            "enumId": "",
+            "type": "Int64"
+          },
+          {
+            "name": "discard_second_quantity",
+            "title": "NEW_ALL_PART_WITH_DETAIL: discard_second_quantity",
+            "persianTitle": "مقدار به واحد دوم ضایعات",
+            "enumId": "",
+            "type": "Int64"
+          },
+          {
+            "name": "state",
+            "title": "NEW_ALL_PART_WITH_DETAIL: state",
+            "persianTitle": "وضعیت",
+            "enumId": "",
+            "type": "String"
+          },
+          {
+            "name": "is_return",
+            "title": "NEW_ALL_PART_WITH_DETAIL: is_return",
+            "persianTitle": "برگشتی",
+            "enumId": "",
+            "type": "Bool"
+          }
+        ],
+        "parameters": [],
+        "relations": []
+      }
+    ]
+  }

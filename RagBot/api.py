@@ -106,6 +106,7 @@ class ChatResponse(BaseModel):
     parameters: Optional[dict] = {}
     response_template: str = ""
     elapsed_time: float = 0.0
+    has_video_link: bool = False  # <-- NEW
 
 class CreateSessionRequest(BaseModel):
     tenant_name: Optional[str] = ""
@@ -216,7 +217,6 @@ class NL2SQLDatabaseResponse(BaseModel):
 
 
 # ================== Utility Functions ==================
-
 
 def find_module_name(original_filename):
     main_filename = Path(original_filename).stem
@@ -728,6 +728,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
     response_template = ""
     tenant_name = ""
     user_code = ""
+    has_video_link = False  # <-- ADD THIS LINE
 
     try:
         session_id = get_session_id(request, chat_request)
@@ -802,7 +803,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         user_query=chat_request.query,
                     )
                     
-                    is_sql, paraphrased_utterance, response, context, do_clarify, modules, parameters, response_template = await chat_responder_(
+                    is_sql, paraphrased_utterance, response, context, do_clarify, modules, parameters, response_template, has_video_link = await chat_responder_(
                         history=selected_history,
                         user_utterance=chat_request.query,
                         database_index=matched_index,
@@ -836,7 +837,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         session_id=session_id,
                         user_query=chat_request.query,
                     )
-                    is_sql, paraphrased_utterance, response, context, do_clarify, modules, parameters, response_template = await chat_responder_(
+                    is_sql, paraphrased_utterance, response, context, do_clarify, modules, parameters, response_template, has_video_link = await chat_responder_(
                         history=selected_history,
                         user_utterance=chat_request.query,
                         database_index=matched_index,
@@ -927,7 +928,8 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
             do_suggest=do_suggest,
             parameters=parameters,
             response_template=response_template,
-            elapsed_time=elapsed_time
+            elapsed_time=elapsed_time,
+            has_video_link=has_video_link,  # <-- NEW
         )
 
     except HTTPException as e:
