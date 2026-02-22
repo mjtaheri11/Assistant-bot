@@ -7,9 +7,10 @@ database:
   assistant_name: "digital assistant"
   use_cache: True
   dbname: my-vdb
-  # collection_name: "default_collection_e5"
-  collection_name: "default_collection"
+  collection_name: "default_collection_e5"
+  # collection_name: "default_collection_qwen3"
   sql_collection_name: "default_sql_collection_e5"
+  # sql_collection_name: "default_sql_collection_qwen3"
   documents:
     4thg-intro: معرفی سیستم یکپارچه نسل 4
     crm: مدیریت ارتباط با مشتری
@@ -33,7 +34,7 @@ logging:
   max_size: 10*1024*1024
 
 schema:
-  format: "simple_ddl_md"
+  format: "basic"
   module_to_context:
     "انبار": "logistics"
     "فروش": "sales"
@@ -100,6 +101,7 @@ cache:
   # index_name: Hamzan
   persist_directory: ../db-cache
   index_name: default_cache_e5
+  # index_name: default_cache_qwen3
   num_rank2_documents: 5
   embedding_model:
 #    model_name: /home/jovyan/.cache/huggingface/hub/models--intfloat--multilingual-e5-large/snapshots/0dc5580a448e4284468b8909bae50fa925907bc5
@@ -128,16 +130,22 @@ cache:
 # configurations for embedding model
 embedding_model:
   model_path: ./saved_models/models--intfloat--multilingual-e5-large/snapshots/0dc5580a448e4284468b8909bae50fa925907bc5
+  # model_path: /home/jovyan/Assistant-bot/RagBot/saved_models/Qwen3-Embedding-4B
   device: cuda
   # Type: "triton" or "local" or "openrouter"
   type: triton
   # Triton Embedding Configuration
   model_name: "e5"  # Model name in Triton server
+  # model_name: "qwen3"  # Model name in Triton server
   triton_url: http://triton-server.admin.svc.cluster.local
+  # triton_url: http://qwen3-embedding-soroush.cs-sg-da-dev.svc.cluster.local:82
   tokenizer_path: ./saved_models/models--intfloat--multilingual-e5-large/snapshots/0dc5580a448e4284468b8909bae50fa925907bc5
+  # tokenizer_path: /home/jovyan/Assistant-bot/RagBot/saved_models/Qwen3-Embedding-4B
   max_length: 512
+  # max_length: 8192
   timeout: 30
   batch_size: 32
+  # batch_size: 1
   # type: "openrouter"
 
 # configurations for reranker
@@ -169,6 +177,7 @@ retriever:
   retriever_threshold: 0.0
   alpha_threshold: 0.5
   use_reranker: true
+  # use_reranker: false
   
 
 # Evaluations configurations

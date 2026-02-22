@@ -92,7 +92,7 @@ class ChatRequest(BaseModel):
     on_click: Optional[bool] = False
     error_payload: Optional[str] = ""
     is_sync: Optional[bool] = True
-    sql_mode: Optional[bool] = True  # Toggle between legacy and SQL agent mode
+    sql_mode: Optional[bool] = False  # Toggle between legacy and SQL agent mode
     model_name: Optional[str] = ""
 
 
@@ -217,6 +217,11 @@ class NL2SQLDatabaseResponse(BaseModel):
 
 
 # ================== Utility Functions ==================
+
+def extract_video_links(text: str) -> List[str]:
+    """Extract video link patterns (e.g., videolink-gl005) from text."""
+    pattern = r'videolink-\w+'
+    return re.findall(pattern, text)
 
 def find_module_name(original_filename):
     main_filename = Path(original_filename).stem
@@ -1046,6 +1051,7 @@ async def create_database_endpoint(
         
         logger.info(f"\nTotal documents created: {len(all_documents)}")
         logger.info(f"Files processed: {list(processed_files.keys())}")
+        import pdb
         
         if len(all_documents) == 0:
             raise HTTPException(
@@ -1058,14 +1064,14 @@ async def create_database_endpoint(
         logger.info("STEP 2: Creating database entry in PostgreSQL")
         logger.info("=" * 60)
         if default_collection:
-            database_id = "default_collection"
+            database_id = config["database"]["collection_name"]
         else:
             try:
                 database_id_dict = await postgres.create_database(company_name, assistant_name)
                 database_id = database_id_dict["database_id"]
                 logger.info(f"✅ Database ID created: {database_id}")
             except Exception as e:
-                logger.error(f"❌ Failed to create database entry in PostgreSQL: {e}")
+                logger.error(f"❌ Failed  to create database entry in PostgreSQL: {e}")
                 raise HTTPException(
                     status_code=500,
                     detail=f"Failed to create database entry: {str(e)}"

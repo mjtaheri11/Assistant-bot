@@ -18,6 +18,4 @@ try:
     ALL_BOS_RAW = load_bo("business-objects.json")
 except FileNotFoundError:
     from .business_objects import ALL_BOS_RAW  # type: ignore
-    import pdb
-    pdb.set_trace()
     print("[bo_loader] business-objects.json not found, using business_objects.py")

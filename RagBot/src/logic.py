@@ -894,14 +894,20 @@ def _handle_single_module_case(
 
 
 @observe()
-def _handle_clear_preference_case(
-    context_with_metadata: List[dict], 
-    detected_module: str, 
+def _handle_single_module_case(
+    context_with_metadata: List[dict],
+    detected_modules: str,
     index_name: str
-) -> Tuple[bool, List[str], List[str]]:
-    """Handle case where module preference is clear (no clarification needed)."""
+) -> Tuple[bool, List[str], str]:
+    """Handle case where only one module type is detected."""
     documents = _format_documents_as_string(context_with_metadata)
-    return False, [detected_module], documents
+    encoding = tiktoken.encoding_for_model("gpt-4o-mini")
+    num_tokens = len(encoding.encode(documents))
+    print("num_tokens_of_context is %s" % num_tokens)
+    if num_tokens > MAX_CONTEXT_AVAILABLE_SIZE:
+        documents = _format_documents_as_string(context_with_metadata[-2:])
+        print("Num new tokens is: %s" % num_tokens)
+    return False, [detected_modules], documents
 
 
 @observe()
@@ -1236,8 +1242,10 @@ async def chat_responder_(
     query_embedding = await embed_query(paraphrased_utterance)
     if sql_mode: 
         route_response = await get_route_for_utterance(paraphrased_utterance, query_embedding)
+        # route_response = "sql"
     else:
         route_response = "qa"
+    route_response = "sql"
     use_sql_modules = True if route_response == "sql" else False
     if route_response == "chitchat":
         response = RESPONSE_TEMPLATE_FOR_NO_ANSWER

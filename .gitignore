@@ -241,3 +241,7 @@ assets/.idea
 RagBot/.coveragerc
 RagBot/test-results.xml
 RagBot/resources_for_router/
+RagBot/Incidents_Scored.xlsx
+RagBot/Incidents.xlsx
+RagBot/sample_retrieved.json
+RagBot/src/main_evaluation.py
