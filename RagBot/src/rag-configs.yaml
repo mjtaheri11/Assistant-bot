@@ -7,7 +7,7 @@ database:
   assistant_name: "digital assistant"
   use_cache: True
   dbname: my-vdb
-  collection_name: "default_collection_e5"
+  collection_name: "default_collection"
   # collection_name: "default_collection_qwen3"
   sql_collection_name: "default_sql_collection_e5"
   # sql_collection_name: "default_sql_collection_qwen3"

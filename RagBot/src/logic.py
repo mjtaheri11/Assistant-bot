@@ -10,6 +10,7 @@ import numpy as np
 from langchain.schema import SystemMessage
 import torch
 import sqlglot
+import tiktoken
 from sqlglot import exp
 from dataclasses import dataclass, field
 
@@ -27,6 +28,7 @@ from .prompts import (
     SEMANTIC_ROUTER,
     BUSINESS_OBJECT_PARAMETER_EXTRACTOR_PROMPT
 )
+
 from .retriever import Retriever
 from .config import config
 from .cache import Cache
@@ -73,6 +75,10 @@ QWEN3_CODER_API_BASE = os.getenv("QWEN3_CODER_API_BASE", "http://qwen3-coder-30b
 
 QA_MODULE_PROPOSER_THRESHOLD = float(os.getenv("QA_MODULE_PROPOSER_THRESHOLD", 0.75))
 SQL_MODULE_PROPOSER_THRESHOLD = float(os.getenv("SQL_MODULE_PROPOSER_THRESHOLD", 0.75))
+
+MAX_PROMPT_SIZE = 16000
+PROMPT_TEMPLATE_SIZE = 729
+MAX_CONTEXT_AVAILABLE_SIZE = MAX_PROMPT_SIZE - PROMPT_TEMPLATE_SIZE
 
 template_for_chitchat_answers = """من اینجا هستم تا تنها به سوالات مربوط به محصولات نسل چهارم شرکت همکاران سیستم پاسخ دهم. لطفاً سوالات خود را در مورد راه‌حل‌های نسل چهارم ما مطرح کنید."""
 template_for_not_answer = "پاسخ به این سوال در محدوده پاسخگویی من نیست."
@@ -1214,7 +1220,7 @@ async def chat_responder_(
     detected_module: str = "",
     sql_mode: bool = True,
     route_for_utterance: bool = False,
-    use_video_links: bool = True  # <-- add this
+    use_video_links: bool = False  # <-- add this
 ) -> Union[tuple[str, str, str, str], tuple[str, str, str, bool, List[str]]]:
     """
     Unified chat responder supporting both develop branch (simple RAG) and feature/add-sql-agent (SQL + module handling)
@@ -1245,7 +1251,6 @@ async def chat_responder_(
         # route_response = "sql"
     else:
         route_response = "qa"
-    route_response = "sql"
     use_sql_modules = True if route_response == "sql" else False
     if route_response == "chitchat":
         response = RESPONSE_TEMPLATE_FOR_NO_ANSWER
