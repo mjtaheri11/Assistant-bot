@@ -736,8 +736,11 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
     has_video_link = False  # <-- ADD THIS LINE
 
     try:
+        postgres = Postgres()
         session_id = get_session_id(request, chat_request)
+        user_code, tenant_name = await get_user_code_tenant_name(session_id, postgres)
         if not chat_request.is_sync:
+            message = "async chat response generated"
             final_records = await async_responder(session_id)
             response = final_records.get("response", "")
             paraphrased_utterance = final_records.get("paraphrased_query", "")
@@ -749,8 +752,6 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
             parameters = json.loads(final_records.get("parameters", "{}"))
             response_template = final_records.get("response_template", "")
         else:
-            postgres = Postgres()
-            user_code, tenant_name = await get_user_code_tenant_name(session_id, postgres)
             session_validation = await postgres.exist_session(session_id)
             if not session_validation:
                 raise HTTPException(

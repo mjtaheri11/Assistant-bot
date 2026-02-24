@@ -887,18 +887,6 @@ def _format_documents_as_list(context_with_metadata: List[dict]) -> List[str]:
         for i, doc in enumerate(context_with_metadata, 1)
     ]
 
-
-@observe()
-def _handle_single_module_case(
-    context_with_metadata: List[dict],
-    detected_modules: str,
-    index_name: str
-) -> Tuple[bool, List[str], str]:
-    """Handle case where only one module type is detected."""
-    documents = _format_documents_as_string(context_with_metadata)
-    return False, [detected_modules], documents
-
-
 @observe()
 def _handle_single_module_case(
     context_with_metadata: List[dict],
@@ -915,6 +903,15 @@ def _handle_single_module_case(
         print("Num new tokens is: %s" % num_tokens)
     return False, [detected_modules], documents
 
+@observe()
+def _handle_clear_preference_case(
+    context_with_metadata: List[dict], 
+    detected_module: str, 
+    index_name: str
+) -> Tuple[bool, List[str], List[str]]:
+    """Handle case where module preference is clear (no clarification needed)."""
+    documents = _format_documents_as_string(context_with_metadata)
+    return False, [detected_module], documents
 
 @observe()
 def _handle_clarification_case(
@@ -1247,8 +1244,8 @@ async def chat_responder_(
 
     query_embedding = await embed_query(paraphrased_utterance)
     if sql_mode: 
-        route_response = await get_route_for_utterance(paraphrased_utterance, query_embedding)
-        # route_response = "sql"
+        # route_response = await get_route_for_utterance(paraphrased_utterance, query_embedding)
+        route_response = "sql"
     else:
         route_response = "qa"
     use_sql_modules = True if route_response == "sql" else False
