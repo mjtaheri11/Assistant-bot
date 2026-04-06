@@ -27,6 +27,7 @@ def get_logger():
 
 HEADER_KEY_APPLICATION_JSON = "application/json"
 logger = get_logger()
+OPENROUTER_API_BASE = os.getenv("OPENROUTER_API_BASE")
 
 class TritonEmbeddings(Embeddings):
     """
@@ -351,7 +352,7 @@ class OpenRouterEmbeddings(Embeddings):
         self,
         model_name: str,
         api_key: str,
-        api_base: str = "https://openrouter.ai/api/v1",
+        api_base: str = OPENROUTER_API_BASE,
         batch_size: int = 100,
         max_retries: int = 3,
         retry_delay: int = 1,

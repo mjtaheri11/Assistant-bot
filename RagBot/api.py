@@ -23,6 +23,7 @@ import aiofiles
 
 from src.shear_parser import convert_word_to_markdown, SoleChunker, preprocess_markdown_file
 from src.llm_clients import llm_manager
+from src.utils import has_video_link_
 # Langfuse configuration
 load_dotenv()
 
@@ -92,7 +93,7 @@ class ChatRequest(BaseModel):
     on_click: Optional[bool] = False
     error_payload: Optional[str] = ""
     is_sync: Optional[bool] = True
-    sql_mode: Optional[bool] = False  # Toggle between legacy and SQL agent mode
+    sql_mode: Optional[bool] = True  # Toggle between legacy and SQL agent mode
     model_name: Optional[str] = ""
 
 
@@ -615,9 +616,9 @@ async def get_faq(
         #     context_with_metadata, _ = await retrieve_context_with_metadata(query=query, database_index=database_id)
         #     context = "\n\n ============= \n\n".join([context["text"] + "\n" + context["module"] for context in reversed(context_with_metadata)])
 
-        database_id = config["database"]["sql_collection_name"]
+        database_id = config["database"]["collection_name"]
         context_with_metadata, _ = await retrieve_context_with_metadata(query=query, database_index=database_id)
-        context = "\n\n ============= \n\n".join(["```" + str(context) + "```" for context in reversed(context_with_metadata)])
+        context = "\n\n ============= \n\n".join(["```" + str(context["text"]) + "```" for context in reversed(context_with_metadata)])
 
         return FaqResponse(response=context.strip())
     except HTTPException as e:
@@ -751,6 +752,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
             elapsed_time = final_records.get("elapsed_time", 0)
             parameters = json.loads(final_records.get("parameters", "{}"))
             response_template = final_records.get("response_template", "")
+            has_video_link = has_video_link_(parameters)
         else:
             session_validation = await postgres.exist_session(session_id)
             if not session_validation:

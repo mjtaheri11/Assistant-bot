@@ -797,6 +797,12 @@ def json_string_to_dict(json_str):
     except json.JSONDecodeError as e:
         raise ValueError(f"Invalid JSON format: {str(e)}")
 
+def has_video_link_(parameters: dict) -> bool:
+    """Check if parameters contain any video link references (videolink-*)."""
+    if not parameters:
+        return False
+    pattern = re.compile(r'videolink-\w+')
+    return any(pattern.search(str(v)) for v in parameters.values())
 
 def init_session_state():
     # Define all state variables and their default values

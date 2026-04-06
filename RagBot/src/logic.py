@@ -32,7 +32,7 @@ from .prompts import (
 from .retriever import Retriever
 from .config import config
 from .cache import Cache
-from .utils import json_cleaning, json_cleaning_1, calculate_date_context, format_documents_as_sql_examples, convert_sql_parameters, integrate_params, add_param_keys
+from .utils import json_cleaning, json_cleaning_1, calculate_date_context, format_documents_as_sql_examples, convert_sql_parameters, integrate_params, add_param_keys, has_video_link_
 
 # ========================
 # from .business_objects import LOGISTICS_SALES_MODIFIED, FINANCIAL_BO_MODIFIED, CRM_BO, LOGISTICS_MODIFIED #, TREASURY_BO
@@ -113,12 +113,6 @@ def finalize_parameters(a_dict, b_dict):
     concatenation = (a_dict | b_dict) | {"parameters": a_dict.get("parameters", {}) | b_dict.get("parameters", {})}
     return concatenation
 
-def _has_video_link(parameters: dict) -> bool:
-    """Check if parameters contain any video link references (videolink-*)."""
-    if not parameters:
-        return False
-    pattern = re.compile(r'videolink-\w+')
-    return any(pattern.search(str(v)) for v in parameters.values())
 
 def extract_tables_robust(sql: str, dialect: str = None) -> dict:
     """
@@ -787,6 +781,7 @@ async def prepare_final_context(
         proposable_modules = set(config["modules"]["qa_proposable_modules"])
     detected_modules = [result["module"] for result in context_with_metadata]
     module_frequencies = Counter(detected_modules)
+    print(module_frequencies)
     if len(module_frequencies) < 2:
         detected_modules_lst = list(module_frequencies.keys())
         result = _handle_single_module_case(
@@ -1000,7 +995,7 @@ async def sql_responder_(
     detected_module: str = "",
     context: str = "",
     model_name: str = "",
-    reasoning_effort="high"
+    reasoning_effort="medium"
 ):
     if not model_name:
         model_name = config["api_default"]["sql_responder_model_name"]
@@ -1217,7 +1212,7 @@ async def chat_responder_(
     detected_module: str = "",
     sql_mode: bool = True,
     route_for_utterance: bool = False,
-    use_video_links: bool = False  # <-- add this
+    use_video_links: bool = True  # <-- add this
 ) -> Union[tuple[str, str, str, str], tuple[str, str, str, bool, List[str]]]:
     """
     Unified chat responder supporting both develop branch (simple RAG) and feature/add-sql-agent (SQL + module handling)
@@ -1244,8 +1239,8 @@ async def chat_responder_(
 
     query_embedding = await embed_query(paraphrased_utterance)
     if sql_mode: 
-        # route_response = await get_route_for_utterance(paraphrased_utterance, query_embedding)
-        route_response = "sql"
+        route_response = await get_route_for_utterance(paraphrased_utterance, query_embedding)
+        # route_response = "qa"
     else:
         route_response = "qa"
     use_sql_modules = True if route_response == "sql" else False
@@ -1261,7 +1256,7 @@ async def chat_responder_(
 
     if route_response == "sql":
         clarification_threshold = SQL_MODULE_PROPOSER_THRESHOLD
-        database_index = config["database"]["sql_collection_name"]
+        # database_index = config["database"]["sql_collection_name"]
     else:
         clarification_threshold = QA_MODULE_PROPOSER_THRESHOLD
     
@@ -1284,7 +1279,6 @@ async def chat_responder_(
     if route_response == "sql" and sql_mode:
         selected_module = modules[0] 
         if selected_module in config["modules"]["available_sql_modules"]:
-
             do_clarify, modules_2 , context = await prepare_final_context(paraphrased_utterance, database_index=config["database"]["sql_collection_name"], query_embedding=query_embedding, input_module=selected_module, num_retrieve_context=num_retrieve_context)
             if len(modules_2) == 0:
                 modules_2 = modules 
@@ -1323,7 +1317,7 @@ async def chat_responder_(
         response = template_for_not_context.format(company_name=company_name)
         video_parameters = {}
     parameters = video_parameters
-    has_video_link = _has_video_link(parameters)
+    has_video_link = has_video_link_(parameters)
     result_temp = is_sql, paraphrased_utterance, response, context, do_clarify, modules, parameters, sql_response_template, has_video_link
     return result_temp
 

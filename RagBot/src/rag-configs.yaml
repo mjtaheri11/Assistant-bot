@@ -34,7 +34,7 @@ logging:
   max_size: 10*1024*1024
 
 schema:
-  format: "basic"
+  format: "yaml_grouped"
   module_to_context:
     "انبار": "logistics"
     "فروش": "sales"
@@ -231,12 +231,12 @@ api_default:
   # parameter_responder_model_name: gpt-5.1-codex-max
   # sql_responder_model_name: gpt-5.1-codex-max
   # chitchat_responder_model_name: gpt-4.1
-  module_route_model_name: gpt-5.2-codex
+  module_route_model_name: oss
   query_responder_model_name: oss
   answer_validator_model_name: oss
   utterance_paraphraser_model_name: oss
   parameter_responder_model_name: oss
-  sql_responder_model_name: gpt-5.2-codex
+  sql_responder_model_name: oss
   chitchat_responder_model_name: oss
   
 
