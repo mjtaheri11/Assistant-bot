@@ -818,6 +818,7 @@ def init_session_state():
         "suggested_sessions": [],
         "suggested_modules": [],
         "sql_response_type": [],
+        "ticket_response_type": [],   # <-- NEW
         "suggested_choices": [],
 
         # Strings

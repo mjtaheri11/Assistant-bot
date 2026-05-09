@@ -237,21 +237,37 @@ def chat_request(
     # Handle the different response status codes
     json_response = response.json()
     if response.status_code == 200:
-        if json_response["is_sql"] == True:
-            json_response["response"] = {"response": json_response["response"],
-                                         "parameters": json_response["parameters"], "response_template": json_response["response_template"]}
+        is_sql = json_response.get("is_sql", False)
+        is_ticket = json_response.get("is_ticket", False)
+        parameters = json_response.get("parameters", {}) or {}
+
+        if is_sql:
+            json_response["response"] = {
+                "response": json_response["response"],
+                "parameters": parameters,
+                "response_template": json_response.get("response_template", ""),
+            }
+        elif is_ticket:
+            # Bundle the ticket fields with the response so the renderer has
+            # everything it needs in one place.
+            json_response["response"] = {
+                "response": json_response["response"],
+                "parameters": parameters,
+            }
+
         return {
             "status": "success",
             "query": json_response["query"],
             "response": json_response["response"],
             "message_id": json_response["message_id"],
             "choices": json_response.get("choices", []),
-            "is_sql": json_response.get("is_sql", False),
-            "do_suggest": json_response.get("do_suggest", False)
+            "is_sql": is_sql,
+            "is_ticket": is_ticket,
+            "do_suggest": json_response.get("do_suggest", False),
         }
     else:
         return {"status": "error", "query": "", "response": "", "message_id": "",
-                "choices": [], "is_sql": False, "do_suggest": False}
+                "choices": [], "is_sql": False, "is_ticket": False, "do_suggest": False}
 
 
 def sql_request(query: str, session_id: str, on_click: bool, database_id: str = None, api_url: str = BASE_URL):
@@ -358,13 +374,20 @@ def send_feedback(
     else:
         return {"message": "error"}
 
-
 def create_database_api_request(
-    company_name, assistant_name, uploaded_files
+    company_name,
+    assistant_name,
+    uploaded_files,
+    recreate: bool = True,
+    batch_size: int = 100,
+    default_collection: bool = False,
 ):
     params = {
         "company_name": company_name,
-        "assistant_name": assistant_name
+        "assistant_name": assistant_name,
+        "recreate": recreate,
+        "batch_size": batch_size,
+        "default_collection": default_collection,
     }
     files = [('files', (file.name, file)) for file in uploaded_files]
 
@@ -378,7 +401,6 @@ def create_database_api_request(
         return ("error", f"HTTP error occurred: {http_err}", None)
     except Exception as err:
         return ("error", f"An error occurred: {err}", None)
-
 
 def form_submit_button():
     st.session_state["form_submitted"] = True
@@ -431,6 +453,65 @@ def boolean_mapper(type_):
     elif type_.strip() == "خیر":
         return False
 
+def render_ticket_card(ticket_payload: dict):
+    """
+    Render the ticket fields (title, description, system, form) as a read-only
+    Persian form card inside the assistant message.
+    `ticket_payload` is the dict stored in session_state.response[i] when
+    the turn is a ticket turn — it has the shape:
+      {"response": "<confirmation message>", "parameters": {title, description, system, form, ...}}
+    """
+    confirmation = ticket_payload.get("response", "")
+    params = ticket_payload.get("parameters", {}) or {}
+
+    title = params.get("title", "")
+    description = params.get("description", "")
+    system = params.get("system", "")
+    form = params.get("form", "")
+
+    if confirmation:
+        st.markdown(
+            f'<div class="markdown-rtl">{confirmation}</div>',
+            unsafe_allow_html=True,
+        )
+
+    st.markdown(
+        f"""
+        <div class="markdown-rtl" style="
+            border: 1px solid #d0d7de;
+            border-radius: 10px;
+            padding: 16px 18px;
+            margin-top: 8px;
+            background-color: #fafbfc;">
+          <div style="font-weight: 600; margin-bottom: 10px;">🎫 پیش‌نمایش تیکت</div>
+          <div style="margin-bottom: 8px;">
+            <span style="color:#555;">عنوان:</span>
+            <span style="font-weight:500;">{title or '—'}</span>
+          </div>
+          <div style="margin-bottom: 8px;">
+            <span style="color:#555;">سیستم:</span>
+            <span style="font-weight:500;">{system or '—'}</span>
+          </div>
+          <div style="margin-bottom: 8px;">
+            <span style="color:#555;">فرم:</span>
+            <span style="font-weight:500;">{form or '—'}</span>
+          </div>
+          <div style="margin-bottom: 4px;">
+            <span style="color:#555;">توضیحات:</span>
+          </div>
+          <div style="
+              white-space: pre-wrap;
+              background-color: #ffffff;
+              border: 1px solid #e5e7eb;
+              border-radius: 6px;
+              padding: 10px 12px;
+              line-height: 1.7;">
+            {description or '—'}
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 def main():
     st.set_page_config(
@@ -544,6 +625,11 @@ def main():
                             st.session_state["temporal_company_name"],
                             st.session_state["temporal_assistant_name"],
                             st.session_state["uploaded_files"],
+                            recreate=boolean_mapper(st.session_state.get("temporal_recreate", "بله")),
+                            batch_size=int(st.session_state.get("temporal_batch_size", 100)),
+                            default_collection=boolean_mapper(
+                                st.session_state.get("temporal_default_collection", "خیر")
+                            ),
                         )
                         if status == "success":
                             udpate_temporal_names("assistant_name")
@@ -600,9 +686,34 @@ def main():
                     st.markdown("استفاده از کش سیستم (دستیار دیجیتال نسل 4)")
                     st.selectbox(
                         "استفاده از کش سیستم (دستیار دیجیتال نسل 4)",
-                        ["خیر", "بله"],
+                        ["بله", "خیر"],
                         key="temporal_use_cache",
                         label_visibility="collapsed"
+                    )
+                    st.markdown("استفاده از مجموعه پیش‌فرض")
+                    st.selectbox(
+                        "استفاده از مجموعه پیش‌فرض",
+                        ["بله", "خیر"],
+                        key="temporal_default_collection",
+                        label_visibility="collapsed",
+                    )
+                    st.markdown("بازسازی مجموعه در صورت وجود")
+                    st.selectbox(
+                        "بازسازی مجموعه در صورت وجود",
+                        ["بله", "خیر"],
+                        key="temporal_recreate",
+                        label_visibility="collapsed",
+                    )
+
+                    st.markdown("اندازه دسته پردازش")
+                    st.number_input(
+                        "اندازه دسته پردازش",
+                        min_value=1,
+                        max_value=1000,
+                        value=100,
+                        step=10,
+                        key="temporal_batch_size",
+                        label_visibility="collapsed",
                     )
                     st.form_submit_button(
                         "ارسال", on_click=form_submit_button, type="primary")
@@ -718,9 +829,10 @@ def main():
                             use_cache=st.session_state["use_cache"],
                             sql_mode=st.session_state["sql_mode"],
                         )
-                        do_suggest, is_sql, choices, message_id, response, query = (
+                        do_suggest, is_sql, is_ticket, choices, message_id, response, query = (
                             chat_response["do_suggest"],
                             chat_response["is_sql"],
+                            chat_response.get("is_ticket", False),
                             chat_response["choices"],
                             chat_response["message_id"],
                             chat_response["response"],
@@ -745,6 +857,7 @@ def main():
                         st.session_state["response_is_valid"] = response_is_valid
                         st.session_state["suggested_modules"] = choices
                         st.session_state.sql_response_type.append(is_sql)
+                        st.session_state.ticket_response_type.append(is_ticket)
                         st.session_state.response.append(response)
                         st.session_state.message_id.append(message_id)
 
@@ -760,9 +873,22 @@ def main():
                             if history["history"]
                         ]
                         progress_bar.progress(value=100, text="Done.")
+                        def _rehydrate(message):
+                            if message.get("is_sql"):
+                                return {
+                                    "response": message["response"],
+                                    "parameters": message.get("parameters", {}),
+                                    "response_template": message.get("response_template", ""),
+                                }
+                            if message.get("is_ticket"):
+                                return {
+                                    "response": message["response"],
+                                    "parameters": message.get("parameters", {}),
+                                }
+                            return message["response"]
+
                         st.session_state.response = [
-                            message["response"] if not message["is_sql"] else 
-                                {"response": message["response"], "parameters": message["parameters"], "response_template": message["response_template"]}
+                            _rehydrate(message)
                             for message in history["history"]
                             if history["history"]
                         ]
@@ -781,6 +907,11 @@ def main():
                             for message in history["history"]
                             if history["history"]
                         ]
+                        st.session_state.ticket_response_type = [
+                            message.get("is_ticket", False)
+                            for message in history["history"]
+                            if history["history"]
+                        ]
                         st.session_state["have_clicked_on_feedback"] = False
                         st.session_state["response_is_valid"] = True
                         progress_bar.progress(value=0)
@@ -794,6 +925,7 @@ def main():
                         st.session_state.have_clicked_on_feedback = False
                         st.session_state.response_is_valid = False
                         st.session_state.sql_response_type = []
+                        st.session_state.ticket_response_type = []
                         progress_bar.progress(value=0)
 
                     if st.session_state.get("user_utterance"):
@@ -810,12 +942,23 @@ def main():
                                 content = st.session_state["response"][i]
                                 is_sql = st.session_state.get(
                                     "sql_response_type", [False] * len(st.session_state["response"]))[i]
+                                is_ticket = st.session_state.get(
+                                    "ticket_response_type", [False] * len(st.session_state["response"]))[i]
+
                                 if is_sql:
                                     validation_response = ""
                                     if st.session_state["evaluate_sql"] and st.session_state["user_input"]:
                                         direct_validation_response = validate_execution(content["response"])
                                         validation_response = f"The output of the execution response is:\n\n{direct_validation_response}"
                                     st.markdown(f'<div class="markdown-ltr sql-code-block">\n\n```sql\n{content}\n```\n\n{validation_response}</div>', unsafe_allow_html=True, help=help_msg)
+                                elif is_ticket:
+                                    # Inject RTL styling so the ticket card respects direction
+                                    st.markdown("""
+                                    <style>
+                                    .stMarkdown { direction: rtl; text-align: right; }
+                                    </style>
+                                    """, unsafe_allow_html=True, help=help_msg)
+                                    render_ticket_card(content)
                                 else:
                                     # Inject RTL styling for all markdown content
                                     st.markdown("""

@@ -1,6 +1,8 @@
+import json
+import logging
 import os
 import uuid
-from typing import Any, List, Mapping, Optional, Dict
+from typing import Any, List, Mapping, Optional, Dict, Tuple
 
 from qdrant_client import QdrantClient, models
 from qdrant_client.http.models import (
@@ -23,6 +25,8 @@ from .initiate_vdb import qdrant_client
 
 REDIS_HOST = os.environ.get("REDIS_HOST", "185.13.230.222")
 REDIS_PORT = os.environ.get("REDIS_PORT", "6380")
+
+logger = logging.getLogger(__name__)
 
 
 class Cache:
@@ -491,54 +495,270 @@ class Cache:
                 points_selector=models.PointIdsList(points=[point_id]),
             )
 
+    # ------------------------------------------------------------------
+    # Batch encoding + upsert helpers
+    # ------------------------------------------------------------------
+
+    def _embed_queries_batch(self, queries: List[str]) -> List[List[float]]:
+        """
+        Encode a list of queries in a single batch using the embedding
+        model's `embed_documents` method (when available).
+
+        Most LangChain embedding implementations expose `embed_documents`,
+        which is significantly faster than repeated `embed_query` calls
+        because it lets the underlying model batch requests internally.
+        Falls back to per-query encoding only for embedding objects that
+        do not implement the batch API.
+        """
+        if not queries:
+            return []
+
+        embed_documents = getattr(self.embedding_model, "embed_documents", None)
+        if callable(embed_documents):
+            return embed_documents(queries)
+
+        # Fallback: model exposes only embed_query.
+        return [self.embedding_model.embed_query(q) for q in queries]
+
+    def _add_batches(
+        self,
+        points_data: List[Tuple[str, Dict[str, Any]]],
+        batch_size: int,
+    ) -> int:
+        """
+        Encode queries and upsert points to Qdrant in batches.
+
+        This mirrors the `_add_batches` helper in `initiate_vdb.py`:
+          - chunks the work into `batch_size`-sized slices,
+          - encodes each chunk with a single `embed_documents` call,
+          - upserts the resulting `PointStruct`s in one Qdrant call,
+          - logs per-batch progress and aborts on error.
+
+        Unlike the LangChain `Qdrant.add_documents` path used in
+        `initiate_vdb`, this version targets the raw Qdrant client so it can
+        preserve the cache's payload schema (`query`, `response`, `url`,
+        `thumb_up`, `thumb_down`, `flag`) and use deterministic point IDs
+        derived from the query string.
+
+        Args:
+            points_data: List of `(query, payload)` tuples. The query is
+                used both as the embedding input and to derive the point
+                ID; the payload is what gets stored in Qdrant.
+            batch_size: Maximum points per encode/upsert batch.
+
+        Returns:
+            Total number of points written to Qdrant.
+        """
+        total = len(points_data)
+        if total == 0:
+            return 0
+
+        def _encode_and_build(chunk: List[Tuple[str, Dict[str, Any]]]) -> List[PointStruct]:
+            queries_chunk = [q for q, _ in chunk]
+            embeddings = self._embed_queries_batch(queries_chunk)
+            return [
+                PointStruct(
+                    id=self._query_to_point_id(q),
+                    vector=v,
+                    payload=p,
+                )
+                for (q, p), v in zip(chunk, embeddings)
+            ]
+
+        # Single-batch fast path.
+        if total <= batch_size:
+            points = _encode_and_build(points_data)
+            self._client.upsert(
+                collection_name=self._collection_name,
+                points=points,
+            )
+            logger.info(f"✅ Encoded and upserted {total} points in 1 batch.")
+            return total
+
+        # Multi-batch path with per-batch progress logging.
+        logger.info(f"Adding {total} points in batches of {batch_size}")
+        written = 0
+        for i in range(0, total, batch_size):
+            chunk = points_data[i:i + batch_size]
+            batch_num = (i // batch_size) + 1
+            try:
+                points = _encode_and_build(chunk)
+                self._client.upsert(
+                    collection_name=self._collection_name,
+                    points=points,
+                )
+                written += len(points)
+                logger.info(
+                    f"✅ Batch {batch_num} completed ({len(points)} points)"
+                )
+            except Exception as e:
+                logger.error(f"❌ Error adding batch {batch_num}: {e}")
+                raise
+        return written
+
+    # ------------------------------------------------------------------
+    # Chitchat bulk-loading from an external JSON file
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _resolve_chitchat_file_path(file_path: Optional[str]) -> str:
+        """
+        Resolve the chitchat data file path.
+
+        Resolution order:
+            1. Explicit `file_path` argument (if provided).
+            2. `config["cache"]["chitchat_file_path"]`.
+
+        Relative paths are resolved against this module's directory so the
+        loader works regardless of the caller's current working directory.
+        """
+        if file_path is None:
+            file_path = config["cache"].get("chitchat_file_path")
+
+        if not file_path:
+            raise ValueError(
+                "Chitchat data file path is not provided and "
+                "'chitchat_file_path' is not configured under config['cache']."
+            )
+
+        if not os.path.isabs(file_path):
+            module_dir = os.path.dirname(os.path.abspath(__file__))
+            file_path = os.path.normpath(os.path.join(module_dir, file_path))
+
+        if not os.path.isfile(file_path):
+            raise FileNotFoundError(f"Chitchat data file not found: {file_path}")
+
+        return file_path
+
+    @staticmethod
+    def _load_chitchat_file(file_path: str) -> List[Dict[str, Any]]:
+        """Read and validate the chitchat JSON file, returning its categories list."""
+        with open(file_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        categories = data.get("categories")
+        if not isinstance(categories, list):
+            raise ValueError(
+                f"Invalid chitchat file '{file_path}': "
+                "expected a top-level 'categories' list."
+            )
+        return categories
+
+    def load_chitchat_data(
+        self,
+        file_path: Optional[str] = None,
+        overwrite: bool = False,
+        thumb_up: int = 1,
+        batch_size: int = 100,
+    ) -> Dict[str, int]:
+        """
+        Bulk-load predefined chitchat Q&A pairs from a JSON file into the cache.
+
+        File format:
+            {
+                "categories": [
+                    {
+                        "name": "<category-name>",
+                        "response": "<canonical answer>",
+                        "url": "<optional url>",
+                        "queries": ["query 1", "query 2", ...]
+                    },
+                    ...
+                ]
+            }
+
+        All queries within a category share the same canonical response and
+        URL. Each query is inserted as a separate point in Qdrant with
+        `thumb_up` pre-set so retrieval treats these as high-quality answers.
+
+        Encoding and transmission are batched via `_add_batches`, which
+        mirrors the same helper in `initiate_vdb.py`. Each batch performs a
+        single `embed_documents` call and a single Qdrant `upsert`.
+
+        The operation is idempotent by default: queries already present in
+        the cache are skipped (their feedback counters are preserved). Pass
+        `overwrite=True` to forcibly replace existing entries.
+
+        Args:
+            file_path:  Optional path to the chitchat JSON file. When None,
+                        falls back to `config["cache"]["chitchat_file_path"]`.
+                        Relative paths are resolved against the module
+                        directory.
+            overwrite:  If True, existing entries are overwritten and their
+                        feedback counters are reset to (`thumb_up`, 0, 0).
+            thumb_up:   The initial thumb_up value assigned to inserted
+                        points. Defaults to 1, matching the previous
+                        behaviour where seeds were inserted via
+                        `increment_thumb_up`.
+            batch_size: Maximum points per encode/upsert batch. Defaults to
+                        100, matching the convention in `initiate_vdb`.
+
+        Returns:
+            A dict with statistics:
+                - "categories": number of categories processed
+                - "queries":    total queries seen in the file
+                - "inserted":   number of points written to Qdrant
+                - "skipped":    number of queries already in the cache
+                                (only when overwrite is False)
+        """
+        resolved_path = self._resolve_chitchat_file_path(file_path)
+        categories = self._load_chitchat_file(resolved_path)
+
+        # Phase 1: build the (query, payload) work list.
+        points_data: List[Tuple[str, Dict[str, Any]]] = []
+        total_queries = 0
+        skipped = 0
+
+        # Guard against duplicate queries within the file itself.
+        seen_in_file: set = set()
+
+        for category in categories:
+            response = (category.get("response") or "").strip()
+            url = category.get("url") or ""
+            queries = category.get("queries") or []
+
+            if not response or not queries:
+                continue
+
+            for raw_query in queries:
+                if not isinstance(raw_query, str):
+                    continue
+                query = raw_query.strip()
+                if not query or query in seen_in_file:
+                    continue
+                seen_in_file.add(query)
+                total_queries += 1
+
+                if not overwrite and self._get_row(query) is not None:
+                    skipped += 1
+                    continue
+
+                payload = {
+                    "query": query,
+                    "response": response,
+                    "url": url,
+                    "thumb_up": thumb_up,
+                    "thumb_down": 0,
+                    "flag": 0,
+                }
+                points_data.append((query, payload))
+
+        # Phase 2: batch-encode + batch-upsert.
+        inserted = self._add_batches(points_data, batch_size=batch_size)
+
+        return {
+            "categories": len(categories),
+            "queries": total_queries,
+            "inserted": inserted,
+            "skipped": skipped,
+        }
+
 
 # Example usage and testing
 def temp():
-    """A temporary function for demonstrating and testing the Cache class."""
-    response = "سلام. من دستیار دیجیتال نسل 4 هستم. می‌توانم در مورد ماژول‌های دفتر کل، انبار، مدیریت ارتباط با مشتری، جبران خدمات، تامین، فروش، گزارش ساز و خزانه داری به شما کمک کنم. پرسش خود را بپرسید تا در صورت امکان، پاسخ آن را ارائه دهم."
-    lst_1 = [
-        "سلام. خوبی؟",
-        "سلام. حالت چطوره",
-        "سلام وقت بخیر",
-        "سلام خوبی",
-        "سلام خوبی؟",
-        "سلام حالت خوبه",
-        "سلام.",
-        "سلام",
-        "سلام خوبی",
-        "سلام. خوبی",
-        "درود",
-        "سلام علیکم",
-        "سلام و ارادت",
-        "عرض ادب و احترام",
-        "سلامعلیکم",
-        "سلام صبح بخیر",
-        "صبح بخیر",
-        "سلام ظهر بخیر",
-        "ظهر بخیر",
-        "سلام. صبح بخیر",
-    ]
-
-    response_2 = "خواهش میکنم. اگر سوال دیگری بود در خدمتم "
-    lst_2 = [
-        "خیلی ممنون",
-        "لطف کردی",
-        "زحمت دادم. ",
-        "دمت گرم",
-        "متشکرم",
-        "خیلی متشکرم",
-        "متچکرم",
-        "ممنون از پاسخت",
-        "متشکر از پاسخ شما",
-        "ممنونم که جواب دادی",
-        "جواب خوبی بود. مرسی",
-        "مرسی",
-        "مرسی. ممنون",
-        "مرسی. متشکر",
-        "مرسی تشکر.",
-        "تشکر. ",
-        "ممنونم",
-    ]
+    """Seed the cache with predefined chitchat Q&A pairs read from the
+    JSON file configured under `config['cache']['chitchat_file_path']`.
+    Replaces the previous hard-coded `lst_1` / `lst_2`."""
 
     print("Initializing cache...")
 
@@ -565,13 +785,19 @@ def temp():
 
     cache = Cache()
     cache.initialize(recreate=False, qdrant_client_instance=qdrant_client_temp)
-    for query in lst_1:
-        cache.increment_thumb_up(query, response, "")
 
-    for query in lst_2:
-        cache.increment_thumb_up(query, response_2, "")
-
-    print("Done!")
+    # The file path is taken from config["cache"]["chitchat_file_path"]
+    # by default. Pass an explicit path here to override.
+    # Encoding and upserts are batched via _add_batches (see initiate_vdb
+    # for the equivalent helper used during VDB ingestion).
+    stats = cache.load_chitchat_data(overwrite=False, batch_size=100)
+    print(
+        f"Chitchat seeding done: "
+        f"{stats['inserted']} inserted, "
+        f"{stats['skipped']} skipped, "
+        f"{stats['queries']} total queries across "
+        f"{stats['categories']} categories."
+    )
 
 
 # if __name__ == "__main__":

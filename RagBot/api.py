@@ -45,21 +45,22 @@ from src.vector_db_utils import (
 )
 from src.orm import Postgres
 from src.config import config
-from src.initiate_vdb import qdrant_client
+from qdrant_client import QdrantClient                          # client class
+from qdrant_client.models import Filter, FieldCondition, MatchValue  # query building blocksqdrant_client
 from src.retriever import Retriever, ModelManager
 from src.logic import (
     chat_responder_,
     sql_responder_,
+    ticket_responder_,
     utterance_paraphraser,
     parameters_responder,
     retrieve_context_with_metadata,
-    embed_query
+    embed_query,
 )
 from src.logs import non_generative_agent_logger, simple_logger
 from src.utils import substitute_sql_parameters, integrate_params
 
 from langchain.schema import Document
-from qdrant_client import QdrantClient
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -93,8 +94,10 @@ class ChatRequest(BaseModel):
     on_click: Optional[bool] = False
     error_payload: Optional[str] = ""
     is_sync: Optional[bool] = True
-    sql_mode: Optional[bool] = True  # Toggle between legacy and SQL agent mode
     model_name: Optional[str] = ""
+    sql_mode: Optional[bool] = True  # Toggle between legacy and SQL agent mode
+    use_video_links: Optional[bool] = True
+    ticket_mode: Optional[bool] = False
 
 
 class ChatResponse(BaseModel):
@@ -102,12 +105,13 @@ class ChatResponse(BaseModel):
     response: str
     query: str
     is_sql: bool = False
+    is_ticket: bool = False   # <-- NEW
     do_suggest: bool = False
     choices: List[str] = []
     parameters: Optional[dict] = {}
     response_template: str = ""
     elapsed_time: float = 0.0
-    has_video_link: bool = False  # <-- NEW
+    has_video_link: bool = False
 
 class CreateSessionRequest(BaseModel):
     tenant_name: Optional[str] = ""
@@ -153,8 +157,12 @@ class FaqResponse(BaseModel):
 class ModuleRequest(BaseModel):
     query: str
 
-class ModuleResponse(BaseModel):
-    response: str = ""
+class ModulesInfoResponse(BaseModel):
+    database_id: str
+    modules: List[str]
+    count: int
+    module_counts: Dict[str, int]
+    total_chunks: int
 
 class MakeRequest(BaseModel):
     message_id: str
@@ -216,6 +224,27 @@ class NL2SQLDatabaseResponse(BaseModel):
     documents_count: int
     total_documents: Optional[int] = None
 
+class TicketRequest(BaseModel):
+    session_id: Optional[str] = None
+
+class TicketResponse(BaseModel):
+    title: str = ""
+    description: str = ""
+    system: str = ""
+    form: str = ""
+
+class ModuleChunksRequest(BaseModel):
+    module: str
+
+class ChunkInfo(BaseModel):
+    text: str
+    metadata: Dict[str, Any]
+
+class ModuleChunksResponse(BaseModel):
+    database_id: str
+    module: str
+    count: int
+    chunks: List[ChunkInfo]
 
 # ================== Utility Functions ==================
 
@@ -660,6 +689,7 @@ async def get_history(
     response_model=SessionResponse,
     responses={
         200: {},
+        422: {"description": "Invalid database_id (not a UUID)"},
         500: {"description": "Unhandled error that should be reported"},
     },
 )
@@ -676,8 +706,15 @@ async def create_session(create_session_request: Optional[CreateSessionRequest] 
             tenant_name = create_session_request.tenant_name
             user_code = create_session_request.user_code
             database_id = create_session_request.database_id
-            
-        session_id = await postgres.create_session(tenant_name=tenant_name, user_code=user_code, database_id=database_id)
+
+        # Collapse "use the default collection" inputs to NULL; reject bad UUIDs early.
+        database_id = _normalize_session_database_id(database_id)
+
+        session_id = await postgres.create_session(
+            tenant_name=tenant_name,
+            user_code=user_code,
+            database_id=database_id,
+        )
         elapsed_time = time.time() - start_time
         non_generative_agent_logger(
             session_id=session_id.get("session_id"),
@@ -688,6 +725,7 @@ async def create_session(create_session_request: Optional[CreateSessionRequest] 
             input_dict={
                 "tenant_name": tenant_name,
                 "user_code": user_code,
+                "database_id": database_id,  # NULL means default collection
             },
             output_dict={"response": session_id.get("session_id")},
             elapsed_time=elapsed_time,
@@ -695,9 +733,11 @@ async def create_session(create_session_request: Optional[CreateSessionRequest] 
         langfuse_context = get_client()
         langfuse_context.update_current_trace(
             input={"create_session_request": create_session_request},
-            output={"session_id": session_id}
+            output={"session_id": session_id},
         )
         return session_id
+    except HTTPException:
+        raise
     except ConnectionError:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=UNHANDLED_ERROR_MESSAGE)
@@ -735,6 +775,9 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
     tenant_name = ""
     user_code = ""
     has_video_link = False  # <-- ADD THIS LINE
+    is_ticket = False
+    modules = []          # <-- ADD
+    do_clarify = False    # <-- ADD
 
     try:
         postgres = Postgres()
@@ -753,6 +796,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
             parameters = json.loads(final_records.get("parameters", "{}"))
             response_template = final_records.get("response_template", "")
             has_video_link = has_video_link_(parameters)
+            is_ticket = all(k in (parameters or {}) for k in ("title", "description", "system", "form"))
         else:
             session_validation = await postgres.exist_session(session_id)
             if not session_validation:
@@ -811,7 +855,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         user_query=chat_request.query,
                     )
                     
-                    is_sql, paraphrased_utterance, response, context, do_clarify, modules, parameters, response_template, has_video_link = await chat_responder_(
+                    is_sql, paraphrased_utterance, response, context, do_clarify, modules, parameters, response_template, has_video_link, is_ticket = await chat_responder_(
                         history=selected_history,
                         user_utterance=chat_request.query,
                         database_index=matched_index,
@@ -820,8 +864,9 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         response_type=chat_request.response_type,
                         use_cache=chat_request.use_cache,
                         detected_module=chat_request.query,
-                        # model_name=chat_request.model_name,
-                        sql_mode=chat_request.sql_mode
+                        sql_mode=chat_request.sql_mode,
+                        use_video_link=chat_request.use_video_links,
+                        ticket_mode=chat_request.ticket_mode
                     )
                     assert do_clarify == False, "on_click should not return do_clarify=True"
                     assert len(modules) <= 1, "on_click should not return modules"
@@ -845,7 +890,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         session_id=session_id,
                         user_query=chat_request.query,
                     )
-                    is_sql, paraphrased_utterance, response, context, do_clarify, modules, parameters, response_template, has_video_link = await chat_responder_(
+                    is_sql, paraphrased_utterance, response, context, do_clarify, modules, parameters, response_template, has_video_link, is_ticket = await chat_responder_(
                         history=selected_history,
                         user_utterance=chat_request.query,
                         database_index=matched_index,
@@ -854,11 +899,12 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         response_type=chat_request.response_type,
                         use_cache=chat_request.use_cache,
                         detected_module="",
-                        # model_name=chat_request.model_name,
-                        sql_mode=chat_request.sql_mode
+                        sql_mode=chat_request.sql_mode,
+                        use_video_link=chat_request.use_video_links,
+                        ticket_mode=chat_request.ticket_mode
                     )
                     if do_clarify:
-                        do_suggest = True
+                        do_suggest = True 
                         elapsed_time = time.time() - start_time
                         _ = await postgres.insert_message_choices(message_id, *modules)
                         _ = await postgres.update_last_chat_row(
@@ -887,7 +933,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                             modules_str,
                             response_template,
                             json.dumps(parameters)
-                        )
+                        ) 
 
         agent = "sql_responder" if is_sql else "chat_responder"
         REQUEST_LATENCY.labels(endpoint="/v1/chat").observe(time.time() - start_time)
@@ -907,6 +953,8 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                 "is_sql": is_sql,
                 "do_suggest": do_suggest,
                 "choices": choices,
+                "modules": modules,
+                "do_clarify": do_clarify,
                 "response_templated": response_template
             },
             elapsed_time=elapsed_time,
@@ -926,18 +974,18 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
             }
         )
         response = response.replace("→", "←")
-        
         return ChatResponse(
             response=response,
             message_id=message_id,
             query=paraphrased_utterance,
             is_sql=is_sql,
+            is_ticket=is_ticket,
             choices=choices,
             do_suggest=do_suggest,
             parameters=parameters,
             response_template=response_template,
             elapsed_time=elapsed_time,
-            has_video_link=has_video_link,  # <-- NEW
+            has_video_link=has_video_link,
         )
 
     except HTTPException as e:
@@ -968,6 +1016,69 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
         )
         raise HTTPException(status_code=500, detail="Unhandled error, Please report")
         
+@app.post(
+    "/v1/ticket",
+    response_model=TicketResponse,
+    responses={
+        200: {},
+        404: {"description": "Session or history not found"},
+        422: {"description": "Missing session_id or empty history"},
+        500: {"description": "Unhandled error"},
+    },
+)
+@observe()
+async def create_ticket(ticket_request: TicketRequest, request: Request):
+    try:
+        postgres = Postgres()
+        session_id = get_session_id(request, ticket_request)
+
+        # 1) Session must exist
+        if not await postgres.exist_session(session_id):
+            raise HTTPException(status_code=404, detail=f"Session not found: {session_id}")
+
+        # 2) Pull recent history (newest first, includes paraphrased_query)
+        history_records = await postgres.get_history(
+            session_id,
+            1,
+            config["postgres"]["history_length"],
+            True,
+        )
+        if not history_records:
+            raise HTTPException(status_code=404, detail="No conversation history for this session")
+
+        # 3) Latest paraphrased query (fallback to raw query if paraphrase is missing)
+        latest = history_records[0]
+        paraphrased_query = (latest.get("paraphrased_query") or latest.get("query") or "").strip()
+        if not paraphrased_query:
+            raise HTTPException(status_code=422, detail="No paraphrased query available for this session")
+
+        # 4) Build history in the same (q, a) shape chat_responder uses
+        selected_history = [
+            [h["query"], h["response"]] if len(h["query"]) < 60
+            else [h["paraphrased_query"], h["response"]]
+            for h in history_records
+        ]
+
+        # 5) Resolve the session's Qdrant collection
+        database_id_dict = await postgres.find_database_id(session_id)
+        matched_index, _, _ = await find_database_collection_with_postgres(
+            database_id_dict["database_id"]
+        )
+
+        # 6) Generate the ticket
+        ticket = await ticket_responder_(
+            history=selected_history,
+            paraphrased_utterance=paraphrased_query,
+            database_index=matched_index,
+        )
+        return TicketResponse(**ticket)
+
+    except HTTPException:
+        raise
+    except Exception:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=UNHANDLED_ERROR_MESSAGE)
+
 def get_logger():
     logging.basicConfig(level=logging.INFO)
     return logging.getLogger(__name__)
@@ -1005,148 +1116,218 @@ def get_qdrant_client():
 qdrant_client = get_qdrant_client()
 
 
-# ===== Main Endpoint Handler =====
+# ===== Main Endpoint Handler and helper functions =====
+import uuid
+
+def _normalize_session_database_id(database_id: Optional[str]) -> Optional[str]:
+    """
+    Normalize a user-supplied database_id for the sessions table.
+
+    The sessions.database_id column is a UUID. The default collection lives
+    only in config (no PostgreSQL row), so any input that *means* "use the
+    default collection" must be stored as NULL — otherwise asyncpg raises a
+    UUID validation error.
+
+    - None / "" / "None" / "null" / the configured default collection name
+        → None (session will be routed to the default collection at read time)
+    - A valid UUID string → returned as-is
+    - Anything else → 422 with a helpful message
+    """
+    if not database_id:
+        return None
+
+    default_name = config["database"]["collection_name"]
+    if database_id in ("None", "null", default_name):
+        return None
+
+    try:
+        uuid.UUID(database_id)
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"database_id '{database_id}' is not a valid UUID. "
+                "Either pass a UUID returned from /v1/chat/create/database, "
+                "or omit the field to use the default collection."
+            ),
+        )
+    return database_id
+
+async def _resolve_database_id(
+    default_collection: bool,
+    postgres,
+    company_name: str,
+    assistant_name: str,
+) -> str:
+    """
+    Resolve the database_id for a vector-database creation request.
+
+    - default_collection=True : use the fixed name from config; NO PostgreSQL row,
+      NO UUID. The default collection is purely a config-level concept.
+    - default_collection=False: create a new PostgreSQL row and use its UUID as
+      the Qdrant collection name.
+    """
+    if default_collection:
+        database_id = config["database"]["collection_name"]
+        logger.info(f"Using default collection name from config: {database_id}")
+        return database_id
+
+    try:
+        database_id_dict = await postgres.create_database(company_name, assistant_name)
+        database_id = database_id_dict["database_id"]
+        logger.info(f"✅ Created PostgreSQL database entry: {database_id}")
+        return database_id
+    except Exception as e:
+        logger.error(f"❌ Failed to create database entry in PostgreSQL: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to create database entry: {str(e)}",
+        )
+
+
+async def _rollback_database_id(
+    default_collection: bool,
+    postgres,
+    database_id: str,
+) -> None:
+    """Undo the PostgreSQL row when Qdrant creation fails. No-op for default collection."""
+    if default_collection:
+        logger.info(
+            f"Default collection '{database_id}' creation failed; "
+            "nothing to roll back in PostgreSQL."
+        )
+        return
+
+    try:
+        await postgres.delete_database(database_id)
+        logger.info(f"Rolled back PostgreSQL entry for database_id: {database_id}")
+    except Exception as rollback_error:
+        logger.error(f"Failed to rollback PostgreSQL entry: {rollback_error}")
+
+
 async def create_database_endpoint(
     files: List[UploadFile],
     company_name: str,
     assistant_name: str,
-    postgres,  # Your Postgres class instance
+    postgres,
     use_config: bool = True,
     recreate: bool = True,
     batch_size: int = 100,
-    default_collection: bool = False
+    default_collection: bool = False,
 ) -> Dict[str, Any]:
     """
-    Main endpoint handler for creating a vector database.
-    
-    Complete pipeline:
-    1. Process and chunk uploaded files
-    2. Create database entry in PostgreSQL
-    3. Create Qdrant collection with chunked documents
-    
-    Args:
-        files: List of uploaded files
-        company_name: Name of the company
-        assistant_name: Name of the assistant
-        postgres: PostgreSQL client instance
-        use_config: If True, use config-based approach (recommended)
-        recreate: If True, recreate collection if exists; if False, append
-        batch_size: Number of documents to process in each batch
-    
-    Returns:
-        dict: Response containing database_id and collection_name
+    Two flows:
+
+    1. default_collection=True
+       - Collection name comes from config["database"]["collection_name"].
+       - No UUID, no PostgreSQL row.
+       - `recreate` IS honored: True wipes and rebuilds, False appends.
+
+    2. default_collection=False
+       - A new PostgreSQL row is created; its UUID is used as the collection name.
+       - `recreate` is IGNORED (a fresh UUID can't pre-exist in Qdrant).
     """
     try:
-        # Step 1: Process uploaded files (save → convert → chunk)
+        # Step 1: Process and chunk uploaded files
         logger.info("=" * 60)
         logger.info("STEP 1: Processing uploaded files")
         logger.info("=" * 60)
         processed_files = await process_uploaded_files(
             files=files,
             company_name=company_name,
-            assistant_name=assistant_name
+            assistant_name=assistant_name,
         )
-        
-        # Flatten all documents into a single list
+
         all_documents = []
-        for filename, documents in processed_files.items():
+        for documents in processed_files.values():
             all_documents.extend(documents)
-        
-        logger.info(f"\nTotal documents created: {len(all_documents)}")
+
+        logger.info(f"Total documents created: {len(all_documents)}")
         logger.info(f"Files processed: {list(processed_files.keys())}")
-        import pdb
-        
         if len(all_documents) == 0:
             raise HTTPException(
                 status_code=422,
-                detail="No documents were extracted from the uploaded files"
+                detail="No documents were extracted from the uploaded files",
             )
-        
-        # Step 2: Create database entry in PostgreSQL
-        logger.info("\n" + "=" * 60)
-        logger.info("STEP 2: Creating database entry in PostgreSQL")
+
+        # Step 2: Resolve database_id (default → config, else → new UUID)
         logger.info("=" * 60)
+        logger.info("STEP 2: Resolving database_id")
+        logger.info("=" * 60)
+        database_id = await _resolve_database_id(
+            default_collection=default_collection,
+            postgres=postgres,
+            company_name=company_name,
+            assistant_name=assistant_name,
+        )
+
+        # Step 3: `recreate` only applies to the default (named) collection.
+        # Non-default flows always create fresh because the UUID is brand new.
         if default_collection:
-            database_id = config["database"]["collection_name"]
+            effective_recreate = recreate
         else:
-            try:
-                database_id_dict = await postgres.create_database(company_name, assistant_name)
-                database_id = database_id_dict["database_id"]
-                logger.info(f"✅ Database ID created: {database_id}")
-            except Exception as e:
-                logger.error(f"❌ Failed  to create database entry in PostgreSQL: {e}")
-                raise HTTPException(
-                    status_code=500,
-                    detail=f"Failed to create database entry: {str(e)}"
+            effective_recreate = True
+            if recreate is False:
+                logger.info(
+                    "Ignoring recreate=False for non-default collection: "
+                    "new UUID-based collection cannot pre-exist in Qdrant."
                 )
-        
-        # Step 3: Create Qdrant collection with documents
-        logger.info("\n" + "=" * 60)
-        logger.info("STEP 3: Creating Qdrant collection")
+
+        # Step 4: Create the Qdrant collection
         logger.info("=" * 60)
-        
+        logger.info("STEP 4: Creating Qdrant collection")
+        logger.info("=" * 60)
         try:
             if use_config:
-                # Use config-based approach (automatically uses Triton if configured)
                 collection_name = create_vector_database_from_config(
                     database_id=database_id,
                     all_documents=all_documents,
-                    recreate=recreate,
-                    batch_size=batch_size
+                    recreate=effective_recreate,
+                    batch_size=batch_size,
                 )
             else:
-                # Use standalone approach with explicit parameters
                 model_manager = ModelManager()
                 collection_name = create_vector_database(
                     database_id=database_id,
                     all_documents=all_documents,
                     qdrant_client=qdrant_client,
                     embedding_model=model_manager.embedding_model,
-                    recreate=recreate,
-                    batch_size=batch_size
+                    recreate=effective_recreate,
+                    batch_size=batch_size,
                 )
         except Exception as e:
             logger.error(f"❌ Failed to create Qdrant collection: {e}")
-            # Rollback: Delete PostgreSQL entry if collection creation fails
-            if not default_collection:
-                try:
-                    await postgres.delete_database(database_id)
-                    logger.info(f"Rolled back PostgreSQL entry for database_id: {database_id}")
-                except Exception as rollback_error:
-                    logger.error(f"Failed to rollback PostgreSQL entry: {rollback_error}")
-            else:
-                logger.info(f"Couldn't create default collection: {database_id}")
+            await _rollback_database_id(default_collection, postgres, database_id)
             raise HTTPException(
                 status_code=500,
-                detail=f"Failed to create vector database: {str(e)}"
+                detail=f"Failed to create vector database: {str(e)}",
             )
-        
-        # Verify collection_name matches database_id
+
         assert collection_name == database_id, "Collection name should match database_id"
-        
-        logger.info("\n" + "=" * 60)
+
+        logger.info("=" * 60)
         logger.info("PIPELINE COMPLETED SUCCESSFULLY")
+        logger.info(f"Database ID:        {database_id}")
+        logger.info(f"Default collection: {default_collection}")
+        logger.info(f"Effective recreate: {effective_recreate}")
+        logger.info(f"Total documents:    {len(all_documents)}")
         logger.info("=" * 60)
-        logger.info(f"Database ID: {database_id}")
-        logger.info(f"Collection Name: {collection_name}")
-        logger.info(f"Total documents: {len(all_documents)}")
-        logger.info("=" * 60)
-        
+
         return {
             "database_id": database_id,
             "collection_name": collection_name,
             "message": f"Database created successfully. Collection: {collection_name}",
             "total_documents": len(all_documents),
-            "files_processed": list(processed_files.keys())
+            "files_processed": list(processed_files.keys()),
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"❌ Unexpected error creating database: {str(e)}")
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to create database: {str(e)}"
+            detail=f"Failed to create database: {str(e)}",
         )
 
 
@@ -1328,38 +1509,48 @@ async def add_nl2sql_documents(
         500: {"description": "Internal server error"},
     },
     summary="Create a new vector database",
-    description="Upload files, process them into chunks, and create a vector database with embeddings"
+    description=(
+        "Upload files, chunk them, and create a vector database with embeddings.\n\n"
+        "- `default_collection=True`: writes to the fixed default collection from "
+        "config. No PostgreSQL row is created, no UUID is generated. `recreate` "
+        "controls wipe-vs-append behavior.\n"
+        "- `default_collection=False`: creates a new PostgreSQL row and uses its "
+        "UUID as the Qdrant collection name. `recreate` is **ignored** in this "
+        "case because a brand-new UUID can never collide with an existing collection."
+    ),
 )
 async def create_database(
     files: List[UploadFile] = File(..., description="Files to upload and process"),
     company_name: str = Query(..., description="Company name"),
     assistant_name: str = Query(..., description="Assistant name"),
-    recreate: bool = Query(True, description="Recreate collection if exists"),
+    recreate: bool = Query(
+        True,
+        description=(
+            "Only effective when `default_collection=True`. "
+            "True = wipe and rebuild the default collection; "
+            "False = append to it. Ignored when `default_collection=False`."
+        ),
+    ),
     batch_size: int = Query(100, description="Batch size for processing documents", ge=1, le=1000),
-    default_collection: bool = Query(False, description="Whether the default collection be recreated or not")
+    default_collection: bool = Query(
+        False,
+        description=(
+            "If True, writes to the fixed default collection from config "
+            "(no UUID, no PostgreSQL row). If False, generates a new UUID-named "
+            "per-tenant collection."
+        ),
+    ),
 ):
-    """
-    Create a new vector database from uploaded files.
-    
-    This endpoint:
-    1. Uploads and processes files
-    2. Creates a PostgreSQL database entry
-    3. Creates a Qdrant collection with document embeddings
-    
-    The embedding model is automatically selected based on the configuration
-    (e.g., Triton E5/BGE, local models, or other services).
-    """
     postgres = Postgres()
-    
     return await create_database_endpoint(
         files=files,
         company_name=company_name,
         assistant_name=assistant_name,
         postgres=postgres,
-        use_config=True,  # Use config-based approach
+        use_config=True,
         recreate=recreate,
-        batch_size=batch_size, 
-        default_collection=default_collection
+        batch_size=batch_size,
+        default_collection=default_collection,
     )
 
 @app.post(
@@ -1527,40 +1718,72 @@ async def get_database_info_endpoint(database_id: str):
 
 @app.get(
     "/v1/chat/database/{database_id}/modules",
+    response_model=ModulesInfoResponse,
     responses={
         200: {"description": "Modules listed successfully"},
         404: {"description": "Database not found"},
         500: {"description": "Internal server error"},
     },
-    summary="List modules in database",
-    description="Get all unique module names in a database"
+    summary="List modules in database with chunk counts",
+    description="Get all unique module names in a database along with the number of chunks per module"
 )
 async def list_database_modules(database_id: str):
     """
-    Get all unique module names (metadata.module) in a database.
-    Useful for filtered retrieval.
+    Get all unique module names (metadata.module) in a database, plus the
+    number of chunks belonging to each module and the total chunk count.
+    Useful for filtered retrieval and inspecting data distribution.
     """
     from src.retriever import Retriever
-    
+
     try:
-        # Check if collection exists
+        # 1) Check if collection exists
         collection_names = list_vector_databases(qdrant_client)
         if database_id not in collection_names:
             raise HTTPException(
                 status_code=404,
                 detail=f"Database '{database_id}' not found"
             )
-        
-        # Get modules
+
+        # 2) Get the unique module names already known by the retriever
         retriever = Retriever()
         modules = retriever.get_available_modules(collection_name=database_id)
-        
-        return {
-            "database_id": database_id,
-            "modules": modules,
-            "count": len(modules)
-        }
-        
+
+        # 3) Count chunks per module via Qdrant's payload-filtered count.
+        #    This avoids streaming all payloads back to the app.
+        module_counts: Dict[str, int] = {}
+        for module in modules:
+            try:
+                count_result = qdrant_client.count(
+                    collection_name=database_id,
+                    count_filter=Filter(
+                        must=[
+                            FieldCondition(
+                                key="metadata.module",
+                                match=MatchValue(value=module),
+                            )
+                        ]
+                    ),
+                    exact=True,
+                )
+                module_counts[module] = count_result.count
+            except Exception as e:
+                # Don't fail the whole endpoint if one module count fails
+                logger.warning(
+                    f"Failed to count chunks for module '{module}' "
+                    f"in '{database_id}': {e}"
+                )
+                module_counts[module] = 0
+
+        total_chunks = sum(module_counts.values())
+
+        return ModulesInfoResponse(
+            database_id=database_id,
+            modules=modules,
+            count=len(modules),
+            module_counts=module_counts,
+            total_chunks=total_chunks,
+        )
+
     except HTTPException:
         raise
     except Exception as e:
@@ -1570,6 +1793,91 @@ async def list_database_modules(database_id: str):
             detail=f"Failed to list modules: {str(e)}"
         )
 
+@app.post(
+    "/v1/chat/database/chunks",
+    response_model=ModuleChunksResponse,
+    responses={
+        200: {"description": "Chunks retrieved successfully"},
+        404: {"description": "Database not found"},
+        422: {"description": "Invalid module name"},
+        500: {"description": "Internal server error"},
+    },
+    summary="Get chunks for a module",
+    description="Retrieve chunks belonging to a specific module within a database.",
+)
+async def get_module_chunks(
+    module_request: ModuleChunksRequest,
+    database_id: str = Query(..., description="Database (collection) identifier"),
+    limit: int = Query(100, description="Maximum number of chunks to return", ge=1, le=10000),
+):
+    try:
+        module_name = (module_request.module or "").strip()
+        if not module_name:
+            raise HTTPException(status_code=422, detail="Module name is empty")
+
+        # Verify the collection exists
+        collection_names = list_vector_databases(qdrant_client)
+        if database_id not in collection_names:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Database '{database_id}' not found",
+            )
+
+        module_filter = Filter(
+            must=[
+                FieldCondition(
+                    key="metadata.module",
+                    match=MatchValue(value=module_name),
+                )
+            ]
+        )
+
+        chunks: List[ChunkInfo] = []
+        next_offset = None
+        remaining = limit
+
+        # Page through Qdrant in case `limit` exceeds a single scroll batch.
+        while remaining > 0:
+            batch_size = min(remaining, 256)
+            points, next_offset = qdrant_client.scroll(
+                collection_name=database_id,
+                scroll_filter=module_filter,
+                limit=batch_size,
+                offset=next_offset,
+                with_payload=True,
+                with_vectors=False,
+            )
+
+            for point in points:
+                payload = point.payload or {}
+                # LangChain's Qdrant integration stores docs as
+                # {"page_content": ..., "metadata": {...}}
+                chunks.append(
+                    ChunkInfo(
+                        text=payload.get("page_content", ""),
+                        metadata=payload.get("metadata", {}) or {},
+                    )
+                )
+
+            remaining -= len(points)
+            if not points or next_offset is None:
+                break
+
+        return ModuleChunksResponse(
+            database_id=database_id,
+            module=module_name,
+            count=len(chunks),
+            chunks=chunks,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error retrieving chunks for module '{module_request.module}': {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to retrieve chunks: {str(e)}",
+        )
 
 @app.get(
     "/v1/chat/health",
@@ -1698,7 +2006,7 @@ async def create_nl2sql_database_endpoint(
         "complexity": "simple",
         "module": "دفتر کل",
         "table": "financial_vouchers",
-        "question": "سوال به زبان طبیعی",
+        "question": "سوال به بان طبیعی",
         "sql": {
           "SQL": "SELECT ...",
           "parameters": {"1": "value"}

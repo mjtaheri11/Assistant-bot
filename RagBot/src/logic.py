@@ -22,11 +22,14 @@ from .prompts import (
     RAG_EXPLANATORY_SYSTEM_PROMPT,
     RAG_NORMAL_SYSTEM_PROMPT,
     UTTERANCE_PARAPHRASER_PROMPT,
+    UTTERANCE_PARAPHRASER_PROMPT_2,
     CHITCHAT_PROMPT,
     SQL_CONVERTER_MODIFIED_WITH_PARAMETERS_TEMPLATE_V2,
     ANSWER_VALIDATOR_PROMPT,
     SEMANTIC_ROUTER,
-    BUSINESS_OBJECT_PARAMETER_EXTRACTOR_PROMPT
+    BUSINESS_OBJECT_PARAMETER_EXTRACTOR_PROMPT,
+    RAG_CONCISE_SYSTEM_PROMPT_WITH_VIDEO,
+    TICKET_GENERATOR_PROMPT,
 )
 
 from .retriever import Retriever
@@ -86,6 +89,7 @@ template_for_not_context = """این سوال خارج از حوزه کاری {c
 template_for_doubtful_answer = "سوال شما را به خوبی متوجه نشدم. لطفا سوال خود را به صورت دقیق تر بپرسید تا بتوانم بهتر کمک کنم."
 MODULE_CLARIFICATION_RESPONSE_TEMPLATE = "لطفا مشخص نمایید سوال شما از کدام یک از ماژول های سیستم است."
 RESPONSE_TEMPLATE_FOR_NO_ANSWER = "متاسفانه، پاسخی به سوال شما یافت نشد."
+FORM_RETRIEVAL_QUERY_PREFIX = "فرم مرتبط با سوال: "
 
 @dataclass
 class ChatResult:
@@ -617,14 +621,14 @@ async def utterance_paraphraser(
         model_name = config["api_default"]["utterance_paraphraser_model_name"]
     if assistant_name:
         # Use the original format with assistant_name (from develop branch)
-        prompt = UTTERANCE_PARAPHRASER_PROMPT.format(
+        prompt = UTTERANCE_PARAPHRASER_PROMPT_2.format(
             history=serialized_history,
             assistant_name=assistant_name,
             question=user_utterance,
         )
     else:
         # Use the simplified format (from feature/add-sql-agent branch)
-        prompt = UTTERANCE_PARAPHRASER_PROMPT.format(
+        prompt = UTTERANCE_PARAPHRASER_PROMPT_2.format(
             history=serialized_history,
             question=user_utterance,
         )
@@ -722,7 +726,7 @@ async def is_somewhat_uniform(freq_dict: dict, threshold: float = QA_MODULE_PROP
     else:
         stdev_freq = statistics.stdev(frequencies)
         cv = stdev_freq / mean_freq
-        final_result = (cv <= threshold, mean_freq) # Thsi should be changed to less than, not equal or less than
+        final_result = (cv < threshold, mean_freq) # Thsi should be changed to less than, not equal or less than
     return final_result
 
 
@@ -1047,86 +1051,113 @@ async def _determine_final_route(
     utterance: str,
     query_embedding: List,
     model_name: str = "",
-    reasoning_effort="medium"
+    reasoning_effort="medium",
+    sql_mode: bool = True,
+    ticket_mode: bool = True,
 ) -> str:
 
-    if not model_name: 
+    if not model_name:
         model_name = config["api_default"]["module_route_model_name"]
     router_config = config["router_model"]
     alpha_threshold = router_config["alpha_threshold"]
     beta_threshold = router_config["beta_threshold"]
+
+    # Routes that are always allowed; 'sql' and 'ticket' are gated by their modes.
+    allowed_routes = {"chitchat", "illegal", "irrelevant", "qa"}
+    if sql_mode:
+        allowed_routes.add("sql")
+    if ticket_mode:
+        allowed_routes.add("ticket")
+
     """Determines the final route based on probability thresholds."""
     if USE_JOBLIB:
         semantic_router_client = SemanticRouterPipeline(
             inference_only=True,
             embedding_model=router_config["embedding_model"],
             classifier_address=router_config["address"],
-            model_name=router_config["model_name"]
+            model_name=router_config["model_name"],
         )
-        predictions, probabilities, max_prob = semantic_router_client.predict_sentences_input_embedding_and_sentences([utterance], [query_embedding])
+        predictions, probabilities, max_prob = semantic_router_client.predict_sentences_input_embedding_and_sentences(
+            [utterance], [query_embedding]
+        )
         top_prediction = predictions[0][0]
         probabilities = list(probabilities)  # Convert to list to make it subscriptable
-        if max_prob > alpha_threshold and ("همکاران" not in utterance) and (top_prediction != "illegal"):
+
+        # Confident classifier path — only short-circuit if the top class is currently allowed.
+        if (
+            max_prob > alpha_threshold
+            and ("همکاران" not in utterance)
+            and (top_prediction != "illegal")
+            and (top_prediction in allowed_routes)
+        ):
             return top_prediction
 
-        # If confidence is low, see if multiple routes are plausible
+        # If confidence is low, see if multiple routes are plausible (filtered to allowed).
         if "همکاران" not in utterance:
             plausible_routes = [
-                route for route, prob in probabilities if prob > beta_threshold
+                route for route, prob in probabilities
+                if prob > beta_threshold and route in allowed_routes
             ]
         else:
-            plausible_routes = [route for route, prob in probabilities]
+            plausible_routes = [route for route, _ in probabilities if route in allowed_routes]
 
         if len(plausible_routes) < 2:
-            # Fallback if no route meets the beta threshold
-            # Get the top two routes by probability
-            sorted_probabilities = sorted(probabilities, key=lambda x: x[1], reverse=True)
-            plausible_routes = [sorted_probabilities[0][0], sorted_probabilities[1][0]]
+            # Fallback: pick the top two by probability, restricted to allowed routes.
+            sorted_probabilities = sorted(
+                [(r, p) for r, p in probabilities if r in allowed_routes],
+                key=lambda x: x[1],
+                reverse=True,
+            )
+            plausible_routes = [r for r, _ in sorted_probabilities[:2]]
     else:
-        plausible_routes = ['chitchat', 'illegal', 'irrelevant', 'sql', 'qa']
+        plausible_routes = list(allowed_routes)
 
     # Use an LLM to disambiguate between plausible routes
     result = await get_chat_response(
-        SEMANTIC_ROUTER.format(user_query=utterance, class_list=plausible_routes), model_name, reasoning_effort=reasoning_effort
+        SEMANTIC_ROUTER.format(user_query=utterance, class_list=plausible_routes),
+        model_name,
+        reasoning_effort=reasoning_effort,
     )
     return result
 
 @observe()
-async def get_route_for_utterance(utterance: str, query_embedding: List, model_name: str = "") -> str:
+async def get_route_for_utterance(
+    utterance: str,
+    query_embedding: List,
+    model_name: str = "",
+    sql_mode: bool = True,
+    ticket_mode: bool = True,
+) -> str:
     if not model_name:
         model_name = config["api_default"]["module_route_model_name"]
     CHITCHAT_ROUTE = "chitchat"
     
+    
+    # It's better to instantiate clients once and reuse them
+    # rather than creating them in a function that's called frequently.
+
     # It's better to instantiate clients once and reuse them
     # rather than creating them in a function that's called frequently.
     cache_client = Cache()
 
-    """
-    Determines the semantic route for a given utterance, using caching to improve performance.
-    """
-    # 1. Check for a direct cached route first (guard clause)
+    # 1. Check for a direct cached route first
     cached_route = cache_client.get_exact_cache(utterance)
     if cached_route:
         return cached_route
 
-    # 2. Check for the specific chitchat cache (from original logic)
+    # 2. Check for the specific chitchat cache
     chitchat_key = _get_chitchat_cache_key(utterance)
     if cache_client.get_exact_cache(chitchat_key):
         return CHITCHAT_ROUTE
 
-    # 3. Determine the final route using the logic in the helper function
-    final_route = await _determine_final_route(utterance, query_embedding, model_name)
-
-    # 4. Cache the result for future requests
-    # Note: The original code had a commented-out line to cache all routes.
-    # This version explicitly caches the final determined route.
-    # cache_client.set_exact_cache(utterance, final_route)
-    # logging.info(f"Cached route for '{utterance}': '{final_route}'")
-
-    # The original code had a special caching rule for chitchat.
-    # It cached an undefined 'response' variable. Here we cache the route name for consistency.
-    # if final_route == CHITCHAT_ROUTE:
-    #     cache_client.set_exact_cache(chitchat_key, final_route)
+    # 3. Determine the final route, restricted to the currently-active modes
+    final_route = await _determine_final_route(
+        utterance,
+        query_embedding,
+        model_name,
+        sql_mode=sql_mode,
+        ticket_mode=ticket_mode,
+    )
     return final_route.strip()
 
 async def _check_cache_layer(utterance: str, use_cache: bool) -> Optional[str]:
@@ -1145,6 +1176,112 @@ def _post_process_rag_response(response: str, company_name: str) -> str:
     return response
 
 
+def _format_documents_with_modules(context_with_metadata: List[dict], tag: str = "Chunk") -> str:
+    """Format retrieved chunks with their source module tagged for ticket generation."""
+    lines = []
+    for i, doc in enumerate(context_with_metadata, 1):
+        module = doc.get("module", "unknown")
+        text = doc.get("text", "")
+        lines.append(f"[{tag} {i} | Module: {module}]\n{text}")
+    return "\n\n".join(lines)
+
+
+@observe()
+async def ticket_responder_(
+    paraphrased_utterance: str,
+    history: List[tuple[str, str]],
+    database_index: str = config["database"]["collection_name"],
+    model_name: str = "",
+    reasoning_effort: str = "medium",
+) -> dict:
+    """
+    Generate support-ticket fields (title, description, system, form) from:
+      1) a primary retrieval driven by the user's paraphrased utterance (intent),
+      2) a secondary retrieval driven by a form-flavored query (form content).
+    """
+    if not model_name:
+        model_name = config["api_default"]["query_responder_model_name"]
+
+    num_retrieve_context = config["retriever"]["retrieved_rank2_documents"]
+
+    # 1) Primary retrieval — intent
+    primary_ctx, _ = await retrieve_context_with_metadata(
+        query=paraphrased_utterance,
+        database_index=database_index,
+        num_retrieve_context=num_retrieve_context,
+    )
+
+    # 2) Form-flavored retrieval — for the `form` field
+    form_query = f"فرم مرتبط با سوال: {paraphrased_utterance}"
+    form_ctx, _ = await retrieve_context_with_metadata(
+        query=form_query,
+        database_index=database_index,
+        num_retrieve_context=num_retrieve_context,
+    )
+
+    # If BOTH retrievals are empty, return a minimal fallback
+    if not primary_ctx and not form_ctx:
+        return {
+            "title": "درخواست کاربر",
+            "description": paraphrased_utterance,
+            "system": "unknown",
+            "form": "محتوای مرتبطی در پایگاه دانش برای این درخواست یافت نشد.",
+        }
+
+    # Module pool: union of both retrievals (so `system` can be validated against either)
+    primary_module_counter = Counter(
+        doc.get("module", "unknown") for doc in primary_ctx
+    )
+    form_modules = {doc.get("module", "unknown") for doc in form_ctx}
+    available_modules = list(dict.fromkeys(  # preserve order, dedupe
+        list(primary_module_counter.keys()) # + [m for m in form_modules if m not in primary_module_counter]
+    ))
+    # Map internal Persian module names to external English system codes.
+    module_to_system = config.get("ticket", {}).get("module_to_system", {})
+    default_system = config.get("ticket", {}).get("default_system", "GENERAL")
+    primary_context_str = _format_documents_with_modules(primary_ctx, tag="Chunk")
+    form_context_str = _format_documents_with_modules(form_ctx, tag="FormChunk")
+    available_modules_str = ", ".join(available_modules) if available_modules else "unknown"
+    serialized_history = history_serializer(history)
+
+    prompt = TICKET_GENERATOR_PROMPT.format(
+        user_utterance=paraphrased_utterance,
+        conversation_history=serialized_history,
+        primary_context=primary_context_str or "(none)",
+        form_context=form_context_str or "(none)",
+        available_modules=available_modules_str,
+    )
+
+    raw_response = await get_chat_response(
+        prompt, model_name, reasoning_effort=reasoning_effort
+    )
+    cleaned = json_cleaning(raw_response)
+
+    try:
+        ticket = json.loads(cleaned)
+    except (json.JSONDecodeError, TypeError):
+        ticket = {}
+
+    # Validate `system` — fall back to most frequent PRIMARY module (intent-driven).
+    # The LLM is prompted in Persian module names; we translate to the English code here.
+    most_frequent_primary_module = (
+        primary_module_counter.most_common(1)[0][0]
+        if primary_module_counter
+        else (available_modules[0] if available_modules else "unknown")
+    )
+    raw_module = ticket.get("system", "")
+    if raw_module not in available_modules:
+        raw_module = most_frequent_primary_module
+
+    system_code = module_to_system.get(raw_module, default_system)
+
+    return {
+        "title": ticket.get("title", "") or "درخواست کاربر",
+        "description": ticket.get("description", "") or paraphrased_utterance,
+        "system": system_code,
+        "form": ticket.get("form", "") or "نامشخص",
+    }
+
 @observe()
 async def query_responder(
     query: str, 
@@ -1155,7 +1292,7 @@ async def query_responder(
     answer_type: str = "concise", 
     reasoning_effort="medium",
     model_name: str = "",
-    use_video_links: bool = False
+    use_video_link: bool = True
     ) -> Tuple[str, dict]:
     if not model_name:
         model_name = config["api_default"]["query_responder_model_name"]
@@ -1163,7 +1300,7 @@ async def query_responder(
     serialized_history = history_serializer(history)
     
     if answer_type == "concise":
-        rag_system_prompt = RAG_CONCISE_SYSTEM_PROMPT_WITH_VIDEO if use_video_links else RAG_CONCISE_SYSTEM_PROMPT
+        rag_system_prompt = RAG_CONCISE_SYSTEM_PROMPT_WITH_VIDEO if use_video_link else RAG_CONCISE_SYSTEM_PROMPT
     elif answer_type == "normal":
         rag_system_prompt = RAG_NORMAL_SYSTEM_PROMPT
     elif answer_type == "explanatory":
@@ -1186,7 +1323,7 @@ async def query_responder(
     )
     cleaned_response = json_cleaning(raw_json_response)
     
-    if use_video_links:
+    if use_video_link:
         try:
             response_dict = json.loads(cleaned_response)
             response_text = response_dict.get("response", cleaned_response)
@@ -1211,8 +1348,8 @@ async def chat_responder_(
     use_cache: bool = config["database"]["use_cache"],
     detected_module: str = "",
     sql_mode: bool = True,
-    route_for_utterance: bool = False,
-    use_video_links: bool = True  # <-- add this
+    ticket_mode: bool = True,
+    use_video_link: bool = True  # <-- add this
 ) -> Union[tuple[str, str, str, str], tuple[str, str, str, bool, List[str]]]:
     """
     Unified chat responder supporting both develop branch (simple RAG) and feature/add-sql-agent (SQL + module handling)
@@ -1223,10 +1360,11 @@ async def chat_responder_(
     parameters = {}
     sql_response_template = ""
     has_video_link = False
+    is_ticket = False
     if not detected_module and use_cache:
         response, _ = await get_cache_response(user_utterance)
         if response:
-            result_temp = is_sql, user_utterance, response, "", False, [], parameters, sql_response_template, has_video_link
+            result_temp = is_sql, user_utterance, response, "", False, [], parameters, sql_response_template, has_video_link, is_ticket
             return result_temp
 
     paraphrased_utterance = await utterance_paraphraser(history, user_utterance)
@@ -1234,24 +1372,55 @@ async def chat_responder_(
     if use_cache:
         response, _ = await get_cache_response(paraphrased_utterance)
         if response:
-            result_temp = is_sql, paraphrased_utterance, response, "", False, [], parameters, sql_response_template, has_video_link
+            result_temp = is_sql, paraphrased_utterance, response, "", False, [], parameters, sql_response_template, has_video_link, is_ticket
             return result_temp
 
     query_embedding = await embed_query(paraphrased_utterance)
-    if sql_mode: 
-        route_response = await get_route_for_utterance(paraphrased_utterance, query_embedding)
-        # route_response = "qa"
+    if sql_mode or ticket_mode:
+        route_response = await get_route_for_utterance(
+            paraphrased_utterance,
+            query_embedding,
+            sql_mode=sql_mode,
+            ticket_mode=ticket_mode,
+        )
     else:
         route_response = "qa"
     use_sql_modules = True if route_response == "sql" else False
     if route_response == "chitchat":
         response = RESPONSE_TEMPLATE_FOR_NO_ANSWER
         context = ""
-        result_temp = is_sql, paraphrased_utterance, response, context, False, [], parameters, sql_response_template, has_video_link
+        result_temp = is_sql, paraphrased_utterance, response, context, False, [], parameters, sql_response_template, has_video_link, is_ticket
         return result_temp
     
     if route_response == "illegal" or route_response =="irrelevant":
-        result_temp = is_sql, paraphrased_utterance, template_for_not_answer, "", False, [], parameters, sql_response_template, has_video_link
+        result_temp = is_sql, paraphrased_utterance, template_for_not_answer, "", False, [], parameters, sql_response_template, has_video_link, is_ticket
+        return result_temp
+
+    # Ticket route: user explicitly asked to open a support ticket
+    if route_response == "ticket":
+        is_ticket = True
+        ticket_fields = await ticket_responder_(
+            paraphrased_utterance=paraphrased_utterance,
+            history=history,
+            database_index=database_index,
+        )
+        ticket_fields["description"] = ticket_fields["description"].replace("→", "←")
+        # Merge ticket fields into the generic parameters envelope so future
+        # parameters (video links, etc.) can coexist in the same dict.
+        parameters = {**parameters, **ticket_fields}
+        ticket_response_message = "درخواست شما برای ثبت تیکت دریافت شد."
+        result_temp = (
+            False,                       # is_sql
+            paraphrased_utterance,
+            ticket_response_message,
+            "",                          # context
+            False,                       # do_clarify
+            [],                          # modules
+            parameters,                  # includes title/description/system/form
+            "",                          # sql_response_template
+            False,                       # has_video_link
+            is_ticket,                   # True
+        )
         return result_temp
 
     if route_response == "sql":
@@ -1266,7 +1435,7 @@ async def chat_responder_(
         do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context, use_sql_modules=use_sql_modules, clarification_threshold=clarification_threshold)
 
     if do_clarify:
-        result_temp = is_sql, paraphrased_utterance, MODULE_CLARIFICATION_RESPONSE_TEMPLATE, "", do_clarify, modules, parameters, sql_response_template, has_video_link
+        result_temp = is_sql, paraphrased_utterance, MODULE_CLARIFICATION_RESPONSE_TEMPLATE, "", do_clarify, modules, parameters, sql_response_template, has_video_link, is_ticket
         return result_temp
 
     if sql_mode:
@@ -1292,13 +1461,13 @@ async def chat_responder_(
             if not is_sql: 
                 parameters = {}
                 sql_response_template = ""  
-            result_temp = is_sql, paraphrased_utterance, response, context, False, [selected_module], parameters, sql_response_template, has_video_link
+            result_temp = is_sql, paraphrased_utterance, response, context, False, [selected_module], parameters, sql_response_template, has_video_link, is_ticket
             return result_temp
 
     if not context:
         response = template_for_not_answer
         context = ""
-        result_temp = is_sql, paraphrased_utterance, response, context, False, [], parameters, sql_response_template, has_video_link
+        result_temp = is_sql, paraphrased_utterance, response, context, False, [], parameters, sql_response_template, has_video_link, is_ticket
         return result_temp
 
     response, video_parameters = await query_responder(
@@ -1308,7 +1477,7 @@ async def chat_responder_(
         company_name=company_name,
         assistant_name=assistant_name,
         answer_type=response_type,
-        use_video_links=use_video_links,
+        use_video_link=use_video_link,
     )
     if "محدوده دانش من " in response:
         response = template_for_not_answer
@@ -1318,7 +1487,7 @@ async def chat_responder_(
         video_parameters = {}
     parameters = video_parameters
     has_video_link = has_video_link_(parameters)
-    result_temp = is_sql, paraphrased_utterance, response, context, do_clarify, modules, parameters, sql_response_template, has_video_link
+    result_temp = is_sql, paraphrased_utterance, response, context, do_clarify, modules, parameters, sql_response_template, has_video_link, is_ticket
     return result_temp
 
 

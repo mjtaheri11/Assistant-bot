@@ -1,7 +1,6 @@
 # Configurations for vector database
 database:
   response_type: concise
-  persist_directory: ../VectorDB # initiate_vdb.py # ./VectorDB-bahar-hanieh #./VectorDB
   does_evaluate: False
   company_name: "همکاران سیستم"
   assistant_name: "digital assistant"
@@ -25,6 +24,7 @@ database:
     treasury: خزانه داری
     sales: فروش
     taxpayer: مودیان مالیاتی
+    DA-Help: راهنمای استفاده از دستیار هوشمند
     
 
 # Configurations for logging
@@ -48,7 +48,7 @@ modules:
     sales: فروش
     hcm: جبران خدمات
     da: دستیار دیجیتال
-    taxpayer: مودیان
+    taxpayer: مودیان مالیاتی
     treasury: خزانه داری
     gl: دفتر کل
     reportbuilder: گزارش ساز
@@ -57,7 +57,9 @@ modules:
     help: راهنما
     crm: مدیریت ارتباط با مشتری
     aboutsg: درباره همکاران سیستم
-    platform: پلتفرم
+    platform: امکانات عمومی کاربر
+    prc: تدارکات
+    portal: پرتال مشتریان
   
   qa_proposable_modules:
     - انبار
@@ -68,6 +70,7 @@ modules:
     - مدیریت ارتباط با مشتری
     - مودیان مالیاتی
     - گزارش ساز
+    - تدارکات
 
   sql_proposable_modules:
     - انبار
@@ -89,19 +92,39 @@ postgres:
 bo_config_dir: 
   path: ./src
 
+ticket:
+  # Maps internal module names (Persian, as used throughout the project) 
+  # to the English system codes expected by the external ticket-registration system.
+  # Keys MUST match the Persian module strings used in document metadata and
+  # in modules.qa_proposable_modules / modules.sql_proposable_modules.
+  module_to_system:
+    "امکانات عمومی کاربر": "GENERAL"
+    "دفتر کل": "GENERAL_LEDGER"
+    "دفترکل": "GENERAL_LEDGER"
+    "خزانه داری": "TREASURY"
+    "تدارکات": "PROCUREMENT"
+    "انبار": "INVENTORY"
+    "فروش": "SALES"
+    "مودیان مالیاتی": "TAXPAYER"
+    "مدیریت ارتباط با مشتری": "CRM"
+    "گزارش ساز": "REPORTMAKER"
+    "متناسب سازی": "BPMS"
+    "جبران خدمات": "HCM"
+  # Fallback when a module cannot be mapped (e.g. module == "unknown")
+  default_system: "GENERAL"
+
 cache:
   # host: redis-stack
   host: 127.0.0.1
   port: 9200
   knn: 1
-  alpha_threshold: 0.1
+  chitchat_file_path: "../../knowledge_base/cache_questions/cache.json"
+  alpha_threshold: 0.05
   beta_threshold: 0.2
   redis_result_num_documents: 5
   socket_timeout: 10
-  # index_name: Hamzan
   persist_directory: ../db-cache
   index_name: default_cache_e5
-  # index_name: default_cache_qwen3
   num_rank2_documents: 5
   embedding_model:
 #    model_name: /home/jovyan/.cache/huggingface/hub/models--intfloat--multilingual-e5-large/snapshots/0dc5580a448e4284468b8909bae50fa925907bc5
