@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import re
 import os
 import logging
 from dataclasses import dataclass
@@ -11,6 +13,18 @@ from openai import AsyncOpenAI
 
 from src.config import config
 
+import tiktoken
+
+# Mirror logic.py's encoder + safety buffer so budgets stay consistent.
+_FALLBACK_ENCODING = tiktoken.encoding_for_model("gpt-4o-mini")
+_PROMPT_SAFETY_BUFFER = 2000
+
+
+def _count_tokens(text: str) -> int:
+    return len(_FALLBACK_ENCODING.encode(text or ""))
+
+OutputFormat = Literal["json", "text", "auto"]
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -20,6 +34,9 @@ ReasoningEffort = Literal["none", "minimal", "low", "medium", "high", "xhigh"]
 ApiType = Literal["chat", "completions", "responses"]
 
 FALLBACK_MODEL = "oss"
+_FALLBACK_ENCODING = tiktoken.encoding_for_model("gpt-4o-mini")
+_PROMPT_SAFETY_BUFFER = 2000  # keep in sync with the prompt budgeter in the main module
+
 
 
 @dataclass
@@ -36,6 +53,8 @@ class ModelConfig:
     default_reasoning_effort: ReasoningEffort | None = None
     temperature: float = 0.7
     max_tokens: int = 16000
+    reasoning_param_style: str = "openai"
+    supports_response_format: bool = True
 
     def get_params(
         self,
@@ -54,27 +73,48 @@ class ModelConfig:
         }
         
         tokens = max_tokens if max_tokens is not None else self.max_tokens
+        if not self.supports_response_format:
+            extra.pop("response_format", None)
+            extra.pop("text", None)
+        
         
         # --- LOGIC FOR RESPONSES API ---
+
+        # --- LOGIC FOR RESPONSES API ---
         if self.api_type == "responses":
-            if self.supports_reasoning:
-                pass 
-            
+            # Responses API doesn't accept Chat-style response_format
+            extra.pop("response_format", None)
             params.update(extra)
             return params
 
+        # Chat / legacy path — strip Responses-API-only kwargs that may have
+        # leaked through from a caller that didn't know which surface it was hitting.
+        extra.pop("text", None)
+
         # --- LOGIC FOR CHAT / LEGACY ---
         if self.supports_reasoning:
-            params["max_completion_tokens"] = tokens
-            effort = reasoning_effort or self.default_reasoning_effort
-            if effort:
-                params["reasoning_effort"] = effort
-            extra.pop("max_tokens", None)
-            extra.pop("temperature", None)
+            if self.reasoning_param_style == "openrouter":
+                # OpenRouter-style: reasoning toggled via extra_body
+                params["max_tokens"] = tokens
+                params["temperature"] = temperature if temperature is not None else self.temperature
+                effort = reasoning_effort or self.default_reasoning_effort
+                existing_extra_body = extra.pop("extra_body", {}) or {}
+                reasoning_cfg = {"enabled": True}
+                if effort and effort != "none":
+                    reasoning_cfg["effort"] = effort
+                existing_extra_body["reasoning"] = reasoning_cfg
+                params["extra_body"] = existing_extra_body
+            else:
+                # OpenAI-native style (unchanged)
+                params["max_completion_tokens"] = tokens
+                effort = reasoning_effort or self.default_reasoning_effort
+                if effort:
+                    params["reasoning_effort"] = effort
+                extra.pop("max_tokens", None)
+                extra.pop("temperature", None)
         else:
             params["max_tokens"] = tokens
             params["temperature"] = temperature if temperature is not None else self.temperature
-        
         params.update(extra)
         return params
 
@@ -108,19 +148,26 @@ class LLMClientManager:
         )
         self._clients["oss"] = AsyncOpenAI(
             base_url=os.getenv("OSS_API_BASE"),
-            api_key=os.getenv("OSS_API_KEY")
+            api_key=os.getenv("OSS_API_KEY"),
+            timeout=config["api_models"]["oss"]["timeout"],
+            max_retries=0
         )
         self._clients["openrouter"] = AsyncOpenAI(
             base_url=os.getenv("OPENROUTER_API_BASE"),
             api_key=os.getenv("OPENROUTER_API_KEY")
         )
-        
+        self._clients["hooshyar"] = AsyncOpenAI(
+            base_url=os.getenv("HOOSHYAR_API_BASE"),
+            api_key=os.getenv("HOOSHYAR_API_KEY"),
+            timeout=config["api_models"]["deepseek-v4-flash"]["timeout"], 
+            max_retries=0
+        )
         self._load_models()
         self._initialized = True
         print("LLM clients initialized.")
 
     def _load_models(self) -> None:
-        defaults = config.get("api_defaults", {})
+        defaults = config.get("api_default", {})
         
         for name, model_cfg in config.get("api_models", {}).items():
             merged = {**defaults, **model_cfg}
@@ -135,6 +182,8 @@ class LLMClientManager:
                 default_reasoning_effort=merged.get("default_reasoning_effort"),
                 temperature=merged.get("temperature", 0.7),
                 max_tokens=merged.get("max_tokens", 16000),
+                reasoning_param_style=merged.get("reasoning_param_style", "openai"),  # NEW
+                supports_response_format=merged.get("supports_response_format", True),  # ADD
             )
 
     def get_model(self, model_name: str) -> tuple[AsyncOpenAI, ModelConfig]:
@@ -209,66 +258,349 @@ class LLMClientManager:
                 FALLBACK_MODEL,
             )
 
-            # Build params for the fallback model
             fallback_client, fallback_config = self.get_model(FALLBACK_MODEL)
+            fallback_extra = {k: v for k, v in extra.items()
+                            if k not in {"response_format", "text"}}
             fallback_params = fallback_config.get_params(
-                reasoning_effort=reasoning_effort,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                **extra,
+                reasoning_effort=reasoning_effort, temperature=temperature,
+                max_tokens=max_tokens, **fallback_extra,
+            )
+
+            # Prompt was budgeted for the large-context primary model; re-fit it
+            # to the fallback window, keeping instructions (head) and the
+            # highest-priority chunks + question (tail).
+            fallback_messages = self._fit_messages_to_model(messages, fallback_config)
+            fallback_params = self._clamp_output_tokens(
+                fallback_params, fallback_config, fallback_messages
             )
 
             try:
                 return await self._execute_call(
-                    fallback_client, fallback_config, messages, fallback_params
+                    fallback_client, fallback_config, fallback_messages, fallback_params
                 )
             except Exception as fallback_exc:
                 logger.error(
                     "Fallback model '%s' also failed: %s", FALLBACK_MODEL, fallback_exc
                 )
-                raise
+                raise                
+    @staticmethod
+    def _model_input_budget(cfg: ModelConfig) -> int:
+        """context_window - max_output_tokens - safety_buffer (== logic.get_max_input_tokens)."""
+        return max(256, cfg.context_window - cfg.max_output_tokens - _PROMPT_SAFETY_BUFFER)
 
-    def extract_text(self, response: Any, model_name: str) -> str:
+    def _fit_messages_to_model(
+        self,
+        messages: list[dict[str, str]],
+        cfg: ModelConfig,
+        head_reserve: int = 1200,
+    ) -> list[dict[str, str]]:
         """
-        Extract text from response, handling both Objects and String Representations.
+        Shrink the prompt to fit `cfg`'s window. Only used on the fallback path;
+        the primary model still gets the full prompt.
+
+        The biggest message (the RAG system prompt) is trimmed with
+        head+tail preservation:
+          - head_reserve tokens from the TOP  -> task / output-format instructions
+          - remaining budget from the BOTTOM  -> the most-relevant retrieved
+            chunks + the user question, which the pipeline deliberately places
+            at the END of the prompt (highest priority).
         """
-        import re
-        
-        s_response = str(response)
+        budget = self._model_input_budget(cfg)
+        sizes = [_count_tokens(m.get("content", "") or "") for m in messages]
+        if sum(sizes) <= budget:
+            return messages
 
-        # --- STRATEGY 1: Parse the String Representation ---
-        match = re.search(r"text=\\?['\"](.*?)\\?['\"], type=", s_response, re.DOTALL)
-        
-        if match:
-            extracted_text = match.group(1)
-            clean_text = extracted_text.replace(r"\'", "'").replace(r'\"', '"')
-            clean_text = clean_text.replace(r"\\", "\\")
-            return clean_text
+        big = max(range(len(messages)), key=lambda i: sizes[i])
+        other = sum(s for i, s in enumerate(sizes) if i != big)
+        allowance = max(256, budget - other)
 
-        # --- STRATEGY 2: Standard Object Access ---
-        # Responses API (v1/responses)
-        if hasattr(response, "output") and isinstance(response.output, list):
-            text_parts = []
-            for item in response.output:
-                if hasattr(item, "text") and item.text:
-                    text_parts.append(item.text)
-                elif hasattr(item, "content") and item.content:
-                    text_parts.append(str(item.content))
-            if text_parts:
-                return "".join(text_parts)
+        toks = _FALLBACK_ENCODING.encode(messages[big].get("content", "") or "")
+        if len(toks) <= allowance:
+            return messages
 
-        # Legacy / Chat Fallbacks
-        if hasattr(response, "choices"):
-            if hasattr(response.choices[0], "text") and response.choices[0].text:
-                return response.choices[0].text.strip()
-            if hasattr(response.choices[0], "message"):
-                return response.choices[0].message.content or ""
-            
-        # --- STRATEGY 3: Last Resort JSON Extraction ---
-        json_match = re.search(r'(\{.*"SQL":.*\})', s_response, re.DOTALL)
-        if json_match:
-            return json_match.group(1)
+        hr = min(head_reserve, max(0, allowance // 3))
+        marker = _FALLBACK_ENCODING.encode(
+            "\n\n[... context truncated to fit fallback model ...]\n\n"
+        )
+        tail_reserve = max(1, allowance - hr - len(marker))
+
+        new_content = _FALLBACK_ENCODING.decode(
+            toks[:hr] + marker + toks[-tail_reserve:]
+        )
+        new_messages = list(messages)
+        new_messages[big] = {**messages[big], "content": new_content}
+        logger.warning(
+            "Fallback prompt trimmed for '%s': %d -> ~%d tokens (budget=%d).",
+            cfg.model_id, len(toks), hr + tail_reserve, budget,
+        )
+        return new_messages
+
+    @staticmethod
+    def _clamp_output_tokens(
+        params: dict[str, Any],
+        cfg: ModelConfig,
+        messages: list[dict[str, str]],
+    ) -> dict[str, Any]:
+        """Guarantee a positive generation length that fits remaining context."""
+        prompt_toks = sum(_count_tokens(m.get("content", "") or "") for m in messages)
+        room = max(1, min(cfg.context_window - prompt_toks - 64, cfg.max_output_tokens))
+        for key in ("max_completion_tokens", "max_tokens"):
+            if key in params:
+                params[key] = max(1, min(params[key] or room, room))
+        return params
+
+    def extract_text(
+        self,
+        response: Any,
+        model_name: str | None = None,
+        output_format: OutputFormat = "auto",
+    ) -> str:
+        """
+        Extract content from an LLM response.
+
+        Reasoning models often emit chain-of-thought before/after the final
+        answer. This method:
+          1. Pulls raw text out of the response object (skipping reasoning items).
+          2. If output_format == "json", isolates the best JSON object inside that text.
+          3. If output_format == "text", returns the cleaned text as-is.
+          4. If "auto", returns JSON when one is detected, otherwise text.
+
+        Args:
+            response: API response (Responses API or Chat Completions).
+            model_name: Kept for signature stability; not required.
+            output_format:
+                "json" — return a JSON-shaped string (best-effort, even if malformed).
+                "text" — return plain text (no JSON extraction).
+                "auto" — JSON if detected, otherwise text.
+        """
+        raw = self._get_raw_response_text(response)
+        if not raw:
+            return ""
+
+        if output_format == "text":
+            return raw.strip()
+
+        json_str = self._extract_best_json(raw)
+        if output_format == "json":
+            # JSON callers always get *something* — caller's json_cleaning can repair further.
+            return json_str if json_str else raw.strip()
+
+        # auto
+        return json_str if json_str else raw.strip()
+
+    # ──────────────────────────────────────────────────────────────────────
+    # Raw response → text
+    # ──────────────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _get_raw_response_text(response: Any) -> str:
+        """
+        Pull text from a response object without regex tricks.
+        Handles:
+          - Responses API:  response.output[i].content[j].text  (skips type=='reasoning')
+          - Chat API:       response.choices[0].message.content
+          - Legacy:         response.choices[0].text
+        """
+        if response is None:
+            return ""
+
+        # ---- Responses API ----
+        output = getattr(response, "output", None)
+        if isinstance(output, list):
+            parts: list[str] = []
+            for item in output:
+                # Skip reasoning blocks — they contain CoT, not the user-facing answer.
+                if getattr(item, "type", None) == "reasoning":
+                    continue
+
+                content = getattr(item, "content", None)
+                if isinstance(content, list):
+                    for block in content:
+                        t = getattr(block, "text", None)
+                        if isinstance(t, str) and t:
+                            parts.append(t)
+                elif isinstance(content, str) and content:
+                    parts.append(content)
+                else:
+                    t = getattr(item, "text", None)
+                    if isinstance(t, str) and t:
+                        parts.append(t)
+            if parts:
+                return "".join(parts)
+
+        # ---- Chat Completions ----
+        choices = getattr(response, "choices", None)
+        if choices:
+            choice = choices[0]
+            msg = getattr(choice, "message", None)
+            if msg is not None:
+                c = getattr(msg, "content", None)
+                if isinstance(c, str):
+                    return c
+            legacy = getattr(choice, "text", None)
+            if isinstance(legacy, str):
+                return legacy
 
         return ""
+
+    # ──────────────────────────────────────────────────────────────────────
+    # JSON isolation
+    # ──────────────────────────────────────────────────────────────────────
+
+    # Keys we expect to see in valid model outputs across the pipeline.
+    _EXPECTED_JSON_KEYS = frozenset({
+        "response", "parameters", "response_template",
+        "SQL", "sql",
+        "title", "description", "form", "system",
+    })
+
+    def _extract_best_json(self, text: str) -> str:
+        """
+        Find the most plausible JSON object in `text`.
+
+        Order of preference:
+          1. Last parseable block containing an expected pipeline key.
+          2. Last *non-empty* parseable block (a bare {} is never an answer).
+          3. Regex-salvaged "response" field, re-emitted as a minimal valid
+             object (handles unescaped quotes / raw newlines in the value).
+          4. Longest raw block, as a last-resort handoff to the caller's
+             json_cleaning() repair step.
+        """
+        # Reasoning models emit chain-of-thought that frequently contains a
+        # stray "{}" or an illustrative "{...}". json_cleaning() strips
+        # <think> later, but that is AFTER block selection — too late. Drop
+        # it here so it cannot out-compete the real answer.
+        cleaned_text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
+        cleaned_text = re.sub(
+            r"<reasoning>.*?</reasoning>", "", cleaned_text, flags=re.DOTALL
+        )
+
+        blocks = self._find_json_blocks(cleaned_text)
+
+        parsed_blocks: list[tuple[str, dict]] = []
+        for block in blocks:
+            parsed = self._try_parse_json(block)
+            if isinstance(parsed, dict):
+                parsed_blocks.append((block, parsed))
+
+        # 1. Last block matching the schema we expect anywhere in the
+        #    pipeline. Reasoning models put the final answer last.
+        for _block, parsed in reversed(parsed_blocks):
+            if any(k in parsed for k in self._EXPECTED_JSON_KEYS):
+                return json.dumps(parsed, ensure_ascii=False)
+
+        # 2. Last *non-empty* parseable block. A bare {} (or any empty dict)
+        #    carries no answer; previously step 2 re-serialised it and the
+        #    user received the literal string "{}". Skip empties entirely.
+        for _block, parsed in reversed(parsed_blocks):
+            if parsed:
+                return json.dumps(parsed, ensure_ascii=False)
+
+        # 3. Nothing parsed cleanly. The real answer is probably present but
+        #    malformed (unescaped inner quote or raw newline in a Persian
+        #    string value). Salvage the "response" field and re-emit a
+        #    minimal well-formed object so the caller's json.loads() +
+        #    .get("response") still yields the real text instead of "{}".
+        salvaged = self._salvage_response_field(cleaned_text)
+        if salvaged is not None:
+            return json.dumps(
+                {"response": salvaged, "parameters": {}, "confidence": "ACCURATE"},
+                ensure_ascii=False,
+            )
+
+        # 4. Last resort.
+        if blocks:
+            return max(blocks, key=len)
+        return cleaned_text.strip()
+
+    @staticmethod
+    def _salvage_response_field(text: str) -> str | None:
+        """
+        Best-effort extraction of the "response" string value from a
+        malformed JSON-ish blob. Tolerates unescaped inner quotes, raw
+        newlines, and a truncated tail. Returns the unescaped string, or
+        None if there is no "response" key at all.
+        """
+        m = re.search(
+            r'"response"\s*:\s*"(.*)"\s*'
+            r'(?:,\s*"(?:confidence|parameters)"|}\s*$|})',
+            text,
+            re.DOTALL,
+        )
+        if not m:
+            # No clean terminator found — take everything after the key.
+            m = re.search(r'"response"\s*:\s*"(.*)$', text, re.DOTALL)
+            if not m:
+                return None
+
+        value = m.group(1)
+        # Strip a dangling closing quote/brace the greedy capture may keep.
+        value = re.sub(r'"\s*}?\s*$', "", value).rstrip()
+        value = value.replace('\\"', '"').replace("\\n", "\n").strip()
+        return value or None
+
+    @staticmethod
+    def _find_json_blocks(text: str) -> list[str]:
+        """Find all top-level balanced {...} substrings, respecting string literals."""
+        blocks: list[str] = []
+        depth = 0
+        start = -1
+        in_string = False
+        escape = False
+
+        for i, ch in enumerate(text):
+            if escape:
+                escape = False
+                continue
+            if ch == "\\":
+                escape = True
+                continue
+            if ch == '"':
+                in_string = not in_string
+                continue
+            if in_string:
+                continue
+
+            if ch == "{":
+                if depth == 0:
+                    start = i
+                depth += 1
+            elif ch == "}":
+                if depth > 0:
+                    depth -= 1
+                    if depth == 0 and start >= 0:
+                        blocks.append(text[start : i + 1])
+                        start = -1
+        return blocks
+
+    @staticmethod
+    def _try_parse_json(s: str) -> Any | None:
+        """Parse JSON with light tolerance for common malformed-output patterns."""
+        if not s or not s.strip():
+            return None
+
+        # Fast path
+        try:
+            return json.loads(s)
+        except json.JSONDecodeError:
+            pass
+
+        cleaned = s
+        # 1) Trailing commas:  {"a": 1,}  →  {"a": 1}
+        cleaned = re.sub(r",\s*([}\]])", r"\1", cleaned)
+        # 2) Spurious extra ":" opener:  {"response":":"text...  →  {"response":"text...
+        cleaned = re.sub(r'("(?:response|SQL|title|description|form)"\s*:\s*)":"',
+                         r'\1"', cleaned, count=1)
+        # 3) Doubled closing quotes before }:  ..."text""}  →  ..."text"}
+        cleaned = re.sub(r'"{2,}\s*\}', '"}', cleaned)
+        # 4) Garbage between } and outer }:  ...{}""}  →  ...{}}
+        cleaned = re.sub(r"\}\s*\"+\s*\}", "}}", cleaned)
+        # 5) Stray quote right before final }:  ..."}  with extra "  →  ..."}
+        cleaned = re.sub(r'"\s*"\s*\}\s*$', '"}', cleaned)
+
+        try:
+            return json.loads(cleaned)
+        except json.JSONDecodeError:
+            return None
 
 llm_manager = LLMClientManager()

@@ -6,25 +6,26 @@ database:
   assistant_name: "digital assistant"
   use_cache: True
   dbname: my-vdb
-  collection_name: "default_collection"
-  # collection_name: "default_collection_qwen3"
-  sql_collection_name: "default_sql_collection_e5"
-  # sql_collection_name: "default_sql_collection_qwen3"
+  # collection_name: "default_collection"
+  collection_name: "default_collection_qwen3"
+  # sql_collection_name: "default_sql_collection_e5"
+  sql_collection_name: "default_sql_collection_qwen3"
   documents:
-    4thg-intro: معرفی سیستم یکپارچه نسل 4
-    crm: مدیریت ارتباط با مشتری
-    da: راهنمای استفاده از دستیار دیجیتال
-    gl: دفتر کل
-    hcm: جبران خدمات
-    inv: انبار
-    platform: امکانات عمومی کاربر
-    portal: پرتال مشتریان
-    prc: تدارکات
-    reportbuilder: گزارش ساز
-    treasury: خزانه داری
     sales: فروش
+    hcm: جبران خدمات
     taxpayer: مودیان مالیاتی
+    treasury: خزانه داری
+    gl: دفتر کل
+    reportbuilder: گزارش ساز
+    inv: انبار
+    crm: مدیریت ارتباط با مشتری
+    platform: امکانات عمومی کاربر
+    navigation: تجربه کاربری
+    prc: تدارکات
+    portal: پرتال مشتریان
     DA-Help: راهنمای استفاده از دستیار هوشمند
+    4thg-intro: معرفی سیستم یکپارچه نسل 4
+    network: شبکه آیند
     
 
 # Configurations for logging
@@ -47,19 +48,21 @@ modules:
   names: 
     sales: فروش
     hcm: جبران خدمات
-    da: دستیار دیجیتال
     taxpayer: مودیان مالیاتی
     treasury: خزانه داری
     gl: دفتر کل
     reportbuilder: گزارش ساز
     inv: انبار
-    4thg-intro: مقدمه
-    help: راهنما
     crm: مدیریت ارتباط با مشتری
-    aboutsg: درباره همکاران سیستم
     platform: امکانات عمومی کاربر
+    navigation: تجربه کاربری
     prc: تدارکات
     portal: پرتال مشتریان
+    DA-Help: دراهنمای استفاده از دستیار هوشمند
+    4thg-intro: معرفی سیستم یکپارچه نسل 4
+    help: راهنما
+    aboutsg: درباره همکاران سیستم
+    network: شبکه آیند
   
   qa_proposable_modules:
     - انبار
@@ -71,6 +74,7 @@ modules:
     - مودیان مالیاتی
     - گزارش ساز
     - تدارکات
+    - پرتال مشتریان
 
   sql_proposable_modules:
     - انبار
@@ -87,7 +91,7 @@ modules:
     - فروش
 
 postgres:
-  history_length: 3
+  history_length: 4
 
 bo_config_dir: 
   path: ./src
@@ -124,7 +128,8 @@ cache:
   redis_result_num_documents: 5
   socket_timeout: 10
   persist_directory: ../db-cache
-  index_name: default_cache_e5
+  # index_name: default_cache_e5
+  index_name: default_cache_qwen3
   num_rank2_documents: 5
   embedding_model:
 #    model_name: /home/jovyan/.cache/huggingface/hub/models--intfloat--multilingual-e5-large/snapshots/0dc5580a448e4284468b8909bae50fa925907bc5
@@ -152,23 +157,25 @@ cache:
 
 # configurations for embedding model
 embedding_model:
-  model_path: ./saved_models/models--intfloat--multilingual-e5-large/snapshots/0dc5580a448e4284468b8909bae50fa925907bc5
-  # model_path: /home/jovyan/Assistant-bot/RagBot/saved_models/Qwen3-Embedding-4B
+  # model_path: ./saved_models/models--intfloat--multilingual-e5-large/snapshots/0dc5580a448e4284468b8909bae50fa925907bc5
+  model_path: /home/jovyan/Assistant-bot/RagBot/saved_models/Qwen3-Embedding-4B
   device: cuda
   # Type: "triton" or "local" or "openrouter"
-  type: triton
+  # type: triton
+  type: tei
   # Triton Embedding Configuration
-  model_name: "e5"  # Model name in Triton server
-  # model_name: "qwen3"  # Model name in Triton server
-  triton_url: http://triton-server.admin.svc.cluster.local
-  # triton_url: http://qwen3-embedding-soroush.cs-sg-da-dev.svc.cluster.local:82
-  tokenizer_path: ./saved_models/models--intfloat--multilingual-e5-large/snapshots/0dc5580a448e4284468b8909bae50fa925907bc5
-  # tokenizer_path: /home/jovyan/Assistant-bot/RagBot/saved_models/Qwen3-Embedding-4B
-  max_length: 512
-  # max_length: 8192
-  timeout: 30
-  batch_size: 32
-  # batch_size: 1
+  # model_name: "e5"  # Model name in Triton server
+  model_name: "qwen3"  # Model name in Triton server
+  # triton_url: http://triton-server.admin.svc.cluster.local
+  triton_url: http://qwen-embedding.cs-sg-da.svc.cluster.local
+  tei_url: http://tei-qwen3-embedding.cs-sg-da.svc.cluster.local:84
+  # tokenizer_path: ./saved_models/models--intfloat--multilingual-e5-large/snapshots/0dc5580a448e4284468b8909bae50fa925907bc5
+  tokenizer_path: /home/jovyan/Assistant-bot/RagBot/saved_models/Qwen3-Embedding-4B
+  # max_length: 512
+  max_length: 8192
+  # timeout: 30
+  # batch_size: 32
+  batch_size: 1
   # type: "openrouter"
 
 # configurations for reranker
@@ -195,12 +202,13 @@ reranker:
 # configurations for retriever
 retriever:
   retrieved_documents: 40
-  retrieved_rank2_documents: 10
+  # retrieved_rank2_documents: 10
+  retrieved_rank2_documents: 8
   sql_retrieved_rank2_documents: 25
   retriever_threshold: 0.0
   alpha_threshold: 0.5
-  use_reranker: true
-  # use_reranker: false
+  # use_reranker: true
+  use_reranker: false
   
 
 # Evaluations configurations
@@ -230,6 +238,9 @@ chat_responder:
 followup_query_generator:
   number_of_suggested_queries: 3
 
+fastapi_local_files:
+  path: ./saved_models/swagger-ui
+
 router_model:
   # address: /home/jovyan/Assistant-bot/RagBot/resources_for_router/models_multilingual_e5_large/mlp.joblib
   address: /home/jovyan/Assistant-bot/RagBot/resources_for_router/models_multilingual_e5_large/svm.joblib
@@ -254,16 +265,90 @@ api_default:
   # parameter_responder_model_name: gpt-5.1-codex-max
   # sql_responder_model_name: gpt-5.1-codex-max
   # chitchat_responder_model_name: gpt-4.1
-  module_route_model_name: oss
-  query_responder_model_name: oss
-  answer_validator_model_name: oss
-  utterance_paraphraser_model_name: oss
-  parameter_responder_model_name: oss
-  sql_responder_model_name: oss
-  chitchat_responder_model_name: oss
-  
+  module_route_model_name: deepseek-v4-flash
+  query_responder_model_name: deepseek-v4-flash
+  answer_validator_model_name: deepseek-v4-flash
+  utterance_paraphraser_model_name: deepseek-v4-flash
+  parameter_responder_model_name: deepseek-v4-flash
+  sql_responder_model_name: deepseek-v4-flash
+  chitchat_responder_model_name: deepseek-v4-flash
+  ticket_responder_model_name: deepseek-v4-flash
+
 
 api_models:
+  deepseek-v4-pro:
+    provider: hooshyar
+    model_id: "deepseek/deepseek-v4-pro"
+    context_window: 30000
+    max_output_tokens: 8000
+    api_type: "chat"
+    supports_reasoning: true
+    reasoning_param_style: "openrouter"
+    default_reasoning_effort: "low"
+    temperature: 0.7
+    timeout: 25
+
+  deepseek-v4-flash:
+    provider: openrouter
+    model_id: "deepseek/deepseek-v4-flash"
+    context_window: 30000
+    max_output_tokens: 5000
+    api_type: "chat"
+    supports_reasoning: true
+    reasoning_param_style: "openrouter"
+    default_reasoning_effort: "low"
+    temperature: 0.7
+    timeout: 25
+
+  deepseek-v4-flash-paraphrase:
+    provider: openrouter
+    model_id: "deepseek/deepseek-v4-flash"
+    context_window: 30000
+    max_output_tokens: 5000
+    api_type: "chat"
+    supports_reasoning: true
+    reasoning_param_style: "openrouter"
+    default_reasoning_effort: "low"
+    temperature: 0.7
+    timeout: 15
+
+  gemini-3.5-flash:
+    provider: openrouter
+    model_id: "google/gemini-3.5-flash"
+    context_window: 30000
+    max_output_tokens: 5000
+    api_type: "chat"
+    supports_reasoning: true
+    reasoning_param_style: "openrouter"
+    default_reasoning_effort: "high"
+    temperature: 0.7
+    timeout: 15
+
+  minimax-m2.7:
+    provider: openrouter
+    model_id: "minimax/minimax-m2.7"
+    context_window: 30000
+    max_output_tokens: 5000
+    api_type: "chat"
+    supports_reasoning: true
+    reasoning_param_style: "openrouter"
+    default_reasoning_effort: "high"
+    temperature: 0.7
+    timeout: 15
+
+  step-3.7-flash:
+    provider: openrouter
+    model_id: "stepfun/step-3.7-flash"
+    context_window: 30000
+    max_output_tokens: 5000
+    api_type: "chat"
+    supports_reasoning: true
+    reasoning_param_style: "openrouter"
+    default_reasoning_effort: "high"
+    temperature: 0.7
+    timeout: 15
+
+
   gpt-5.2:
     provider: gpt
     model_id: "gpt-5.2-2025-12-11"
@@ -421,5 +506,9 @@ api_models:
     api_type: "chat"
     supports_reasoning: true
     default_reasoning_effort: "high"
-    max_tokens: 16000
+    supports_response_format: false
+    context_window: 13000
+    max_output_tokens: 3000
     temperature: 0.7
+    timeout: 30
+    # max_tokens: 16000

@@ -9,6 +9,8 @@ import traceback
 from typing import List, Any, Optional, Dict
 
 from fastapi import FastAPI, HTTPException, Request, Query, File, UploadFile, Depends
+from fastapi.staticfiles import StaticFiles
+from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.responses import JSONResponse
 from prometheus_client import Counter, Histogram, generate_latest
 from pydantic import BaseModel, Field
@@ -56,6 +58,7 @@ from src.logic import (
     parameters_responder,
     retrieve_context_with_metadata,
     embed_query,
+    warmup_prompt_template_sizes,
 )
 from src.logs import non_generative_agent_logger, simple_logger
 from src.utils import substitute_sql_parameters, integrate_params
@@ -65,13 +68,39 @@ from langchain.schema import Document
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await llm_manager.initialize()
+    warmup_prompt_template_sizes()
     yield
     await llm_manager.close()
 
 
 RESPONSE_TEMPLATE_FOR_NO_ANSWER = "متاسفانه، پاسخی به سوال شما یافت نشد."
-app = FastAPI(title="Digital Assistant", lifespan=lifespan, root_path=os.getenv("FASTAPI_ROOT_PATH")) # should be added to env variables
- 
+from fastapi import Request
+
+app = FastAPI(
+    title="Digital Assistant",
+    lifespan=lifespan,
+    root_path=os.getenv("FASTAPI_ROOT_PATH", ""),  # "" not None
+    docs_url=None,
+    redoc_url=None,
+)
+
+app.mount(
+    "/swagger-static",
+    StaticFiles(directory=config["fastapi_local_files"]["path"]),
+    name="swagger-static",
+)
+
+@app.get("/docs", include_in_schema=False)
+async def custom_swagger_ui():
+    root = app.root_path
+    return get_swagger_ui_html(
+        openapi_url=root + app.openapi_url,
+        title=app.title + " - Swagger UI",
+        swagger_js_url=root + "/swagger-static/swagger-ui-bundle.js",
+        swagger_css_url=root + "/swagger-static/swagger-ui.css",
+        swagger_favicon_url=root + "/swagger-static/favicon-32x32.png",
+    )
+    
 # Define Prometheus metrics
 REQUEST_COUNT = Counter("api_http_requests_total", "Total API Requests", ["endpoint"])
 REQUEST_LATENCY = Histogram(
@@ -95,11 +124,11 @@ class ChatRequest(BaseModel):
     error_payload: Optional[str] = ""
     is_sync: Optional[bool] = True
     model_name: Optional[str] = ""
-    sql_mode: Optional[bool] = True  # Toggle between legacy and SQL agent mode
+    sql_mode: Optional[bool] = False  # Toggle between legacy and SQL agent mode
     use_video_links: Optional[bool] = True
-    ticket_mode: Optional[bool] = False
+    ticket_mode: Optional[bool] = True
 
-
+ 
 class ChatResponse(BaseModel):
     message_id: str
     response: str
@@ -254,7 +283,7 @@ def extract_video_links(text: str) -> List[str]:
     return re.findall(pattern, text)
 
 def find_module_name(original_filename):
-    main_filename = Path(original_filename).stem
+    main_filename = Path(original_filename).stem  
     module = config["modules"]["names"][main_filename]
     return module
     
@@ -370,6 +399,8 @@ async def process_uploaded_files(
     temp_upload_dir.mkdir(parents=True, exist_ok=True)
     temp_markdown_dir.mkdir(parents=True, exist_ok=True)
     
+    modules_dict = config["database"]["documents"]
+    modules_dict_lower = {k.lower(): v for k, v in modules_dict.items()}
     try:
         processed_files = {}
         word_files_to_convert = []
@@ -443,12 +474,8 @@ async def process_uploaded_files(
                 # Create Document objects with metadata
                 documents = []
                 for idx, chunk_content in enumerate(chunks):
-                    modules_dict = config["database"]["documents"]
                     modified_filename = str(Path(original_filename).stem.lower().strip())
-                    if modified_filename in modules_dict:
-                        module = modules_dict[modified_filename]
-                    else: 
-                        module = "unknown"
+                    module = modules_dict_lower.get(modified_filename, "unknown")
                     # Extract video links from chunk content
                     video_links = extract_video_links(chunk_content)
 
@@ -462,7 +489,7 @@ async def process_uploaded_files(
                     }
                     # Remove video link patterns from the chunk text
                     cleaned_content = re.sub(r'videolink-\w+', '', chunk_content).strip()
-                    doc = Document(page_content=chunk_content, metadata=metadata)
+                    doc = Document(page_content=cleaned_content, metadata=metadata)
                     documents.append(doc)
                 
                 processed_files[original_filename] = documents
@@ -778,6 +805,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
     is_ticket = False
     modules = []          # <-- ADD
     do_clarify = False    # <-- ADD
+    is_first_message = False
 
     try:
         postgres = Postgres()
@@ -818,6 +846,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                 config["postgres"]["history_length"],
                 True
             )
+            if len(history) == 0: is_first_message = True
             
             if len(chat_request.query.split()) > 60:
                 paraphrased_utterance, response, context = (
@@ -854,10 +883,12 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         session_id=session_id,
                         user_query=chat_request.query,
                     )
-                    
+                    previous_paraphrased = history[-1].get("paraphrased_query") \
+                        or history[-1].get("query", "") 
+
                     is_sql, paraphrased_utterance, response, context, do_clarify, modules, parameters, response_template, has_video_link, is_ticket = await chat_responder_(
                         history=selected_history,
-                        user_utterance=chat_request.query,
+                        user_utterance=previous_paraphrased,
                         database_index=matched_index,
                         company_name=company_name,
                         assistant_name=assistant_name,
@@ -866,10 +897,12 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         detected_module=chat_request.query,
                         sql_mode=chat_request.sql_mode,
                         use_video_link=chat_request.use_video_links,
-                        ticket_mode=chat_request.ticket_mode
+                        ticket_mode=chat_request.ticket_mode,
+                        on_click=True
                     )
                     assert do_clarify == False, "on_click should not return do_clarify=True"
                     assert len(modules) <= 1, "on_click should not return modules"
+                    assert do_clarify is False, "on_click must not re-clarify"
                             
                     elapsed_time = time.time() - start_time
                     message_id = await postgres.update_last_chat_row(
@@ -892,6 +925,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                     )
                     is_sql, paraphrased_utterance, response, context, do_clarify, modules, parameters, response_template, has_video_link, is_ticket = await chat_responder_(
                         history=selected_history,
+                        is_first_message=is_first_message,
                         user_utterance=chat_request.query,
                         database_index=matched_index,
                         company_name=company_name,

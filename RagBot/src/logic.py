@@ -4,6 +4,7 @@ import os
 import statistics
 import yaml
 import json
+import logging
 from dotenv import load_dotenv
 
 import numpy as np
@@ -79,7 +80,7 @@ QWEN3_CODER_API_BASE = os.getenv("QWEN3_CODER_API_BASE", "http://qwen3-coder-30b
 QA_MODULE_PROPOSER_THRESHOLD = float(os.getenv("QA_MODULE_PROPOSER_THRESHOLD", 0.75))
 SQL_MODULE_PROPOSER_THRESHOLD = float(os.getenv("SQL_MODULE_PROPOSER_THRESHOLD", 0.75))
 
-MAX_PROMPT_SIZE = 16000
+MAX_PROMPT_SIZE = 32000
 PROMPT_TEMPLATE_SIZE = 729
 MAX_CONTEXT_AVAILABLE_SIZE = MAX_PROMPT_SIZE - PROMPT_TEMPLATE_SIZE
 
@@ -90,6 +91,73 @@ template_for_doubtful_answer = "سوال شما را به خوبی متوجه ن
 MODULE_CLARIFICATION_RESPONSE_TEMPLATE = "لطفا مشخص نمایید سوال شما از کدام یک از ماژول های سیستم است."
 RESPONSE_TEMPLATE_FOR_NO_ANSWER = "متاسفانه، پاسخی به سوال شما یافت نشد."
 FORM_RETRIEVAL_QUERY_PREFIX = "فرم مرتبط با سوال: "
+
+# ---------------------------------------------------------------------------
+# Prompt-size budgeting
+# ---------------------------------------------------------------------------
+
+_TIKTOKEN_ENCODING = tiktoken.encoding_for_model("gpt-4o-mini")
+_PROMPT_TEMPLATE_TOKEN_CACHE: dict[str, int] = {}
+_PROMPT_SAFETY_BUFFER = 2000
+_VIDEO_LINK_RE = re.compile(r'videolink-\w+')
+# Registry of every prompt template anywhere in the pipeline. The key is what
+# callers pass as `template_key`; the value is the raw template string.
+# Add new templates here as new agents are introduced.
+_PROMPT_TEMPLATE_REGISTRY: dict[str, str] = {
+    "sql":              SQL_CONVERTER_MODIFIED_WITH_PARAMETERS_TEMPLATE_V2,
+    "qa_concise":       RAG_CONCISE_SYSTEM_PROMPT,
+    "qa_concise_video": RAG_CONCISE_SYSTEM_PROMPT_WITH_VIDEO,
+    "qa_normal":        RAG_NORMAL_SYSTEM_PROMPT,
+    "qa_explanatory":   RAG_EXPLANATORY_SYSTEM_PROMPT,
+    "ticket":           TICKET_GENERATOR_PROMPT,
+    "parameters":       BUSINESS_OBJECT_PARAMETER_EXTRACTOR_PROMPT,
+    "chitchat":         CHITCHAT_PROMPT,
+    "paraphraser":      UTTERANCE_PARAPHRASER_PROMPT_2,
+    "validator":        ANSWER_VALIDATOR_PROMPT,
+    "router":           SEMANTIC_ROUTER,
+}
+
+
+def warmup_prompt_template_sizes() -> None:
+    """
+    Pre-compute tiktoken token counts for every registered prompt template.
+    Call once at application startup so per-request token budgeting never has
+    to re-encode large template strings.
+    """
+    for key, template in _PROMPT_TEMPLATE_REGISTRY.items():
+        _PROMPT_TEMPLATE_TOKEN_CACHE[key] = len(_TIKTOKEN_ENCODING.encode(template))
+
+
+def count_tokens(text: str) -> int:
+    """Single, shared tiktoken encode — used everywhere instead of ad-hoc encoders."""
+    return len(_TIKTOKEN_ENCODING.encode(text or ""))
+
+
+def get_max_input_tokens(model_name: str) -> int:
+    """
+    Maximum tokens allowed for the *entire* prompt going into `model_name`:
+        context_window - max_output_tokens - safety_buffer
+    Driven entirely by config["api_models"][model_name], so switching models
+    automatically rescales every budget in the codebase.
+    """
+    model_cfg = config.get("api_models", {}).get(model_name, {})
+    context_window    = model_cfg.get("context_window", 32000)
+    max_output_tokens = model_cfg.get("max_output_tokens", 4096)
+    return context_window - max_output_tokens - _PROMPT_SAFETY_BUFFER
+
+
+def get_max_context_for_template(model_name: str, template_key: str) -> int:
+    """
+    Tokens left for the *variable* portion of a templated prompt
+    (query + history + retrieved context + schema + …), i.e.
+
+        get_max_input_tokens(model_name) - tokens(template)
+
+    Use this from any agent that fills a known template.
+    """
+    template_tokens = _PROMPT_TEMPLATE_TOKEN_CACHE.get(template_key, 0)
+    return get_max_input_tokens(model_name) - template_tokens
+
 
 @dataclass
 class ChatResult:
@@ -467,7 +535,7 @@ async def get_chat_response_legacy(
                 "do_sample": False,
                 "seed": 42,
                 "sampling_method": "greedy",
-                "reasoning_effort": "medium"
+                "reasoning_effort": "low"
             }
         llm = ChatOpenAI(
             openai_api_base=api_base,
@@ -614,7 +682,7 @@ async def utterance_paraphraser(
         user_utterance: str, 
         assistant_name: str = None, 
         model_name: str = "", 
-        reasoning_effort: str = "high"
+        reasoning_effort: str = "low"
     ) -> str:
     serialized_history = history_serializer(history)
     if not model_name:
@@ -633,44 +701,64 @@ async def utterance_paraphraser(
             question=user_utterance,
         )
 
-    response_1 = await get_chat_response(prompt, model_name=model_name, reasoning_effort=reasoning_effort)
+    response_1 = await get_chat_response(prompt, model_name=model_name, reasoning_effort=reasoning_effort, output_format="text",)
     response = json_cleaning_1(response_1)
     return response
 
 
-async def get_chat_response(prompt: str, model_name: str, reasoning_effort="high") -> str:
-    # 1. Initialize
+async def get_chat_response(
+    prompt: str,
+    model_name: str,
+    reasoning_effort: str = "low",
+    output_format: str = "auto",
+    **extra: Any,
+) -> str:
+    """
+    Send a single-system-message prompt to `model_name` via llm_manager and
+    return the extracted text.
+    """
     if not llm_manager._initialized:
         await llm_manager.initialize()
 
-    # 2. Config & Role Selection
-    _, config = llm_manager.get_model(model_name)
-    
-    # Use "user" for responses API models to be safe
-    role = "system" 
-    messages = [{"role": role, "content": prompt}]
-    print("promtp word length:", len(prompt.split()))
-    print("prompt character length:", len(prompt))
+    _, model_config = llm_manager.get_model(model_name)
 
-    print("Character Length of the prompt: ", len(prompt))
-    print("words length of the prompt: ", len(prompt.split()))
-    print("model_name:", model_name)
+    messages = [{"role": "system", "content": prompt}]
+
+    prompt_tokens = count_tokens(prompt)
+    max_input = get_max_input_tokens(model_name)
+    _cfg = config.get("api_models", {}).get(model_name, {})
+    print(f"[budget-debug] model={model_name} "
+        f"cw={_cfg.get('context_window')} "
+        f"max_out={_cfg.get('max_output_tokens')} "
+        f"-> budget={max_input}")
+    if prompt_tokens > max_input:
+        logging.warning(
+            "Prompt for model '%s' is %d tokens but budget is %d "
+            "(context_window - max_output_tokens - safety_buffer). "
+            "Caller should truncate before reaching get_chat_response.",
+            model_name, prompt_tokens, max_input,
+        )
+    print(f"prompt tokens: {prompt_tokens} / budget: {max_input}")
+
+    complete_kwargs: dict[str, Any] = {"reasoning_effort": reasoning_effort}
+
+    if output_format == "json":
+        if getattr(model_config, "api_type", "chat") == "responses":
+            complete_kwargs["text"] = {"format": {"type": "json_object"}}
+        else:
+            complete_kwargs["response_format"] = {"type": "json_object"}
+
+    complete_kwargs.update(extra)
+
     try:
-        # 3. Generate
-        response = await llm_manager.complete(model_name, messages, reasoning_effort=reasoning_effort)
-        
-        # 4. Extract (Now using the robust regex fallback)
-        text = llm_manager.extract_text(response, model_name)
-        
-        # Debug print to verify
-        # print(f"Extracted Text: {text[:100]}...") 
-        
-        return text
-
+        response = await llm_manager.complete(model_name, messages, **complete_kwargs)
+        # Forward the requested format so extraction matches intent.
+        return llm_manager.extract_text(
+            response, model_name, output_format=output_format
+        )
     except Exception as e:
         print(f"Error generating response: {e}")
-        raise e
-
+        raise
 
 async def embed_query(query):
     from src.retriever import ModelManager
@@ -685,7 +773,7 @@ async def chitchat_responder(
     context: str, 
     history: List[tuple[str, str]],
     model_name: bool = "", 
-    reasoning_effort: str = "medium"
+    reasoning_effort: str = "low"
     ):
     if not model_name:
         model_name = config["api_default"]["chitchat_responder_model_name"]
@@ -694,12 +782,12 @@ async def chitchat_responder(
                              context=context, 
                              history=serialized_history
                              )
-    response = await get_chat_response(prompt, model_name, reasoning_effort=reasoning_effort)
+    response = await get_chat_response(prompt, model_name, reasoning_effort=reasoning_effort, output_format="text")
     return response
 
     
 @observe()
-async def answer_validator(question: str, context: str, answer: str, model_name: str = "", reasoning_effort="high") -> str:
+async def answer_validator(question: str, context: str, answer: str, model_name: str = "", reasoning_effort="low") -> str:
     if not model_name: 
         model_name = config["api_default"]["answer_validator_model_name"]
     prompt = ANSWER_VALIDATOR_PROMPT.format(
@@ -707,7 +795,7 @@ async def answer_validator(question: str, context: str, answer: str, model_name:
         question=question,
         answer=answer,
     )
-    response = await get_chat_response(prompt, model_name, reasoning_effort=reasoning_effort)
+    response = await get_chat_response(prompt, model_name, reasoning_effort=reasoning_effort, output_format="text",)
     return response
 
 
@@ -748,7 +836,6 @@ async def retrieve_context_with_metadata(query: str, input_modules: List = None,
     return context_with_metadata, query_embedding
 
 
-@observe()
 async def prepare_final_context(
     query: str,
     query_embedding,
@@ -756,106 +843,126 @@ async def prepare_final_context(
     input_module: str = "",
     num_retrieve_context=config["retriever"]["retrieved_rank2_documents"], 
     use_sql_modules: bool = False, 
-    clarification_threshold: float = .7
+    clarification_threshold: float = .7,
+    target_model_name: str = "",
+    template_key: str = "sql",
 ):
-    """
-    Unified function supporting both develop branch (simple context)
-    and feature/add-sql-agent (complex module handling)
-    """
     context_with_metadata, query_embedding = await retrieve_context_with_metadata(
-        query,
-        database_index=database_index,
-        input_modules=[input_module] if input_module else None, 
-        num_retrieve_context=num_retrieve_context
+        query, database_index=database_index,
+        input_modules=[input_module] if input_module else None,
+        num_retrieve_context=num_retrieve_context,
     )
     if not context_with_metadata:
         return False, [], []
 
+    # Single-module path: existing handler already does token budgeting.
     if input_module:
-        result = _handle_single_module_case(
-            context_with_metadata, 
-            input_module, 
-            index_name=database_index
+        return _handle_single_module_case(
+            context_with_metadata, input_module,
+            index_name=database_index,
+            target_model_name=target_model_name,
+            template_key=template_key,
         )
-        return result
 
-    if use_sql_modules:
-        proposable_modules = set(config["modules"]["sql_proposable_modules"])
-    else:
-        proposable_modules = set(config["modules"]["qa_proposable_modules"])
-    detected_modules = [result["module"] for result in context_with_metadata]
-    module_frequencies = Counter(detected_modules)
+    # -------------------- QA path --------------------
+    # Defer module decision to the LLM. Format with module tags AND enforce
+    # the same per-model / per-template token budget that the SQL path uses.
+    if not use_sql_modules:
+        if not target_model_name:
+            target_model_name = config["api_default"]["query_responder_model_name"]
+        max_ctx = get_max_context_for_template(target_model_name, template_key)
+
+        trimmed = list(context_with_metadata)
+        documents = _format_qa_documents_with_modules(trimmed)
+        num_tokens = count_tokens(documents)
+        print("qa_context_tokens=%s budget=%s" % (num_tokens, max_ctx))
+
+        # Iteratively drop the lowest-priority chunk (tail) until we fit.
+        # This is the same shape as ticket_responder_'s _trim_to_budget,
+        # but recomputes the module-tag formatting each iteration so token
+        # counts stay accurate as chunks come out.
+        while trimmed and count_tokens(_format_qa_documents_with_modules(trimmed)) > max_ctx:
+            trimmed.pop(0)   
+        documents = _format_qa_documents_with_modules(trimmed) if trimmed else ""
+
+        # Modules that survived trimming — these are what we will offer as
+        # clickable choices if the LLM flags DOUBTFUL. Order is retrieval
+        # order, deduped, so the most-relevant module appears first.
+        seen, detected_modules = set(), []
+        for r in trimmed:
+            m = r.get("module")
+            if m and m not in seen:
+                seen.add(m)
+                detected_modules.append(m)
+
+        return False, detected_modules, documents
+
+    # -------------------- SQL path (unchanged) --------------------
+    proposable_modules = set(config["modules"]["sql_proposable_modules"])
+    module_frequencies = Counter(r["module"] for r in context_with_metadata)
     print(module_frequencies)
+
     if len(module_frequencies) < 2:
-        detected_modules_lst = list(module_frequencies.keys())
-        result = _handle_single_module_case(
-            context_with_metadata, 
-            detected_modules_lst[0],
-            index_name=database_index
+        return _handle_single_module_case(
+            context_with_metadata, list(module_frequencies.keys())[0],
+            index_name=database_index,
+            target_model_name=target_model_name,
+            template_key=template_key,
         )
-        return result
 
-    print(module_frequencies)
-
-    needs_clarification, _ = await is_somewhat_uniform(module_frequencies, threshold=clarification_threshold)
-
+    needs_clarification, _ = await is_somewhat_uniform(
+        module_frequencies, threshold=clarification_threshold
+    )
     if not needs_clarification:
-        max_value = max(module_frequencies.values())
-        probable_detected_module = [
-            k for k, v in module_frequencies.items() if v == max_value
-        ]
-        result = _handle_clear_preference_case(
-            context_with_metadata, 
-            probable_detected_module[0],
-            index_name=database_index
+        top = max(module_frequencies, key=module_frequencies.get)
+        return _handle_single_module_case(
+            context_with_metadata, top,
+            index_name=database_index,
+            target_model_name=target_model_name,
+            template_key=template_key,
         )
-    else:
-        probable_detected_modules = list(module_frequencies.keys())
-        result = _handle_clarification_case(
-            context_with_metadata,
-            probable_detected_modules,
-            proposable_modules,
-            index_name=database_index
-        )
-
-    return result
-
+    return _handle_clarification_case(
+        context_with_metadata, list(module_frequencies.keys()),
+        proposable_modules, index_name=database_index,
+        target_model_name=target_model_name, template_key=template_key,
+    )
 
 def _format_single_document(doc: dict, index: int = 1) -> str:
     """
-    Format a single document based on whether it contains SQL or not.
-    
-    Args:
-        doc: Document dict from _documents_to_standard_format
-        index: Example number for formatting
-        
-    Returns:
-        Formatted string for the document
+    Format a single retrieved chunk for inclusion in the LLM context.
+
+    Two doc shapes are supported:
+      - QA chunks:       plain text + optional video_links
+      - NL2SQL examples: SQL + parameters + response_template
+
+    `video_links` may live either at the top level of `doc` (flattened by
+    the retriever) or nested under `doc["metadata"]`. We try both so this
+    function is robust to either retriever convention.
     """
     sql_query = doc.get("sql", "")
-    
-    # If no SQL, return the text directly
+    metadata = doc.get("metadata", {}) or {}
+
+    # --- QA branch ----------------------------------------------------------
     if not sql_query:
-        # Append video links if present
-        video_links = doc.get("video_links", [])
+        video_links = doc.get("video_links") or metadata.get("video_links") or []
+        text = doc.get("text", "")
+        if not video_links:
+            video_links = _VIDEO_LINK_RE.findall(text)
+        text = _VIDEO_LINK_RE.sub('', text).strip()
         if video_links:
-            video_links_str = ", ".join(video_links)
-            doc["text"] += f"=> [ویدیوی مرتبط: {video_links_str}]"
-        return doc["text"]
-    
-    # Format as SQL example
-    question = doc["text"]
-    
+            text = f"{text}\n[ویدیوی مرتبط: {', '.join(dict.fromkeys(video_links))}]"
+        return text
+
+    # --- SQL-example branch -------------------------------------------------
+    question = doc.get("text", "")
+
     try:
         parameters = json.loads(doc.get("parameters", "{}"))
-    except json.JSONDecodeError:
+    except (json.JSONDecodeError, TypeError):
         parameters = {}
-    
-    params_formatted = ", ".join(
-        f'"{k}": "{v}"' for k, v in parameters.items()
-    )
-    
-    metadata = doc.get("metadata", {})
+
+    params_formatted = ", ".join(f'"{k}": "{v}"' for k, v in parameters.items())
+
     complexity = metadata.get("complexity", "")
     domain = metadata.get("domain", "")
     response_template = doc.get("response_template", "")
@@ -865,11 +972,13 @@ def _format_single_document(doc: dict, index: int = 1) -> str:
         example_header += f" - {domain.capitalize() if domain else ''}"
         if complexity:
             example_header += f" ({complexity})"
-    
-    return f"""{example_header}:
-Query: {question}
-{{"SQL": "{sql_query}", "parameters": {{{params_formatted}}}, "response_template": {response_template}}}"""
 
+    return (
+        f"{example_header}:\n"
+        f"Query: {question}\n"
+        f'{{"SQL": "{sql_query}", "parameters": {{{params_formatted}}}, '
+        f'"response_template": {response_template}}}'
+    )
 
 def _format_documents_as_string(context_with_metadata: List[dict]) -> str:
     """Format multiple documents as a single concatenated string."""
@@ -890,45 +999,77 @@ def _format_documents_as_list(context_with_metadata: List[dict]) -> List[str]:
 def _handle_single_module_case(
     context_with_metadata: List[dict],
     detected_modules: str,
-    index_name: str
+    index_name: str,
+    target_model_name: str = "",
+    template_key: str = "sql",
 ) -> Tuple[bool, List[str], str]:
     """Handle case where only one module type is detected."""
     documents = _format_documents_as_string(context_with_metadata)
-    encoding = tiktoken.encoding_for_model("gpt-4o-mini")
-    num_tokens = len(encoding.encode(documents))
+    num_tokens = len(_TIKTOKEN_ENCODING.encode(documents))
     print("num_tokens_of_context is %s" % num_tokens)
-    if num_tokens > MAX_CONTEXT_AVAILABLE_SIZE:
+
+    # Default to the SQL responder model — it's the most context-sensitive
+    # consumer and gives the tightest (safest) budget when the caller doesn't
+    # know yet which route will be taken.
+    if not target_model_name:
+        target_model_name = config["api_default"]["sql_responder_model_name"]
+    max_context_available = get_max_context_for_template(target_model_name, template_key)
+
+    if num_tokens > max_context_available:
         documents = _format_documents_as_string(context_with_metadata[-2:])
-        print("Num new tokens is: %s" % num_tokens)
+        truncated_tokens = len(_TIKTOKEN_ENCODING.encode(documents))
+        print("Num new tokens is: %s" % truncated_tokens)
     return False, [detected_modules], documents
 
-@observe()
-def _handle_clear_preference_case(
-    context_with_metadata: List[dict], 
-    detected_module: str, 
-    index_name: str
-) -> Tuple[bool, List[str], List[str]]:
-    """Handle case where module preference is clear (no clarification needed)."""
-    documents = _format_documents_as_string(context_with_metadata)
-    return False, [detected_module], documents
+# @observe()
+# def _handle_single_module_case(
+#     context_with_metadata: List[dict],
+#     detected_modules: str,
+#     index_name: str
+# ) -> Tuple[bool, List[str], str]:
+#     """Handle case where only one module type is detected."""
+#     documents = _format_documents_as_string(context_with_metadata)
+#     encoding = tiktoken.encoding_for_model("gpt-4o-mini")
+#     num_tokens = len(encoding.encode(documents))
+#     print("num_tokens_of_context is %s" % num_tokens)
+#     if num_tokens > MAX_CONTEXT_AVAILABLE_SIZE:
+#         documents = _format_documents_as_string(context_with_metadata[-2:])
+#         print("Num new tokens is: %s" % num_tokens)
+#     return False, [detected_modules], documents
+
+# @observe()
+# def _handle_clear_preference_case(
+#     context_with_metadata: List[dict], 
+#     detected_module: str, 
+#     index_name: str
+# ) -> Tuple[bool, List[str], List[str]]:
+#     """Handle case where module preference is clear (no clarification needed)."""
+#     documents = _format_documents_as_string(context_with_metadata)
+#     return False, [detected_module], documents
 
 @observe()
 def _handle_clarification_case(
     context_with_metadata: List[dict],
     detected_modules: List[str],
     proposable_modules: Set[str],
-    index_name: str
+    index_name: str,
+    target_model_name: str = "",
+    template_key: str = "sql",
 ) -> Tuple[bool, List[str], Union[str, List[str]]]:
     """Handle case where clarification is needed for module selection."""
     unique_modules = set(detected_modules)
     valid_modules = unique_modules & proposable_modules
-    
+
     if len(valid_modules) < 2:
         documents = _format_single_document(context_with_metadata[0], index=1)
         valid_modules_lst = list(valid_modules)
         result = False, valid_modules_lst, documents
     else:
-        documents = _format_documents_as_string(context_with_metadata)
+        _, _, documents = _handle_single_module_case(
+            context_with_metadata, "", "",
+            target_model_name=target_model_name,
+            template_key=template_key,
+        )
         valid_modules_lst = list(valid_modules)
         result = True, valid_modules_lst, documents
     return result
@@ -999,7 +1140,7 @@ async def sql_responder_(
     detected_module: str = "",
     context: str = "",
     model_name: str = "",
-    reasoning_effort="medium"
+    reasoning_effort="low"
 ):
     if not model_name:
         model_name = config["api_default"]["sql_responder_model_name"]
@@ -1009,7 +1150,7 @@ async def sql_responder_(
 
     bo_prompt = format_sql_prompt(query, schema=schema, examples=context)
     raw_json_response = await get_chat_response(
-        bo_prompt, model_name, reasoning_effort=reasoning_effort
+        bo_prompt, model_name, reasoning_effort=reasoning_effort, output_format="json"
     )
     response = json_cleaning(raw_json_response)
     return response
@@ -1021,7 +1162,7 @@ async def parameters_responder(
     sql_query,
     detected_module: str,
     model_name: str = "",
-    reasoning_effort="medium"
+    reasoning_effort="low"
     ):
 
     if not model_name: 
@@ -1034,7 +1175,7 @@ async def parameters_responder(
     selections = {table: ['parameters'] for table in sql_proposed_tables}
     bo_parameters_schema = subselect_yaml(yaml_schema, selections, "yaml")
     prompt = format_param_responder_prompt(paraphrased_utterance, sql_query, bo_parameters_schema, BUSINESS_OBJECT_PARAMETER_EXTRACTOR_PROMPT)
-    raw_json_response = await get_chat_response(prompt, model_name, reasoning_effort=reasoning_effort)
+    raw_json_response = await get_chat_response(prompt, model_name, reasoning_effort=reasoning_effort, output_format="json",)
     response = json_cleaning(raw_json_response)
     return response
 
@@ -1051,7 +1192,7 @@ async def _determine_final_route(
     utterance: str,
     query_embedding: List,
     model_name: str = "",
-    reasoning_effort="medium",
+    reasoning_effort="low",
     sql_mode: bool = True,
     ticket_mode: bool = True,
 ) -> str:
@@ -1117,6 +1258,7 @@ async def _determine_final_route(
         SEMANTIC_ROUTER.format(user_query=utterance, class_list=plausible_routes),
         model_name,
         reasoning_effort=reasoning_effort,
+        output_format="text"
     )
     return result
 
@@ -1186,61 +1328,96 @@ def _format_documents_with_modules(context_with_metadata: List[dict], tag: str =
     return "\n\n".join(lines)
 
 
+def _format_qa_documents_with_modules(context_with_metadata: List[dict]) -> str:
+    lines = []
+    for i, doc in enumerate(context_with_metadata, 1):
+        meta = doc.get("metadata") or {}
+        module = doc.get("module") or meta.get("module", "unknown")
+        text = doc.get("text", "")
+
+        video_links = doc.get("video_links") or meta.get("video_links") or []
+        # Fallback: recover links that survived inline in the chunk text
+        if not video_links:
+            video_links = _VIDEO_LINK_RE.findall(text)
+
+        # Strip raw tokens from the visible text, then present the
+        # structured tag the prompt is instructed to cite from.
+        text = _VIDEO_LINK_RE.sub('', text).strip()
+        if video_links:
+            text = f"{text}\n[ویدیوی مرتبط: {', '.join(dict.fromkeys(video_links))}]"
+
+        lines.append(f"[Chunk {i} | Module: {module}]\n{text}")
+    return "\n\n".join(lines)
+
 @observe()
 async def ticket_responder_(
     paraphrased_utterance: str,
     history: List[tuple[str, str]],
     database_index: str = config["database"]["collection_name"],
     model_name: str = "",
-    reasoning_effort: str = "medium",
+    reasoning_effort: str = "low",
 ) -> dict:
-    """
-    Generate support-ticket fields (title, description, system, form) from:
-      1) a primary retrieval driven by the user's paraphrased utterance (intent),
-      2) a secondary retrieval driven by a form-flavored query (form content).
-    """
     if not model_name:
-        model_name = config["api_default"]["query_responder_model_name"]
+        model_name = config["api_default"]["ticket_responder_model_name"]
 
-    num_retrieve_context = config["retriever"]["retrieved_rank2_documents"]
+    # ---- Retrieval: primary docs + form docs --------------------------------
+    num_ctx = config["retriever"]["retrieved_rank2_documents"]
 
-    # 1) Primary retrieval — intent
     primary_ctx, _ = await retrieve_context_with_metadata(
-        query=paraphrased_utterance,
+        paraphrased_utterance,
         database_index=database_index,
-        num_retrieve_context=num_retrieve_context,
+        num_retrieve_context=num_ctx,
     )
 
-    # 2) Form-flavored retrieval — for the `form` field
-    form_query = f"فرم مرتبط با سوال: {paraphrased_utterance}"
+    form_query = f"{FORM_RETRIEVAL_QUERY_PREFIX}{paraphrased_utterance}"
     form_ctx, _ = await retrieve_context_with_metadata(
-        query=form_query,
+        form_query,
         database_index=database_index,
-        num_retrieve_context=num_retrieve_context,
+        num_retrieve_context=num_ctx,
     )
 
-    # If BOTH retrievals are empty, return a minimal fallback
-    if not primary_ctx and not form_ctx:
-        return {
-            "title": "درخواست کاربر",
-            "description": paraphrased_utterance,
-            "system": "unknown",
-            "form": "محتوای مرتبطی در پایگاه دانش برای این درخواست یافت نشد.",
-        }
+    primary_ctx = primary_ctx or []
+    form_ctx = form_ctx or []
 
-    # Module pool: union of both retrievals (so `system` can be validated against either)
+    # ---- Module bookkeeping -------------------------------------------------
     primary_module_counter = Counter(
-        doc.get("module", "unknown") for doc in primary_ctx
+        d.get("module") or (d.get("metadata") or {}).get("module", "unknown")
+        for d in primary_ctx
     )
-    form_modules = {doc.get("module", "unknown") for doc in form_ctx}
-    available_modules = list(dict.fromkeys(  # preserve order, dedupe
-        list(primary_module_counter.keys()) # + [m for m in form_modules if m not in primary_module_counter]
-    ))
-    # Map internal Persian module names to external English system codes.
-    module_to_system = config.get("ticket", {}).get("module_to_system", {})
-    default_system = config.get("ticket", {}).get("default_system", "GENERAL")
+    # Dedupe but keep retrieval order (most relevant module first)
+    seen, available_modules = set(), []
+    for m in primary_module_counter:
+        if m and m not in seen:
+            seen.add(m)
+            available_modules.append(m)
+
+    # Persian module name -> ticketing system code.
+    # Point these at wherever your config actually stores the mapping.
+    module_to_system = config.get("modules", {}).get("module_to_system", {})
+    default_system = config.get("modules", {}).get("default_system", "unknown")
+
+    # ---- Format retrieved context with module tags --------------------------
     primary_context_str = _format_documents_with_modules(primary_ctx, tag="Chunk")
-    form_context_str = _format_documents_with_modules(form_ctx, tag="FormChunk")
+    form_context_str    = _format_documents_with_modules(form_ctx,    tag="FormChunk")
+
+    # --- Budget enforcement, mirrors _handle_single_module_case ---------------
+    max_context = get_max_context_for_template(model_name, "ticket")
+    # Reserve roughly half the budget for each retrieval stream; truncate the
+    # tail end (drop oldest/least relevant chunks first) until each fits.
+    per_stream_budget = max_context // 2
+
+    def _trim_to_budget(ctx_list: List[dict], formatted: str, budget: int, tag: str) -> str:
+        if count_tokens(formatted) <= budget:
+            return formatted
+        trimmed = list(ctx_list)
+        while trimmed and count_tokens(_format_documents_with_modules(trimmed, tag=tag)) > budget:
+            trimmed.pop()  # drop the last (lowest-priority) chunk
+        return _format_documents_with_modules(trimmed, tag=tag) if trimmed else "(none)"
+
+    primary_context_str = _trim_to_budget(primary_ctx, primary_context_str, per_stream_budget, "Chunk")
+    form_context_str    = _trim_to_budget(form_ctx,    form_context_str,    per_stream_budget, "FormChunk")
+    # --------------------------------------------------------------------------
+
     available_modules_str = ", ".join(available_modules) if available_modules else "unknown"
     serialized_history = history_serializer(history)
 
@@ -1253,7 +1430,7 @@ async def ticket_responder_(
     )
 
     raw_response = await get_chat_response(
-        prompt, model_name, reasoning_effort=reasoning_effort
+        prompt, model_name, reasoning_effort=reasoning_effort, output_format="json"
     )
     cleaned = json_cleaning(raw_response)
 
@@ -1284,63 +1461,66 @@ async def ticket_responder_(
 
 @observe()
 async def query_responder(
-    query: str, 
-    context: str, 
-    history: List[tuple[str, str]],
-    company_name: str = None, 
-    assistant_name: str = None, 
-    answer_type: str = "concise", 
-    reasoning_effort="medium",
-    model_name: str = "",
-    use_video_link: bool = True
-    ) -> Tuple[str, dict]:
+    query, context, history,
+    company_name=None, assistant_name=None,
+    answer_type="concise", reasoning_effort="low",
+    model_name: str = "", use_video_link: bool = True,
+) -> Tuple[str, dict, str]:
+    """
+    Returns (response_text, video_parameters, confidence).
+    `confidence` is "ACCURATE" or "DOUBTFUL". The list of clickable modules
+    is derived by the orchestrator from retrieval, not from the LLM.
+    """
     if not model_name:
         model_name = config["api_default"]["query_responder_model_name"]
 
-    serialized_history = history_serializer(history)
-    
+    # Concise prompts (both variants) now emit JSON. Explanatory/normal
+    # remain free-form text until you migrate them too.
+    is_concise = (answer_type == "concise")
+    extra: dict[str, Any] = {}
+    if is_concise and "deepseek" in model_name:
+        extra["response_format"] = {"type": "json_object"}
+    fmt = "json" if is_concise else "text"
+
     if answer_type == "concise":
-        rag_system_prompt = RAG_CONCISE_SYSTEM_PROMPT_WITH_VIDEO if use_video_link else RAG_CONCISE_SYSTEM_PROMPT
-    elif answer_type == "normal":
-        rag_system_prompt = RAG_NORMAL_SYSTEM_PROMPT
+        rag_system_prompt = (RAG_CONCISE_SYSTEM_PROMPT_WITH_VIDEO if use_video_link
+                             else RAG_CONCISE_SYSTEM_PROMPT)
     elif answer_type == "explanatory":
         rag_system_prompt = RAG_EXPLANATORY_SYSTEM_PROMPT
     else:
         rag_system_prompt = RAG_NORMAL_SYSTEM_PROMPT
-        
-    prompt = rag_system_prompt.format(
-        context=context,
-        company_name=company_name,
-        assistant_name=assistant_name,
-        question=query,
-        conversation_history=serialized_history
-    )
 
-    raw_json_response = await get_chat_response(
-        prompt, 
-        model_name, 
-        reasoning_effort=reasoning_effort
+    prompt = rag_system_prompt.format(
+        context=context, company_name=company_name, assistant_name=assistant_name,
+        question=query, conversation_history=history_serializer(history),
     )
-    cleaned_response = json_cleaning(raw_json_response)
-    
-    if use_video_link:
+    raw = await get_chat_response(prompt, model_name,
+                                  reasoning_effort=reasoning_effort,
+                                  output_format=fmt)
+    cleaned = json_cleaning(raw)
+
+    response_text   = cleaned
+    video_params    = {}
+    confidence      = "ACCURATE"  # safe default if parsing fails
+
+    if is_concise:
         try:
-            response_dict = json.loads(cleaned_response)
-            response_text = response_dict.get("response", cleaned_response)
-            video_parameters = response_dict.get("parameters", {})
-        except (json.JSONDecodeError, TypeError):
-            response_text = cleaned_response
-            video_parameters = {}
-    else:
-        response_text = cleaned_response
-        video_parameters = {}
-    
-    return response_text, video_parameters
+            d = json.loads(cleaned)
+            if isinstance(d, dict):
+                response_text = d.get("response", cleaned)
+                video_params  = d.get("parameters") or {}     # absent for non-video prompt
+                conf_raw      = (d.get("confidence") or "ACCURATE").upper()
+                confidence    = "DOUBTFUL" if conf_raw == "DOUBTFUL" else "ACCURATE"
+        except (json.JSONDecodeError, TypeError) as e:
+            print(f"[query_responder] JSON parse failed, using raw text: {e}")
+
+    return response_text, video_params, confidence
 
 @observe()
 async def chat_responder_(
     history: List[tuple[str, str]],
     user_utterance: str,
+    is_first_message: bool = False,
     database_index: str = config["database"]["collection_name"],
     company_name: str = config["database"]["company_name"],
     assistant_name: str = config["database"]["assistant_name"],
@@ -1349,7 +1529,8 @@ async def chat_responder_(
     detected_module: str = "",
     sql_mode: bool = True,
     ticket_mode: bool = True,
-    use_video_link: bool = True  # <-- add this
+    use_video_link: bool = True,  # <-- add this,
+    on_click: bool = False
 ) -> Union[tuple[str, str, str, str], tuple[str, str, str, bool, List[str]]]:
     """
     Unified chat responder supporting both develop branch (simple RAG) and feature/add-sql-agent (SQL + module handling)
@@ -1367,7 +1548,12 @@ async def chat_responder_(
             result_temp = is_sql, user_utterance, response, "", False, [], parameters, sql_response_template, has_video_link, is_ticket
             return result_temp
 
-    paraphrased_utterance = await utterance_paraphraser(history, user_utterance)
+    if on_click:
+        paraphrased_utterance = user_utterance  # already the paraphrased question
+    elif not is_first_message:
+        paraphrased_utterance = await utterance_paraphraser(history, user_utterance)
+    else:
+        paraphrased_utterance = user_utterance
     print(paraphrased_utterance)
     if use_cache:
         response, _ = await get_cache_response(paraphrased_utterance)
@@ -1428,12 +1614,22 @@ async def chat_responder_(
         # database_index = config["database"]["sql_collection_name"]
     else:
         clarification_threshold = QA_MODULE_PROPOSER_THRESHOLD
-    
-    if detected_module:
-        do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, input_module=detected_module, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context, use_sql_modules=use_sql_modules, clarification_threshold=clarification_threshold)
+    if use_sql_modules:
+        target_model_name = config["api_default"]["sql_responder_model_name"]
+        template_key = "sql"
     else:
-        do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context, use_sql_modules=use_sql_modules, clarification_threshold=clarification_threshold)
+        target_model_name = config["api_default"]["query_responder_model_name"]
+        qa_template_key_map = {
+            "concise":     "qa_concise_video" if use_video_link else "qa_concise",
+            "normal":      "qa_normal",
+            "explanatory": "qa_explanatory",
+        }
+        template_key = qa_template_key_map.get(response_type, "qa_normal")
 
+    if detected_module:
+        do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, input_module=detected_module, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context, use_sql_modules=use_sql_modules, clarification_threshold=clarification_threshold, template_key=template_key, target_model_name=target_model_name)
+    else:
+        do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context, use_sql_modules=use_sql_modules, clarification_threshold=clarification_threshold, template_key=template_key, target_model_name=target_model_name)
     if do_clarify:
         result_temp = is_sql, paraphrased_utterance, MODULE_CLARIFICATION_RESPONSE_TEMPLATE, "", do_clarify, modules, parameters, sql_response_template, has_video_link, is_ticket
         return result_temp
@@ -1470,26 +1666,53 @@ async def chat_responder_(
         result_temp = is_sql, paraphrased_utterance, response, context, False, [], parameters, sql_response_template, has_video_link, is_ticket
         return result_temp
 
-    response, video_parameters = await query_responder(
-        paraphrased_utterance,
-        context,
-        history,
-        company_name=company_name,
-        assistant_name=assistant_name,
-        answer_type=response_type,
-        use_video_link=use_video_link,
+    print("[video-debug] tag in context:", "ویدیوی مرتبط" in context)
+    response, video_parameters, confidence = await query_responder(
+        paraphrased_utterance, context, history,
+        company_name=company_name, assistant_name=assistant_name,
+        answer_type=response_type, use_video_link=use_video_link,
     )
+
+    # Safety net: if the model / parse path still produced no usable content
+    # (empty, whitespace, or a bare "{}" / "[]"), show the canonical
+    # no-answer message instead of leaking JSON punctuation to the user.
+    if (not response) or (not response.strip()) or response.strip() in ("{}", "[]"):
+        response, video_parameters, confidence = (
+            RESPONSE_TEMPLATE_FOR_NO_ANSWER, {}, "ACCURATE"
+        )
+
+    # Existing post-processing for hard out-of-scope strings.
     if "محدوده دانش من " in response:
-        response = template_for_not_answer
-        video_parameters = {}
-    if "خارج از حوزه کاری" in response:
+        response, video_parameters = template_for_not_answer, {}
+        confidence = "ACCURATE"
+    elif "خارج از حوزه کاری" in response:
         response = template_for_not_context.format(company_name=company_name)
-        video_parameters = {}
+        video_parameters, confidence = {}, "ACCURATE"
+
     parameters = video_parameters
     has_video_link = has_video_link_(parameters)
-    result_temp = is_sql, paraphrased_utterance, response, context, do_clarify, modules, parameters, sql_response_template, has_video_link, is_ticket
-    return result_temp
 
+    if confidence == "DOUBTFUL":
+        # Modules-as-choices come from retrieval (the `modules` list returned
+        # by prepare_final_context), filtered to those the system can actually
+        # route to. Single-module retrievals collapse back to ACCURATE.
+        proposable = set(config["modules"]["qa_proposable_modules"])
+        candidate_modules = [m for m in (modules or []) if m in proposable]
+        if len(candidate_modules) >= 2:
+            return (False, paraphrased_utterance, response, context,
+                    True, candidate_modules,                # do_clarify, choices
+                    parameters, sql_response_template,
+                    # Suppress video on bare clarification template; keep on
+                    # answerable-doubtful responses.
+                    False if response.strip() == MODULE_CLARIFICATION_RESPONSE_TEMPLATE
+                          else has_video_link,
+                    is_ticket)
+
+    # ACCURATE (or DOUBTFUL with <2 routable modules) — business as usual.
+    return (False, paraphrased_utterance, response, context,
+            False, modules,
+            parameters, sql_response_template,
+            has_video_link, is_ticket)
 
 @observe()
 async def feedback_(

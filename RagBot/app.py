@@ -556,7 +556,7 @@ def main():
             st.session_state["enable_submit_form"] = False
             st.session_state["form_submitted"] = False
 
-    for i in range(len(st.session_state.get("suggested_sessions", []))):
+    for i in range(len(st.session_state.get("suggested_modules", []))):
         if st.session_state.get(f"suggestion_button_clicked_{i}"):
             st.session_state["user_input"] = st.session_state.get(
                 f"suggestion_button_clicked_title_{i}")

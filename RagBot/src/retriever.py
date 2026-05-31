@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from http.client import HTTPException
 from typing import Tuple
 import requests
+import re
 import numpy as np
 
 import torch
@@ -28,6 +29,163 @@ def get_logger():
 HEADER_KEY_APPLICATION_JSON = "application/json"
 logger = get_logger()
 OPENROUTER_API_BASE = os.getenv("OPENROUTER_API_BASE")
+
+class TEIEmbeddings(Embeddings):
+    """
+    Embedding client for Hugging Face Text Embeddings Inference (TEI).
+    TEI handles tokenization internally, so we just send raw text.
+    """
+    def __init__(
+        self,
+        tei_url: str,
+        timeout: int = 30,
+        batch_size: int = 32,
+        truncate: bool = True
+    ):
+        """
+        Initialize TEI embedding client.
+        
+        Args:
+            tei_url: Base URL of the TEI server (e.g., "http://localhost:8080")
+            timeout: Request timeout in seconds
+            batch_size: Maximum batch size for client-side chunking
+            truncate: Whether to tell TEI to truncate inputs that exceed max length
+        """
+        self.tei_url = tei_url.rstrip('/')
+        self.embed_url = f"{self.tei_url}/embed"
+        self.timeout = timeout
+        self.batch_size = batch_size
+        self.truncate = truncate
+        
+        logger.info(f"✅ Initialized TEI embedding client at {self.tei_url}")
+
+    @staticmethod
+    def _clean_text(text: str) -> str:
+        """
+        Clean text before sending to TEI.
+        """
+        if not text or not isinstance(text, str):
+            return ""
+        
+        # Strip whitespace
+        text = text.strip()
+        
+        # Replace multiple spaces/newlines with single space
+        text = re.sub(r'\s+', ' ', text)
+        
+        return text
+
+    def _call_tei(self, texts: List[str]) -> List[List[float]]:
+        """
+        Call TEI server with raw texts.
+        """
+        if not texts:
+            logger.warning("Empty texts list provided to _call_tei")
+            return []
+        
+        batch_size = len(texts)
+        logger.debug(f"Calling TEI with {batch_size} texts")
+        
+        # Clean and filter texts
+        cleaned_texts = [self._clean_text(text) for text in texts]
+        non_empty_texts = [text if text else "[EMPTY]" for text in cleaned_texts]
+        
+        payload = {
+            "inputs": non_empty_texts,
+            "truncate": self.truncate
+        }
+        
+        try:
+            logger.debug(f"Sending request to: {self.embed_url}")
+            
+            response = requests.post(
+                self.embed_url,
+                json=payload,
+                headers={"Content-Type": "application/json"},
+                timeout=self.timeout
+            )
+            
+            # Check for HTTP errors
+            if response.status_code != 200:
+                logger.error(f"TEI returned status code {response.status_code}")
+                logger.error(f"Response text: {response.text}")
+                response.raise_for_status()
+            
+            # TEI standard response for a list of inputs is a List[List[float]]
+            embeddings = response.json()
+            
+            # Basic validation to ensure TEI returned what we expect
+            if not isinstance(embeddings, list) or len(embeddings) != batch_size:
+                raise ValueError(f"Expected {batch_size} embeddings, got {len(embeddings)}")
+                
+            logger.debug(f"Successfully got embeddings for batch size: {batch_size}")
+            return embeddings
+            
+        except requests.exceptions.Timeout:
+            logger.error(f"TEI request timed out after {self.timeout}s")
+            raise
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error calling TEI server: {e}")
+            logger.error(f"Request URL: {self.embed_url}")
+            if hasattr(e, 'response') and e.response is not None:
+                logger.error(f"Response status: {e.response.status_code}")
+                logger.error(f"Response body: {e.response.text}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error in _call_tei: {e}")
+            logger.error(f"Batch size: {batch_size}")
+            logger.error(f"Sample text (first 100 chars): {texts[0][:100] if texts else 'N/A'}")
+            raise
+
+    def _batch_texts(self, texts: List[str]) -> List[List[str]]:
+        """
+        Split texts into batches. 
+        Note: TEI has dynamic batching built-in, but client-side chunking 
+        is still good practice to avoid giant HTTP payloads.
+        """
+        if not texts:
+            return []
+        return [texts[i:i + self.batch_size] for i in range(0, len(texts), self.batch_size)]
+
+    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        """
+        Embed multiple documents, processing in batches.
+        """
+        if not texts:
+            logger.warning("Empty texts list provided to embed_documents")
+            return []
+        
+        logger.info(f"Embedding {len(texts)} documents in batches of {self.batch_size}")
+        
+        batches = self._batch_texts(texts)
+        all_embeddings = []
+        
+        for batch_idx, batch in enumerate(batches):
+            try:
+                logger.debug(f"Processing batch {batch_idx + 1}/{len(batches)} ({len(batch)} texts)")
+                batch_embeddings = self._call_tei(batch)
+                all_embeddings.extend(batch_embeddings)
+                logger.debug(f"✅ Batch {batch_idx + 1}/{len(batches)} completed")
+            except Exception as e:
+                logger.error(f"❌ Error processing batch {batch_idx + 1}/{len(batches)}: {e}")
+                for i, text in enumerate(batch):
+                    logger.error(f"  Text {i}: {text[:100]}... (length: {len(text)})")
+                raise
+        
+        logger.info(f"✅ Successfully embedded {len(texts)} documents")
+        return all_embeddings
+
+    def embed_query(self, text: str) -> List[float]:
+        """
+        Embed a single query text.
+        """
+        if not text or not isinstance(text, str):
+            logger.warning(f"Invalid query text: {text}")
+            text = ""
+            
+        logger.debug(f"Embedding query (length: {len(text)})")
+        embeddings = self._call_tei([text])
+        return embeddings[0]
 
 class TritonEmbeddings(Embeddings):
     """
@@ -79,7 +237,6 @@ class TritonEmbeddings(Embeddings):
         text = text.strip()
         
         # Replace multiple spaces/newlines with single space
-        import re
         text = re.sub(r'\s+', ' ', text)
         
         return text
@@ -401,7 +558,6 @@ class OpenRouterEmbeddings(Embeddings):
         text = text.strip()
         
         # Replace multiple spaces/newlines with single space
-        import re
         text = re.sub(r'\s+', ' ', text)
         
         # Ensure text is not too long (OpenRouter has limits)
@@ -1169,12 +1325,15 @@ class ModelManager:
                 model_kwargs={"device": embedding_config["device"]}
             )
             logger.info("✅ Initialized local HuggingFace embedding model")
-
         elif embedding_type == "openrouter":
             self.embedding_model = OpenRouterEmbeddings(
                 model_name=os.getenv("OPENROUTER_MODEL_NAME"),  # or any other model
                 api_key=os.getenv("OPENROUTER_API_KEY"),
                 batch_size=100
+            )
+        elif embedding_type == "tei":
+            self.embedding_model = TEIEmbeddings(
+                tei_url= config["embedding_model"]["tei_url"]
             )
         else:
             raise ValueError(f"Unsupported embedding type: '{embedding_type}'")
