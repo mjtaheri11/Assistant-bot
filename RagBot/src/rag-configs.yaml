@@ -203,7 +203,7 @@ reranker:
 retriever:
   retrieved_documents: 40
   # retrieved_rank2_documents: 10
-  retrieved_rank2_documents: 8
+  retrieved_rank2_documents: 10
   sql_retrieved_rank2_documents: 25
   retriever_threshold: 0.0
   alpha_threshold: 0.5
@@ -258,19 +258,17 @@ router_model:
 api_default:
   temperature: 0.7
   max_tokens: 16000
-  # module_route_model_name: gpt-4.1
-  # query_responder_model_name: gpt-4.1
-  # answer_validator_model_name: gpt-4.1
-  # utterance_paraphraser_model_name: gpt-4.1
-  # parameter_responder_model_name: gpt-5.1-codex-max
-  # sql_responder_model_name: gpt-5.1-codex-max
-  # chitchat_responder_model_name: gpt-4.1
+  vllm_base_url_template: "http://{host}.admin.svc.cluster.local/v1"
+
+api_default:
+  temperature: 0.7
+  max_tokens: 16000
   module_route_model_name: deepseek-v4-flash
   query_responder_model_name: deepseek-v4-flash
   answer_validator_model_name: deepseek-v4-flash
   utterance_paraphraser_model_name: deepseek-v4-flash
   parameter_responder_model_name: deepseek-v4-flash
-  sql_responder_model_name: deepseek-v4-flash
+  sql_responder_model_name: deepseek-v4-pro
   chitchat_responder_model_name: deepseek-v4-flash
   ticket_responder_model_name: deepseek-v4-flash
 
@@ -289,7 +287,7 @@ api_models:
     timeout: 25
 
   deepseek-v4-flash:
-    provider: openrouter
+    provider: hooshyar
     model_id: "deepseek/deepseek-v4-flash"
     context_window: 30000
     max_output_tokens: 5000
@@ -301,7 +299,7 @@ api_models:
     timeout: 25
 
   deepseek-v4-flash-paraphrase:
-    provider: openrouter
+    provider: hooshyar
     model_id: "deepseek/deepseek-v4-flash"
     context_window: 30000
     max_output_tokens: 5000
@@ -459,37 +457,6 @@ api_models:
     supports_reasoning: false
     temperature: 0.7
 
-  # OSS Models (Local/Ollama/vLLM)
-  # Set api_type to "completions" if your server only supports legacy /v1/completions
-  llama-3.3-70b:
-    provider: oss
-    model_id: "llama-3.3-70b-instruct"
-    context_window: 131072
-    max_output_tokens: 8192
-    api_type: "chat"  # Change to "completions" if your server requires it
-    supports_reasoning: false
-    temperature: 0.7
-
-  qwen-2.5-72b:
-    provider: oss
-    model_id: "qwen2.5-72b-instruct"
-    context_window: 131072
-    max_output_tokens: 8192
-    api_type: "chat"  # Change to "completions" if your server requires it
-    supports_reasoning: false
-    temperature: 0.7
-
-  # Example legacy completions model (for servers that only support /v1/completions)
-  # Uncomment and modify as needed:
-  # oss-legacy-model:
-  #   provider: oss
-  #   model_id: "your-model-name"
-  #   context_window: 8192
-  #   max_output_tokens: 4096
-  #   api_type: "completions"  # Uses /v1/completions endpoint
-  #   supports_reasoning: false
-  #   temperature: 0.7
-
   # OpenRouter
   claude-sonnet-4:
     provider: openrouter
@@ -501,8 +468,12 @@ api_models:
     temperature: 0.7
 
   oss:
-    provider: oss
+    provider: vllm
     model_id: "/gpt-120"
+    cluster_host: gpt-oss-120b-predictor   # -> http://gpt-oss-120b-predictor.admin.svc.cluster.local/v1
+    base_url_env: OSS_API_BASE             # back-compat: env wins if set
+    api_key_env: OSS_API_KEY
+    api_key: "EMPTY"
     api_type: "chat"
     supports_reasoning: true
     default_reasoning_effort: "high"
@@ -511,4 +482,41 @@ api_models:
     max_output_tokens: 3000
     temperature: 0.7
     timeout: 30
-    # max_tokens: 16000
+    max_retries: 0
+
+  gemma4:
+    provider: vllm
+    model_id: "gemma4-26b"
+    cluster_host: gemma4-26b-predictor     # -> http://gemma4-26b-predictor.admin.svc.cluster.local/v1
+    base_url_env: GEMMA4_API_BASE
+    api_key_env: GEMMA4_API_KEY
+    api_key: "EMPTY"
+    context_window: 30000
+    max_output_tokens: 5000
+    max_tokens: 5000
+    api_type: "chat"
+    supports_reasoning: true
+    reasoning_param_style: "vllm_thinking"
+    default_reasoning_effort: "high"
+    supports_response_format: false
+    temperature: 0.7
+    timeout: 30
+    max_retries: 0
+
+  qwen36-35b:
+    provider: vllm
+    model_id: "qwen3-35b"
+    cluster_host: qwen3-35b-a3b-fp8-predictor
+    api_key: "EMPTY"
+    requires_user_message: true          # <-- the fix
+    context_window: 30000
+    max_output_tokens: 5000
+    max_tokens: 5000
+    api_type: "chat"
+    supports_reasoning: true
+    reasoning_param_style: "vllm_thinking"
+    default_reasoning_effort: "high"
+    supports_response_format: false
+    temperature: 0.7
+    timeout: 30
+    max_retries: 0

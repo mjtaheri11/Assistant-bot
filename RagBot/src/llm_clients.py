@@ -34,6 +34,7 @@ ReasoningEffort = Literal["none", "minimal", "low", "medium", "high", "xhigh"]
 ApiType = Literal["chat", "completions", "responses"]
 
 FALLBACK_MODEL = "oss"
+VLLM_CLUSTER_BASE_TEMPLATE = "http://{host}.admin.svc.cluster.local/v1"
 _FALLBACK_ENCODING = tiktoken.encoding_for_model("gpt-4o-mini")
 _PROMPT_SAFETY_BUFFER = 2000  # keep in sync with the prompt budgeter in the main module
 
@@ -41,8 +42,6 @@ _PROMPT_SAFETY_BUFFER = 2000  # keep in sync with the prompt budgeter in the mai
 
 @dataclass
 class ModelConfig:
-    """Configuration for a specific LLM model."""
-    
     name: str
     provider: str
     model_id: str
@@ -55,6 +54,11 @@ class ModelConfig:
     max_tokens: int = 16000
     reasoning_param_style: str = "openai"
     supports_response_format: bool = True
+    # --- NEW: needed to build per-model vLLM clients on demand ---
+    base_url: str | None = None
+    api_key: str = "EMPTY"
+    timeout: float | None = None
+    max_retries: int = 0
 
     def get_params(
         self,
@@ -94,7 +98,6 @@ class ModelConfig:
         # --- LOGIC FOR CHAT / LEGACY ---
         if self.supports_reasoning:
             if self.reasoning_param_style == "openrouter":
-                # OpenRouter-style: reasoning toggled via extra_body
                 params["max_tokens"] = tokens
                 params["temperature"] = temperature if temperature is not None else self.temperature
                 effort = reasoning_effort or self.default_reasoning_effort
@@ -103,6 +106,18 @@ class ModelConfig:
                 if effort and effort != "none":
                     reasoning_cfg["effort"] = effort
                 existing_extra_body["reasoning"] = reasoning_cfg
+                params["extra_body"] = existing_extra_body
+            elif self.reasoning_param_style == "vllm_thinking":
+                # vLLM chat-template toggle (Gemma/Qwen-style): thinking is
+                # switched on via chat_template_kwargs, NOT a top-level field.
+                params["max_tokens"] = tokens
+                params["temperature"] = temperature if temperature is not None else self.temperature
+                effort = reasoning_effort or self.default_reasoning_effort
+                enable = bool(effort) and effort != "none"
+                existing_extra_body = extra.pop("extra_body", {}) or {}
+                ctk = existing_extra_body.get("chat_template_kwargs", {}) or {}
+                ctk["enable_thinking"] = enable
+                existing_extra_body["chat_template_kwargs"] = ctk
                 params["extra_body"] = existing_extra_body
             else:
                 # OpenAI-native style (unchanged)
@@ -141,34 +156,56 @@ class LLMClientManager:
     async def initialize(self) -> None:
         if self._initialized:
             return
-        
+
+        # Single-endpoint providers: one client serves many model_ids.
         self._clients["gpt"] = AsyncOpenAI(
             base_url=os.getenv("GPT_API_BASE"),
-            api_key=os.getenv("GPT_API_KEY")
-        )
-        self._clients["oss"] = AsyncOpenAI(
-            base_url=os.getenv("OSS_API_BASE"),
-            api_key=os.getenv("OSS_API_KEY"),
-            timeout=config["api_models"]["oss"]["timeout"],
-            max_retries=0
+            api_key=os.getenv("GPT_API_KEY"),
         )
         self._clients["openrouter"] = AsyncOpenAI(
             base_url=os.getenv("OPENROUTER_API_BASE"),
-            api_key=os.getenv("OPENROUTER_API_KEY")
+            api_key=os.getenv("OPENROUTER_API_KEY"),
         )
         self._clients["hooshyar"] = AsyncOpenAI(
             base_url=os.getenv("HOOSHYAR_API_BASE"),
             api_key=os.getenv("HOOSHYAR_API_KEY"),
-            timeout=config["api_models"]["deepseek-v4-flash"]["timeout"], 
-            max_retries=0
+            timeout=config["api_models"]["deepseek-v4-flash"]["timeout"],
+            max_retries=0,
         )
+        # Locally-served (vLLM) models no longer get a hand-written client here.
+        # Their clients are built lazily from each model's own base_url and
+        # cached by URL, so adding a new local model is config-only.
+
         self._load_models()
         self._initialized = True
         print("LLM clients initialized.")
 
+    def _resolve_base_url(self, merged: dict) -> str | None:
+        # 1. explicit full URL wins
+        if merged.get("base_url"):
+            return merged["base_url"]
+        # 2. back-compat: dedicated env var (e.g. OSS_API_BASE) if present
+        env_key = merged.get("base_url_env")
+        if env_key and os.getenv(env_key):
+            return os.getenv(env_key)
+        # 3. construct from the shared cluster template + per-model host
+        host = merged.get("cluster_host")
+        if host:
+            template = config.get("api_default", {}).get(
+                "vllm_base_url_template", VLLM_CLUSTER_BASE_TEMPLATE
+            )
+            return template.format(host=host)
+        return None
+
+    @staticmethod
+    def _resolve_api_key(merged: dict) -> str:
+        key_env = merged.get("api_key_env")
+        if key_env and os.getenv(key_env):
+            return os.getenv(key_env)
+        return merged.get("api_key", "EMPTY")
+
     def _load_models(self) -> None:
         defaults = config.get("api_default", {})
-        
         for name, model_cfg in config.get("api_models", {}).items():
             merged = {**defaults, **model_cfg}
             self._models[name] = ModelConfig(
@@ -182,15 +219,46 @@ class LLMClientManager:
                 default_reasoning_effort=merged.get("default_reasoning_effort"),
                 temperature=merged.get("temperature", 0.7),
                 max_tokens=merged.get("max_tokens", 16000),
-                reasoning_param_style=merged.get("reasoning_param_style", "openai"),  # NEW
-                supports_response_format=merged.get("supports_response_format", True),  # ADD
+                reasoning_param_style=merged.get("reasoning_param_style", "openai"),
+                supports_response_format=merged.get("supports_response_format", True),
+                # NEW
+                base_url=self._resolve_base_url(merged),
+                api_key=self._resolve_api_key(merged),
+                timeout=merged.get("timeout"),
+                max_retries=merged.get("max_retries", 0),
             )
+
+    def _client_for_model(self, cfg: ModelConfig) -> AsyncOpenAI:
+        # Pre-built single-endpoint providers (gpt / openrouter / hooshyar).
+        if cfg.provider != "vllm":
+            try:
+                return self._clients[cfg.provider]
+            except KeyError:
+                raise ValueError(
+                    f"No client for provider '{cfg.provider}' (model '{cfg.name}')."
+                )
+        # vLLM: one client per base_url, built on first use and cached.
+        if not cfg.base_url:
+            raise ValueError(
+                f"vLLM model '{cfg.name}' has no base_url. Set 'base_url', "
+                f"'cluster_host', or 'base_url_env' in its config."
+            )
+        client = self._clients.get(cfg.base_url)
+        if client is None:
+            client = AsyncOpenAI(
+                base_url=cfg.base_url,
+                api_key=cfg.api_key or "EMPTY",
+                timeout=cfg.timeout if cfg.timeout is not None else 30,
+                max_retries=cfg.max_retries,
+            )
+            self._clients[cfg.base_url] = client
+        return client
 
     def get_model(self, model_name: str) -> tuple[AsyncOpenAI, ModelConfig]:
         if model_name not in self._models:
             raise ValueError(f"Model '{model_name}' not found.")
-        config = self._models[model_name]
-        return self._clients[config.provider], config
+        cfg = self._models[model_name]
+        return self._client_for_model(cfg), cfg
 
     async def _execute_call(
         self,

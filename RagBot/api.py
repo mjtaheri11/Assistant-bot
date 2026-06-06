@@ -989,7 +989,8 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                 "choices": choices,
                 "modules": modules,
                 "do_clarify": do_clarify,
-                "response_templated": response_template
+                "response_templated": response_template, 
+                "parameters": parameters
             },
             elapsed_time=elapsed_time,
         )
@@ -1044,7 +1045,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                 "do_suggest": do_suggest,
                 "choices": choices,
                 "parameters": parameters,
-                "response_template": response_template
+                "response_template": response_template, 
             },
             elapsed_time=elapsed_time,
         )

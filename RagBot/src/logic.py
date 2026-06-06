@@ -19,7 +19,6 @@ from collections import Counter
 from typing import List, Tuple, Union, Set, Any, Optional
 from .prompts import (
     RAG_CONCISE_SYSTEM_PROMPT,
-    RAG_CONCISE_SYSTEM_PROMPT_WITH_VIDEO,
     RAG_EXPLANATORY_SYSTEM_PROMPT,
     RAG_NORMAL_SYSTEM_PROMPT,
     UTTERANCE_PARAPHRASER_PROMPT,
@@ -535,7 +534,7 @@ async def get_chat_response_legacy(
                 "do_sample": False,
                 "seed": 42,
                 "sampling_method": "greedy",
-                "reasoning_effort": "low"
+                "reasoning_effort": "high"
             }
         llm = ChatOpenAI(
             openai_api_base=api_base,
@@ -682,7 +681,7 @@ async def utterance_paraphraser(
         user_utterance: str, 
         assistant_name: str = None, 
         model_name: str = "", 
-        reasoning_effort: str = "low"
+        reasoning_effort: str = "high"
     ) -> str:
     serialized_history = history_serializer(history)
     if not model_name:
@@ -701,7 +700,7 @@ async def utterance_paraphraser(
             question=user_utterance,
         )
 
-    response_1 = await get_chat_response(prompt, model_name=model_name, reasoning_effort=reasoning_effort, output_format="text",)
+    response_1 = await get_chat_response(prompt, model_name=model_name, reasoning_effort=reasoning_effort, output_format="text", extra_body={"chat_template_kwargs": {"enable_thinking": True}})
     response = json_cleaning_1(response_1)
     return response
 
@@ -709,7 +708,7 @@ async def utterance_paraphraser(
 async def get_chat_response(
     prompt: str,
     model_name: str,
-    reasoning_effort: str = "low",
+    reasoning_effort: str = "high",
     output_format: str = "auto",
     **extra: Any,
 ) -> str:
@@ -773,7 +772,7 @@ async def chitchat_responder(
     context: str, 
     history: List[tuple[str, str]],
     model_name: bool = "", 
-    reasoning_effort: str = "low"
+    reasoning_effort: str = "high"
     ):
     if not model_name:
         model_name = config["api_default"]["chitchat_responder_model_name"]
@@ -782,12 +781,12 @@ async def chitchat_responder(
                              context=context, 
                              history=serialized_history
                              )
-    response = await get_chat_response(prompt, model_name, reasoning_effort=reasoning_effort, output_format="text")
+    response = await get_chat_response(prompt, model_name, reasoning_effort=reasoning_effort, output_format="text", extra_body={"chat_template_kwargs": {"enable_thinking": True}})
     return response
 
     
 @observe()
-async def answer_validator(question: str, context: str, answer: str, model_name: str = "", reasoning_effort="low") -> str:
+async def answer_validator(question: str, context: str, answer: str, model_name: str = "", reasoning_effort="high") -> str:
     if not model_name: 
         model_name = config["api_default"]["answer_validator_model_name"]
     prompt = ANSWER_VALIDATOR_PROMPT.format(
@@ -795,7 +794,7 @@ async def answer_validator(question: str, context: str, answer: str, model_name:
         question=question,
         answer=answer,
     )
-    response = await get_chat_response(prompt, model_name, reasoning_effort=reasoning_effort, output_format="text",)
+    response = await get_chat_response(prompt, model_name, reasoning_effort=reasoning_effort, output_format="text",extra_body={"chat_template_kwargs": {"enable_thinking": True}})
     return response
 
 
@@ -1140,7 +1139,7 @@ async def sql_responder_(
     detected_module: str = "",
     context: str = "",
     model_name: str = "",
-    reasoning_effort="low"
+    reasoning_effort="high"
 ):
     if not model_name:
         model_name = config["api_default"]["sql_responder_model_name"]
@@ -1150,7 +1149,7 @@ async def sql_responder_(
 
     bo_prompt = format_sql_prompt(query, schema=schema, examples=context)
     raw_json_response = await get_chat_response(
-        bo_prompt, model_name, reasoning_effort=reasoning_effort, output_format="json"
+        bo_prompt, model_name, reasoning_effort=reasoning_effort, output_format="json", extra_body={"chat_template_kwargs": {"enable_thinking": True}}
     )
     response = json_cleaning(raw_json_response)
     return response
@@ -1162,7 +1161,7 @@ async def parameters_responder(
     sql_query,
     detected_module: str,
     model_name: str = "",
-    reasoning_effort="low"
+    reasoning_effort="high"
     ):
 
     if not model_name: 
@@ -1175,7 +1174,7 @@ async def parameters_responder(
     selections = {table: ['parameters'] for table in sql_proposed_tables}
     bo_parameters_schema = subselect_yaml(yaml_schema, selections, "yaml")
     prompt = format_param_responder_prompt(paraphrased_utterance, sql_query, bo_parameters_schema, BUSINESS_OBJECT_PARAMETER_EXTRACTOR_PROMPT)
-    raw_json_response = await get_chat_response(prompt, model_name, reasoning_effort=reasoning_effort, output_format="json",)
+    raw_json_response = await get_chat_response(prompt, model_name, reasoning_effort=reasoning_effort, output_format="json", extra_body={"chat_template_kwargs": {"enable_thinking": True}})
     response = json_cleaning(raw_json_response)
     return response
 
@@ -1192,7 +1191,7 @@ async def _determine_final_route(
     utterance: str,
     query_embedding: List,
     model_name: str = "",
-    reasoning_effort="low",
+    reasoning_effort="high",
     sql_mode: bool = True,
     ticket_mode: bool = True,
 ) -> str:
@@ -1258,7 +1257,7 @@ async def _determine_final_route(
         SEMANTIC_ROUTER.format(user_query=utterance, class_list=plausible_routes),
         model_name,
         reasoning_effort=reasoning_effort,
-        output_format="text"
+        output_format="text", extra_body={"chat_template_kwargs": {"enable_thinking": True}}
     )
     return result
 
@@ -1355,7 +1354,7 @@ async def ticket_responder_(
     history: List[tuple[str, str]],
     database_index: str = config["database"]["collection_name"],
     model_name: str = "",
-    reasoning_effort: str = "low",
+    reasoning_effort: str = "high",
 ) -> dict:
     if not model_name:
         model_name = config["api_default"]["ticket_responder_model_name"]
@@ -1430,7 +1429,7 @@ async def ticket_responder_(
     )
 
     raw_response = await get_chat_response(
-        prompt, model_name, reasoning_effort=reasoning_effort, output_format="json"
+        prompt, model_name, reasoning_effort=reasoning_effort, output_format="json", extra_body={"chat_template_kwargs": {"enable_thinking": True}}
     )
     cleaned = json_cleaning(raw_response)
 
@@ -1463,7 +1462,7 @@ async def ticket_responder_(
 async def query_responder(
     query, context, history,
     company_name=None, assistant_name=None,
-    answer_type="concise", reasoning_effort="low",
+    answer_type="concise", reasoning_effort="high",
     model_name: str = "", use_video_link: bool = True,
 ) -> Tuple[str, dict, str]:
     """
@@ -1496,7 +1495,7 @@ async def query_responder(
     )
     raw = await get_chat_response(prompt, model_name,
                                   reasoning_effort=reasoning_effort,
-                                  output_format=fmt)
+                                  output_format=fmt, extra_body={"chat_template_kwargs": {"enable_thinking": True}})
     cleaned = json_cleaning(raw)
 
     response_text   = cleaned
@@ -1626,20 +1625,21 @@ async def chat_responder_(
         }
         template_key = qa_template_key_map.get(response_type, "qa_normal")
 
-    if detected_module:
-        do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, input_module=detected_module, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context, use_sql_modules=use_sql_modules, clarification_threshold=clarification_threshold, template_key=template_key, target_model_name=target_model_name)
-    else:
-        do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context, use_sql_modules=use_sql_modules, clarification_threshold=clarification_threshold, template_key=template_key, target_model_name=target_model_name)
-    if do_clarify:
-        result_temp = is_sql, paraphrased_utterance, MODULE_CLARIFICATION_RESPONSE_TEMPLATE, "", do_clarify, modules, parameters, sql_response_template, has_video_link, is_ticket
-        return result_temp
-
     if sql_mode:
         if route_response == "sql":
             num_retrieve_context = config["retriever"]["sql_retrieved_rank2_documents"]
             detected_database_index = config["database"]["sql_collection_name"]
         else:
             detected_database_index = database_index
+            
+    if detected_module:
+        do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context, use_sql_modules=use_sql_modules, clarification_threshold=clarification_threshold, template_key=template_key, target_model_name=target_model_name, input_module=detected_module)
+    else:
+        do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context, use_sql_modules=use_sql_modules, clarification_threshold=clarification_threshold, template_key=template_key, target_model_name=target_model_name)
+    if do_clarify:
+        result_temp = is_sql, paraphrased_utterance, MODULE_CLARIFICATION_RESPONSE_TEMPLATE, "", do_clarify, modules, parameters, sql_response_template, has_video_link, is_ticket
+        return result_temp
+
             
     if route_response == "sql" and sql_mode:
         selected_module = modules[0] 
