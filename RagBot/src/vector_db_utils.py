@@ -4,7 +4,8 @@ from src.initiate_vdb import (
     delete_vector_database,
     list_vector_databases,
     get_collection_info,
-    add_documents_to_existing_collection
+    add_documents_to_existing_collection,
+    upsert_documents_by_source
 )
 
 __all__ = [
@@ -13,7 +14,8 @@ __all__ = [
     'delete_vector_database',
     'list_vector_databases',
     'get_collection_info',
-    'add_documents_to_existing_collection'
+    'add_documents_to_existing_collection',
+    'upsert_documents_by_source'
 ]
 
 # create database via API

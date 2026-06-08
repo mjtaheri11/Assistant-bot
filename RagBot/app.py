@@ -381,6 +381,7 @@ def create_database_api_request(
     recreate: bool = True,
     batch_size: int = 100,
     default_collection: bool = False,
+    write_mode: str = "recreate",          # <-- add
 ):
     params = {
         "company_name": company_name,
@@ -388,6 +389,7 @@ def create_database_api_request(
         "recreate": recreate,
         "batch_size": batch_size,
         "default_collection": default_collection,
+        "write_mode": write_mode,           # <-- add
     }
     files = [('files', (file.name, file)) for file in uploaded_files]
 
@@ -452,6 +454,12 @@ def boolean_mapper(type_):
         return True
     elif type_.strip() == "خیر":
         return False
+
+def write_mode_mapper(label: str) -> str:
+    """Map the Persian write-mode label to the API's `write_mode` value."""
+    if label and label.strip().startswith("ویرایش"):
+        return "update_files"
+    return "recreate"
 
 def render_ticket_card(ticket_payload: dict):
     """
@@ -621,17 +629,28 @@ def main():
                     # Show a spinner while processing
                     with st.spinner("در حال ساخت پایگاه داده هستم ..."):
                         # Make the POST request
+                        write_mode = write_mode_mapper(
+                            st.session_state.get("temporal_write_mode", "حذف و بازسازی کل مجموعه")
+                        )
                         status, message, data = create_database_api_request(
                             st.session_state["temporal_company_name"],
                             st.session_state["temporal_assistant_name"],
                             st.session_state["uploaded_files"],
-                            recreate=boolean_mapper(st.session_state.get("temporal_recreate", "بله")),
+                            recreate=(write_mode == "recreate"),
                             batch_size=int(st.session_state.get("temporal_batch_size", 100)),
                             default_collection=boolean_mapper(
                                 st.session_state.get("temporal_default_collection", "خیر")
                             ),
+                            write_mode=write_mode,
                         )
                         if status == "success":
+                            if write_mode == "update_files" and data:
+                                st.toast(
+                                    f"به‌روزرسانی انجام شد: "
+                                    f"{data.get('vectors_deleted', 0)} چانک قبلی حذف و "
+                                    f"{data.get('total_documents', 0)} چانک جدید افزوده شد.",
+                                    icon="✅",
+                                )
                             udpate_temporal_names("assistant_name")
                             udpate_temporal_names("company_name")
                             st.session_state["does_evaluate"] = boolean_mapper(
@@ -697,14 +716,24 @@ def main():
                         key="temporal_default_collection",
                         label_visibility="collapsed",
                     )
-                    st.markdown("بازسازی مجموعه در صورت وجود")
+                    st.markdown("نحوه‌ی نوشتن فایل‌ها در مجموعه")
                     st.selectbox(
-                        "بازسازی مجموعه در صورت وجود",
-                        ["بله", "خیر"],
-                        key="temporal_recreate",
+                        "نحوه‌ی نوشتن فایل‌ها در مجموعه",
+                        [
+                            "ویرایش فقط فایل‌های آپلودشده (حفظ بقیه‌ی اسناد)",
+                            "حذف و بازسازی کل مجموعه",
+                        ],
+                        key="temporal_write_mode",
                         label_visibility="collapsed",
+                        help=(
+                            "«حذف و بازسازی کل مجموعه» تمام اسناد موجود را پاک کرده و "
+                            "مجموعه را فقط با همین فایل‌ها از نو می‌سازد. "
+                            "«ویرایش فقط فایل‌های آپلودشده» تنها برش‌های مربوط به همین "
+                            "نام‌فایل‌ها را حذف و با نسخه‌ی جدید جایگزین می‌کند و بقیه‌ی "
+                            "اسناد دست‌نخورده می‌مانند. (برای حالت ویرایش، گزینه‌ی «استفاده "
+                            "از مجموعه‌ی پیش‌فرض» را «بله» انتخاب کنید.)"
+                        ),
                     )
-
                     st.markdown("اندازه دسته پردازش")
                     st.number_input(
                         "اندازه دسته پردازش",

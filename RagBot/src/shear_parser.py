@@ -59,66 +59,88 @@ class ProcessDocs:
     def remove_table_of_contents(text: str) -> str:
         """
         Removes the table of contents from a given text.
-        This function identifies the table of contents section starting with
-        the word "Contents" and removes all subsequent lines that match the
-        TOC entry pattern (e.g., "[...](#_Toc...)").
-        Args:
-            text: The input string containing the document text.
-        Returns:
-            The text with the table of contents section removed.
         """
         lines = text.split('\n')
-        # This list will hold the lines of the final document.
         output_lines = []
-        # A flag to indicate if the current line is within the TOC section.
         in_toc_section = False
-        # A regex pattern to identify TOC entry lines.
-        toc_pattern = re.compile(r'\[.*\]\(#_[Tt]oc\d*\)')
+
+        # Robust regex for identifying TOC patterns
+        toc_anchor_pattern = re.compile(r'_Toc\d+', re.IGNORECASE)
+        toc_link_pattern = re.compile(r'\[.*?\]\s*\(.*?\)')
+        dot_leader_pattern = re.compile(r'\.{2,}\s*\d+\s*$')
+        end_number_pattern = re.compile(r'\s{2,}\d+\s*$')
+
         for line in lines:
             stripped_line = line.strip()
-            # Check for the start of the table of contents.
-            if "Contents" in stripped_line or "فهرست" in stripped_line or "Content" in stripped_line:
+
+            # Remove escape backslashes temporarily to safely evaluate strings
+            # (e.g., turning \[Title\] into [Title])
+            clean_line = stripped_line.replace('\\', '')
+
+            # FIX 1: Use .strip() instead of .lstrip() to remove formatting from BOTH sides
+            clean_header = clean_line.strip('#*- \t\r_').lower()
+
+            is_toc_header = clean_header in ["contents", "table of contents", "فهرست", "فهرست مطالب"]
+
+            # FIX 2: Search for the _Toc anchor ANYWHERE in the line
+            is_toc_anchor = bool(toc_anchor_pattern.search(clean_line))
+
+            # Trigger TOC deletion mode
+            if (is_toc_header or is_toc_anchor) and not in_toc_section:
                 in_toc_section = True
-                # Skip the "Contents" line itself.
                 continue
-            # If we are in the TOC section, we check if the line is a TOC entry.
+
             if in_toc_section:
-                # If the line is a TOC entry or an empty line within the TOC, we skip it.
-                if toc_pattern.search(stripped_line) or not stripped_line:
+                # Keep skipping blank lines within the TOC
+                if not stripped_line:
                     continue
-                # If it's not a TOC entry, the TOC section has ended.
+
+                # Check if the line matches visual TOC entry patterns or contains another _Toc anchor
+                if (is_toc_anchor or
+                        toc_link_pattern.search(clean_line) or
+                        dot_leader_pattern.search(clean_line) or
+                        end_number_pattern.search(clean_line)):
+                    continue
                 else:
+                    # End of TOC reached
                     in_toc_section = False
-            # Add the line to our output list if it's not part of the TOC.
-            output_lines.append(line)
-        # Join the lines back into a single string and remove any leading newlines
-        # that might have been left after removing the TOC block.
+
+            if not in_toc_section:
+                output_lines.append(line)
+
         return '\n'.join(output_lines).lstrip('\n')
     
     def process_doc(self):
         """
         Process the Word document and return cleaned markdown text.
-        
-        Returns:
-            str: Cleaned markdown text that starts with a header (#)
         """
         docx_bytes_io = io.BytesIO(self.doc)
-        result = self.md.convert(docx_bytes_io).text_content
-        
-        # Remove stray backslashes
-        output_result = self.remove_stray_backslashes(result)
+        output_result = self.md.convert(docx_bytes_io).text_content
+
         # Remove table of contents
         output_result = self.remove_table_of_contents(output_result)
-        
-        # Ensure document starts with '#' header
-        index = output_result.find('#')
-        if index != -1:
-            output_result = output_result[index:]
+
+        # FIX 3: Safely ensure document starts with an actual Markdown header
+        # instead of blindly truncating at the first '#' character it finds.
+        lines = output_result.split('\n')
+        header_index = -1
+
+        # Matches a true markdown header (e.g., "# Title" or "## Subtitle")
+        header_pattern = re.compile(r'^#{1,6}\s')
+
+        for i, line in enumerate(lines):
+            if header_pattern.match(line.strip()):
+                header_index = i
+                break
+
+        if header_index != -1:
+            output_result = '\n'.join(lines[header_index:])
         else:
-            # If no header found, add a default one
+            # If no actual header found, add a default one
             output_result = "# Document\n\n" + output_result
-        
+
         return output_result
+
 
 
 # ============================================================================

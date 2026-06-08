@@ -261,7 +261,7 @@ api_default:
   vllm_base_url_template: "http://{host}.admin.svc.cluster.local/v1"
 
 api_default:
-  temperature: 0.7
+  temperature: .7
   max_tokens: 16000
   module_route_model_name: deepseek-v4-flash
   query_responder_model_name: deepseek-v4-flash
@@ -283,7 +283,7 @@ api_models:
     supports_reasoning: true
     reasoning_param_style: "openrouter"
     default_reasoning_effort: "low"
-    temperature: 0.7
+    temperature: 1
     timeout: 25
 
   deepseek-v4-flash:
@@ -505,18 +505,19 @@ api_models:
 
   qwen36-35b:
     provider: vllm
-    model_id: "qwen3-35b"
+    model_id: "qwen3-35b"                 # must match --served-model-name
     cluster_host: qwen3-35b-a3b-fp8-predictor
     api_key: "EMPTY"
-    requires_user_message: true          # <-- the fix
+    api_type: "completions"               # was "chat" — raw completions, no chat template
+    prompt_format: "qwen3"                # render ChatML ourselves (system-only OK)
     context_window: 30000
     max_output_tokens: 5000
     max_tokens: 5000
-    api_type: "chat"
     supports_reasoning: true
     reasoning_param_style: "vllm_thinking"
-    default_reasoning_effort: "high"
+    default_reasoning_effort: "high"      # set "none" to skip the <think> block
     supports_response_format: false
     temperature: 0.7
     timeout: 30
     max_retries: 0
+    qwen_thinking: "optional"          # "optional" → controlled by reasoning_effort

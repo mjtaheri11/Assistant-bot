@@ -59,6 +59,8 @@ class ModelConfig:
     api_key: str = "EMPTY"
     timeout: float | None = None
     max_retries: int = 0
+    # --- NEW: how to render the prompt for api_type == "completions" ---
+    prompt_format: str = "generic"   # "generic" | "qwen3"
 
     def get_params(
         self,
@@ -144,6 +146,58 @@ def messages_to_prompt(messages: list[dict[str, str]]) -> str:
     parts.append("Assistant:")
     return "\n\n".join(parts)
 
+_IM_START = "<|im_start|>"
+_IM_END = "<|im_end|>"
+_VALID_ROLES = ("system", "user", "assistant", "tool")
+
+
+def qwen3_messages_to_prompt(
+    messages: list[dict[str, str]],
+    *,
+    thinking: str = "optional",     # "optional" | "always" | "never"
+    enable_thinking: bool = True,   # used when thinking == "optional"
+) -> str:
+    """Render Qwen3 ChatML for /v1/completions (vLLM doesn't run the chat
+    template here, so we emit ChatML ourselves).
+
+    Verified behavior of this checkpoint:
+      * bare assistant cue           -> empty <think></think>, no reasoning
+      * cue + prefilled '<think>\\n'  -> model reasons, then closes </think>
+    So we prefill '<think>' to engage reasoning; a closed empty block is the
+    deterministic non-thinking path.
+    """
+    parts: list[str] = []
+    for msg in messages:
+        role = msg.get("role", "user")
+        if role not in _VALID_ROLES:
+            role = "user"
+        content = msg.get("content", "") or ""
+        parts.append(f"{_IM_START}{role}\n{content}{_IM_END}\n")
+
+    parts.append(f"{_IM_START}assistant\n")
+
+    want_think = thinking == "always" or (thinking == "optional" and enable_thinking)
+    if want_think:
+        parts.append("<think>\n")               # force the reasoning channel
+    else:
+        parts.append("<think>\n\n</think>\n\n")  # deterministic non-thinking
+    return "".join(parts)
+    
+
+def render_completion_prompt(
+    messages: list[dict[str, str]],
+    cfg: "ModelConfig",
+    *,
+    enable_thinking: bool = True,
+) -> str:
+    """Pick the raw-prompt renderer for an api_type == 'completions' model."""
+    if getattr(cfg, "prompt_format", "generic") == "qwen3":
+        return qwen3_messages_to_prompt(
+            messages,
+            thinking=getattr(cfg, "qwen_thinking", "optional"),
+            enable_thinking=enable_thinking,
+        )
+    return messages_to_prompt(messages)
 
 class LLMClientManager:
     """Manages LLM clients and model configurations."""
@@ -203,6 +257,22 @@ class LLMClientManager:
         if key_env and os.getenv(key_env):
             return os.getenv(key_env)
         return merged.get("api_key", "EMPTY")
+    
+    @staticmethod
+    def _take_thinking_flag(params: dict[str, Any], *, default: bool = True) -> bool:
+        """Completions path only: pull `enable_thinking` out of the chat-only
+        extra_body.chat_template_kwargs (set by reasoning_param_style ==
+        'vllm_thinking') and remove it, since /v1/completions never runs the
+        chat template and would ignore — or reject — those kwargs."""
+        enable = default
+        extra_body = params.get("extra_body")
+        if isinstance(extra_body, dict):
+            ctk = extra_body.pop("chat_template_kwargs", None)
+            if isinstance(ctk, dict) and "enable_thinking" in ctk:
+                enable = bool(ctk["enable_thinking"])
+            if not extra_body:
+                params.pop("extra_body", None)
+        return enable
 
     def _load_models(self) -> None:
         defaults = config.get("api_default", {})
@@ -226,6 +296,7 @@ class LLMClientManager:
                 api_key=self._resolve_api_key(merged),
                 timeout=merged.get("timeout"),
                 max_retries=merged.get("max_retries", 0),
+                prompt_format=merged.get("prompt_format", "generic"),
             )
 
     def _client_for_model(self, cfg: ModelConfig) -> AsyncOpenAI:
@@ -274,7 +345,13 @@ class LLMClientManager:
                 **params
             )
         elif config.api_type == "completions":
-            prompt = messages_to_prompt(messages)
+            # vLLM /v1/completions feeds raw text (no chat template), so we
+            # render ChatML ourselves — this is what makes a system-only
+            # prompt valid for Qwen3.
+            enable_thinking = self._take_thinking_flag(params)
+            prompt = render_completion_prompt(
+                messages, config, enable_thinking=enable_thinking
+            )
             params.pop("messages", None)
             return await client.completions.create(prompt=prompt, **params)
         else:

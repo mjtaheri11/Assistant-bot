@@ -43,7 +43,8 @@ from src.vector_db_utils import (
     delete_vector_database,
     list_vector_databases,
     get_collection_info,
-    add_documents_to_existing_collection
+    add_documents_to_existing_collection,
+    upsert_documents_by_source
 )
 from src.orm import Postgres
 from src.config import config
@@ -126,7 +127,7 @@ class ChatRequest(BaseModel):
     model_name: Optional[str] = ""
     sql_mode: Optional[bool] = False  # Toggle between legacy and SQL agent mode
     use_video_links: Optional[bool] = True
-    ticket_mode: Optional[bool] = True
+    ticket_mode: Optional[bool] = False
 
  
 class ChatResponse(BaseModel):
@@ -217,6 +218,8 @@ class CreateDatabaseResponse(BaseModel):
     message: str
     total_documents: int
     files_processed: List[str]
+    write_mode: Optional[str] = None          # <-- add
+    vectors_deleted: Optional[int] = None      # <-- add
 
 class ListCollectionsResponse(BaseModel):
     collections: List[str]
@@ -848,7 +851,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
             )
             if len(history) == 0: is_first_message = True
             
-            if len(chat_request.query.split()) > 60:
+            if len(chat_request.query.split()) > 200:
                 paraphrased_utterance, response, context = (
                     "No valid query",
                     RESPONSE_TEMPLATE_FOR_NO_ANSWER,
@@ -938,18 +941,20 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         ticket_mode=chat_request.ticket_mode
                     )
                     if do_clarify:
-                        do_suggest = True 
+                        do_suggest = True
                         elapsed_time = time.time() - start_time
                         _ = await postgres.insert_message_choices(message_id, *modules)
-                        _ = await postgres.update_last_chat_row(
-                            session_id,
-                            paraphrased_utterance,
-                            response,
-                            is_sql,
-                            elapsed_time,
-                            do_suggest,
-                            response_template,
-                            json.dumps(parameters)
+                        modules_str = ",".join(modules) if modules else ""   # <-- add
+                        await postgres.update_last_chat_row(
+                            session_id=session_id,
+                            paraphrased_query=paraphrased_utterance,
+                            bot_response=response,
+                            is_sql=is_sql,
+                            elapsed_time=elapsed_time,
+                            do_suggest=do_suggest,
+                            selected_module=modules_str,
+                            response_template=response_template,
+                            parameters=json.dumps(parameters),
                         )
                         agent = "module_clarification"
                         message = "modules proposed"
@@ -987,10 +992,11 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                 "is_sql": is_sql,
                 "do_suggest": do_suggest,
                 "choices": choices,
-                "modules": modules,
+                "context_modules": modules,
                 "do_clarify": do_clarify,
                 "response_templated": response_template, 
-                "parameters": parameters
+                "parameters": parameters,
+                "has_video_link": has_video_link
             },
             elapsed_time=elapsed_time,
         )
@@ -1005,7 +1011,8 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                 "is_sql": is_sql,
                 "choices": choices,
                 "do_suggest": do_suggest,
-                "parameters": parameters
+                "parameters": parameters,
+                "has_video_link": has_video_link
             }
         )
         response = response.replace("→", "←")
@@ -1046,6 +1053,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                 "choices": choices,
                 "parameters": parameters,
                 "response_template": response_template, 
+                "has_video_link": has_video_link
             },
             elapsed_time=elapsed_time,
         )
@@ -1219,6 +1227,31 @@ async def _resolve_database_id(
             detail=f"Failed to create database entry: {str(e)}",
         )
 
+WRITE_MODE_RECREATE = "recreate"
+WRITE_MODE_APPEND = "append"
+WRITE_MODE_UPDATE_FILES = "update_files"
+VALID_WRITE_MODES = {WRITE_MODE_RECREATE, WRITE_MODE_APPEND, WRITE_MODE_UPDATE_FILES}
+
+
+def _resolve_write_mode(write_mode: Optional[str], recreate: bool) -> str:
+    """
+    `write_mode` wins when supplied; otherwise fall back to the legacy
+    `recreate` boolean so existing callers keep working:
+        recreate=True  -> "recreate"
+        recreate=False -> "append"
+    """
+    if write_mode:
+        mode = write_mode.strip().lower()
+        if mode not in VALID_WRITE_MODES:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    f"Invalid write_mode '{write_mode}'. "
+                    f"Choose one of: {sorted(VALID_WRITE_MODES)}."
+                ),
+            )
+        return mode
+    return WRITE_MODE_RECREATE if recreate else WRITE_MODE_APPEND
 
 async def _rollback_database_id(
     default_collection: bool,
@@ -1249,21 +1282,25 @@ async def create_database_endpoint(
     recreate: bool = True,
     batch_size: int = 100,
     default_collection: bool = False,
+    write_mode: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Two flows:
+    Write modes (via `write_mode`, falling back to legacy `recreate` when omitted):
+      * "recreate"     - wipe the whole collection and rebuild it.
+      * "append"       - add the new chunks, touch nothing else.
+      * "update_files" - delete only the vectors whose metadata.source matches the
+                         uploaded filenames, then insert the new chunks. Every
+                         other file in the collection is preserved.
 
-    1. default_collection=True
-       - Collection name comes from config["database"]["collection_name"].
-       - No UUID, no PostgreSQL row.
-       - `recreate` IS honored: True wipes and rebuilds, False appends.
-
-    2. default_collection=False
-       - A new PostgreSQL row is created; its UUID is used as the collection name.
-       - `recreate` is IGNORED (a fresh UUID can't pre-exist in Qdrant).
+    Collection selection is unchanged:
+      * default_collection=True  -> fixed config name (no UUID / no PG row).
+      * default_collection=False -> a brand-new UUID collection; since it cannot
+        pre-exist, the mode is forced to "recreate".
     """
     try:
-        # Step 1: Process and chunk uploaded files
+        effective_mode = _resolve_write_mode(write_mode, recreate)
+
+        # Step 1: process + chunk uploaded files
         logger.info("=" * 60)
         logger.info("STEP 1: Processing uploaded files")
         logger.info("=" * 60)
@@ -1285,10 +1322,8 @@ async def create_database_endpoint(
                 detail="No documents were extracted from the uploaded files",
             )
 
-        # Step 2: Resolve database_id (default → config, else → new UUID)
-        logger.info("=" * 60)
+        # Step 2: resolve database_id (default -> config, else -> new UUID)
         logger.info("STEP 2: Resolving database_id")
-        logger.info("=" * 60)
         database_id = await _resolve_database_id(
             default_collection=default_collection,
             postgres=postgres,
@@ -1296,42 +1331,50 @@ async def create_database_endpoint(
             assistant_name=assistant_name,
         )
 
-        # Step 3: `recreate` only applies to the default (named) collection.
-        # Non-default flows always create fresh because the UUID is brand new.
-        if default_collection:
-            effective_recreate = recreate
-        else:
-            effective_recreate = True
-            if recreate is False:
-                logger.info(
-                    "Ignoring recreate=False for non-default collection: "
-                    "new UUID-based collection cannot pre-exist in Qdrant."
-                )
+        # Step 3: a fresh UUID collection can only be created from scratch
+        if not default_collection and effective_mode != WRITE_MODE_RECREATE:
+            logger.info(
+                f"Forcing write_mode='recreate' for new UUID collection "
+                f"(requested '{effective_mode}')."
+            )
+            effective_mode = WRITE_MODE_RECREATE
 
-        # Step 4: Create the Qdrant collection
-        logger.info("=" * 60)
-        logger.info("STEP 4: Creating Qdrant collection")
-        logger.info("=" * 60)
+        # Step 4: write to Qdrant
+        logger.info(f"STEP 4: Writing to Qdrant (mode={effective_mode})")
+        vectors_deleted = None
         try:
-            if use_config:
-                collection_name = create_vector_database_from_config(
+            if effective_mode == WRITE_MODE_UPDATE_FILES:
+                summary = upsert_documents_by_source(
                     database_id=database_id,
-                    all_documents=all_documents,
-                    recreate=effective_recreate,
-                    batch_size=batch_size,
-                )
-            else:
-                model_manager = ModelManager()
-                collection_name = create_vector_database(
-                    database_id=database_id,
-                    all_documents=all_documents,
+                    documents=all_documents,
                     qdrant_client=qdrant_client,
-                    embedding_model=model_manager.embedding_model,
-                    recreate=effective_recreate,
+                    embedding_model=None,        # use config default
                     batch_size=batch_size,
+                    create_if_missing=True,
                 )
+                vectors_deleted = summary["deleted"]
+                collection_name = database_id
+            else:
+                recreate_flag = (effective_mode == WRITE_MODE_RECREATE)
+                if use_config:
+                    collection_name = create_vector_database_from_config(
+                        database_id=database_id,
+                        all_documents=all_documents,
+                        recreate=recreate_flag,
+                        batch_size=batch_size,
+                    )
+                else:
+                    model_manager = ModelManager()
+                    collection_name = create_vector_database(
+                        database_id=database_id,
+                        all_documents=all_documents,
+                        qdrant_client=qdrant_client,
+                        embedding_model=model_manager.embedding_model,
+                        recreate=recreate_flag,
+                        batch_size=batch_size,
+                    )
         except Exception as e:
-            logger.error(f"❌ Failed to create Qdrant collection: {e}")
+            logger.error(f"❌ Failed to write to Qdrant: {e}")
             await _rollback_database_id(default_collection, postgres, database_id)
             raise HTTPException(
                 status_code=500,
@@ -1343,17 +1386,19 @@ async def create_database_endpoint(
         logger.info("=" * 60)
         logger.info("PIPELINE COMPLETED SUCCESSFULLY")
         logger.info(f"Database ID:        {database_id}")
-        logger.info(f"Default collection: {default_collection}")
-        logger.info(f"Effective recreate: {effective_recreate}")
+        logger.info(f"Write mode:         {effective_mode}")
+        logger.info(f"Vectors deleted:    {vectors_deleted}")
         logger.info(f"Total documents:    {len(all_documents)}")
         logger.info("=" * 60)
 
         return {
             "database_id": database_id,
             "collection_name": collection_name,
-            "message": f"Database created successfully. Collection: {collection_name}",
+            "message": f"Database written successfully (mode={effective_mode}).",
             "total_documents": len(all_documents),
             "files_processed": list(processed_files.keys()),
+            "write_mode": effective_mode,
+            "vectors_deleted": vectors_deleted,
         }
 
     except HTTPException:
@@ -1364,7 +1409,6 @@ async def create_database_endpoint(
             status_code=500,
             detail=f"Failed to create database: {str(e)}",
         )
-
 
 async def create_nl2sql_database(
     files: List[UploadFile] = File(..., description="JSON files containing NL2SQL examples"),
@@ -1560,21 +1604,21 @@ async def create_database(
     assistant_name: str = Query(..., description="Assistant name"),
     recreate: bool = Query(
         True,
+        description="Legacy flag, used only when `write_mode` is omitted.",
+    ),
+    write_mode: Optional[str] = Query(
+        None,
         description=(
-            "Only effective when `default_collection=True`. "
-            "True = wipe and rebuild the default collection; "
-            "False = append to it. Ignored when `default_collection=False`."
+            "How to write into the collection: "
+            "'recreate' (wipe + rebuild the whole index), "
+            "'append' (add only), or "
+            "'update_files' (replace just the uploaded filenames, keep the rest). "
+            "Falls back to the legacy `recreate` flag if omitted. "
+            "Forced to 'recreate' for non-default UUID collections."
         ),
     ),
-    batch_size: int = Query(100, description="Batch size for processing documents", ge=1, le=1000),
-    default_collection: bool = Query(
-        False,
-        description=(
-            "If True, writes to the fixed default collection from config "
-            "(no UUID, no PostgreSQL row). If False, generates a new UUID-named "
-            "per-tenant collection."
-        ),
-    ),
+    batch_size: int = Query(100, description="Batch size", ge=1, le=1000),
+    default_collection: bool = Query(False, description="Write to the fixed default collection."),
 ):
     postgres = Postgres()
     return await create_database_endpoint(
@@ -1586,6 +1630,7 @@ async def create_database(
         recreate=recreate,
         batch_size=batch_size,
         default_collection=default_collection,
+        write_mode=write_mode,
     )
 
 @app.post(

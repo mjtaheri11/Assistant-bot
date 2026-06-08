@@ -24,6 +24,123 @@ logger = get_logger()
 # CLIENT INITIALIZATION (Restored Global)
 # ==========================================
 
+def delete_documents_by_sources(
+        database_id: str,
+        sources: List[str],
+        qdrant_client: Optional[QdrantClient] = None,
+) -> int:
+    """
+    Delete every point whose `metadata.source` is one of `sources`.
+
+    Returns the number of points that matched the filter *before* deletion
+    (best-effort; -1 if the count call failed). Other files are untouched.
+    """
+    if not sources:
+        return 0
+
+    if qdrant_client is None:
+        qdrant_client = globals().get('qdrant_client') or _initialize_qdrant_client()
+    if qdrant_client is None:
+        raise ValueError("No Qdrant client available")
+
+    source_filter = models.Filter(
+        must=[
+            models.FieldCondition(
+                key="metadata.source",
+                match=models.MatchAny(any=list(sources)),
+            )
+        ]
+    )
+
+    # Best-effort: how many points are we about to remove?
+    try:
+        matched = qdrant_client.count(
+            collection_name=database_id,
+            count_filter=source_filter,
+            exact=True,
+        ).count
+    except Exception as e:
+        logger.warning(f"Could not count points for sources {sources}: {e}")
+        matched = -1
+
+    qdrant_client.delete(
+        collection_name=database_id,
+        points_selector=models.FilterSelector(filter=source_filter),
+        wait=True,
+    )
+    logger.info(f"🗑️  Deleted vectors for sources={sources} (matched={matched})")
+    return matched
+
+
+def upsert_documents_by_source(
+        database_id: str,
+        documents: List[Document],
+        qdrant_client: Optional[QdrantClient] = None,
+        embedding_model=None,
+        batch_size: int = 100,
+        create_if_missing: bool = True,
+) -> Dict[str, Any]:
+    """
+    Replace only the vectors that belong to the filenames present in
+    `documents`, leaving every other file in the collection intact.
+
+      1. Collect the distinct `metadata.source` values from `documents`.
+      2. Delete all existing points whose source is in that set.
+      3. Insert the new documents.
+
+    Returns: {"deleted": int, "added": int, "sources": [...]}.
+    """
+    if not documents:
+        return {"deleted": 0, "added": 0, "sources": []}
+
+    if qdrant_client is None:
+        qdrant_client = globals().get('qdrant_client') or _initialize_qdrant_client()
+    if qdrant_client is None:
+        raise ValueError("No Qdrant client available")
+
+    if embedding_model is None:
+        from src.retriever import ModelManager
+        embedding_model = ModelManager().embedding_model
+
+    valid_documents = _validate_documents(documents)
+
+    # Distinct source filenames carried by the incoming batch
+    sources = sorted({
+        doc.metadata.get("source")
+        for doc in valid_documents
+        if doc.metadata.get("source")
+    })
+    if not sources:
+        raise ValueError(
+            "Cannot upsert by source: documents have no 'source' in metadata."
+        )
+
+    # Make sure the collection exists (create empty if necessary)
+    if not qdrant_client.collection_exists(database_id):
+        if not create_if_missing:
+            raise ValueError(f"Collection '{database_id}' does not exist")
+        vector_size = _get_embedding_dimension(embedding_model)
+        _recreate_collection_if_needed(
+            qdrant_client, database_id, vector_size, recreate=False
+        )
+        deleted = 0
+    else:
+        deleted = delete_documents_by_sources(database_id, sources, qdrant_client)
+
+    # Insert the fresh chunks
+    vdb = Qdrant(
+        client=qdrant_client,
+        collection_name=database_id,
+        embeddings=embedding_model,
+    )
+    _add_batches(vdb, valid_documents, batch_size)
+
+    logger.info(
+        f"✅ Upsert complete for '{database_id}': "
+        f"removed={deleted}, added={len(valid_documents)}, sources={sources}"
+    )
+    return {"deleted": deleted, "added": len(valid_documents), "sources": sources}
+
 def _initialize_qdrant_client() -> QdrantClient:
     """
     Internal helper to create the QdrantClient.
