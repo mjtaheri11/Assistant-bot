@@ -277,7 +277,7 @@ api_models:
   deepseek-v4-pro:
     provider: hooshyar
     model_id: "deepseek/deepseek-v4-pro"
-    context_window: 30000
+    context_window: 35000
     max_output_tokens: 8000
     api_type: "chat"
     supports_reasoning: true
@@ -289,7 +289,7 @@ api_models:
   deepseek-v4-flash:
     provider: hooshyar
     model_id: "deepseek/deepseek-v4-flash"
-    context_window: 30000
+    context_window: 35000
     max_output_tokens: 5000
     api_type: "chat"
     supports_reasoning: true
@@ -301,7 +301,7 @@ api_models:
   deepseek-v4-flash-paraphrase:
     provider: hooshyar
     model_id: "deepseek/deepseek-v4-flash"
-    context_window: 30000
+    context_window: 35000
     max_output_tokens: 5000
     api_type: "chat"
     supports_reasoning: true
@@ -313,7 +313,7 @@ api_models:
   gemini-3.5-flash:
     provider: openrouter
     model_id: "google/gemini-3.5-flash"
-    context_window: 30000
+    context_window: 35000
     max_output_tokens: 5000
     api_type: "chat"
     supports_reasoning: true
@@ -325,7 +325,7 @@ api_models:
   minimax-m2.7:
     provider: openrouter
     model_id: "minimax/minimax-m2.7"
-    context_window: 30000
+    context_window: 35000
     max_output_tokens: 5000
     api_type: "chat"
     supports_reasoning: true
@@ -337,7 +337,7 @@ api_models:
   step-3.7-flash:
     provider: openrouter
     model_id: "stepfun/step-3.7-flash"
-    context_window: 30000
+    context_window: 35000
     max_output_tokens: 5000
     api_type: "chat"
     supports_reasoning: true
@@ -491,7 +491,7 @@ api_models:
     base_url_env: GEMMA4_API_BASE
     api_key_env: GEMMA4_API_KEY
     api_key: "EMPTY"
-    context_window: 30000
+    context_window: 35000
     max_output_tokens: 5000
     max_tokens: 5000
     api_type: "chat"
@@ -510,7 +510,7 @@ api_models:
     api_key: "EMPTY"
     api_type: "completions"               # was "chat" — raw completions, no chat template
     prompt_format: "qwen3"                # render ChatML ourselves (system-only OK)
-    context_window: 30000
+    context_window: 35000
     max_output_tokens: 5000
     max_tokens: 5000
     supports_reasoning: true

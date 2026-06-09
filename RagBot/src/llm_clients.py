@@ -33,7 +33,7 @@ ReasoningEffort = Literal["none", "minimal", "low", "medium", "high", "xhigh"]
 # Added "responses" to supported API types
 ApiType = Literal["chat", "completions", "responses"]
 
-FALLBACK_MODEL = "oss"
+FALLBACK_MODEL = "qwen36-35b"
 VLLM_CLUSTER_BASE_TEMPLATE = "http://{host}.admin.svc.cluster.local/v1"
 _FALLBACK_ENCODING = tiktoken.encoding_for_model("gpt-4o-mini")
 _PROMPT_SAFETY_BUFFER = 2000  # keep in sync with the prompt budgeter in the main module

@@ -1464,17 +1464,11 @@ async def query_responder(
     company_name=None, assistant_name=None,
     answer_type="concise", reasoning_effort="high",
     model_name: str = "", use_video_link: bool = True,
+    selected_module: str = "",          # <-- NEW
 ) -> Tuple[str, dict, str]:
-    """
-    Returns (response_text, video_parameters, confidence).
-    `confidence` is "ACCURATE" or "DOUBTFUL". The list of clickable modules
-    is derived by the orchestrator from retrieval, not from the LLM.
-    """
     if not model_name:
         model_name = config["api_default"]["query_responder_model_name"]
 
-    # Concise prompts (both variants) now emit JSON. Explanatory/normal
-    # remain free-form text until you migrate them too.
     is_concise = (answer_type == "concise")
     extra: dict[str, Any] = {}
     if is_concise and "deepseek" in model_name:
@@ -1489,9 +1483,21 @@ async def query_responder(
     else:
         rag_system_prompt = RAG_NORMAL_SYSTEM_PROMPT
 
+    # When the user has already picked a module (on_click), make that explicit to
+    # the model so it answers directly and never re-asks for a module.
+    if selected_module:
+        question_for_prompt = (
+            f"{query}\n\n"
+            f"[راهنمای سیستم: کاربر پیش‌تر ماژول «{selected_module}» را انتخاب کرده است. "
+            f"پاسخ را فقط بر اساس همین ماژول و کانتکست ارائه‌شده بده و تحت هیچ شرایطی "
+            f"دوباره از کاربر نخواه که ماژول خود را مشخص کند.]"
+        )
+    else:
+        question_for_prompt = query
+
     prompt = rag_system_prompt.format(
         context=context, company_name=company_name, assistant_name=assistant_name,
-        question=query, conversation_history=history_serializer(history),
+        question=question_for_prompt, conversation_history=history_serializer(history),
     )
     raw = await get_chat_response(prompt, model_name,
                                   reasoning_effort=reasoning_effort,
@@ -1515,7 +1521,6 @@ async def query_responder(
 
     return response_text, video_params, confidence
 
-@observe()
 async def chat_responder_(
     history: List[tuple[str, str]],
     user_utterance: str,
@@ -1528,9 +1533,11 @@ async def chat_responder_(
     detected_module: str = "",
     sql_mode: bool = True,
     ticket_mode: bool = True,
-    use_video_link: bool = True,  # <-- add this,
-    on_click: bool = False
-) -> Union[tuple[str, str, str, str], tuple[str, str, str, bool, List[str]]]:
+    use_video_link: bool = True,
+    on_click: bool = False,
+    retrieval_query: str = "",          # <-- NEW
+    ) -> Union[tuple[str, str, str, str], tuple[str, str, str, bool, List[str]]]:
+
     """
     Unified chat responder supporting both develop branch (simple RAG) and feature/add-sql-agent (SQL + module handling)
     """
@@ -1554,7 +1561,7 @@ async def chat_responder_(
     else:
         paraphrased_utterance = user_utterance
     print(paraphrased_utterance)
-    if use_cache:
+    if use_cache and not on_click:
         response, _ = await get_cache_response(paraphrased_utterance)
         if response:
             result_temp = is_sql, paraphrased_utterance, response, "", False, [], parameters, sql_response_template, has_video_link, is_ticket
@@ -1671,6 +1678,7 @@ async def chat_responder_(
         paraphrased_utterance, context, history,
         company_name=company_name, assistant_name=assistant_name,
         answer_type=response_type, use_video_link=use_video_link,
+        selected_module=detected_module if on_click else "",   # <-- NEW
     )
 
     # Safety net: if the model / parse path still produced no usable content

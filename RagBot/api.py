@@ -879,34 +879,36 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                 ]
                 
                 if chat_request.on_click:
-                    # Handle on_click logic
                     selected_module = chat_request.query
                     do_suggest = False
+
+                    # The user's real action this turn is "I selected module X".
+                    # Store that as the query so history reflects the click, not the old question.
                     message_id = await postgres.insert_chat_row(
                         session_id=session_id,
-                        user_query=chat_request.query,
+                        user_query=selected_module,
                     )
                     previous_paraphrased = history[-1].get("paraphrased_query") \
-                        or history[-1].get("query", "") 
+                        or history[-1].get("query", "")
 
                     is_sql, paraphrased_utterance, response, context, do_clarify, modules, parameters, response_template, has_video_link, is_ticket = await chat_responder_(
                         history=selected_history,
-                        user_utterance=previous_paraphrased,
+                        user_utterance=selected_module,         # <-- the clicked module = actual user input
+                        retrieval_query=previous_paraphrased,   # <-- NEW: used only for retrieval + answer
                         database_index=matched_index,
                         company_name=company_name,
                         assistant_name=assistant_name,
                         response_type=chat_request.response_type,
                         use_cache=chat_request.use_cache,
-                        detected_module=chat_request.query,
+                        detected_module=selected_module,
                         sql_mode=chat_request.sql_mode,
                         use_video_link=chat_request.use_video_links,
                         ticket_mode=chat_request.ticket_mode,
-                        on_click=True
+                        on_click=True,
                     )
                     assert do_clarify == False, "on_click should not return do_clarify=True"
                     assert len(modules) <= 1, "on_click should not return modules"
-                    assert do_clarify is False, "on_click must not re-clarify"
-                            
+
                     elapsed_time = time.time() - start_time
                     message_id = await postgres.update_last_chat_row(
                         session_id,
@@ -917,7 +919,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         do_suggest,
                         "",
                         response_template,
-                        json.dumps(parameters)
+                        json.dumps(parameters),
                     )
 
                 else:
