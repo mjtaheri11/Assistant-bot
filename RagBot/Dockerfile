@@ -1,6 +1,6 @@
 # Use an official Python runtime as a parent image
 # FROM mlrepo.abramad.com/python:3.11-slim
-FROM 172.29.14.10:6002/da/dev/backend:1.0.3
+FROM 172.29.14.10:6002/da/dev/backend:1.1.15
 
 # Set the working directory in the container
 WORKDIR /app
@@ -22,6 +22,8 @@ COPY api.py .
 
 # Expose the port uvicorn will run on
 EXPOSE 9090
+
+# RUN pip install dnspython==2.8.0
 
 # Command to run the application
 CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "9090"]

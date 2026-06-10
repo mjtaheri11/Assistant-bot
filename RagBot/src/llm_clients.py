@@ -19,6 +19,42 @@ import tiktoken
 _FALLBACK_ENCODING = tiktoken.encoding_for_model("gpt-4o-mini")
 _PROMPT_SAFETY_BUFFER = 2000
 
+import httpx
+import dns.asyncresolver
+
+_GOOGLE_DNS = ["8.8.8.8", "1.1.1.1"]
+
+
+class GoogleDNSTransport(httpx.AsyncHTTPTransport):
+    """httpx transport that resolves hostnames with Google's public DNS
+    instead of the system resolver, then connects to the resolved IP."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._resolver = dns.asyncresolver.Resolver(configure=False)
+        self._resolver.nameservers = _GOOGLE_DNS
+        self._cache: dict[str, str] = {}
+
+    async def _resolve(self, host: str) -> str:
+        # Leave IPv4 literals untouched.
+        if host.replace(".", "").isdigit():
+            return host
+        if host not in self._cache:
+            answer = await self._resolver.resolve(host, "A")
+            self._cache[host] = answer[0].address
+        return self._cache[host]
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        original_host = request.url.host
+        ip = await self._resolve(original_host)
+
+        # Dial the IP, but keep the real hostname for TLS SNI + cert validation
+        # and for the Host header (vhost routing on OpenRouter's side).
+        request.url = request.url.copy_with(host=ip)
+        request.headers["Host"] = original_host
+        request.extensions["sni_hostname"] = original_host
+
+        return await super().handle_async_request(request)
 
 def _count_tokens(text: str) -> int:
     return len(_FALLBACK_ENCODING.encode(text or ""))
@@ -219,6 +255,7 @@ class LLMClientManager:
         self._clients["openrouter"] = AsyncOpenAI(
             base_url=os.getenv("OPENROUTER_API_BASE"),
             api_key=os.getenv("OPENROUTER_API_KEY"),
+            http_client=httpx.AsyncClient(transport=GoogleDNSTransport()),
         )
         self._clients["hooshyar"] = AsyncOpenAI(
             base_url=os.getenv("HOOSHYAR_API_BASE"),

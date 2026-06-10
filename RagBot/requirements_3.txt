@@ -234,3 +234,4 @@ yarl==1.22.0
 youtube-transcript-api==1.0.3
 zipp==3.23.0
 zstandard==0.25.0
+dnspython==2.8.0

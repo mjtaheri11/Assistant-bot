@@ -130,7 +130,7 @@ cache:
   persist_directory: ../db-cache
   # index_name: default_cache_e5
   index_name: default_cache_qwen3
-  num_rank2_documents: 5
+  num_rank2_documents: 11
   embedding_model:
 #    model_name: /home/jovyan/.cache/huggingface/hub/models--intfloat--multilingual-e5-large/snapshots/0dc5580a448e4284468b8909bae50fa925907bc5
     model_name: ./saved_models/models--intfloat--multilingual-e5-large/snapshots/0dc5580a448e4284468b8909bae50fa925907bc5
@@ -203,7 +203,7 @@ reranker:
 retriever:
   retrieved_documents: 40
   # retrieved_rank2_documents: 10
-  retrieved_rank2_documents: 10
+  retrieved_rank2_documents: 11
   sql_retrieved_rank2_documents: 25
   retriever_threshold: 0.0
   alpha_threshold: 0.5
@@ -272,10 +272,9 @@ api_default:
   chitchat_responder_model_name: deepseek-v4-flash
   ticket_responder_model_name: deepseek-v4-flash
 
-
 api_models:
   deepseek-v4-pro:
-    provider: hooshyar
+    provider: openrouter
     model_id: "deepseek/deepseek-v4-pro"
     context_window: 35000
     max_output_tokens: 8000
@@ -287,7 +286,7 @@ api_models:
     timeout: 25
 
   deepseek-v4-flash:
-    provider: hooshyar
+    provider: openrouter
     model_id: "deepseek/deepseek-v4-flash"
     context_window: 35000
     max_output_tokens: 5000
@@ -310,9 +309,9 @@ api_models:
     temperature: 0.7
     timeout: 15
 
-  gemini-3.5-flash:
+  gemini-3.5-flash-nitro:
     provider: openrouter
-    model_id: "google/gemini-3.5-flash"
+    model_id: "google/gemini-3.5-flash:nitro"
     context_window: 35000
     max_output_tokens: 5000
     api_type: "chat"
@@ -324,8 +323,20 @@ api_models:
 
   minimax-m2.7:
     provider: openrouter
-    model_id: "minimax/minimax-m2.7"
+    model_id: "minimax/minimax-m2.7:nitro"
     context_window: 35000
+    max_output_tokens: 5000
+    api_type: "chat"
+    supports_reasoning: true
+    reasoning_param_style: "openrouter"
+    default_reasoning_effort: "high"
+    temperature: 0.7
+    timeout: 15
+
+  glm-4.7:
+    provider: openrouter
+    model_id: "z-ai/glm-4.7:nitro"
+    context_window: 40000
     max_output_tokens: 5000
     api_type: "chat"
     supports_reasoning: true
@@ -510,7 +521,7 @@ api_models:
     api_key: "EMPTY"
     api_type: "completions"               # was "chat" — raw completions, no chat template
     prompt_format: "qwen3"                # render ChatML ourselves (system-only OK)
-    context_window: 35000
+    context_window: 55000
     max_output_tokens: 5000
     max_tokens: 5000
     supports_reasoning: true

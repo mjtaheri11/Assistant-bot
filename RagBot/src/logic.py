@@ -1555,7 +1555,7 @@ async def chat_responder_(
             return result_temp
 
     if on_click:
-        paraphrased_utterance = user_utterance  # already the paraphrased question
+        paraphrased_utterance = retrieval_query  # already the paraphrased question
     elif not is_first_message:
         paraphrased_utterance = await utterance_paraphraser(history, user_utterance)
     else:
@@ -1717,10 +1717,18 @@ async def chat_responder_(
                     is_ticket)
 
     # ACCURATE (or DOUBTFUL with <2 routable modules) — business as usual.
-    return (False, paraphrased_utterance, response, context,
-            False, modules,
-            parameters, sql_response_template,
-            has_video_link, is_ticket)
+    return (
+        False, 
+        paraphrased_utterance, 
+        response, 
+        context,
+        False, 
+        modules,
+        parameters, 
+        sql_response_template,
+        has_video_link, 
+        is_ticket
+        )
 
 @observe()
 async def feedback_(
