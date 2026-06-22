@@ -87,7 +87,7 @@ app = FastAPI(
 
 app.mount(
     "/swagger-static",
-    StaticFiles(directory=config["fastapi_local_files"]["path"]),
+    StaticFiles(directory=os.getenv("FASTAPI_LOCAL_FILES_PATH")),
     name="swagger-static",
 )
 
@@ -147,6 +147,7 @@ class CreateSessionRequest(BaseModel):
     tenant_name: Optional[str] = ""
     user_code: Optional[str] = ""
     database_id: Optional[str] = ""
+    business_object: Optional[dict] = None
 
 class SQLRequest(BaseModel):
     # Support both legacy (table_schemas) and new (session-based) approaches
@@ -491,8 +492,8 @@ async def process_uploaded_files(
                         "video_links": video_links
                     }
                     # Remove video link patterns from the chunk text
-                    cleaned_content = re.sub(r'videolink-\w+', '', chunk_content).strip()
-                    doc = Document(page_content=cleaned_content, metadata=metadata)
+                    # cleaned_content = re.sub(r'videolink-\w+', '', chunk_content).strip() 
+                    doc = Document(page_content=chunk_content, metadata=metadata)
                     documents.append(doc)
                 
                 processed_files[original_filename] = documents
@@ -652,39 +653,70 @@ async def get_latest_databases():
     databases = await postgres.get_latest_databases()
     return GetDatabasesResponse(response=databases)
 
-@app.get(
-    "/v1/faq",
-    response_model=FaqResponse,
-    responses={
-        200: {},
-        500: {"description": "Unhandled error that should be reported"},
-    },
-)
-async def get_faq(
-    request: Request,
-    query: str = Query(..., alias="query"),
-    session_id: str = Query(..., alias="session_id"),
-):
-    # needs_clarification, _ = await is_somewhat_uniform(module_frequencies)
+class FaqDocument(BaseModel):
+    text: str
+    module: str = ""
+
+class FaqResponse(BaseModel):
+    documents: List[FaqDocument] = []
+
+@app.get("/v1/faq", response_model=FaqResponse)
+async def get_faq(request: Request,
+                  query: str = Query(..., alias="query"),
+                  session_id: str = Query(..., alias="session_id"),
+                  num_retrieve_context: int = Query(
+                      config["retriever"]["retrieved_rank2_documents"],
+                      alias="num_retrieve_context", ge=1, le=50)):
     try:
         postgres = Postgres()
-        database_id_dict = await postgres.find_database_id(session_id)
-        database_id = database_id_dict["database_id"]
-        # if not database_id:
-        #     database_id = config["database"]["collection_name"]
-        #     context_with_metadata, _ = await retrieve_context_with_metadata(query=query, database_index=database_id)
-        #     context = "\n\n ============= \n\n".join([context["text"] + "\n" + context["module"] for context in reversed(context_with_metadata)])
-
         database_id = config["database"]["collection_name"]
-        context_with_metadata, _ = await retrieve_context_with_metadata(query=query, database_index=database_id)
-        context = "\n\n ============= \n\n".join(["```" + str(context["text"]) + "```" for context in reversed(context_with_metadata)])
-
-        return FaqResponse(response=context.strip())
+        context_with_metadata, _ = await retrieve_context_with_metadata(
+            query=query, database_index=database_id,
+            num_retrieve_context=num_retrieve_context)
+        documents = [
+            FaqDocument(text=(c["text"] or "").strip(), module=c.get("module", ""))
+            for c in reversed(context_with_metadata)
+        ]
+        return FaqResponse(documents=documents)
     except HTTPException as e:
         raise e
-    except Exception as e:
+    except Exception:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=UNHANDLED_ERROR_MESSAGE)
+
+# @app.get(
+#     "/v1/faq",
+#     response_model=FaqResponse,
+#     responses={
+#         200: {},
+#         500: {"description": "Unhandled error that should be reported"},
+#     },
+# )
+# async def get_faq(
+#     request: Request,
+#     query: str = Query(..., alias="query"),
+#     session_id: str = Query(..., alias="session_id"),
+# ):
+#     # needs_clarification, _ = await is_somewhat_uniform(module_frequencies)
+#     try:
+#         postgres = Postgres()
+#         database_id_dict = await postgres.find_database_id(session_id)
+#         database_id = database_id_dict["database_id"]
+#         # if not database_id:
+#         #     database_id = config["database"]["collection_name"]
+#         #     context_with_metadata, _ = await retrieve_context_with_metadata(query=query, database_index=database_id)
+#         #     context = "\n\n ============= \n\n".join([context["text"] + "\n" + context["module"] for context in reversed(context_with_metadata)])
+
+#         database_id = config["database"]["collection_name"]
+#         context_with_metadata, _ = await retrieve_context_with_metadata(query=query, database_index=database_id)
+#         context = "\n\n =================== \n\n".join([context["text"] for context in reversed(context_with_metadata)])
+
+#         return FaqResponse(response=context.strip())
+#     except HTTPException as e:
+#         raise e
+#     except Exception as e:
+#         traceback.print_exc()
+#         raise HTTPException(status_code=500, detail=UNHANDLED_ERROR_MESSAGE)
 
 @app.get(
     CHAT_ENDPOINT,
@@ -703,7 +735,7 @@ async def get_history(
 ):
     try:
         postgres = Postgres()
-        simple_logger("Received history request", session_id)
+        # simple_logger("Received history request", session_id)
         history = await postgres.get_history(
             session_id, page_index, page_size, contain_paraphrase
         )
@@ -732,10 +764,12 @@ async def create_session(create_session_request: Optional[CreateSessionRequest] 
             tenant_name = ""
             user_code = ""
             database_id = None
+            business_object = None
         else:
             tenant_name = create_session_request.tenant_name
             user_code = create_session_request.user_code
             database_id = create_session_request.database_id
+            business_object = create_session_request.business_object
 
         # Collapse "use the default collection" inputs to NULL; reject bad UUIDs early.
         database_id = _normalize_session_database_id(database_id)
@@ -744,6 +778,7 @@ async def create_session(create_session_request: Optional[CreateSessionRequest] 
             tenant_name=tenant_name,
             user_code=user_code,
             database_id=database_id,
+            business_object=business_object,
         )
         elapsed_time = time.time() - start_time
         non_generative_agent_logger(
@@ -826,7 +861,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
             elapsed_time = final_records.get("elapsed_time", 0)
             parameters = json.loads(final_records.get("parameters", "{}"))
             response_template = final_records.get("response_template", "")
-            has_video_link = has_video_link_(parameters)
+            has_video_link = final_records.get("has_video_link", False)
             is_ticket = all(k in (parameters or {}) for k in ("title", "description", "system", "form"))
         else:
             session_validation = await postgres.exist_session(session_id)
@@ -842,7 +877,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                     status_code=404,
                     detail=f"Session not found: {session_id}"
                 )
-            simple_logger("Received chat request", session_id)
+            # simple_logger("Received chat request", session_id)
             history = await postgres.get_history(
                 session_id,
                 1,
@@ -872,6 +907,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
             else:
                 database_id_dict = await postgres.find_database_id(session_id)
                 matched_index, company_name, assistant_name = await find_database_collection_with_postgres(database_id_dict["database_id"])
+                business_object_raw = await postgres.find_business_object(session_id)   # <-- NEW (None => default BO)
                 selected_history = [
                     [h["query"], h["response"]] if len(h["query"]) < 60 
                     else [h["paraphrased_query"], h["response"]]
@@ -905,6 +941,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         use_video_link=chat_request.use_video_links,
                         ticket_mode=chat_request.ticket_mode,
                         on_click=True,
+                        business_object=business_object_raw,
                     )
                     assert do_clarify == False, "on_click should not return do_clarify=True"
                     assert len(modules) <= 1, "on_click should not return modules"
@@ -920,6 +957,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         "",
                         response_template,
                         json.dumps(parameters),
+                        has_video_link
                     )
 
                 else:
@@ -940,7 +978,8 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         detected_module="",
                         sql_mode=chat_request.sql_mode,
                         use_video_link=chat_request.use_video_links,
-                        ticket_mode=chat_request.ticket_mode
+                        ticket_mode=chat_request.ticket_mode,
+                        business_object=business_object_raw,
                     )
                     if do_clarify:
                         do_suggest = True
@@ -957,6 +996,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                             selected_module=modules_str,
                             response_template=response_template,
                             parameters=json.dumps(parameters),
+                            has_video_link=has_video_link,     # <-- NEW
                         )
                         agent = "module_clarification"
                         message = "modules proposed"
@@ -973,8 +1013,9 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                             do_suggest,
                             modules_str,
                             response_template,
-                            json.dumps(parameters)
-                        ) 
+                            json.dumps(parameters),
+                            has_video_link,            # <-- NEW
+                        )
 
         agent = "sql_responder" if is_sql else "chat_responder"
         REQUEST_LATENCY.labels(endpoint="/v1/chat").observe(time.time() - start_time)
@@ -1581,58 +1622,20 @@ async def add_nl2sql_documents(
 
 # ===== FastAPI Endpoints =====
 
-@app.post(
-    "/v1/chat/create/database",
-    response_model=CreateDatabaseResponse,
-    responses={
-        200: {"description": "Database created successfully"},
-        422: {"description": "Unprocessable entity - invalid input or no documents extracted"},
-        500: {"description": "Internal server error"},
-    },
-    summary="Create a new vector database",
-    description=(
-        "Upload files, chunk them, and create a vector database with embeddings.\n\n"
-        "- `default_collection=True`: writes to the fixed default collection from "
-        "config. No PostgreSQL row is created, no UUID is generated. `recreate` "
-        "controls wipe-vs-append behavior.\n"
-        "- `default_collection=False`: creates a new PostgreSQL row and uses its "
-        "UUID as the Qdrant collection name. `recreate` is **ignored** in this "
-        "case because a brand-new UUID can never collide with an existing collection."
-    ),
-)
+@app.post("/v1/chat/create/database", response_model=CreateDatabaseResponse)
 async def create_database(
-    files: List[UploadFile] = File(..., description="Files to upload and process"),
-    company_name: str = Query(..., description="Company name"),
-    assistant_name: str = Query(..., description="Assistant name"),
-    recreate: bool = Query(
-        True,
-        description="Legacy flag, used only when `write_mode` is omitted.",
-    ),
-    write_mode: Optional[str] = Query(
-        None,
-        description=(
-            "How to write into the collection: "
-            "'recreate' (wipe + rebuild the whole index), "
-            "'append' (add only), or "
-            "'update_files' (replace just the uploaded filenames, keep the rest). "
-            "Falls back to the legacy `recreate` flag if omitted. "
-            "Forced to 'recreate' for non-default UUID collections."
-        ),
-    ),
-    batch_size: int = Query(100, description="Batch size", ge=1, le=1000),
-    default_collection: bool = Query(False, description="Write to the fixed default collection."),
+    files: List[UploadFile] = File(...),
+    company_name: str = Query(...),
+    assistant_name: str = Query(...),
+    write_mode: str = Query("update_files", description="recreate | append | update_files"),
+    batch_size: int = Query(100, ge=1, le=1000),
+    default_collection: bool = Query(True, description="Write to the shared default collection."),
 ):
     postgres = Postgres()
     return await create_database_endpoint(
-        files=files,
-        company_name=company_name,
-        assistant_name=assistant_name,
-        postgres=postgres,
-        use_config=True,
-        recreate=recreate,
-        batch_size=batch_size,
-        default_collection=default_collection,
-        write_mode=write_mode,
+        files=files, company_name=company_name, assistant_name=assistant_name,
+        postgres=postgres, use_config=True, batch_size=batch_size,
+        default_collection=default_collection, write_mode=write_mode,
     )
 
 @app.post(
@@ -2221,7 +2224,7 @@ async def feedback(feedback_request: FeedbackRequest, request: Request):
             session_id, feedback_request.message_id
         )
 
-        log_feedback_request(session_id)
+        # log_feedback_request(session_id)
         result = await process_feedback(feedback_request)
         user_code, tenant_name = await get_user_code_tenant_name(session_id, postgres)
         log_feedback_response(session_id, user_code, tenant_name, feedback_request, message_fields, start_time)

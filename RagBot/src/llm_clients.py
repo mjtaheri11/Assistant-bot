@@ -237,7 +237,7 @@ def render_completion_prompt(
 
 class LLMClientManager:
     """Manages LLM clients and model configurations."""
-    
+    _REASONING_TAGS = ("think", "thinking", "reasoning", "analysis")
     def __init__(self):
         self._clients: dict[str, AsyncOpenAI] = {}
         self._models: dict[str, ModelConfig] = {}
@@ -531,6 +531,19 @@ class LLMClientManager:
                 params[key] = max(1, min(params[key] or room, room))
         return params
 
+    @staticmethod
+    def _strip_reasoning(text: str) -> str:
+        if not text:
+            return text
+        out = text
+        for tag in LLMClientManager._REASONING_TAGS:
+            out = re.sub(rf"<{tag}\b[^>]*>.*?</{tag}>", "", out,
+                        flags=re.DOTALL | re.IGNORECASE)
+        # completions-prefill / truncated opener leaves a dangling closer
+        out = re.sub(r"^.*?</(?:think|thinking|reasoning|analysis)>", "", out,
+                    flags=re.DOTALL | re.IGNORECASE)
+        return out
+
     def extract_text(
         self,
         response: Any,
@@ -559,6 +572,7 @@ class LLMClientManager:
         if not raw:
             return ""
 
+        raw = self._strip_reasoning(raw)      # NEW — applies to text AND json
         if output_format == "text":
             return raw.strip()
 
@@ -685,8 +699,10 @@ class LLMClientManager:
         #    .get("response") still yields the real text instead of "{}".
         salvaged = self._salvage_response_field(cleaned_text)
         if salvaged is not None:
+            conf = "DOUBTFUL" if re.search(r'"confidence"\s*:\s*"DOUBTFUL"',
+                                        cleaned_text, re.IGNORECASE) else "ACCURATE"
             return json.dumps(
-                {"response": salvaged, "parameters": {}, "confidence": "ACCURATE"},
+                {"response": salvaged, "parameters": {}, "confidence": conf},
                 ensure_ascii=False,
             )
 
@@ -763,7 +779,7 @@ class LLMClientManager:
 
         # Fast path
         try:
-            return json.loads(s)
+            return json.loads(s, strict=False)
         except json.JSONDecodeError:
             pass
 
@@ -781,7 +797,7 @@ class LLMClientManager:
         cleaned = re.sub(r'"\s*"\s*\}\s*$', '"}', cleaned)
 
         try:
-            return json.loads(cleaned)
+            return json.loads(cleaned, strict=False)
         except json.JSONDecodeError:
             return None
 

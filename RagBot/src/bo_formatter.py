@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 from typing import Any
 
@@ -99,6 +98,30 @@ def _enum_values_persian(enum_def: dict) -> list[str]:
 def _col_persian(col: dict) -> str:
     return col.get("persianTitle", col.get("persian_title", ""))
 
+def _col_hint(col: dict) -> str:
+    """Return the column's prompt-helper text, or "" if there is none.
+
+    `promptHelper` is kept SEPARATE from `persianTitle` on purpose:
+    `persianTitle` is an identifier (it drives exact-match enum resolution in
+    `_resolve_enum` and is the displayed label), whereas the hint is free-form
+    guidance for the model. They are rendered side by side, never merged.
+
+    Whitespace/newlines are collapsed to single spaces so the hint is safe to
+    drop into single-line slots (SQL comments, inline notes). An absent, empty,
+    or whitespace-only value yields "" — and every call site guards on that, so
+    a column without a hint produces byte-for-byte the original output.
+    """
+    raw = col.get("promptHelper", col.get("prompt_helper", ""))
+    return " ".join(str(raw).split()) if raw else ""
+
+def _yaml_quote(s: str) -> str:
+    """Double-quote a scalar for YAML, escaping backslashes and double quotes.
+
+    Used only for the new hint values, whose text is arbitrary; existing title
+    rendering is left untouched to keep this change non-invasive.
+    """
+    return '"' + s.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
 def _bo_persian(bo: dict) -> str:
     return bo.get("persianTitle", bo.get("persian_title", ""))
 
@@ -122,6 +145,9 @@ def _to_create_table(raw: dict) -> str:
         for col in bo.get("columns", []):
             sql_type = _SQL_TYPE.get(col.get("type", "String"), "TEXT")
             comment = f"  -- {_col_persian(col)}"
+            hint = _col_hint(col)
+            if hint:
+                comment += f" | hint: {hint}"
             enum_def = _resolve_enum(col, bo_name, enums)
             check = ""
             if enum_def:
@@ -154,6 +180,10 @@ def _to_openai_demo(raw: dict) -> str:
     for bo_name, bo, enums in _iter_bos(raw):
         cols = ", ".join(c["name"] for c in bo.get("columns", []))
         lines.append(f"# {bo_name} ({cols})")
+        for col in bo.get("columns", []):
+            hint = _col_hint(col)
+            if hint:
+                lines.append(f"#   hint: {col['name']} = {hint}")
         for norm in _iter_relations(bo):
             lines.append(
                 f"#   FK: {bo_name}.{norm['source_column']} → "
@@ -170,9 +200,14 @@ def _to_openai_demo(raw: dict) -> str:
 def _to_basic(raw: dict) -> str:
     lines = []
     fk_notes = []
+    hint_notes = []
     for bo_name, bo, enums in _iter_bos(raw):
         cols = ", ".join(c["name"] for c in bo.get("columns", []))
         lines.append(f"Table {bo_name}, columns = [{cols}]")
+        for col in bo.get("columns", []):
+            hint = _col_hint(col)
+            if hint:
+                hint_notes.append(f"Hint: {bo_name}.{col['name']} = {hint}")
         for norm in _iter_relations(bo):
             fk_notes.append(
                 f"FK: {bo_name}.{norm['source_column']} = "
@@ -181,6 +216,9 @@ def _to_basic(raw: dict) -> str:
     if fk_notes:
         lines.append("")
         lines.extend(fk_notes)
+    if hint_notes:
+        lines.append("")
+        lines.extend(hint_notes)
     return "\n".join(lines)
 
 
@@ -206,6 +244,16 @@ def _to_text_repr(raw: dict) -> str:
             lines.append("  Allowed values for enum columns:")
             lines.extend(enum_notes)
 
+        hint_notes = []
+        for col in bo.get("columns", []):
+            hint = _col_hint(col)
+            if hint:
+                hint_notes.append(f"    {col['name']}: {hint}")
+        if hint_notes:
+            lines.append("")
+            lines.append("  Field hints:")
+            lines.extend(hint_notes)
+
         rel_notes = list(_iter_relations(bo))
         if rel_notes:
             lines.append("")
@@ -230,7 +278,11 @@ def _to_simple_ddl_md(raw: dict) -> str:
         col_lines = []
         for col in bo.get("columns", []):
             sql_t = _SQL_TYPE.get(col.get("type", "String"), "TEXT")
-            col_lines.append(f"  {col['name']} {sql_t}  -- {_col_persian(col)}")
+            comment = f"  -- {_col_persian(col)}"
+            hint = _col_hint(col)
+            if hint:
+                comment += f" | hint: {hint}"
+            col_lines.append(f"  {col['name']} {sql_t}{comment}")
         for norm in _iter_relations(bo):
             col_lines.append(
                 f"  FOREIGN KEY ({norm['source_column']}) "
@@ -290,6 +342,16 @@ def _to_yaml_grouped(raw: dict) -> str:
                 lines.append("        allowed_values:")
                 for v in _enum_values_persian(edef):
                     lines.append(f'          - "{v}"')
+
+        # Hints live in their own sparse block so the grouped attribute values
+        # stay plain scalars (no promotion to mappings) — nothing that already
+        # reads `attributes` changes shape. Only columns that actually carry a
+        # promptHelper appear here; if none do, the block is omitted entirely.
+        hint_cols = [c for c in bo.get("columns", []) if _col_hint(c)]
+        if hint_cols:
+            lines.append("  hints:")
+            for c in hint_cols:
+                lines.append(f'    {c["name"]}: {_yaml_quote(_col_hint(c))}')
 
         rels = list(_iter_relations(bo))
         if rels:

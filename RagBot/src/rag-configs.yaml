@@ -238,9 +238,6 @@ chat_responder:
 followup_query_generator:
   number_of_suggested_queries: 3
 
-fastapi_local_files:
-  path: ./saved_models/swagger-ui
-
 router_model:
   # address: /home/jovyan/Assistant-bot/RagBot/resources_for_router/models_multilingual_e5_large/mlp.joblib
   address: /home/jovyan/Assistant-bot/RagBot/resources_for_router/models_multilingual_e5_large/svm.joblib
@@ -263,7 +260,7 @@ api_default:
 api_default:
   temperature: .7
   max_tokens: 16000
-  module_route_model_name: deepseek-v4-flash
+  module_route_model_name: deepseek-v4-pro
   query_responder_model_name: deepseek-v4-flash
   answer_validator_model_name: deepseek-v4-flash
   utterance_paraphraser_model_name: deepseek-v4-flash
@@ -274,9 +271,9 @@ api_default:
 
 api_models:
   deepseek-v4-pro:
-    provider: openrouter
+    provider: hooshyar
     model_id: "deepseek/deepseek-v4-pro"
-    context_window: 35000
+    context_window: 45000
     max_output_tokens: 8000
     api_type: "chat"
     supports_reasoning: true
@@ -286,9 +283,9 @@ api_models:
     timeout: 25
 
   deepseek-v4-flash:
-    provider: openrouter
+    provider: hooshyar
     model_id: "deepseek/deepseek-v4-flash"
-    context_window: 35000
+    context_window: 45000
     max_output_tokens: 5000
     api_type: "chat"
     supports_reasoning: true
@@ -300,7 +297,7 @@ api_models:
   deepseek-v4-flash-paraphrase:
     provider: hooshyar
     model_id: "deepseek/deepseek-v4-flash"
-    context_window: 35000
+    context_window: 45000
     max_output_tokens: 5000
     api_type: "chat"
     supports_reasoning: true
@@ -312,7 +309,7 @@ api_models:
   gemini-3.5-flash-nitro:
     provider: openrouter
     model_id: "google/gemini-3.5-flash:nitro"
-    context_window: 35000
+    context_window: 45000
     max_output_tokens: 5000
     api_type: "chat"
     supports_reasoning: true
@@ -324,7 +321,7 @@ api_models:
   minimax-m2.7:
     provider: openrouter
     model_id: "minimax/minimax-m2.7:nitro"
-    context_window: 35000
+    context_window: 45000
     max_output_tokens: 5000
     api_type: "chat"
     supports_reasoning: true
@@ -348,7 +345,7 @@ api_models:
   step-3.7-flash:
     provider: openrouter
     model_id: "stepfun/step-3.7-flash"
-    context_window: 35000
+    context_window: 45000
     max_output_tokens: 5000
     api_type: "chat"
     supports_reasoning: true
@@ -502,7 +499,7 @@ api_models:
     base_url_env: GEMMA4_API_BASE
     api_key_env: GEMMA4_API_KEY
     api_key: "EMPTY"
-    context_window: 35000
+    context_window: 45000
     max_output_tokens: 5000
     max_tokens: 5000
     api_type: "chat"

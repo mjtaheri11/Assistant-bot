@@ -3,1260 +3,775 @@
     "id": 1,
     "complexity": "simple",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "تعداد کل اقلام سند حسابداری چقدر است؟",
+    "table": "financial_voucherssummaryai",
+    "question": "تعداد کل ردیف‌های گردش و مانده حساب‌ها چقدر است؟",
     "sql": {
-      "SQL": "SELECT COUNT(fv.voucher_number) AS fv_voucher_number_count FROM financial_vouchers AS fv",
-      "parameters": {}
+      "SQL": "SELECT COUNT(fvs.gl_code) AS fvs_gl_code_count FROM financial_voucherssummaryai AS fvs WHERE fvs.is_main_branch = $1 AND fvs.is_main_ledger = $2",
+      "parameters": {
+        "1": "true",
+        "2": "true"
+      },
+      "response_template": "تعداد کل ردیف‌های گردش و مانده حساب‌ها (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 2,
     "complexity": "simple",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "چند قلم سند حسابداری ثبت شده؟",
+    "table": "financial_voucherssummaryai",
+    "question": "مجموع گردش بدهکار ارز عملیاتی چقدر است؟",
     "sql": {
-      "SQL": "SELECT COUNT(fv.voucher_number) AS fv_voucher_number_count FROM financial_vouchers AS fv",
-      "parameters": {}
+      "SQL": "SELECT SUM(fvs.debit) AS fvs_debit_sum FROM financial_voucherssummaryai AS fvs WHERE fvs.is_main_branch = $1 AND fvs.is_main_ledger = $2",
+      "parameters": {
+        "1": "true",
+        "2": "true"
+      },
+      "response_template": "مجموع گردش بدهکار ارز عملیاتی همه حساب‌ها (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 3,
     "complexity": "simple",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "مجموع گردش بدهکار چقدر است؟",
+    "table": "financial_voucherssummaryai",
+    "question": "جمع کل گردش بستانکار چقدر است؟",
     "sql": {
-      "SQL": "SELECT SUM(fv.debit) AS fv_debit_sum FROM financial_vouchers AS fv",
-      "parameters": {}
+      "SQL": "SELECT SUM(fvs.credit) AS fvs_credit_sum FROM financial_voucherssummaryai AS fvs WHERE fvs.is_main_branch = $1 AND fvs.is_main_ledger = $2",
+      "parameters": {
+        "1": "true",
+        "2": "true"
+      },
+      "response_template": "مجموع گردش بستانکار ارز عملیاتی همه حساب‌ها (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 4,
     "complexity": "simple",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "مجموع گردش بستانکار",
+    "table": "financial_voucherssummaryai",
+    "question": "مجموع مانده ارز عملیاتی چقدر است؟",
     "sql": {
-      "SQL": "SELECT SUM(fv.credit) AS fv_credit_sum FROM financial_vouchers AS fv",
-      "parameters": {}
+      "SQL": "SELECT SUM(fvs.remaining) AS fvs_remaining_sum FROM financial_voucherssummaryai AS fvs WHERE fvs.is_main_branch = $1 AND fvs.is_main_ledger = $2",
+      "parameters": {
+        "1": "true",
+        "2": "true"
+      },
+      "response_template": "مجموع مانده ارز عملیاتی همه حساب‌ها (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 5,
     "complexity": "simple",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "میانگین گردش بدهکار اسناد",
+    "table": "financial_voucherssummaryai",
+    "question": "کد و عنوان حساب‌های کل را نشان بده.",
     "sql": {
-      "SQL": "SELECT AVG(fv.debit) AS fv_debit_avg FROM financial_vouchers AS fv",
-      "parameters": {}
+      "SQL": "SELECT DISTINCT fvs.gl_code, fvs.gl_title FROM financial_voucherssummaryai AS fvs WHERE fvs.is_main_branch = $1 AND fvs.is_main_ledger = $2",
+      "parameters": {
+        "1": "true",
+        "2": "true"
+      },
+      "response_template": "کد و عنوان حساب‌های کل (مقادیر یکتا) (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 6,
     "complexity": "simple",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "میانگین گردش بستانکار",
+    "table": "financial_voucherssummaryai",
+    "question": "گروه‌های حساب موجود کدامند؟",
     "sql": {
-      "SQL": "SELECT AVG(fv.credit) AS fv_credit_avg FROM financial_vouchers AS fv",
-      "parameters": {}
+      "SQL": "SELECT DISTINCT fvs.account_group_code, fvs.account_group_title FROM financial_voucherssummaryai AS fvs WHERE fvs.is_main_branch = $1 AND fvs.is_main_ledger = $2",
+      "parameters": {
+        "1": "true",
+        "2": "true"
+      },
+      "response_template": "کد و عنوان گروه‌های حساب (مقادیر یکتا) (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 7,
     "complexity": "simple",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "حداکثر گردش بدهکار",
+    "table": "financial_voucherssummaryai",
+    "question": "گردش بدهکار و بستانکار شعبه‌ای که عنوان آن شامل «مرکزی» است را نشان بده.",
     "sql": {
-      "SQL": "SELECT MAX(fv.debit) AS fv_debit_max FROM financial_vouchers AS fv",
-      "parameters": {}
+      "SQL": "SELECT fvs.header_branch_title, fvs.debit, fvs.credit FROM financial_voucherssummaryai AS fvs WHERE fvs.header_branch_title ILIKE $1 AND fvs.is_main_branch = $2 AND fvs.is_main_ledger = $3",
+      "parameters": {
+        "1": "%مرکزی%",
+        "2": "true",
+        "3": "true"
+      },
+      "response_template": "عنوان شعبه، گردش بدهکار و بستانکار برای شعبه‌هایی که عنوان آن‌ها شامل «مرکزی» است (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 8,
     "complexity": "simple",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "حداکثر گردش بستانکار",
+    "table": "financial_voucherssummaryai",
+    "question": "مانده حساب‌های کلی که عنوانشان شامل «بانک» است را نشان بده.",
     "sql": {
-      "SQL": "SELECT MAX(fv.credit) AS fv_credit_max FROM financial_vouchers AS fv",
-      "parameters": {}
+      "SQL": "SELECT fvs.gl_code, fvs.gl_title, fvs.remaining FROM financial_voucherssummaryai AS fvs WHERE fvs.gl_title ILIKE $1 AND fvs.is_main_branch = $2 AND fvs.is_main_ledger = $3",
+      "parameters": {
+        "1": "%بانک%",
+        "2": "true",
+        "3": "true"
+      },
+      "response_template": "کد، عنوان و مانده ارز عملیاتی حساب‌های کلی که عنوان آن‌ها شامل «بانک» است (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 9,
     "complexity": "simple",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "حداقل گردش بدهکار",
+    "table": "financial_voucherssummaryai",
+    "question": "چند ردیف مربوط به اسناد قطعی شده است؟",
     "sql": {
-      "SQL": "SELECT MIN(fv.debit) AS fv_debit_min FROM financial_vouchers AS fv",
-      "parameters": {}
+      "SQL": "SELECT COUNT(fvs.gl_code) AS fvs_gl_code_count FROM financial_voucherssummaryai AS fvs WHERE fvs.voucher_state = $1 AND fvs.is_main_branch = $2 AND fvs.is_main_ledger = $3",
+      "parameters": {
+        "1": "4",
+        "2": "true",
+        "3": "true"
+      },
+      "response_template": "تعداد ردیف‌هایی که وضعیت سند آن‌ها قطعی شده (مقدار ۴) است (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 10,
     "complexity": "simple",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "حداقل گردش بستانکار",
+    "table": "financial_voucherssummaryai",
+    "question": "گردش و مانده حساب‌های مربوط به شعبه اصلی را نشان بده.",
     "sql": {
-      "SQL": "SELECT MIN(fv.credit) AS fv_credit_min FROM financial_vouchers AS fv",
-      "parameters": {}
+      "SQL": "SELECT fvs.header_branch_title, fvs.gl_title, fvs.remaining FROM financial_voucherssummaryai AS fvs WHERE fvs.is_main_branch = $1 AND fvs.is_main_ledger = $2",
+      "parameters": {
+        "1": "true",
+        "2": "true"
+      },
+      "response_template": "عنوان شعبه، عنوان حساب کل و مانده ارز عملیاتی برای ردیف‌های مربوط به شعبه اصلی (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 11,
-    "complexity": "simple",
+    "complexity": "medium",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "مجموع گردش بدهکار ارز سند",
+    "table": "financial_voucherssummaryai",
+    "question": "مجموع گردش بدهکار به تفکیک شعبه چقدر است؟",
     "sql": {
-      "SQL": "SELECT SUM(fv.currency_debit) AS fv_currency_debit_sum FROM financial_vouchers AS fv",
-      "parameters": {}
+      "SQL": "SELECT fvs.header_branch_title, SUM(fvs.debit) AS fvs_debit_sum FROM financial_voucherssummaryai AS fvs WHERE fvs.is_main_branch = $1 AND fvs.is_main_ledger = $2 GROUP BY fvs.header_branch_title",
+      "parameters": {
+        "1": "true",
+        "2": "true"
+      },
+      "response_template": "مجموع گردش بدهکار ارز عملیاتی به تفکیک عنوان شعبه (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 12,
-    "complexity": "simple",
+    "complexity": "medium",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "مجموع گردش بستانکار ارز سند",
+    "table": "financial_voucherssummaryai",
+    "question": "مجموع مانده را به تفکیک گروه حساب نشان بده.",
     "sql": {
-      "SQL": "SELECT SUM(fv.currency_credit) AS fv_currency_credit_sum FROM financial_vouchers AS fv",
-      "parameters": {}
+      "SQL": "SELECT fvs.account_group_title, SUM(fvs.remaining) AS fvs_remaining_sum FROM financial_voucherssummaryai AS fvs WHERE fvs.is_main_branch = $1 AND fvs.is_main_ledger = $2 GROUP BY fvs.account_group_title",
+      "parameters": {
+        "1": "true",
+        "2": "true"
+      },
+      "response_template": "مجموع مانده ارز عملیاتی به تفکیک عنوان گروه حساب (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 13,
-    "complexity": "simple",
+    "complexity": "medium",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "مجموع گردش بدهکار ارز مبنا",
+    "table": "financial_voucherssummaryai",
+    "question": "مجموع گردش بدهکار و بستانکار را به تفکیک حساب کل نشان بده.",
     "sql": {
-      "SQL": "SELECT SUM(fv.base_currency_debit) AS fv_base_currency_debit_sum FROM financial_vouchers AS fv",
-      "parameters": {}
+      "SQL": "SELECT fvs.gl_title, SUM(fvs.debit) AS fvs_debit_sum, SUM(fvs.credit) AS fvs_credit_sum FROM financial_voucherssummaryai AS fvs WHERE fvs.is_main_branch = $1 AND fvs.is_main_ledger = $2 GROUP BY fvs.gl_title",
+      "parameters": {
+        "1": "true",
+        "2": "true"
+      },
+      "response_template": "مجموع گردش بدهکار و گردش بستانکار ارز عملیاتی به تفکیک عنوان حساب کل (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 14,
-    "complexity": "simple",
+    "complexity": "medium",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "مجموع گردش بستانکار ارز مبنا",
+    "table": "financial_voucherssummaryai",
+    "question": "۱۰ حساب معین با بیشترین مانده کدامند؟",
     "sql": {
-      "SQL": "SELECT SUM(fv.base_currency_credit) AS fv_base_currency_credit_sum FROM financial_vouchers AS fv",
-      "parameters": {}
+      "SQL": "SELECT fvs.sl_title, SUM(fvs.remaining) AS fvs_remaining_sum FROM financial_voucherssummaryai AS fvs WHERE fvs.is_main_branch = $2 AND fvs.is_main_ledger = $3 GROUP BY fvs.sl_title ORDER BY fvs_remaining_sum DESC LIMIT $1",
+      "parameters": {
+        "1": "10",
+        "2": "true",
+        "3": "true"
+      },
+      "response_template": "مجموع مانده ارز عملیاتی به تفکیک عنوان حساب معین، مرتب‌شده از بیشترین به کمترین، ۱۰ مورد اول (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 15,
-    "complexity": "simple",
+    "complexity": "medium",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "مجموع مقدار اقلام سند",
+    "table": "financial_voucherssummaryai",
+    "question": "طرف‌های تجاری با مانده بیشتر از ۱۰۰۰۰۰۰ را نشان بده.",
     "sql": {
-      "SQL": "SELECT SUM(fv.quantity) AS fv_quantity_sum FROM financial_vouchers AS fv",
-      "parameters": {}
+      "SQL": "SELECT fvs.business_party_dl_title, fvs.remaining FROM financial_voucherssummaryai AS fvs WHERE fvs.remaining > $1 AND fvs.is_main_branch = $2 AND fvs.is_main_ledger = $3",
+      "parameters": {
+        "1": "1000000",
+        "2": "true",
+        "3": "true"
+      },
+      "response_template": "عنوان طرف تجاری و مانده ارز عملیاتی برای ردیف‌هایی که مانده آن‌ها بیشتر از ۱٬۰۰۰٬۰۰۰ است (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 16,
-    "complexity": "simple",
+    "complexity": "medium",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "میانگین نرخ تبدیل ارز عملیاتی",
+    "table": "financial_voucherssummaryai",
+    "question": "تعداد حساب‌های معین را به تفکیک حساب کل نشان بده.",
     "sql": {
-      "SQL": "SELECT AVG(fv.functional_currency_exchange_rate) AS fv_functional_currency_exchange_rate_avg FROM financial_vouchers AS fv",
-      "parameters": {}
+      "SQL": "SELECT fvs.gl_title, COUNT(fvs.sl_code) AS fvs_sl_code_count FROM financial_voucherssummaryai AS fvs WHERE fvs.is_main_branch = $1 AND fvs.is_main_ledger = $2 GROUP BY fvs.gl_title",
+      "parameters": {
+        "1": "true",
+        "2": "true"
+      },
+      "response_template": "تعداد ردیف‌های حساب معین به تفکیک عنوان حساب کل (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 17,
-    "complexity": "simple",
+    "complexity": "medium",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "مجموع گردش بدهکار ارز گزارشگری اول",
+    "table": "financial_voucherssummaryai",
+    "question": "مجموع گردش بدهکار مراکز هزینه‌ای که عنوانشان شامل «فروش» است چقدر است؟",
     "sql": {
-      "SQL": "SELECT SUM(fv.first_reporting_currency_debit) AS fv_first_reporting_currency_debit_sum FROM financial_vouchers AS fv",
-      "parameters": {}
+      "SQL": "SELECT fvs.cost_center_dl_title, SUM(fvs.debit) AS fvs_debit_sum FROM financial_voucherssummaryai AS fvs WHERE fvs.cost_center_dl_title ILIKE $1 AND fvs.is_main_branch = $2 AND fvs.is_main_ledger = $3 GROUP BY fvs.cost_center_dl_title",
+      "parameters": {
+        "1": "%فروش%",
+        "2": "true",
+        "3": "true"
+      },
+      "response_template": "مجموع گردش بدهکار ارز عملیاتی به تفکیک مرکز هزینه، برای مراکز هزینه‌ای که عنوان آن‌ها شامل «فروش» است (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 18,
-    "complexity": "simple",
+    "complexity": "medium",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "مجموع گردش بستانکار ارز گزارشگری اول",
+    "table": "financial_voucherssummaryai",
+    "question": "مانده به تفکیک پروژه چقدر است؟",
     "sql": {
-      "SQL": "SELECT SUM(fv.first_reporting_currency_credit) AS fv_first_reporting_currency_credit_sum FROM financial_vouchers AS fv",
-      "parameters": {}
+      "SQL": "SELECT fvs.project_dl_title, SUM(fvs.remaining) AS fvs_remaining_sum FROM financial_voucherssummaryai AS fvs WHERE fvs.is_main_branch = $1 AND fvs.is_main_ledger = $2 GROUP BY fvs.project_dl_title",
+      "parameters": {
+        "1": "true",
+        "2": "true"
+      },
+      "response_template": "مجموع مانده ارز عملیاتی به تفکیک عنوان پروژه (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 19,
-    "complexity": "simple",
+    "complexity": "medium",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "مجموع گردش بدهکار ارز گزارشگری دوم",
+    "table": "financial_voucherssummaryai",
+    "question": "گردش بدهکار ارز سند را برای ارز «دلار» به تفکیک ارز سند نشان بده.",
     "sql": {
-      "SQL": "SELECT SUM(fv.second_reporting_currency_debit) AS fv_second_reporting_currency_debit_sum FROM financial_vouchers AS fv",
-      "parameters": {}
+      "SQL": "SELECT fvs.voucher_currency_title, SUM(fvs.currency_debit) AS fvs_currency_debit_sum FROM financial_voucherssummaryai AS fvs WHERE fvs.voucher_currency_title ILIKE $1 AND fvs.is_main_branch = $2 AND fvs.is_main_ledger = $3 GROUP BY fvs.voucher_currency_title",
+      "parameters": {
+        "1": "%دلار%",
+        "2": "true",
+        "3": "true"
+      },
+      "response_template": "مجموع گردش بدهکار ارز سند به تفکیک ارز سند، برای ارزهایی که عنوان آن‌ها شامل «دلار» است (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 20,
-    "complexity": "simple",
+    "complexity": "medium",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "مجموع گردش بستانکار ارز گزارشگری دوم",
+    "table": "financial_voucherssummaryai",
+    "question": "مانده حساب‌های بانکی که عنوانشان شامل «ملت» است را نشان بده.",
     "sql": {
-      "SQL": "SELECT SUM(fv.second_reporting_currency_credit) AS fv_second_reporting_currency_credit_sum FROM financial_vouchers AS fv",
-      "parameters": {}
+      "SQL": "SELECT fvs.bank_account_dl_title, fvs.remaining FROM financial_voucherssummaryai AS fvs WHERE fvs.bank_account_dl_title ILIKE $1 AND fvs.is_main_branch = $2 AND fvs.is_main_ledger = $3",
+      "parameters": {
+        "1": "%ملت%",
+        "2": "true",
+        "3": "true"
+      },
+      "response_template": "عنوان حساب بانکی و مانده ارز عملیاتی برای حساب‌های بانکی که عنوان آن‌ها شامل «ملت» است (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 21,
-    "complexity": "simple",
+    "complexity": "medium",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "لیست شماره اسناد حسابداری",
+    "table": "financial_voucherssummaryai",
+    "question": "اختلاف گردش بدهکار و بستانکار را به تفکیک شعبه نشان بده.",
     "sql": {
-      "SQL": "SELECT fv.voucher_number AS fv_voucher_number, fv.voucher_date AS fv_voucher_date FROM financial_vouchers AS fv",
-      "parameters": {}
+      "SQL": "SELECT fvs.header_branch_title, (SUM(fvs.debit) - SUM(fvs.credit)) AS branch_balance FROM financial_voucherssummaryai AS fvs WHERE fvs.is_main_branch = $1 AND fvs.is_main_ledger = $2 GROUP BY fvs.header_branch_title",
+      "parameters": {
+        "1": "true",
+        "2": "true"
+      },
+      "response_template": "اختلاف مجموع گردش بدهکار و بستانکار ارز عملیاتی (بدهکار منهای بستانکار) به تفکیک عنوان شعبه (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 22,
-    "complexity": "simple",
+    "complexity": "medium",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "لیست انواع سند موجود",
+    "table": "financial_voucherssummaryai",
+    "question": "حساب‌هایی که مانده بدهکار دارند را نشان بده.",
     "sql": {
-      "SQL": "SELECT DISTINCT fv.voucher_type_title AS fv_voucher_type_title FROM financial_vouchers AS fv",
-      "parameters": {}
+      "SQL": "SELECT fvs.gl_title, fvs.remaining_debit FROM financial_voucherssummaryai AS fvs WHERE fvs.remaining_debit > $1 AND fvs.is_main_branch = $2 AND fvs.is_main_ledger = $3",
+      "parameters": {
+        "1": "0",
+        "2": "true",
+        "3": "true"
+      },
+      "response_template": "عنوان حساب کل و مانده بدهکار ارز عملیاتی برای حساب‌هایی که مانده بدهکار آن‌ها بزرگ‌تر از ۰ است (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 23,
-    "complexity": "simple",
+    "complexity": "medium",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "لیست وضعیت‌های سند موجود",
+    "table": "financial_voucherssummaryai",
+    "question": "حساب‌هایی که مانده بستانکار دارند را نشان بده.",
     "sql": {
-      "SQL": "SELECT DISTINCT fv.voucher_state AS fv_voucher_state FROM financial_vouchers AS fv",
-      "parameters": {}
+      "SQL": "SELECT fvs.gl_title, fvs.remaining_credit FROM financial_voucherssummaryai AS fvs WHERE fvs.remaining_credit > $1 AND fvs.is_main_branch = $2 AND fvs.is_main_ledger = $3",
+      "parameters": {
+        "1": "0",
+        "2": "true",
+        "3": "true"
+      },
+      "response_template": "عنوان حساب کل و مانده بستانکار ارز عملیاتی برای حساب‌هایی که مانده بستانکار آن‌ها بزرگ‌تر از ۰ است (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 24,
-    "complexity": "simple",
+    "complexity": "medium",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "لیست حساب‌های کل",
+    "table": "financial_voucherssummaryai",
+    "question": "شعبه‌هایی که مجموع گردش بدهکارشان بیشتر از ۱۰۰۰۰۰۰۰۰ است کدامند؟",
     "sql": {
-      "SQL": "SELECT DISTINCT fv.gl_code AS fv_gl_code, fv.gl_title AS fv_gl_title FROM financial_vouchers AS fv",
-      "parameters": {}
+      "SQL": "SELECT fvs.header_branch_title, SUM(fvs.debit) AS fvs_debit_sum FROM financial_voucherssummaryai AS fvs WHERE fvs.is_main_branch = $2 AND fvs.is_main_ledger = $3 GROUP BY fvs.header_branch_title HAVING SUM(fvs.debit) > $1",
+      "parameters": {
+        "1": "100000000",
+        "2": "true",
+        "3": "true"
+      },
+      "response_template": "مجموع گردش بدهکار ارز عملیاتی به تفکیک شعبه، تنها برای شعبه‌هایی که مجموع گردش بدهکار آن‌ها بیشتر از ۱۰۰٬۰۰۰٬۰۰۰ است (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 25,
-    "complexity": "simple",
+    "complexity": "medium",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "لیست گروه حساب‌ها",
+    "table": "financial_voucherssummaryai",
+    "question": "۵ طرف تجاری با بیشترین مانده کدامند؟",
     "sql": {
-      "SQL": "SELECT DISTINCT fv.ag_code AS fv_ag_code, fv.ag_title AS fv_ag_title FROM financial_vouchers AS fv",
-      "parameters": {}
+      "SQL": "SELECT fvs.business_party_dl_title, SUM(fvs.remaining) AS fvs_remaining_sum FROM financial_voucherssummaryai AS fvs WHERE fvs.is_main_branch = $2 AND fvs.is_main_ledger = $3 GROUP BY fvs.business_party_dl_title ORDER BY fvs_remaining_sum DESC LIMIT $1",
+      "parameters": {
+        "1": "5",
+        "2": "true",
+        "3": "true"
+      },
+      "response_template": "مجموع مانده ارز عملیاتی به تفکیک عنوان طرف تجاری، مرتب‌شده از بیشترین به کمترین، ۵ مورد اول (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 26,
-    "complexity": "simple",
+    "complexity": "medium",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "لیست مراکز هزینه",
+    "table": "financial_voucherssummaryai",
+    "question": "تعداد ردیف‌ها را به تفکیک وضعیت سند نشان بده.",
     "sql": {
-      "SQL": "SELECT DISTINCT fv.cost_center_dl_code AS fv_cost_center_dl_code, fv.cost_center_dl_title AS fv_cost_center_dl_title FROM financial_vouchers AS fv",
-      "parameters": {}
+      "SQL": "SELECT fvs.voucher_state, COUNT(fvs.gl_code) AS fvs_gl_code_count FROM financial_voucherssummaryai AS fvs WHERE fvs.is_main_branch = $1 AND fvs.is_main_ledger = $2 GROUP BY fvs.voucher_state",
+      "parameters": {
+        "1": "true",
+        "2": "true"
+      },
+      "response_template": "تعداد ردیف‌ها به تفکیک وضعیت سند (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 27,
-    "complexity": "simple",
+    "complexity": "medium",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "لیست پروژه‌ها",
+    "table": "financial_voucherssummaryai",
+    "question": "مجموع گردش بدهکار اسناد قطعی شده در دفتر کل اصلی چقدر است؟",
     "sql": {
-      "SQL": "SELECT DISTINCT fv.project_dl_code AS fv_project_dl_code, fv.project_dl_title AS fv_project_dl_title FROM financial_vouchers AS fv",
-      "parameters": {}
+      "SQL": "SELECT SUM(fvs.debit) AS fvs_debit_sum FROM financial_voucherssummaryai AS fvs WHERE fvs.voucher_state = $1 AND fvs.is_main_ledger = $2 AND fvs.is_main_branch = $3",
+      "parameters": {
+        "1": "4",
+        "2": "true",
+        "3": "true"
+      },
+      "response_template": "مجموع گردش بدهکار ارز عملیاتی برای ردیف‌هایی که وضعیت سند آن‌ها قطعی شده (مقدار ۴) و مربوط به دفتر کل اصلی است (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 28,
-    "complexity": "simple",
+    "complexity": "medium",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "لیست شعب",
+    "table": "financial_voucherssummaryai",
+    "question": "مانده طرف‌های تجاری با نقش «مشتری» را نشان بده.",
     "sql": {
-      "SQL": "SELECT DISTINCT fv.header_branch_code AS fv_header_branch_code, fv.header_branch_title AS fv_header_branch_title FROM financial_vouchers AS fv",
-      "parameters": {}
+      "SQL": "SELECT fvs.business_party_dl_title, fvs.business_party_role, fvs.remaining FROM financial_voucherssummaryai AS fvs WHERE fvs.business_party_role ILIKE $1 AND fvs.is_main_branch = $2 AND fvs.is_main_ledger = $3",
+      "parameters": {
+        "1": "%مشتری%",
+        "2": "true",
+        "3": "true"
+      },
+      "response_template": "عنوان طرف تجاری، نقش طرف تجاری و مانده ارز عملیاتی برای ردیف‌هایی که نقش طرف تجاری آن‌ها شامل «مشتری» است (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 29,
-    "complexity": "simple",
+    "complexity": "medium",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "لیست صادرکنندگان سند",
+    "table": "financial_voucherssummaryai",
+    "question": "مانده را به تفکیک گروه مشتریان نشان بده.",
     "sql": {
-      "SQL": "SELECT DISTINCT fv.creator_name AS fv_creator_name FROM financial_vouchers AS fv",
-      "parameters": {}
+      "SQL": "SELECT fvs.customer_group_dl_title, SUM(fvs.remaining) AS fvs_remaining_sum FROM financial_voucherssummaryai AS fvs WHERE fvs.is_main_branch = $1 AND fvs.is_main_ledger = $2 GROUP BY fvs.customer_group_dl_title",
+      "parameters": {
+        "1": "true",
+        "2": "true"
+      },
+      "response_template": "مجموع مانده ارز عملیاتی به تفکیک عنوان گروه مشتریان (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 30,
-    "complexity": "simple",
+    "complexity": "medium",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "لیست ارزهای سند",
+    "table": "financial_voucherssummaryai",
+    "question": "گردش بدهکار را به تفکیک گروه کالا و خدمت نشان بده.",
     "sql": {
-      "SQL": "SELECT DISTINCT fv.voucher_currency_title AS fv_voucher_currency_title FROM financial_vouchers AS fv",
-      "parameters": {}
+      "SQL": "SELECT fvs.part_or_service_group_dl_title, SUM(fvs.debit) AS fvs_debit_sum FROM financial_voucherssummaryai AS fvs WHERE fvs.is_main_branch = $1 AND fvs.is_main_ledger = $2 GROUP BY fvs.part_or_service_group_dl_title",
+      "parameters": {
+        "1": "true",
+        "2": "true"
+      },
+      "response_template": "مجموع گردش بدهکار ارز عملیاتی به تفکیک عنوان گروه کالا و خدمت (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 31,
     "complexity": "medium",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "اسناد حسابداری امروز",
+    "table": "financial_voucherssummaryai",
+    "question": "مانده صندوق‌هایی که عنوانشان شامل «صندوق» است را نشان بده.",
     "sql": {
-      "SQL": "SELECT fv.voucher_number AS fv_voucher_number, fv.voucher_date AS fv_voucher_date, fv.debit AS fv_debit, fv.credit AS fv_credit FROM financial_vouchers AS fv WHERE fv.voucher_date = $1",
+      "SQL": "SELECT fvs.cash_dl_title, fvs.remaining FROM financial_voucherssummaryai AS fvs WHERE fvs.cash_dl_title ILIKE $1 AND fvs.is_main_branch = $2 AND fvs.is_main_ledger = $3",
       "parameters": {
-        "1": "{today_date}"
-      }
+        "1": "%صندوق%",
+        "2": "true",
+        "3": "true"
+      },
+      "response_template": "عنوان صندوق و مانده ارز عملیاتی برای صندوق‌هایی که عنوان آن‌ها شامل «صندوق» است (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 32,
     "complexity": "medium",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "اسناد حسابداری دیروز",
+    "table": "financial_voucherssummaryai",
+    "question": "مانده را به تفکیک تنخواه نشان بده.",
     "sql": {
-      "SQL": "SELECT fv.voucher_number AS fv_voucher_number, fv.voucher_date AS fv_voucher_date, fv.debit AS fv_debit, fv.credit AS fv_credit FROM financial_vouchers AS fv WHERE fv.voucher_date = $1",
+      "SQL": "SELECT fvs.petty_cash_dl_title, SUM(fvs.remaining) AS fvs_remaining_sum FROM financial_voucherssummaryai AS fvs WHERE fvs.is_main_branch = $1 AND fvs.is_main_ledger = $2 GROUP BY fvs.petty_cash_dl_title",
       "parameters": {
-        "1": "{yesterday_date}"
-      }
+        "1": "true",
+        "2": "true"
+      },
+      "response_template": "مجموع مانده ارز عملیاتی به تفکیک عنوان تنخواه (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 33,
     "complexity": "medium",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "اسناد حسابداری این هفته",
+    "table": "financial_voucherssummaryai",
+    "question": "گردش بدهکار ارز مبنا را به تفکیک حساب کل نشان بده.",
     "sql": {
-      "SQL": "SELECT fv.voucher_number AS fv_voucher_number, fv.voucher_date AS fv_voucher_date, fv.debit AS fv_debit, fv.credit AS fv_credit FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 AND fv.voucher_date <= $2",
+      "SQL": "SELECT fvs.gl_title, SUM(fvs.base_currency_debit) AS fvs_base_currency_debit_sum FROM financial_voucherssummaryai AS fvs WHERE fvs.is_main_branch = $1 AND fvs.is_main_ledger = $2 GROUP BY fvs.gl_title",
       "parameters": {
-        "1": "{this_week_saturday}",
-        "2": "{this_week_friday}"
-      }
+        "1": "true",
+        "2": "true"
+      },
+      "response_template": "مجموع گردش بدهکار ارز مبنا به تفکیک عنوان حساب کل (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 34,
     "complexity": "medium",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "اسناد حسابداری هفته گذشته",
+    "table": "financial_voucherssummaryai",
+    "question": "گردش و مانده حساب کلی که کد آن شامل «1101» است را نشان بده.",
     "sql": {
-      "SQL": "SELECT fv.voucher_number AS fv_voucher_number, fv.voucher_date AS fv_voucher_date, fv.debit AS fv_debit, fv.credit AS fv_credit FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 AND fv.voucher_date <= $2",
+      "SQL": "SELECT fvs.gl_code, fvs.gl_title, fvs.debit, fvs.credit, fvs.remaining FROM financial_voucherssummaryai AS fvs WHERE fvs.gl_code ILIKE $1 AND fvs.is_main_branch = $2 AND fvs.is_main_ledger = $3",
       "parameters": {
-        "1": "{last_week_saturday}",
-        "2": "{last_week_friday}"
-      }
+        "1": "%1101%",
+        "2": "true",
+        "3": "true"
+      },
+      "response_template": "کد، عنوان، گردش بدهکار، گردش بستانکار و مانده ارز عملیاتی برای حساب‌های کلی که کد آن‌ها شامل «1101» است (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 35,
     "complexity": "medium",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "اسناد حسابداری ماه گذشته",
+    "table": "financial_voucherssummaryai",
+    "question": "مانده حساب‌های معین زیرمجموعه حساب کلی که عنوانش شامل «موجودی» است را نشان بده.",
     "sql": {
-      "SQL": "SELECT fv.voucher_number AS fv_voucher_number, fv.voucher_date AS fv_voucher_date, fv.debit AS fv_debit, fv.credit AS fv_credit FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 AND fv.voucher_date <= $2",
+      "SQL": "SELECT fvs.sl_code, fvs.sl_title, fvs.remaining FROM financial_voucherssummaryai AS fvs WHERE fvs.gl_title ILIKE $1 AND fvs.is_main_branch = $2 AND fvs.is_main_ledger = $3",
       "parameters": {
-        "1": "{last_month_date}",
-        "2": "{today_date}"
-      }
+        "1": "%موجودی%",
+        "2": "true",
+        "3": "true"
+      },
+      "response_template": "کد، عنوان و مانده ارز عملیاتی حساب‌های معین مربوط به حساب‌های کلی که عنوان آن‌ها شامل «موجودی» است (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 36,
-    "complexity": "medium",
+    "complexity": "complex",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "اسناد حسابداری از ابتدای سال",
+    "table": "financial_voucherssummaryai",
+    "question": "مجموع مانده را به تفکیک شعبه و گروه حساب نشان بده و از بیشترین به کمترین مرتب کن.",
     "sql": {
-      "SQL": "SELECT fv.voucher_number AS fv_voucher_number, fv.voucher_date AS fv_voucher_date, fv.debit AS fv_debit, fv.credit AS fv_credit FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1",
+      "SQL": "SELECT fvs.header_branch_title, fvs.account_group_title, SUM(fvs.remaining) AS fvs_remaining_sum FROM financial_voucherssummaryai AS fvs WHERE fvs.is_main_branch = $1 AND fvs.is_main_ledger = $2 GROUP BY fvs.header_branch_title, fvs.account_group_title ORDER BY fvs_remaining_sum DESC",
       "parameters": {
-        "1": "{persian_year_start}"
-      }
+        "1": "true",
+        "2": "true"
+      },
+      "response_template": "مجموع مانده ارز عملیاتی به تفکیک عنوان شعبه و عنوان گروه حساب، مرتب‌شده از بیشترین به کمترین (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 37,
-    "complexity": "medium",
+    "complexity": "complex",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "اسناد حسابداری سال قبل",
+    "table": "financial_voucherssummaryai",
+    "question": "مجموع گردش بدهکار را به تفکیک پروژه و مرکز هزینه نشان بده.",
     "sql": {
-      "SQL": "SELECT fv.voucher_number AS fv_voucher_number, fv.voucher_date AS fv_voucher_date, fv.debit AS fv_debit, fv.credit AS fv_credit FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 AND fv.voucher_date <= $2",
+      "SQL": "SELECT fvs.project_dl_title, fvs.cost_center_dl_title, SUM(fvs.debit) AS fvs_debit_sum FROM financial_voucherssummaryai AS fvs WHERE fvs.is_main_branch = $1 AND fvs.is_main_ledger = $2 GROUP BY fvs.project_dl_title, fvs.cost_center_dl_title",
       "parameters": {
-        "1": "{prev_persian_year_start}",
-        "2": "{prev_persian_year_end}"
-      }
+        "1": "true",
+        "2": "true"
+      },
+      "response_template": "مجموع گردش بدهکار ارز عملیاتی به تفکیک عنوان پروژه و عنوان مرکز هزینه (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 38,
-    "complexity": "medium",
+    "complexity": "complex",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "اسناد با وضعیت تایید شده",
+    "table": "financial_voucherssummaryai",
+    "question": "مانده مقدار را به تفکیک کالا نشان بده.",
     "sql": {
-      "SQL": "SELECT fv.voucher_number AS fv_voucher_number, fv.voucher_date AS fv_voucher_date, fv.voucher_state AS fv_voucher_state FROM financial_vouchers AS fv WHERE fv.voucher_state ILIKE $1",
+      "SQL": "SELECT fvs.part_dl_title, SUM(fvs.quantity_remaining) AS fvs_quantity_remaining_sum FROM financial_voucherssummaryai AS fvs WHERE fvs.is_main_branch = $1 AND fvs.is_main_ledger = $2 GROUP BY fvs.part_dl_title",
       "parameters": {
-        "1": "%تایید شده%"
-      }
+        "1": "true",
+        "2": "true"
+      },
+      "response_template": "مجموع مانده مقدار به تفکیک عنوان کالا (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 39,
-    "complexity": "medium",
+    "complexity": "complex",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "اسناد با وضعیت ثبت موقت",
+    "table": "financial_voucherssummaryai",
+    "question": "گردش بدهکار و بستانکار ارز سند را به تفکیک ارز سند نشان بده.",
     "sql": {
-      "SQL": "SELECT fv.voucher_number AS fv_voucher_number, fv.voucher_date AS fv_voucher_date, fv.voucher_state AS fv_voucher_state FROM financial_vouchers AS fv WHERE fv.voucher_state ILIKE $1",
+      "SQL": "SELECT fvs.voucher_currency_title, SUM(fvs.currency_debit) AS fvs_currency_debit_sum, SUM(fvs.currency_credit) AS fvs_currency_credit_sum FROM financial_voucherssummaryai AS fvs WHERE fvs.is_main_branch = $1 AND fvs.is_main_ledger = $2 GROUP BY fvs.voucher_currency_title",
       "parameters": {
-        "1": "%موقت%"
-      }
+        "1": "true",
+        "2": "true"
+      },
+      "response_template": "مجموع گردش بدهکار و گردش بستانکار ارز سند به تفکیک ارز سند (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 40,
-    "complexity": "medium",
+    "complexity": "complex",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "اسناد با وضعیت ثبت قطعی",
+    "table": "financial_voucherssummaryai",
+    "question": "مجموع مانده حساب‌های هزینه قطعی شده در شعبه اصلی را به تفکیک حساب کل و از بیشترین به کمترین نشان بده.",
     "sql": {
-      "SQL": "SELECT fv.voucher_number AS fv_voucher_number, fv.voucher_date AS fv_voucher_date, fv.voucher_state AS fv_voucher_state FROM financial_vouchers AS fv WHERE fv.voucher_state ILIKE $1",
+      "SQL": "SELECT fvs.gl_title, SUM(fvs.remaining) AS fvs_remaining_sum FROM financial_voucherssummaryai AS fvs WHERE fvs.voucher_state = $1 AND fvs.is_main_branch = $2 AND fvs.gl_title ILIKE $3 AND fvs.is_main_ledger = $4 GROUP BY fvs.gl_title ORDER BY fvs_remaining_sum DESC",
       "parameters": {
-        "1": "%قطعی%"
-      }
+        "1": "4",
+        "2": "true",
+        "3": "%هزینه%",
+        "4": "true"
+      },
+      "response_template": "مجموع مانده ارز عملیاتی به تفکیک عنوان حساب کل، برای ردیف‌های قطعی شده (مقدار ۴) در شعبه اصلی که عنوان حساب کل آن‌ها شامل «هزینه» است، مرتب‌شده از بیشترین به کمترین (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 41,
     "complexity": "medium",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "مجموع گردش بدهکار امروز",
+    "table": "financial_voucherssummaryai",
+    "question": "گردش بدهکار و بستانکار اسناد موقت را نشان بده.",
     "sql": {
-      "SQL": "SELECT SUM(fv.debit) AS fv_debit_sum FROM financial_vouchers AS fv WHERE fv.voucher_date = $1",
+      "SQL": "SELECT fvs.gl_title, fvs.debit, fvs.credit FROM financial_voucherssummaryai AS fvs WHERE fvs.voucher_state = $1 AND fvs.is_main_branch = $2 AND fvs.is_main_ledger = $3",
       "parameters": {
-        "1": "{today_date}"
-      }
+        "1": "2",
+        "2": "true",
+        "3": "true"
+      },
+      "response_template": "عنوان حساب کل، گردش بدهکار و بستانکار ارز عملیاتی برای ردیف‌هایی که وضعیت سند آن‌ها موقت (مقدار ۲) است (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 42,
-    "complexity": "medium",
+    "complexity": "complex",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "مجموع گردش بستانکار امروز",
+    "table": "financial_voucherssummaryai",
+    "question": "میانگین مانده را به تفکیک گروه حساب نشان بده.",
     "sql": {
-      "SQL": "SELECT SUM(fv.credit) AS fv_credit_sum FROM financial_vouchers AS fv WHERE fv.voucher_date = $1",
+      "SQL": "SELECT fvs.account_group_title, AVG(fvs.remaining) AS fvs_remaining_avg FROM financial_voucherssummaryai AS fvs WHERE fvs.is_main_branch = $1 AND fvs.is_main_ledger = $2 GROUP BY fvs.account_group_title",
       "parameters": {
-        "1": "{today_date}"
-      }
+        "1": "true",
+        "2": "true"
+      },
+      "response_template": "میانگین مانده ارز عملیاتی به تفکیک عنوان گروه حساب (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 43,
-    "complexity": "medium",
+    "complexity": "simple",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "مجموع گردش بدهکار هفته گذشته",
+    "table": "financial_voucherssummaryai",
+    "question": "بیشترین مانده ثبت‌شده چقدر است؟",
     "sql": {
-      "SQL": "SELECT SUM(fv.debit) AS fv_debit_sum FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 AND fv.voucher_date <= $2",
+      "SQL": "SELECT MAX(fvs.remaining) AS fvs_remaining_max FROM financial_voucherssummaryai AS fvs WHERE fvs.is_main_branch = $1 AND fvs.is_main_ledger = $2",
       "parameters": {
-        "1": "{last_week_saturday}",
-        "2": "{last_week_friday}"
-      }
+        "1": "true",
+        "2": "true"
+      },
+      "response_template": "بیشترین مقدار مانده ارز عملیاتی بین همه ردیف‌ها (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 44,
-    "complexity": "medium",
+    "complexity": "simple",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "مجموع گردش بستانکار هفته گذشته",
+    "table": "financial_voucherssummaryai",
+    "question": "کمترین مانده ثبت‌شده چقدر است؟",
     "sql": {
-      "SQL": "SELECT SUM(fv.credit) AS fv_credit_sum FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 AND fv.voucher_date <= $2",
+      "SQL": "SELECT MIN(fvs.remaining) AS fvs_remaining_min FROM financial_voucherssummaryai AS fvs WHERE fvs.is_main_branch = $1 AND fvs.is_main_ledger = $2",
       "parameters": {
-        "1": "{last_week_saturday}",
-        "2": "{last_week_friday}"
-      }
+        "1": "true",
+        "2": "true"
+      },
+      "response_template": "کمترین مقدار مانده ارز عملیاتی بین همه ردیف‌ها (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 45,
     "complexity": "medium",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "تعداد اسناد به تفکیک وضعیت",
+    "table": "financial_voucherssummaryai",
+    "question": "تعداد طرف‌های تجاری را به تفکیک نقش آن‌ها نشان بده.",
     "sql": {
-      "SQL": "SELECT fv.voucher_state AS fv_voucher_state, COUNT(fv.voucher_number) AS fv_voucher_number_count FROM financial_vouchers AS fv GROUP BY fv.voucher_state ORDER BY fv_voucher_number_count DESC",
-      "parameters": {}
+      "SQL": "SELECT fvs.business_party_role, COUNT(fvs.business_party_dl_code) AS fvs_business_party_dl_code_count FROM financial_voucherssummaryai AS fvs WHERE fvs.is_main_branch = $1 AND fvs.is_main_ledger = $2 GROUP BY fvs.business_party_role",
+      "parameters": {
+        "1": "true",
+        "2": "true"
+      },
+      "response_template": "تعداد ردیف‌های طرف تجاری به تفکیک نقش طرف تجاری (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 46,
-    "complexity": "medium",
+    "complexity": "complex",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "تعداد اسناد به تفکیک نوع سند",
+    "table": "financial_voucherssummaryai",
+    "question": "گردش بدهکار ارز گزارشگری اول را به تفکیک حساب کل نشان بده.",
     "sql": {
-      "SQL": "SELECT fv.voucher_type_title AS fv_voucher_type_title, COUNT(fv.voucher_number) AS fv_voucher_number_count FROM financial_vouchers AS fv GROUP BY fv.voucher_type_title ORDER BY fv_voucher_number_count DESC",
-      "parameters": {}
+      "SQL": "SELECT fvs.gl_title, SUM(fvs.first_reporting_currency_debit) AS fvs_first_reporting_currency_debit_sum FROM financial_voucherssummaryai AS fvs WHERE fvs.is_main_branch = $1 AND fvs.is_main_ledger = $2 GROUP BY fvs.gl_title",
+      "parameters": {
+        "1": "true",
+        "2": "true"
+      },
+      "response_template": "مجموع گردش بدهکار ارز گزارشگری اول به تفکیک عنوان حساب کل (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 47,
-    "complexity": "medium",
+    "complexity": "complex",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "مجموع گردش بدهکار به تفکیک گروه حساب",
+    "table": "financial_voucherssummaryai",
+    "question": "۱۰ مرکز هزینه با بیشترین گردش بدهکار را که گردش آن‌ها بزرگ‌تر از صفر است نشان بده.",
     "sql": {
-      "SQL": "SELECT fv.ag_title AS fv_ag_title, SUM(fv.debit) AS fv_debit_sum FROM financial_vouchers AS fv GROUP BY fv.ag_title ORDER BY fv_debit_sum DESC",
-      "parameters": {}
+      "SQL": "SELECT fvs.cost_center_dl_title, SUM(fvs.debit) AS fvs_debit_sum FROM financial_voucherssummaryai AS fvs WHERE fvs.is_main_branch = $3 AND fvs.is_main_ledger = $4 GROUP BY fvs.cost_center_dl_title HAVING SUM(fvs.debit) > $1 ORDER BY fvs_debit_sum DESC LIMIT $2",
+      "parameters": {
+        "1": "0",
+        "2": "10",
+        "3": "true",
+        "4": "true"
+      },
+      "response_template": "مجموع گردش بدهکار ارز عملیاتی به تفکیک مرکز هزینه، تنها برای مراکزی که مجموع گردش بدهکار آن‌ها بزرگ‌تر از ۰ است، مرتب‌شده از بیشترین به کمترین، ۱۰ مورد اول (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 48,
     "complexity": "medium",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "مجموع گردش بستانکار به تفکیک گروه حساب",
+    "table": "financial_voucherssummaryai",
+    "question": "مانده را به تفکیک تفصیل شعبه نشان بده.",
     "sql": {
-      "SQL": "SELECT fv.ag_title AS fv_ag_title, SUM(fv.credit) AS fv_credit_sum FROM financial_vouchers AS fv GROUP BY fv.ag_title ORDER BY fv_credit_sum DESC",
-      "parameters": {}
+      "SQL": "SELECT fvs.branch_dl_title, SUM(fvs.remaining) AS fvs_remaining_sum FROM financial_voucherssummaryai AS fvs WHERE fvs.is_main_branch = $1 AND fvs.is_main_ledger = $2 GROUP BY fvs.branch_dl_title",
+      "parameters": {
+        "1": "true",
+        "2": "true"
+      },
+      "response_template": "مجموع مانده ارز عملیاتی به تفکیک عنوان تفصیل شعبه (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 49,
     "complexity": "medium",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "مجموع گردش بدهکار به تفکیک حساب کل",
+    "table": "financial_voucherssummaryai",
+    "question": "گردش بدهکار حوزه‌های قیمت‌گذاری‌ای که عنوانشان شامل «داخلی» است را نشان بده.",
     "sql": {
-      "SQL": "SELECT fv.gl_code AS fv_gl_code, fv.gl_title AS fv_gl_title, SUM(fv.debit) AS fv_debit_sum FROM financial_vouchers AS fv GROUP BY fv.gl_code, fv.gl_title ORDER BY fv_debit_sum DESC",
-      "parameters": {}
+      "SQL": "SELECT fvs.pricing_area_dl_title, SUM(fvs.debit) AS fvs_debit_sum FROM financial_voucherssummaryai AS fvs WHERE fvs.pricing_area_dl_title ILIKE $1 AND fvs.is_main_branch = $2 AND fvs.is_main_ledger = $3 GROUP BY fvs.pricing_area_dl_title",
+      "parameters": {
+        "1": "%داخلی%",
+        "2": "true",
+        "3": "true"
+      },
+      "response_template": "مجموع گردش بدهکار ارز عملیاتی به تفکیک حوزه قیمت‌گذاری، برای حوزه‌هایی که عنوان آن‌ها شامل «داخلی» است (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   },
   {
     "id": 50,
-    "complexity": "medium",
+    "complexity": "complex",
     "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "مجموع گردش بستانکار به تفکیک حساب کل",
+    "table": "financial_voucherssummaryai",
+    "question": "خالص مانده (بدهکار منهای بستانکار) ۱۰ تأمین‌کننده برتر را نشان بده.",
     "sql": {
-      "SQL": "SELECT fv.gl_code AS fv_gl_code, fv.gl_title AS fv_gl_title, SUM(fv.credit) AS fv_credit_sum FROM financial_vouchers AS fv GROUP BY fv.gl_code, fv.gl_title ORDER BY fv_credit_sum DESC",
-      "parameters": {}
-    }
-  },
-  {
-    "id": 51,
-    "complexity": "medium",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "مجموع گردش بدهکار به تفکیک مرکز هزینه",
-    "sql": {
-      "SQL": "SELECT fv.cost_center_dl_title AS fv_cost_center_dl_title, SUM(fv.debit) AS fv_debit_sum FROM financial_vouchers AS fv GROUP BY fv.cost_center_dl_title ORDER BY fv_debit_sum DESC",
-      "parameters": {}
-    }
-  },
-  {
-    "id": 52,
-    "complexity": "medium",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "مجموع گردش بدهکار به تفکیک پروژه",
-    "sql": {
-      "SQL": "SELECT fv.project_dl_title AS fv_project_dl_title, SUM(fv.debit) AS fv_debit_sum FROM financial_vouchers AS fv GROUP BY fv.project_dl_title ORDER BY fv_debit_sum DESC",
-      "parameters": {}
-    }
-  },
-  {
-    "id": 53,
-    "complexity": "medium",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "مجموع گردش بدهکار به تفکیک شعبه",
-    "sql": {
-      "SQL": "SELECT fv.header_branch_title AS fv_header_branch_title, SUM(fv.debit) AS fv_debit_sum FROM financial_vouchers AS fv GROUP BY fv.header_branch_title ORDER BY fv_debit_sum DESC",
-      "parameters": {}
-    }
-  },
-  {
-    "id": 54,
-    "complexity": "medium",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "تعداد اسناد صادر شده توسط هر کاربر",
-    "sql": {
-      "SQL": "SELECT fv.creator_name AS fv_creator_name, COUNT(fv.voucher_number) AS fv_voucher_number_count FROM financial_vouchers AS fv GROUP BY fv.creator_name ORDER BY fv_voucher_number_count DESC",
-      "parameters": {}
-    }
-  },
-  {
-    "id": 55,
-    "complexity": "medium",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "اسناد مربوط به طرف تجاری خاص",
-    "sql": {
-      "SQL": "SELECT fv.voucher_number AS fv_voucher_number, fv.voucher_date AS fv_voucher_date, fv.business_party_dl_title AS fv_business_party_dl_title, fv.debit AS fv_debit, fv.credit AS fv_credit FROM financial_vouchers AS fv WHERE fv.business_party_dl_title ILIKE $1",
+      "SQL": "SELECT fvs.business_party_dl_title, (SUM(fvs.debit) - SUM(fvs.credit)) AS party_net FROM financial_voucherssummaryai AS fvs WHERE fvs.business_party_role ILIKE $1 AND fvs.is_main_branch = $3 AND fvs.is_main_ledger = $4 GROUP BY fvs.business_party_dl_title ORDER BY party_net DESC LIMIT $2",
       "parameters": {
-        "1": "%شفا%"
-      }
-    }
-  },
-  {
-    "id": 56,
-    "complexity": "medium",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "اسناد مربوط به پروژه خاص",
-    "sql": {
-      "SQL": "SELECT fv.voucher_number AS fv_voucher_number, fv.voucher_date AS fv_voucher_date, fv.project_dl_title AS fv_project_dl_title, fv.debit AS fv_debit, fv.credit AS fv_credit FROM financial_vouchers AS fv WHERE fv.project_dl_title ILIKE $1",
-      "parameters": {
-        "1": "%ساختمان%"
-      }
-    }
-  },
-  {
-    "id": 57,
-    "complexity": "medium",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "اسناد مربوط به مرکز هزینه خاص",
-    "sql": {
-      "SQL": "SELECT fv.voucher_number AS fv_voucher_number, fv.voucher_date AS fv_voucher_date, fv.cost_center_dl_title AS fv_cost_center_dl_title, fv.debit AS fv_debit, fv.credit AS fv_credit FROM financial_vouchers AS fv WHERE fv.cost_center_dl_title ILIKE $1",
-      "parameters": {
-        "1": "%تولید%"
-      }
-    }
-  },
-  {
-    "id": 58,
-    "complexity": "medium",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "اسناد با گردش بدهکار بالای یک میلیارد",
-    "sql": {
-      "SQL": "SELECT fv.voucher_number AS fv_voucher_number, fv.voucher_date AS fv_voucher_date, fv.debit AS fv_debit FROM financial_vouchers AS fv WHERE fv.debit > $1",
-      "parameters": {
-        "1": "1000000000"
-      }
-    }
-  },
-  {
-    "id": 59,
-    "complexity": "medium",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "اسناد شعبه تهران",
-    "sql": {
-      "SQL": "SELECT fv.voucher_number AS fv_voucher_number, fv.voucher_date AS fv_voucher_date, fv.header_branch_title AS fv_header_branch_title, fv.debit AS fv_debit, fv.credit AS fv_credit FROM financial_vouchers AS fv WHERE fv.header_branch_title ILIKE $1",
-      "parameters": {
-        "1": "%تهران%"
-      }
-    }
-  },
-  {
-    "id": 60,
-    "complexity": "medium",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "اسناد با ارز دلار",
-    "sql": {
-      "SQL": "SELECT fv.voucher_number AS fv_voucher_number, fv.voucher_date AS fv_voucher_date, fv.voucher_currency_title AS fv_voucher_currency_title, fv.currency_debit AS fv_currency_debit, fv.currency_credit AS fv_currency_credit FROM financial_vouchers AS fv WHERE fv.voucher_currency_title ILIKE $1",
-      "parameters": {
-        "1": "%دلار%"
-      }
-    }
-  },
-  {
-    "id": 61,
-    "complexity": "hard",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "مجموع گردش بدهکار و بستانکار به تفکیک روز در هفته گذشته",
-    "sql": {
-      "SQL": "SELECT fv.voucher_date AS fv_voucher_date, SUM(fv.debit) AS fv_debit_sum, SUM(fv.credit) AS fv_credit_sum FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 AND fv.voucher_date <= $2 GROUP BY fv.voucher_date ORDER BY fv.voucher_date",
-      "parameters": {
-        "1": "{last_week_saturday}",
-        "2": "{last_week_friday}"
-      }
-    }
-  },
-  {
-    "id": 62,
-    "complexity": "hard",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "مجموع گردش بدهکار و بستانکار به تفکیک نوع سند از ابتدای سال",
-    "sql": {
-      "SQL": "SELECT fv.voucher_type_title AS fv_voucher_type_title, SUM(fv.debit) AS fv_debit_sum, SUM(fv.credit) AS fv_credit_sum, COUNT(fv.voucher_number) AS fv_voucher_number_count FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 GROUP BY fv.voucher_type_title ORDER BY fv_debit_sum DESC",
-      "parameters": {
-        "1": "{persian_year_start}"
-      }
-    }
-  },
-  {
-    "id": 63,
-    "complexity": "hard",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "مجموع گردش بدهکار و بستانکار حساب کل خاص از ابتدای سال",
-    "sql": {
-      "SQL": "SELECT fv.gl_code AS fv_gl_code, fv.gl_title AS fv_gl_title, SUM(fv.debit) AS fv_debit_sum, SUM(fv.credit) AS fv_credit_sum FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 AND fv.gl_title ILIKE $2 GROUP BY fv.gl_code, fv.gl_title",
-      "parameters": {
-        "1": "{persian_year_start}",
-        "2": "%بانک%"
-      }
-    }
-  },
-  {
-    "id": 64,
-    "complexity": "hard",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "مانده حساب‌های کل (تفاضل بدهکار و بستانکار) از ابتدای سال",
-    "sql": {
-      "SQL": "SELECT fv.gl_code AS fv_gl_code, fv.gl_title AS fv_gl_title, SUM(fv.debit) - SUM(fv.credit) AS balance FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 GROUP BY fv.gl_code, fv.gl_title ORDER BY balance DESC",
-      "parameters": {
-        "1": "{persian_year_start}"
-      }
-    }
-  },
-  {
-    "id": 65,
-    "complexity": "hard",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "مانده حساب‌های معین از ابتدای سال",
-    "sql": {
-      "SQL": "SELECT fv.sl_code AS fv_sl_code, fv.sl_title AS fv_sl_title, SUM(fv.debit) - SUM(fv.credit) AS balance FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 GROUP BY fv.sl_code, fv.sl_title ORDER BY balance DESC",
-      "parameters": {
-        "1": "{persian_year_start}"
-      }
-    }
-  },
-  {
-    "id": 66,
-    "complexity": "hard",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "مانده طرف‌های تجاری از ابتدای سال",
-    "sql": {
-      "SQL": "SELECT fv.business_party_dl_code AS fv_business_party_dl_code, fv.business_party_dl_title AS fv_business_party_dl_title, SUM(fv.debit) - SUM(fv.credit) AS balance FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 AND fv.business_party_dl_title IS NOT NULL GROUP BY fv.business_party_dl_code, fv.business_party_dl_title ORDER BY balance DESC",
-      "parameters": {
-        "1": "{persian_year_start}"
-      }
-    }
-  },
-  {
-    "id": 67,
-    "complexity": "hard",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "مانده پروژه‌ها از ابتدای سال",
-    "sql": {
-      "SQL": "SELECT fv.project_dl_code AS fv_project_dl_code, fv.project_dl_title AS fv_project_dl_title, SUM(fv.debit) - SUM(fv.credit) AS balance FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 AND fv.project_dl_title IS NOT NULL GROUP BY fv.project_dl_code, fv.project_dl_title ORDER BY balance DESC",
-      "parameters": {
-        "1": "{persian_year_start}"
-      }
-    }
-  },
-  {
-    "id": 68,
-    "complexity": "hard",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "مانده مراکز هزینه از ابتدای سال",
-    "sql": {
-      "SQL": "SELECT fv.cost_center_dl_code AS fv_cost_center_dl_code, fv.cost_center_dl_title AS fv_cost_center_dl_title, SUM(fv.debit) - SUM(fv.credit) AS balance FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 AND fv.cost_center_dl_title IS NOT NULL GROUP BY fv.cost_center_dl_code, fv.cost_center_dl_title ORDER BY balance DESC",
-      "parameters": {
-        "1": "{persian_year_start}"
-      }
-    }
-  },
-  {
-    "id": 69,
-    "complexity": "hard",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "اسناد تایید شده با گردش بدهکار بالای پانصد میلیون از ابتدای سال",
-    "sql": {
-      "SQL": "SELECT fv.voucher_number AS fv_voucher_number, fv.voucher_date AS fv_voucher_date, fv.voucher_state AS fv_voucher_state, fv.debit AS fv_debit FROM financial_vouchers AS fv WHERE fv.voucher_state ILIKE $1 AND fv.debit > $2 AND fv.voucher_date >= $3",
-      "parameters": {
-        "1": "%تایید شده%",
-        "2": "500000000",
-        "3": "{persian_year_start}"
-      }
-    }
-  },
-  {
-    "id": 70,
-    "complexity": "hard",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "اسناد ثبت موقت هفته گذشته با گردش بالای صد میلیون",
-    "sql": {
-      "SQL": "SELECT fv.voucher_number AS fv_voucher_number, fv.voucher_date AS fv_voucher_date, fv.debit AS fv_debit, fv.credit AS fv_credit FROM financial_vouchers AS fv WHERE fv.voucher_state ILIKE $1 AND fv.voucher_date >= $2 AND fv.voucher_date <= $3 AND (fv.debit > $4 OR fv.credit > $5)",
-      "parameters": {
-        "1": "%موقت%",
-        "2": "{last_week_saturday}",
-        "3": "{last_week_friday}",
-        "4": "100000000",
-        "5": "100000000"
-      }
-    }
-  },
-  {
-    "id": 71,
-    "complexity": "hard",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "گردش حساب بانکی از ابتدای سال",
-    "sql": {
-      "SQL": "SELECT fv.bank_account_dl_code AS fv_bank_account_dl_code, fv.bank_account_dl_title AS fv_bank_account_dl_title, SUM(fv.debit) AS fv_debit_sum, SUM(fv.credit) AS fv_credit_sum, SUM(fv.debit) - SUM(fv.credit) AS balance FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 AND fv.bank_account_dl_title IS NOT NULL GROUP BY fv.bank_account_dl_code, fv.bank_account_dl_title ORDER BY balance DESC",
-      "parameters": {
-        "1": "{persian_year_start}"
-      }
-    }
-  },
-  {
-    "id": 72,
-    "complexity": "hard",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "گردش به تفکیک شعبه و ماه از ابتدای سال",
-    "sql": {
-      "SQL": "SELECT fv.header_branch_title AS fv_header_branch_title, SUM(fv.debit) AS fv_debit_sum, SUM(fv.credit) AS fv_credit_sum, COUNT(DISTINCT fv.voucher_number) AS fv_voucher_number_count FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 GROUP BY fv.header_branch_title ORDER BY fv_debit_sum DESC",
-      "parameters": {
-        "1": "{persian_year_start}"
-      }
-    }
-  },
-  {
-    "id": 73,
-    "complexity": "hard",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "مقایسه گردش بدهکار این هفته با هفته گذشته",
-    "sql": {
-      "SQL": "SELECT (SELECT COALESCE(SUM(fv.debit), 0) FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 AND fv.voucher_date <= $2) - (SELECT COALESCE(SUM(fv.debit), 0) FROM financial_vouchers AS fv WHERE fv.voucher_date >= $3 AND fv.voucher_date <= $4) AS debit_difference",
-      "parameters": {
-        "1": "{this_week_saturday}",
-        "2": "{this_week_friday}",
-        "3": "{last_week_saturday}",
-        "4": "{last_week_friday}"
-      }
-    }
-  },
-  {
-    "id": 74,
-    "complexity": "hard",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "مقایسه گردش بستانکار این هفته با هفته گذشته",
-    "sql": {
-      "SQL": "SELECT (SELECT COALESCE(SUM(fv.credit), 0) FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 AND fv.voucher_date <= $2) - (SELECT COALESCE(SUM(fv.credit), 0) FROM financial_vouchers AS fv WHERE fv.voucher_date >= $3 AND fv.voucher_date <= $4) AS credit_difference",
-      "parameters": {
-        "1": "{this_week_saturday}",
-        "2": "{this_week_friday}",
-        "3": "{last_week_saturday}",
-        "4": "{last_week_friday}"
-      }
-    }
-  },
-  {
-    "id": 75,
-    "complexity": "hard",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "مقایسه تعداد اسناد امروز با دیروز",
-    "sql": {
-      "SQL": "SELECT (SELECT COUNT(fv.voucher_number) FROM financial_vouchers AS fv WHERE fv.voucher_date = $1) - (SELECT COUNT(fv.voucher_number) FROM financial_vouchers AS fv WHERE fv.voucher_date = $2) AS count_difference",
-      "parameters": {
-        "1": "{today_date}",
-        "2": "{yesterday_date}"
-      }
-    }
-  },
-  {
-    "id": 76,
-    "complexity": "hard",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "حداقل و حداکثر گردش بدهکار روزانه از ابتدای سال",
-    "sql": {
-      "SQL": "SELECT MIN(A.daily_debit) AS A_daily_debit_min, MAX(A.daily_debit) AS A_daily_debit_max FROM (SELECT SUM(fv.debit) AS daily_debit FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 GROUP BY fv.voucher_date) AS A",
-      "parameters": {
-        "1": "{persian_year_start}"
-      }
-    }
-  },
-  {
-    "id": 77,
-    "complexity": "hard",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "حداقل و حداکثر گردش بستانکار روزانه از ابتدای سال",
-    "sql": {
-      "SQL": "SELECT MIN(A.daily_credit) AS A_daily_credit_min, MAX(A.daily_credit) AS A_daily_credit_max FROM (SELECT SUM(fv.credit) AS daily_credit FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 GROUP BY fv.voucher_date) AS A",
-      "parameters": {
-        "1": "{persian_year_start}"
-      }
-    }
-  },
-  {
-    "id": 78,
-    "complexity": "hard",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "میانگین گردش بدهکار روزانه از ابتدای سال",
-    "sql": {
-      "SQL": "SELECT AVG(A.daily_debit) AS A_daily_debit_avg FROM (SELECT SUM(fv.debit) AS daily_debit FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 GROUP BY fv.voucher_date) AS A",
-      "parameters": {
-        "1": "{persian_year_start}"
-      }
-    }
-  },
-  {
-    "id": 79,
-    "complexity": "hard",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "گروه حساب‌هایی با گردش بدهکار بیش از یک میلیارد از ابتدای سال",
-    "sql": {
-      "SQL": "SELECT fv.ag_code AS fv_ag_code, fv.ag_title AS fv_ag_title, SUM(fv.debit) AS fv_debit_sum FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 GROUP BY fv.ag_code, fv.ag_title HAVING SUM(fv.debit) > $2 ORDER BY fv_debit_sum DESC",
-      "parameters": {
-        "1": "{persian_year_start}",
-        "2": "1000000000"
-      }
-    }
-  },
-  {
-    "id": 80,
-    "complexity": "hard",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "حساب‌های کل با بیش از 100 قلم سند از ابتدای سال",
-    "sql": {
-      "SQL": "SELECT fv.gl_code AS fv_gl_code, fv.gl_title AS fv_gl_title, COUNT(fv.voucher_number) AS fv_voucher_number_count, SUM(fv.debit) AS fv_debit_sum, SUM(fv.credit) AS fv_credit_sum FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 GROUP BY fv.gl_code, fv.gl_title HAVING COUNT(fv.voucher_number) > $2 ORDER BY fv_voucher_number_count DESC",
-      "parameters": {
-        "1": "{persian_year_start}",
-        "2": "100"
-      }
-    }
-  },
-  {
-    "id": 81,
-    "complexity": "hard",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "طرف‌های تجاری با مانده بدهکار از ابتدای سال",
-    "sql": {
-      "SQL": "SELECT fv.business_party_dl_code AS fv_business_party_dl_code, fv.business_party_dl_title AS fv_business_party_dl_title, SUM(fv.debit) - SUM(fv.credit) AS balance FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 AND fv.business_party_dl_title IS NOT NULL GROUP BY fv.business_party_dl_code, fv.business_party_dl_title HAVING SUM(fv.debit) - SUM(fv.credit) > $2 ORDER BY balance DESC",
-      "parameters": {
-        "1": "{persian_year_start}",
-        "2": "0"
-      }
-    }
-  },
-  {
-    "id": 82,
-    "complexity": "hard",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "طرف‌های تجاری با مانده بستانکار از ابتدای سال",
-    "sql": {
-      "SQL": "SELECT fv.business_party_dl_code AS fv_business_party_dl_code, fv.business_party_dl_title AS fv_business_party_dl_title, SUM(fv.debit) - SUM(fv.credit) AS balance FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 AND fv.business_party_dl_title IS NOT NULL GROUP BY fv.business_party_dl_code, fv.business_party_dl_title HAVING SUM(fv.debit) - SUM(fv.credit) < $2 ORDER BY balance ASC",
-      "parameters": {
-        "1": "{persian_year_start}",
-        "2": "0"
-      }
-    }
-  },
-  {
-    "id": 83,
-    "complexity": "hard",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "گردش ارزی به تفکیک نوع ارز از ابتدای سال",
-    "sql": {
-      "SQL": "SELECT fv.voucher_currency_title AS fv_voucher_currency_title, SUM(fv.currency_debit) AS fv_currency_debit_sum, SUM(fv.currency_credit) AS fv_currency_credit_sum, COUNT(fv.voucher_number) AS fv_voucher_number_count FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 GROUP BY fv.voucher_currency_title ORDER BY fv_currency_debit_sum DESC",
-      "parameters": {
-        "1": "{persian_year_start}"
-      }
-    }
-  },
-  {
-    "id": 84,
-    "complexity": "hard",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "عملکرد صادرکنندگان سند از ابتدای سال",
-    "sql": {
-      "SQL": "SELECT fv.creator_name AS fv_creator_name, COUNT(fv.voucher_number) AS fv_voucher_number_count, SUM(fv.debit) AS fv_debit_sum, SUM(fv.credit) AS fv_credit_sum FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 GROUP BY fv.creator_name ORDER BY fv_voucher_number_count DESC",
-      "parameters": {
-        "1": "{persian_year_start}"
-      }
-    }
-  },
-  {
-    "id": 85,
-    "complexity": "hard",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "گردش حساب معین خاص به تفکیک تفصیل از ابتدای سال",
-    "sql": {
-      "SQL": "SELECT fv.sl_code AS fv_sl_code, fv.sl_title AS fv_sl_title, fv.dl_code AS fv_dl_code, fv.dl_title AS fv_dl_title, SUM(fv.debit) AS fv_debit_sum, SUM(fv.credit) AS fv_credit_sum FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 AND fv.sl_title ILIKE $2 GROUP BY fv.sl_code, fv.sl_title, fv.dl_code, fv.dl_title ORDER BY fv_debit_sum DESC",
-      "parameters": {
-        "1": "{persian_year_start}",
-        "2": "%بانک%"
-      }
-    }
-  },
-  {
-    "id": 86,
-    "complexity": "hard",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "اسناد با شماره پیگیری خاص",
-    "sql": {
-      "SQL": "SELECT fv.voucher_number AS fv_voucher_number, fv.voucher_date AS fv_voucher_date, fv.follow_up_number AS fv_follow_up_number, fv.follow_up_date AS fv_follow_up_date, fv.debit AS fv_debit, fv.credit AS fv_credit FROM financial_vouchers AS fv WHERE fv.follow_up_number ILIKE $1",
-      "parameters": {
-        "1": "%12345%"
-      }
-    }
-  },
-  {
-    "id": 87,
-    "complexity": "hard",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "اسناد با شرح خاص از ابتدای سال",
-    "sql": {
-      "SQL": "SELECT fv.voucher_number AS fv_voucher_number, fv.voucher_date AS fv_voucher_date, fv.voucher_explanation AS fv_voucher_explanation, fv.debit AS fv_debit, fv.credit AS fv_credit FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 AND (fv.voucher_explanation ILIKE $2 OR fv.voucher_item_explanation ILIKE $3)",
-      "parameters": {
-        "1": "{persian_year_start}",
-        "2": "%خرید%",
-        "3": "%خرید%"
-      }
-    }
-  },
-  {
-    "id": 88,
-    "complexity": "hard",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "گردش کالا به تفکیک کد کالا از ابتدای سال",
-    "sql": {
-      "SQL": "SELECT fv.part_dl_code AS fv_part_dl_code, fv.part_dl_title AS fv_part_dl_title, SUM(fv.debit) AS fv_debit_sum, SUM(fv.credit) AS fv_credit_sum, SUM(fv.quantity) AS fv_quantity_sum FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 AND fv.part_dl_title IS NOT NULL GROUP BY fv.part_dl_code, fv.part_dl_title ORDER BY fv_debit_sum DESC",
-      "parameters": {
-        "1": "{persian_year_start}"
-      }
-    }
-  },
-  {
-    "id": 89,
-    "complexity": "hard",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "مجموع گردش بدهکار سال جاری و سال قبل",
-    "sql": {
-      "SQL": "SELECT (SELECT COALESCE(SUM(fv.debit), 0) FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 AND fv.voucher_date <= $2) AS current_year_debit, (SELECT COALESCE(SUM(fv.debit), 0) FROM financial_vouchers AS fv WHERE fv.voucher_date >= $3 AND fv.voucher_date <= $4) AS previous_year_debit",
-      "parameters": {
-        "1": "{persian_year_start}",
-        "2": "{persian_year_end}",
-        "3": "{prev_persian_year_start}",
-        "4": "{prev_persian_year_end}"
-      }
-    }
-  },
-  {
-    "id": 90,
-    "complexity": "hard",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "مقایسه تعداد اسناد سال جاری با سال قبل",
-    "sql": {
-      "SQL": "SELECT (SELECT COUNT(fv.voucher_number) FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 AND fv.voucher_date <= $2) AS current_year_count, (SELECT COUNT(fv.voucher_number) FROM financial_vouchers AS fv WHERE fv.voucher_date >= $3 AND fv.voucher_date <= $4) AS previous_year_count",
-      "parameters": {
-        "1": "{persian_year_start}",
-        "2": "{persian_year_end}",
-        "3": "{prev_persian_year_start}",
-        "4": "{prev_persian_year_end}"
-      }
-    }
-  },
-  {
-    "id": 91,
-    "complexity": "hard",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "اسناد با گردش بدهکار میلیونی بالا از ابتدای سال",
-    "sql": {
-      "SQL": "SELECT fv.voucher_number AS fv_voucher_number, fv.voucher_date AS fv_voucher_date, fv.debit AS fv_debit, fv.debit_million AS fv_debit_million FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 AND fv.debit_million > $2 ORDER BY fv.debit_million DESC",
-      "parameters": {
-        "1": "{persian_year_start}",
-        "2": "1000"
-      }
-    }
-  },
-  {
-    "id": 92,
-    "complexity": "hard",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "گردش به تفکیک نقش طرف تجاری از ابتدای سال",
-    "sql": {
-      "SQL": "SELECT fv.business_party_role AS fv_business_party_role, SUM(fv.debit) AS fv_debit_sum, SUM(fv.credit) AS fv_credit_sum, COUNT(fv.voucher_number) AS fv_voucher_number_count FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 AND fv.business_party_role IS NOT NULL GROUP BY fv.business_party_role ORDER BY fv_debit_sum DESC",
-      "parameters": {
-        "1": "{persian_year_start}"
-      }
-    }
-  },
-  {
-    "id": 93,
-    "complexity": "hard",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "گردش حوزه قیمت گذاری از ابتدای سال",
-    "sql": {
-      "SQL": "SELECT fv.pricing_area_dl_code AS fv_pricing_area_dl_code, fv.pricing_area_dl_title AS fv_pricing_area_dl_title, SUM(fv.debit) AS fv_debit_sum, SUM(fv.credit) AS fv_credit_sum FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 AND fv.pricing_area_dl_title IS NOT NULL GROUP BY fv.pricing_area_dl_code, fv.pricing_area_dl_title ORDER BY fv_debit_sum DESC",
-      "parameters": {
-        "1": "{persian_year_start}"
-      }
-    }
-  },
-  {
-    "id": 94,
-    "complexity": "hard",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "اسناد بررسی شده توسط کاربر خاص",
-    "sql": {
-      "SQL": "SELECT fv.voucher_number AS fv_voucher_number, fv.voucher_date AS fv_voucher_date, fv.reviewer_name AS fv_reviewer_name, fv.voucher_state AS fv_voucher_state FROM financial_vouchers AS fv WHERE fv.reviewer_name ILIKE $1",
-      "parameters": {
-        "1": "%احمدی%"
-      }
-    }
-  },
-  {
-    "id": 95,
-    "complexity": "hard",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "تعداد اسناد تایید شده و تایید نشده به تفکیک شعبه از ابتدای سال",
-    "sql": {
-      "SQL": "SELECT fv.header_branch_title AS fv_header_branch_title, fv.voucher_state AS fv_voucher_state, COUNT(fv.voucher_number) AS fv_voucher_number_count FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 GROUP BY fv.header_branch_title, fv.voucher_state ORDER BY fv.header_branch_title, fv_voucher_number_count DESC",
-      "parameters": {
-        "1": "{persian_year_start}"
-      }
-    }
-  },
-  {
-    "id": 96,
-    "complexity": "hard",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "گردش حساب‌های بانکی به تفکیک شعبه از ابتدای سال",
-    "sql": {
-      "SQL": "SELECT fv.header_branch_title AS fv_header_branch_title, fv.bank_account_dl_title AS fv_bank_account_dl_title, SUM(fv.debit) AS fv_debit_sum, SUM(fv.credit) AS fv_credit_sum FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 AND fv.bank_account_dl_title IS NOT NULL GROUP BY fv.header_branch_title, fv.bank_account_dl_title ORDER BY fv.header_branch_title, fv_debit_sum DESC",
-      "parameters": {
-        "1": "{persian_year_start}"
-      }
-    }
-  },
-  {
-    "id": 97,
-    "complexity": "hard",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "ده حساب کل با بیشترین گردش بدهکار از ابتدای سال",
-    "sql": {
-      "SQL": "SELECT fv.gl_code AS fv_gl_code, fv.gl_title AS fv_gl_title, SUM(fv.debit) AS fv_debit_sum FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 GROUP BY fv.gl_code, fv.gl_title ORDER BY fv_debit_sum DESC LIMIT $2",
-      "parameters": {
-        "1": "{persian_year_start}",
-        "2": "10"
-      }
-    }
-  },
-  {
-    "id": 98,
-    "complexity": "hard",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "ده طرف تجاری با بیشترین مانده بدهکار از ابتدای سال",
-    "sql": {
-      "SQL": "SELECT fv.business_party_dl_code AS fv_business_party_dl_code, fv.business_party_dl_title AS fv_business_party_dl_title, SUM(fv.debit) - SUM(fv.credit) AS balance FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 AND fv.business_party_dl_title IS NOT NULL GROUP BY fv.business_party_dl_code, fv.business_party_dl_title ORDER BY balance DESC LIMIT $2",
-      "parameters": {
-        "1": "{persian_year_start}",
-        "2": "10"
-      }
-    }
-  },
-  {
-    "id": 99,
-    "complexity": "hard",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "گردش ارز گزارشگری اول به تفکیک گروه حساب از ابتدای سال",
-    "sql": {
-      "SQL": "SELECT fv.ag_code AS fv_ag_code, fv.ag_title AS fv_ag_title, SUM(fv.first_reporting_currency_debit) AS fv_first_reporting_currency_debit_sum, SUM(fv.first_reporting_currency_credit) AS fv_first_reporting_currency_credit_sum FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 GROUP BY fv.ag_code, fv.ag_title ORDER BY fv_first_reporting_currency_debit_sum DESC",
-      "parameters": {
-        "1": "{persian_year_start}"
-      }
-    }
-  },
-  {
-    "id": 100,
-    "complexity": "hard",
-    "module": "دفتر کل",
-    "table": "financial_vouchers",
-    "question": "مقایسه گردش هفته جاری با هفته گذشته به تفکیک نوع سند",
-    "sql": {
-      "SQL": "SELECT A.voucher_type_title AS voucher_type_title, A.this_week_debit AS this_week_debit, B.last_week_debit AS last_week_debit FROM (SELECT fv.voucher_type_title AS voucher_type_title, SUM(fv.debit) AS this_week_debit FROM financial_vouchers AS fv WHERE fv.voucher_date >= $1 AND fv.voucher_date <= $2 GROUP BY fv.voucher_type_title) AS A LEFT JOIN (SELECT fv.voucher_type_title AS voucher_type_title, SUM(fv.debit) AS last_week_debit FROM financial_vouchers AS fv WHERE fv.voucher_date >= $3 AND fv.voucher_date <= $4 GROUP BY fv.voucher_type_title) AS B ON A.voucher_type_title = B.voucher_type_title",
-      "parameters": {
-        "1": "{this_week_saturday}",
-        "2": "{this_week_friday}",
-        "3": "{last_week_saturday}",
-        "4": "{last_week_friday}"
-      }
+        "1": "%تامین%",
+        "2": "10",
+        "3": "true",
+        "4": "true"
+      },
+      "response_template": "خالص مانده (مجموع گردش بدهکار منهای بستانکار ارز عملیاتی) به تفکیک عنوان طرف تجاری، برای طرف‌هایی که نقش آن‌ها شامل «تامین» است، مرتب‌شده از بیشترین به کمترین، ۱۰ مورد اول (محدود به شعبه اصلی و دفتر کل اصلی):"
     }
   }
 ]

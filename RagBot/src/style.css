@@ -1,17 +1,22 @@
 /* ============================================
-   STREAMLIT CHATBOT - IMPROVED VERSION
-   Fixes:
-   1. Compact radio buttons integrated with input
-   2. Removed excessive white box around intro
-   3. Non-scrolling SQL code display
+   STREAMLIT CHATBOT - DARK-MODE SAFE VERSION
+   Key change vs. previous version:
+   - No more hardcoded white / light-gray surfaces with no text color.
+   - All surfaces, text and borders now reference Streamlit's THEME
+     variables (--background-color, --secondary-background-color,
+     --text-color, --primary-color), which Streamlit flips automatically
+     between Light and Dark mode. Brand accent colors are kept as-is
+     because they read fine on both themes.
    ============================================ */
+
 /* Import Font */
 @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap');
+
 /* ============================================
    CSS VARIABLES - DESIGN SYSTEM
    ============================================ */
 :root {
-    /* Colors */
+    /* Brand / accent colors (work on light AND dark) */
     --primary: #3b82f6;
     --primary-dark: #2563eb;
     --secondary: #8b5cf6;
@@ -19,60 +24,90 @@
     --warning: #f59e0b;
     --danger: #ef4444;
     --info: #06b6d4;
-   
-    /* Neutrals */
-    --gray-50: #f9fafb;
-    --gray-100: #f3f4f6;
-    --gray-200: #e5e7eb;
-    --gray-300: #d1d5db;
-    --gray-700: #374151;
-    --gray-900: #111827;
-   
+
+    /* ----------------------------------------
+       THEME-AWARE SEMANTIC TOKENS
+       These read from Streamlit's theme vars and
+       fall back to light values if a var is absent.
+       --background-color          -> main app background
+       --secondary-background-color-> raised cards / widgets
+       --text-color                -> body text
+       ---------------------------------------- */
+    --app-bg: var(--background-color, #f9fafb);
+    --surface: var(--secondary-background-color, #ffffff);
+    --surface-alt: var(--background-color, #f3f4f6);
+    --text: var(--text-color, #111827);
+    /* Muted text: 70% of the theme text color, readable on any bg */
+    --text-muted: color-mix(in srgb, var(--text-color, #374151) 70%, transparent);
+
+    /* Border / divider that works on any background (translucent gray) */
+    --border: rgba(128, 128, 128, 0.25);
+    --border-strong: rgba(128, 128, 128, 0.4);
+
+    /* Legacy neutral aliases kept so nothing downstream breaks.
+       They now point at theme-aware tokens instead of fixed light grays. */
+    --gray-50: var(--surface-alt);
+    --gray-100: var(--surface-alt);
+    --gray-200: var(--border);
+    --gray-300: var(--border-strong);
+    --gray-700: var(--text-muted);
+    --gray-900: var(--text);
+
     /* Spacing */
     --spacing-xs: 0.25rem;
     --spacing-sm: 0.5rem;
     --spacing-md: 1rem;
     --spacing-lg: 1.5rem;
     --spacing-xl: 2rem;
-   
+
     /* Border Radius */
     --radius-sm: 0.375rem;
     --radius-md: 0.5rem;
     --radius-lg: 0.75rem;
-   
-    /* Shadows */
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
-    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
-   
+
+    /* Shadows (use rgba black: subtle on light, invisible-but-harmless on dark) */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.08);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.12);
+    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.15);
+
     /* Transitions */
     --transition: all 0.2s ease;
 }
+
 /* ============================================
    GLOBAL STYLES
    ============================================ */
 * {
     font-family: 'Vazirmatn', sans-serif !important;
 }
+
+/* Make the whole app inherit the theme text color so nothing is invisible. */
+.stApp,
+[data-testid="stAppViewContainer"] {
+    color: var(--text);
+}
+
 /* ============================================
    RTL/LTR DIRECTION CLASSES
+   These are used by injected st.markdown() HTML, so they MUST carry a
+   text color or they inherit whatever (and disappear in dark mode).
    ============================================ */
-/* Right-to-Left (Persian/Arabic content) */
 .markdown-rtl {
     direction: rtl !important;
     text-align: right !important;
     unicode-bidi: embed;
+    color: var(--text) !important;
 }
-/* Left-to-Right (Code/SQL/English content) */
 .markdown-ltr {
     direction: ltr !important;
     text-align: left !important;
     unicode-bidi: embed;
+    color: var(--text) !important;
 }
+
 /* ============================================
-   FIX #3: SQL CODE BLOCK - NO HORIZONTAL SCROLL
+   SQL CODE BLOCK - NO HORIZONTAL SCROLL
    ============================================ */
-/* SQL code blocks should wrap and not scroll horizontally */
 .sql-code-block pre {
     white-space: pre-wrap !important;
     word-wrap: break-word !important;
@@ -86,7 +121,6 @@
     overflow-wrap: break-word !important;
     display: block !important;
 }
-/* All code blocks in chat messages */
 [data-testid="stChatMessageContent"] pre {
     white-space: pre-wrap !important;
     word-wrap: break-word !important;
@@ -99,6 +133,7 @@
     word-wrap: break-word !important;
     overflow-wrap: break-word !important;
 }
+
 /* ============================================
    INPUT FIELDS
    ============================================ */
@@ -109,25 +144,50 @@ input {
 }
 input:focus {
     border-color: var(--primary) !important;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18) !important;
 }
 .stTextInput > div > div > input {
     border-radius: var(--radius-md) !important;
-    border: 2px solid var(--gray-200) !important;
+    border: 2px solid var(--border) !important;
     padding: 0.75rem 1rem !important;
+    background: var(--surface) !important;
+    color: var(--text) !important;
+    caret-color: var(--text) !important;   /* the blinking cursor */
     transition: var(--transition) !important;
+}
+
+/* Make the typing cursor (caret) visible everywhere text can be entered */
+input,
+textarea,
+.stTextInput input,
+.stTextArea textarea,
+[data-baseweb="input"] input,
+[data-baseweb="textarea"] textarea,
+[data-baseweb="base-input"] input,
+[data-testid="stChatInput"] textarea {
+    caret-color: var(--text) !important;
+    color: var(--text) !important;
+}
+textarea::placeholder,
+[data-testid="stChatInput"] textarea::placeholder {
+    color: var(--text-muted) !important;
+}
+.stTextInput > div > div > input::placeholder {
+    color: var(--text-muted) !important;
 }
 .stTextInput > div > div > input:focus {
     border-color: var(--primary) !important;
 }
+
 /* ============================================
-   MAIN LAYOUT - FIXED
+   MAIN LAYOUT
    ============================================ */
 section.main > div {
     padding-bottom: var(--spacing-md);
-    background: var(--gray-50);
+    background: var(--app-bg);
 }
-/* Main columns with scrolling - FIXED HEIGHT ONLY FOR SIDE COLUMNS */
+
+/* Side columns (1st and 4th) - fixed height + scroll */
 section.main > div > [data-testid="stVerticalBlock"] > [data-testid="column"]:nth-child(1),
 section.main > div > [data-testid="stVerticalBlock"] > [data-testid="column"]:nth-child(4) {
     overflow-y: auto;
@@ -135,47 +195,51 @@ section.main > div > [data-testid="stVerticalBlock"] > [data-testid="column"]:nt
     padding: var(--spacing-lg);
     height: 80vh;
     box-sizing: border-box;
-    background: white;
+    background: var(--surface);
+    color: var(--text);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-md);
     margin: var(--spacing-sm);
     direction: rtl !important;
 }
-/* Main chat column (first column) - NO FIXED HEIGHT */
+
+/* Main chat column (2nd) - no fixed height */
 section.main > div > [data-testid="stVerticalBlock"] > [data-testid="column"]:nth-child(2) {
     overflow-y: visible;
     overflow-x: hidden;
     padding: var(--spacing-lg);
     height: auto !important;
     box-sizing: border-box;
-    background: white;
+    background: var(--surface);
+    color: var(--text);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-md);
     margin: var(--spacing-sm);
 }
-/* Nested columns (like selectboxes) - NO fixed height */
+
 [data-testid="column"] {
     box-sizing: border-box;
 }
+
 /* Custom Scrollbar */
 section.main > div > [data-testid="stVerticalBlock"] > [data-testid="column"]::-webkit-scrollbar {
     width: 6px;
 }
 section.main > div > [data-testid="stVerticalBlock"] > [data-testid="column"]::-webkit-scrollbar-track {
-    background: var(--gray-100);
+    background: var(--border);
     border-radius: var(--radius-md);
 }
 section.main > div > [data-testid="stVerticalBlock"] > [data-testid="column"]::-webkit-scrollbar-thumb {
-    background: var(--gray-300);
+    background: var(--border-strong);
     border-radius: var(--radius-md);
 }
 section.main > div > [data-testid="stVerticalBlock"] > [data-testid="column"]::-webkit-scrollbar-thumb:hover {
     background: var(--primary);
 }
+
 /* ============================================
-   BUTTONS - FIXED DIMENSIONS
+   BUTTONS
    ============================================ */
-/* ALL buttons should have consistent dimensions */
 [data-testid="baseButton-secondary"],
 [data-testid="baseButton-primary"] {
     min-height: 3rem !important;
@@ -192,37 +256,40 @@ section.main > div > [data-testid="stVerticalBlock"] > [data-testid="column"]::-
     word-wrap: break-word !important;
     width: 100% !important;
 }
-/* Primary buttons */
+
+/* Primary buttons - gradient reads well on both themes */
 [data-testid="baseButton-primary"] {
     background: linear-gradient(135deg, var(--primary), var(--secondary)) !important;
     border: none !important;
     font-weight: 600 !important;
     box-shadow: var(--shadow-sm) !important;
-    color: white !important;
+    color: #ffffff !important;
 }
 [data-testid="baseButton-primary"]:hover {
     transform: translateY(-2px);
     box-shadow: var(--shadow-md) !important;
     opacity: 0.95 !important;
 }
-/* Secondary buttons */
+
+/* Secondary buttons - theme surface + theme text */
 [data-testid="baseButton-secondary"] {
-    border: 1px solid var(--gray-200) !important;
-    background: white !important;
+    border: 1px solid var(--border) !important;
+    background: var(--surface) !important;
+    color: var(--text) !important;
     font-weight: 500 !important;
 }
 [data-testid="baseButton-secondary"]:hover {
     border-color: var(--primary) !important;
     transform: translateY(-1px);
     box-shadow: var(--shadow-sm) !important;
-    background: var(--gray-50) !important;
+    background: var(--surface-alt) !important;
 }
-/* Empty buttons or buttons with minimal content */
+
 [data-testid="baseButton-secondary"]:empty::after {
     content: '\00a0';
     display: inline-block;
 }
-/* Ensure consistent width in columns */
+
 [data-testid="column"] [data-testid="baseButton-secondary"],
 [data-testid="column"] [data-testid="baseButton-primary"] {
     width: 100% !important;
@@ -230,7 +297,7 @@ section.main > div > [data-testid="stVerticalBlock"] > [data-testid="column"]::-
     direction: rtl !important;
     text-align: right !important;
 }
-/* Sidebar buttons RTL */
+
 [data-testid="stSidebarContent"] [data-testid="baseButton-secondary"],
 [data-testid="stSidebarContent"] [data-testid="baseButton-primary"] {
     direction: rtl !important;
@@ -238,10 +305,10 @@ section.main > div > [data-testid="stVerticalBlock"] > [data-testid="column"]::-
     white-space: normal !important;
     word-wrap: break-word !important;
 }
+
 /* ============================================
-   TABS - FIXED ALIGNMENT AND STYLING
+   TABS
    ============================================ */
-/* Tab container - RIGHT ALIGNED for RTL */
 [data-baseweb="tab-list"] {
     gap: var(--spacing-sm);
     background: transparent !important;
@@ -249,187 +316,205 @@ section.main > div > [data-testid="stVerticalBlock"] > [data-testid="column"]::-
     margin-bottom: var(--spacing-lg);
     border-bottom: none !important;
     display: flex !important;
-    justify-content: flex-end !important; /* RIGHT aligned */
-    flex-direction: row-reverse !important; /* RTL order */
+    justify-content: flex-end !important;
+    flex-direction: row-reverse !important;
     direction: rtl !important;
 }
-/* Individual tabs */
+
 [data-baseweb="tab"] {
     border-radius: var(--radius-md) var(--radius-md) 0 0 !important;
     font-weight: 500 !important;
     transition: var(--transition) !important;
-    background: var(--gray-100) !important;
-    border: 1px solid var(--gray-200) !important;
+    background: var(--surface-alt) !important;
+    color: var(--text) !important;
+    border: 1px solid var(--border) !important;
     border-bottom: none !important;
     padding: 0.75rem 1.5rem !important;
     margin: 0 var(--spacing-xs) !important;
 }
 [data-baseweb="tab"]:hover {
-    background-color: var(--gray-200) !important;
+    background-color: var(--border) !important;
 }
+
 /* Active tab */
 [data-baseweb="tab"][aria-selected="true"] {
-    background: white !important;
+    background: var(--surface) !important;
     color: var(--primary) !important;
     border-color: var(--primary) !important;
-    border-bottom: 2px solid white !important;
+    border-bottom: 2px solid var(--surface) !important;
     position: relative !important;
     z-index: 2 !important;
 }
-/* Remove the red/colored underline */
-[data-baseweb="tab-highlight"] {
-    display: none !important;
-}
-[data-baseweb="tab-border"] {
-    display: none !important;
-}
-/* Tab panel background */
+
+[data-baseweb="tab-highlight"] { display: none !important; }
+[data-baseweb="tab-border"] { display: none !important; }
+
 [data-baseweb="tab-panel"] {
-    background: white;
-    border: 1px solid var(--gray-200);
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     padding: var(--spacing-lg);
     margin-top: -1px;
     box-shadow: var(--shadow-sm);
 }
+
 /* ============================================
    SELECT BOXES
    ============================================ */
 [data-baseweb="select"] > div {
     border-radius: var(--radius-md) !important;
-    border: 1px solid var(--gray-200) !important;
+    border: 1px solid var(--border) !important;
+    background: var(--surface) !important;
+    color: var(--text) !important;
     transition: var(--transition) !important;
     min-height: 3rem !important;
 }
 [data-baseweb="select"] > div:hover,
 [data-baseweb="select"] > div:focus-within {
     border-color: var(--primary) !important;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18) !important;
 }
+
 /* ============================================
-   FIX #1: RADIO BUTTONS - COMPACT AND MINIMAL
+   RADIO BUTTONS - COMPACT
    ============================================ */
-/* Compact label for radio buttons */
 .compact-radio-label {
     font-size: 0.875rem !important;
     font-weight: 500 !important;
-    color: var(--gray-700) !important;
+    color: var(--text-muted) !important;
     margin-bottom: 0.25rem !important;
     padding: 0 !important;
 }
-/* Hide label when label_visibility is collapsed */
+
 [data-testid="stRadio"] > label {
     display: none !important;
 }
-/* Container styling - COMPACT */
 [data-testid="stRadio"] {
     background: transparent !important;
     padding: 0 !important;
     border: none !important;
     margin: 0 !important;
 }
-/* Horizontal radio group - COMPACT */
 [data-testid="stRadio"][data-baseweb="radio-group"] > div {
     display: flex !important;
     flex-direction: row !important;
     flex-wrap: wrap !important;
-    gap: 0.375rem !important; /* Reduced gap */
+    gap: 0.375rem !important;
     justify-content: flex-end !important;
     direction: rtl !important;
 }
-/* Individual radio option - COMPACT */
 [data-testid="stRadio"] [role="radiogroup"] > label {
-    background: white !important;
-    padding: 0.375rem 0.75rem !important; /* Reduced padding */
-    border-radius: var(--radius-sm) !important; /* Smaller radius */
-    border: 1.5px solid var(--gray-200) !important; /* Thinner border */
+    background: var(--surface) !important;
+    color: var(--text) !important;
+    padding: 0.375rem 0.75rem !important;
+    border-radius: var(--radius-sm) !important;
+    border: 1.5px solid var(--border) !important;
     transition: var(--transition) !important;
     cursor: pointer !important;
-    min-height: 2rem !important; /* Reduced height */
+    min-height: 2rem !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    font-size: 0.875rem !important; /* Smaller text */
+    font-size: 0.875rem !important;
     font-weight: 500 !important;
 }
-/* Radio option hover */
 [data-testid="stRadio"] [role="radiogroup"] > label:hover {
     border-color: var(--primary) !important;
-    background: var(--gray-50) !important;
+    background: var(--surface-alt) !important;
     transform: translateY(-1px) !important;
 }
-/* Radio option selected - COMPACT */
 [data-testid="stRadio"] [role="radiogroup"] > label:has(input:checked) {
-    background: var(--primary) !important; /* Solid color instead of gradient */
-    color: white !important;
+    background: var(--primary) !important;
+    color: #ffffff !important;
     border-color: var(--primary) !important;
     font-weight: 600 !important;
 }
-/* Hide the actual radio input circle */
 [data-testid="stRadio"] input[type="radio"] {
     display: none !important;
 }
+
 /* ============================================
    CHAT MESSAGES
    ============================================ */
 [data-testid="stChatMessageContent"] {
-    background: white;
+    background: var(--surface);
+    color: var(--text);
     border-radius: var(--radius-lg);
     padding: var(--spacing-md);
     box-shadow: var(--shadow-sm);
     margin-bottom: var(--spacing-md);
 }
-/* User messages - RTL by default */
+
+/* Make sure nested markdown text inherits readable color */
+[data-testid="stChatMessageContent"] [data-testid="stMarkdownContainer"],
+[data-testid="stChatMessageContent"] p,
+[data-testid="stChatMessageContent"] li,
+[data-testid="stChatMessageContent"] span {
+    color: var(--text);
+}
+
 [data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-user"]) [data-testid="stMarkdownContainer"] {
     direction: rtl;
     text-align: right;
 }
-/* Code blocks inside chat (for SQL) - always LTR */
+
+/* Inline code / SQL stays LTR, with a subtle theme-aware surface */
 [data-testid="stChatMessageContent"] pre,
 [data-testid="stChatMessageContent"] code {
     direction: ltr !important;
     text-align: left !important;
+    background: var(--surface-alt) !important;
+    color: var(--text) !important;
 }
+
 /* ============================================
-   FIX #2: ALERTS - MINIMAL WHITE BOX
+   ALERTS - translucent tints so text stays readable in BOTH themes
    ============================================ */
-/* Reduce padding and margins for alerts/info boxes */
 [data-baseweb="notification"] {
-    border-radius: var(--radius-md) !important; /* Smaller radius */
+    border-radius: var(--radius-md) !important;
     border: none !important;
-    box-shadow: none !important; /* Removed shadow */
-    padding: 0.5rem 0.75rem !important; /* Reduced padding */
-    margin: 0.5rem 0 !important; /* Reduced margin */
+    box-shadow: none !important;
+    padding: 0.5rem 0.75rem !important;
+    margin: 0.5rem 0 !important;
+    color: var(--text) !important;
 }
 [data-baseweb="notification"][kind="positive"] {
-    background: linear-gradient(135deg, #d1fae5, #a7f3d0) !important;
-    border-left: 3px solid var(--success) !important; /* Thinner border */
+    background: color-mix(in srgb, var(--success) 18%, transparent) !important;
+    border-left: 3px solid var(--success) !important;
 }
 [data-baseweb="notification"][kind="info"] {
-    background: linear-gradient(135deg, #dbeafe, #bfdbfe) !important;
-    border-left: 3px solid var(--info) !important; /* Thinner border */
+    background: color-mix(in srgb, var(--info) 18%, transparent) !important;
+    border-left: 3px solid var(--info) !important;
 }
 [data-baseweb="notification"][kind="warning"] {
-    background: linear-gradient(135deg, #fef3c7, #fde68a) !important;
-    border-left: 3px solid var(--warning) !important; /* Thinner border */
+    background: color-mix(in srgb, var(--warning) 20%, transparent) !important;
+    border-left: 3px solid var(--warning) !important;
 }
 [data-baseweb="notification"][kind="negative"] {
-    background: linear-gradient(135deg, #fee2e2, #fecaca) !important;
-    border-left: 3px solid var(--danger) !important; /* Thinner border */
+    background: color-mix(in srgb, var(--danger) 18%, transparent) !important;
+    border-left: 3px solid var(--danger) !important;
 }
+[data-baseweb="notification"] * {
+    color: var(--text) !important;
+}
+
 div.stAlert {
     direction: rtl;
     text-align: start;
-    border-radius: var(--radius-md); /* Smaller radius */
-    padding: 0.5rem 0.75rem !important; /* Reduced padding */
-    margin: 0.5rem 0 !important; /* Reduced margin */
+    border-radius: var(--radius-md);
+    padding: 0.5rem 0.75rem !important;
+    margin: 0.5rem 0 !important;
+    color: var(--text);
 }
+
 /* ============================================
-   EXPANDERS - CONSISTENT DIMENSIONS
+   EXPANDERS
    ============================================ */
 [data-testid="stExpander"] {
-    background: white;
-    border: 1px solid var(--gray-200);
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     margin-bottom: var(--spacing-md);
     box-shadow: var(--shadow-sm);
@@ -441,6 +526,7 @@ div.stAlert {
 }
 [data-testid="stExpander"] summary {
     font-weight: 600;
+    color: var(--text);
     padding: var(--spacing-md);
     min-height: 3rem;
     display: flex;
@@ -448,17 +534,20 @@ div.stAlert {
 }
 [data-testid="stExpander"] [data-testid="stExpanderDetails"] {
     padding: 0 var(--spacing-md) var(--spacing-md) var(--spacing-md);
+    color: var(--text);
 }
+
 /* ============================================
-   SIDEBAR - FIXED DIMENSIONS
+   SIDEBAR
    ============================================ */
 [data-testid="stSidebarContent"] {
-    background: linear-gradient(180deg, var(--gray-50), var(--gray-100));
+    background: var(--app-bg);
+    color: var(--text);
     padding: var(--spacing-md);
     direction: rtl !important;
 }
 [data-testid="stSidebarContent"] [data-testid="baseButton-secondary"] {
-    background: white;
+    background: var(--surface);
     border: 2px solid var(--primary);
     color: var(--primary);
     margin: var(--spacing-sm) 0;
@@ -469,27 +558,29 @@ div.stAlert {
 }
 [data-testid="stSidebarContent"] [data-testid="baseButton-secondary"]:hover {
     background: var(--primary);
-    color: white;
+    color: #ffffff;
     transform: translateX(-4px);
 }
 [data-testid="stSidebarContent"] p {
     direction: rtl;
     text-align: end;
     line-height: 1.6;
+    color: var(--text);
 }
+
 /* ============================================
-   ELEMENT CONTAINERS - CONSISTENT SPACING
+   ELEMENT CONTAINERS
    ============================================ */
 [data-testid="element-container"] {
     margin-bottom: var(--spacing-sm);
 }
-/* Ensure all elements in a column have consistent spacing */
 [data-testid="column"] > [data-testid="element-container"] {
     margin-bottom: var(--spacing-sm);
 }
 [data-testid="column"] > [data-testid="element-container"]:last-child {
     margin-bottom: 0;
 }
+
 /* ============================================
    CUSTOM COMPONENTS
    ============================================ */
@@ -497,7 +588,7 @@ div.stAlert {
     display: inline-block;
     padding: var(--spacing-xs) var(--spacing-sm);
     background: var(--info);
-    color: white;
+    color: #ffffff;
     border-radius: var(--radius-sm);
     font-size: 0.875rem;
     font-weight: 600;
@@ -506,32 +597,99 @@ div.stAlert {
     border: 1px solid var(--info);
     box-shadow: var(--shadow-sm);
 }
+
 /* ============================================
    DIVIDERS
    ============================================ */
 hr {
     border: none;
-    border-top: 1px solid var(--gray-200);
+    border-top: 1px solid var(--border);
     margin: var(--spacing-lg) 0;
 }
+
 /* ============================================
    SPINNER/LOADING
    ============================================ */
 [data-testid="stSpinner"] > div {
     border-color: var(--primary) !important;
 }
+
+/* ============================================
+   STREAMLIT CHROME (top header, toolbar, app shell, progress bar)
+   These are Streamlit's own framework elements. They don't follow your
+   custom CSS unless targeted explicitly, which is why the top of the
+   page looked like a flat black slab in dark mode.
+   ============================================ */
+
+/* App shell background — keep it consistent with the theme */
+.stApp,
+[data-testid="stAppViewContainer"] {
+    background: var(--app-bg) !important;
+    color: var(--text) !important;
+}
+
+/* The top header bar: let it blend into the app instead of a black block */
+[data-testid="stHeader"] {
+    background: transparent !important;
+    backdrop-filter: blur(4px);
+}
+[data-testid="stToolbar"] {
+    background: transparent !important;
+    color: var(--text) !important;
+}
+[data-testid="stToolbar"] button,
+[data-testid="stHeader"] button {
+    color: var(--text) !important;
+}
+
+/* The thin running stripe Streamlit shows at the very top while busy */
+[data-testid="stDecoration"] {
+    background: linear-gradient(90deg, var(--primary), var(--secondary)) !important;
+}
+
+/* The "Deploy"/status badge area, if present */
+[data-testid="stStatusWidget"] {
+    color: var(--text) !important;
+}
+
+/* ----- Progress bar (st.progress) ----- */
+/* Track */
+[data-testid="stProgress"] > div > div,
+.stProgress > div > div {
+    background-color: var(--border) !important;
+    border-radius: var(--radius-md) !important;
+}
+/* Filled portion */
+[data-testid="stProgress"] > div > div > div,
+.stProgress > div > div > div {
+    background: linear-gradient(90deg, var(--primary), var(--secondary)) !important;
+    border-radius: var(--radius-md) !important;
+}
+/* Some Streamlit versions add an extra inner node for the fill */
+[data-testid="stProgress"] > div > div > div > div,
+.stProgress > div > div > div > div {
+    background: linear-gradient(90deg, var(--primary), var(--secondary)) !important;
+}
+/* Progress label/percentage text */
+[data-testid="stProgress"] p {
+    color: var(--text-muted) !important;
+}
+
 /* ============================================
    MARKDOWN CONTAINERS
    ============================================ */
 [data-testid="stMarkdownContainer"] {
     min-height: 1.5rem;
+    color: var(--text);
 }
 [data-testid="stMarkdownContainer"] h1,
 [data-testid="stMarkdownContainer"] h2,
 [data-testid="stMarkdownContainer"] h3 {
     margin-top: var(--spacing-md);
     margin-bottom: var(--spacing-sm);
+    color: var(--text);
 }
+
 /* ============================================
    RESPONSIVE DESIGN
    ============================================ */
@@ -540,40 +698,32 @@ hr {
         padding: var(--spacing-md);
         margin: var(--spacing-xs);
     }
-   
     [data-baseweb="tab-list"] {
         flex-wrap: wrap;
     }
-   
     [data-baseweb="tab"] {
         flex: 1 1 auto;
         min-width: 100px;
     }
-   
-    /* Compact radio buttons on mobile */
     [data-testid="stRadio"] [role="radiogroup"] > label {
         padding: 0.25rem 0.5rem !important;
         font-size: 0.8rem !important;
     }
 }
+
 /* ============================================
    ANIMATIONS
    ============================================ */
 @keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
 }
 [data-testid="stChatMessageContent"] {
     animation: fadeIn 0.3s ease;
 }
+
 /* ============================================
-   FIX FOR BUTTON TEXT OVERFLOW
+   BUTTON TEXT OVERFLOW
    ============================================ */
 [data-testid="baseButton-secondary"] > div,
 [data-testid="baseButton-primary"] > div {
@@ -586,32 +736,30 @@ hr {
     -webkit-box-orient: vertical;
     line-height: 1.4;
 }
+
 /* ============================================
    UTILITY CLASSES
    ============================================ */
-.text-center {
-    text-align: center !important;
-}
+.text-center { text-align: center !important; }
 .mt-1 { margin-top: var(--spacing-sm) !important; }
 .mt-2 { margin-top: var(--spacing-md) !important; }
 .mb-1 { margin-bottom: var(--spacing-sm) !important; }
 .mb-2 { margin-bottom: var(--spacing-md) !important; }
+
 /* ============================================
-   FIXES FOR EMPTY CONTENT
+   EMPTY CONTENT FIXES
    ============================================ */
-/* Ensure empty buttons still maintain height */
 [data-testid="baseButton-secondary"]:not(:has(*)) {
     min-height: 3rem !important;
 }
-/* Ensure empty markdown containers maintain minimum height */
 [data-testid="stMarkdownContainer"]:empty {
     min-height: 1rem;
     display: block;
 }
+
 /* ============================================
-   SESSION BUTTONS SPECIFIC STYLING
+   SESSION BUTTONS
    ============================================ */
-/* Buttons in the sessions column should have consistent height */
 [data-testid="column"]:nth-child(2) [data-testid="baseButton-secondary"],
 [data-testid="column"]:nth-child(3) [data-testid="baseButton-secondary"] {
     min-height: 3.5rem !important;
@@ -619,14 +767,15 @@ hr {
     max-height: 6rem !important;
     overflow: hidden !important;
 }
+
 /* ============================================
-   FEEDBACK SECTION STYLING
+   FEEDBACK SECTION
    ============================================ */
 .feedback-section {
-    background-color: var(--gray-100) !important;
+    background-color: var(--surface-alt) !important;
     padding: var(--spacing-sm) !important;
     border-radius: var(--radius-md) !important;
-    border: 1px solid var(--gray-200) !important;
+    border: 1px solid var(--border) !important;
     margin-top: var(--spacing-sm) !important;
 }
 .feedback-section [data-testid="column"] {
@@ -638,16 +787,17 @@ hr {
     margin: 0 !important;
 }
 .feedback-section [data-testid="baseButton-secondary"] {
-    background: var(--gray-50) !important;
-    border-color: var(--gray-300) !important;
+    background: var(--surface) !important;
+    border-color: var(--border) !important;
 }
 .feedback-section [data-testid="baseButton-secondary"]:hover {
     background: var(--primary) !important;
-    color: white !important;
+    color: #ffffff !important;
 }
 
+/* The dashed wrapper around suggestion buttons inside a message */
 [data-testid="stChatMessageContent"] [data-testid="stHorizontalBlock"] {
-    border: 1px dashed #faa81a98;
-    background-color: #54c6d01f;
+    border: 1px dashed color-mix(in srgb, var(--warning) 60%, transparent);
+    background-color: color-mix(in srgb, var(--info) 12%, transparent);
     border-radius: 10px;
 }

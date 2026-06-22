@@ -246,3 +246,4 @@ RagBot/Incidents.xlsx
 RagBot/sample_retrieved.json
 RagBot/src/main_evaluation.py
 client.sh
+RagBot/swagger-ui

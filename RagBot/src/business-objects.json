@@ -1,5 +1,32 @@
 {
   "enums": {
+    "financial_voucherssummaryai_voucherstateenum": {
+      "title": "Voucher State",
+      "persianTitle": "وضعیت سند",
+      "isMultiselect": false,
+      "values": [
+        {
+          "value": "1",
+          "title": "Note",
+          "persianTitle": "یادداشت"
+        },
+        {
+          "value": "2",
+          "title": "Temporary",
+          "persianTitle": "موقت"
+        },
+        {
+          "value": "3",
+          "title": "Reviewed",
+          "persianTitle": "بررسی شده"
+        },
+        {
+          "value": "4",
+          "title": "Finalized",
+          "persianTitle": "قطعی شده"
+        }
+      ]
+    },
     "logistics_allparts_counterparttype": {
       "title": "NEW_ALL_PART_WITH_DETAIL: counterPartType",
       "persianTitle": "نقش طرف مقابل سند",
@@ -333,8 +360,642 @@
     }
   },
   "parameterCounts": {},
-  "boCount": 1,
+  "boCount": 2,
   "boNames": [
+    {
+      "name": "financial_voucherssummaryai",
+      "title": "Vouchers Summary",
+      "persianTitle": "گردش و مانده حساب ها",
+      "columns": [
+        {
+          "name": "header_branch_code",
+          "title": "header_branch_code",
+          "persianTitle": "کد شعبه",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "header_branch_title",
+          "title": "header_branch_title",
+          "persianTitle": "عنوان شعبه",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "account_group_code",
+          "title": "account_group_code",
+          "persianTitle": "کد گروه حساب",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "account_group_title",
+          "title": "account_group_title",
+          "persianTitle": "عنوان گروه حساب",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "gl_code",
+          "title": "gl_code",
+          "persianTitle": "کد حساب کل",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "gl_title",
+          "title": "gl_title",
+          "persianTitle": "عنوان حساب کل",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "sl_code",
+          "title": "sl_code",
+          "persianTitle": "کد حساب معین",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "sl_title",
+          "title": "sl_title",
+          "persianTitle": "عنوان حساب معین",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "business_party_dl_code",
+          "title": "business_party_dl_code",
+          "persianTitle": "کد طرف تجاری",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "business_party_dl_title",
+          "title": "business_party_dl_title",
+          "persianTitle": "عنوان طرف تجاری",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "business_party_role",
+          "title": "business_party_role",
+          "persianTitle": "نقش طرف تجاری",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "cost_center_dl_code",
+          "title": "cost_center_dl_code",
+          "persianTitle": "کد مرکز هزینه",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "cost_center_dl_title",
+          "title": "cost_center_dl_title",
+          "persianTitle": "عنوان مرکز هزینه",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "project_dl_code",
+          "title": "project_dl_code",
+          "persianTitle": "کد پروژه",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "project_dl_title",
+          "title": "project_dl_title",
+          "persianTitle": "عنوان پروژه",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "pricing_area_dl_code",
+          "title": "pricing_area_dl_code",
+          "persianTitle": "کد حوزه قیمت گذاری",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "pricing_area_dl_title",
+          "title": "pricing_area_dl_title",
+          "persianTitle": "عنوان حوزه قیمت گذاری",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "part_dl_code",
+          "title": "part_dl_code",
+          "persianTitle": "کد کالا",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "part_dl_title",
+          "title": "part_dl_title",
+          "persianTitle": "عنوان کالا",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "other_party_dl_code",
+          "title": "other_party_dl_code",
+          "persianTitle": "کد سایر اشخاص",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "other_party_dl_title",
+          "title": "other_party_dl_title",
+          "persianTitle": "عنوان سایر اشخاص",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "other_party_role",
+          "title": "other_party_role",
+          "persianTitle": "نقش سایر اشخاص",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "branch_dl_code",
+          "title": "branch_dl_code",
+          "persianTitle": "کد تفصیل شعبه",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "branch_dl_title",
+          "title": "branch_dl_title",
+          "persianTitle": "عنوان تفصیل شعبه",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "bank_account_dl_code",
+          "title": "bank_account_dl_code",
+          "persianTitle": "کد حساب بانکی",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "bank_account_dl_title",
+          "title": "bank_account_dl_title",
+          "persianTitle": "عنوان حساب بانکی",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "voucher_currency_title",
+          "title": "voucher_currency_title",
+          "persianTitle": "ارز سند",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "base_currency_title",
+          "title": "base_currency_title",
+          "persianTitle": "ارز مبنا",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "currency_rate_type_title",
+          "title": "currency_rate_type_title",
+          "persianTitle": "نوع نرخ ارز",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "debit",
+          "title": "debit",
+          "persianTitle": " گردش بدهکار ارز عملیاتی",
+          "enumId": "",
+          "type": "Decimal"
+        },
+        {
+          "name": "credit",
+          "title": "credit",
+          "persianTitle": "گردش بستانکار ارز عملیاتی",
+          "enumId": "",
+          "type": "Decimal"
+        },
+        {
+          "name": "remaining_debit",
+          "title": "remaining_debit",
+          "persianTitle": "مانده بدهکار ارز عملیاتی",
+          "enumId": "",
+          "type": "Decimal"
+        },
+        {
+          "name": "remaining_credit",
+          "title": "remaining_credit",
+          "persianTitle": "مانده بستانکار ارز عملیاتی",
+          "enumId": "",
+          "type": "Decimal"
+        },
+        {
+          "name": "remaining",
+          "title": "remaining",
+          "persianTitle": "مانده ارز عملیاتی",
+          "enumId": "",
+          "type": "Decimal"
+        },
+        {
+          "name": "currency_debit",
+          "title": "currency_debit",
+          "persianTitle": "گردش بدهکار ارز سند",
+          "enumId": "",
+          "type": "Decimal"
+        },
+        {
+          "name": "currency_credit",
+          "title": "currency_credit",
+          "persianTitle": "گردش بستانکار ارز سند",
+          "enumId": "",
+          "type": "Decimal"
+        },
+        {
+          "name": "remaining_currency_debit",
+          "title": "remaining_currency_debit",
+          "persianTitle": "مانده بدهکار ارز سند",
+          "enumId": "",
+          "type": "Decimal"
+        },
+        {
+          "name": "remaining_currency_credit",
+          "title": "remaining_currency_credit",
+          "persianTitle": "مانده بستانکار ارز سند",
+          "enumId": "",
+          "type": "Decimal"
+        },
+        {
+          "name": "remaining_currency",
+          "title": "remaining_currency",
+          "persianTitle": "مانده ارز سند",
+          "enumId": "",
+          "type": "Decimal"
+        },
+        {
+          "name": "base_currency_debit",
+          "title": "base_currency_debit",
+          "persianTitle": "گردش بدهکار ارز مبنا",
+          "enumId": "",
+          "type": "Decimal"
+        },
+        {
+          "name": "base_currency_credit",
+          "title": "base_currency_credit",
+          "persianTitle": "گردش بستانکار ارز مبنا",
+          "enumId": "",
+          "type": "Decimal"
+        },
+        {
+          "name": "remaining_base_currency_debit",
+          "title": "remaining_base_currency_debit",
+          "persianTitle": "مانده بدهکار ارز مبنا",
+          "enumId": "",
+          "type": "Decimal"
+        },
+        {
+          "name": "remaining_base_currency_credit",
+          "title": "remaining_base_currency_credit",
+          "persianTitle": "مانده بستانکار ارز مبنا",
+          "enumId": "",
+          "type": "Decimal"
+        },
+        {
+          "name": "remaining_base_currency",
+          "title": "remaining_base_currency",
+          "persianTitle": "مانده ارز مبنا",
+          "enumId": "",
+          "type": "Decimal"
+        },
+        {
+          "name": "first_reporting_currency_debit",
+          "title": "first_reporting_currency_debit",
+          "persianTitle": "گردش بدهکار ارز گزارشگری اول",
+          "enumId": "",
+          "type": "Decimal"
+        },
+        {
+          "name": "first_reporting_currency_credit",
+          "title": "first_reporting_currency_credit",
+          "persianTitle": "گردش بستانکار ارز گزارشگری اول",
+          "enumId": "",
+          "type": "Decimal"
+        },
+        {
+          "name": "remaining_first_reporting_currency_debit",
+          "title": "remaining_first_reporting_currency_debit",
+          "persianTitle": "مانده بدهکار ارز گزارشگری اول",
+          "enumId": "",
+          "type": "Decimal"
+        },
+        {
+          "name": "remaining_first_reporting_currency_credit",
+          "title": "remaining_first_reporting_currency_credit",
+          "persianTitle": "مانده بستانکار ارز گزارشگری اول",
+          "enumId": "",
+          "type": "Decimal"
+        },
+        {
+          "name": "remaining_first_reporting_currency",
+          "title": "remaining_first_reporting_currency",
+          "persianTitle": "مانده ارز گزارشگری اول",
+          "enumId": "",
+          "type": "Decimal"
+        },
+        {
+          "name": "second_reporting_currency_debit",
+          "title": "second_reporting_currency_debit",
+          "persianTitle": "گردش بدهکار ارز گزارشگری دوم",
+          "enumId": "",
+          "type": "Decimal"
+        },
+        {
+          "name": "second_reporting_currency_credit",
+          "title": "second_reporting_currency_credit",
+          "persianTitle": "گردش بستانکار ارز گزارشگری دوم",
+          "enumId": "",
+          "type": "Decimal"
+        },
+        {
+          "name": "remaining_second_reporting_currency_debit",
+          "title": "remaining_second_reporting_currency_debit",
+          "persianTitle": "مانده بدهکار ارز گزارشگری دوم",
+          "enumId": "",
+          "type": "Decimal"
+        },
+        {
+          "name": "remaining_second_reporting_currency_credit",
+          "title": "remaining_second_reporting_currency_credit",
+          "persianTitle": "مانده بستانکار ارز گزارشگری دوم",
+          "enumId": "",
+          "type": "Decimal"
+        },
+        {
+          "name": "remaining_second_reporting_currency",
+          "title": "remaining_second_reporting_currency",
+          "persianTitle": "مانده ارز گزارشگری دوم",
+          "enumId": "",
+          "type": "Decimal"
+        },
+        {
+          "name": "quantity_debit",
+          "title": "quantity_debit",
+          "persianTitle": "گردش بدهکار مقدار",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "quantity_credit",
+          "title": "quantity_credit",
+          "persianTitle": "گردش بستانکار مقدار",
+          "enumId": "",
+          "type": "Decimal"
+        },
+        {
+          "name": "quantity_remaining",
+          "title": "quantity_remaining",
+          "persianTitle": "مانده مقدار",
+          "enumId": "",
+          "type": "Decimal"
+        },
+        {
+          "name": "cash_dl_code",
+          "title": "cash_dl_code",
+          "persianTitle": "کد صندوق",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "cash_dl_title",
+          "title": "cash_dl_title",
+          "persianTitle": "عنوان صندوق",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "petty_cash_currency_title",
+          "title": "petty_cash_currency_title",
+          "persianTitle": "ارز تنخواه",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "petty_cash_dl_code",
+          "title": "petty_cash_dl_code",
+          "persianTitle": "کد تنخواه",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "petty_cash_dl_title",
+          "title": "petty_cash_dl_title",
+          "persianTitle": "عنوان تنخواه",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "customer_group_dl_code",
+          "title": "customer_group_dl_code",
+          "persianTitle": "کد گروه مشتریان",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "customer_group_dl_title",
+          "title": "customer_group_dl_title",
+          "persianTitle": "عنوان گروه مشتریان",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "part_or_service_group_dl_code",
+          "title": "part_or_service_group_dl_code",
+          "persianTitle": "کد گروه کالا و خدمت",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "part_or_service_group_dl_title",
+          "title": "part_or_service_group_dl_title",
+          "persianTitle": "عنوان گروه کالا و خدمت",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "other_dl1_dl_code",
+          "title": "other_dl1_dl_code",
+          "persianTitle": "کد تفصیل سایر ۱",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "other_dl1_dl_title",
+          "title": "other_dl1_dl_title",
+          "persianTitle": "عنوان تفصیل سایر ۱",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "other_dl2_dl_code",
+          "title": "other_dl2_dl_code",
+          "persianTitle": "کد تفصیل سایر ۲",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "other_dl2_dl_title",
+          "title": "other_dl2_dl_title",
+          "persianTitle": "عنوان تفصیل سایر ۲",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "other_dl3_dl_code",
+          "title": "other_dl3_dl_code",
+          "persianTitle": "کد تفصیل سایر ۳",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "other_dl3_dl_title",
+          "title": "other_dl3_dl_title",
+          "persianTitle": "عنوان تفصیل سایر ۳",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "other_dl4_dl_code",
+          "title": "other_dl4_dl_code",
+          "persianTitle": "کد تفصیل سایر ۴",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "other_dl4_dl_title",
+          "title": "other_dl4_dl_title",
+          "persianTitle": "عنوان تفصیل سایر ۴",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "other_dl5_dl_code",
+          "title": "other_dl5_dl_code",
+          "persianTitle": "کد تفصیل سایر ۵",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "other_dl5_dl_title",
+          "title": "other_dl5_dl_title",
+          "persianTitle": "عنوان تفصیل سایر ۵",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "other_dl6_dl_code",
+          "title": "other_dl6_dl_code",
+          "persianTitle": "کد تفصیل سایر ۶",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "other_dl6_dl_title",
+          "title": "other_dl6_dl_title",
+          "persianTitle": "عنوان تفصیل سایر ۶",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "other_dl7_dl_code",
+          "title": "other_dl7_dl_code",
+          "persianTitle": "کد تفصیل سایر ۷",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "other_dl7_dl_title",
+          "title": "other_dl7_dl_title",
+          "persianTitle": "عنوان تفصیل سایر ۷",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "other_dl8_dl_code",
+          "title": "other_dl8_dl_code",
+          "persianTitle": "کد تفصیل سایر ۸",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "other_dl8_dl_title",
+          "title": "other_dl8_dl_title",
+          "persianTitle": "عنوان تفصیل سایر ۸",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "other_dl9_dl_code",
+          "title": "other_dl9_dl_code",
+          "persianTitle": "کد تفصیل سایر ۹",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "other_dl9_dl_title",
+          "title": "other_dl9_dl_title",
+          "persianTitle": "عنوان تفصیل سایر ۹",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "other_dl10_dl_code",
+          "title": "other_dl10_dl_code",
+          "persianTitle": "کد تفصیل سایر ۱۰",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "other_dl10_dl_title",
+          "title": "other_dl10_dl_title",
+          "persianTitle": "عنوان تفصیل سایر ۱۰",
+          "enumId": "",
+          "type": "String"
+        },
+        {
+          "name": "is_main_branch",
+          "title": "is_main_branch",
+          "persianTitle": "",
+          "enumId": "",
+          "type": "Bool",
+          "promptHelper": "Always set this field to \"true\" unless the user specifies a non-main branch, in which case set it to \"false\""
+        },
+        {
+          "name": "is_main_ledger",
+          "title": "is_main_ledger",
+          "persianTitle": "",
+          "enumId": "",
+          "type": "Bool",
+          "promptHelper": "Always set this field to \"true\" unless the user specifies a non-main ledger, in which case set it to \"false\""
+        },
+        {
+          "name": "voucher_state",
+          "title": "voucher_state",
+          "persianTitle": "وضعیت سند",
+          "enumId": "financial_voucherssummaryai_finenum01",
+          "type": "Int64"
+        }
+      ],
+      "parameters": [],
+      "relations": []
+    },
     {
       "name": "logistics_allparts",
       "title": "New all parts with detail",

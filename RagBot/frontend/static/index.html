@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>دستیار دیجیتال</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#e9edf1; --surface:#ffffff; --surface-2:#f5f7f9;
+    --ink:#16202e; --muted:#5a6675; --faint:#909bab;
+    --border:#e2e7ec; --border-strong:#d2d9e0;
+    --brand:#0f766e; --brand-strong:#0b5d56; --brand-soft:#e7f4f1; --brand-tint:#d2ece7;
+    --amber:#b45309; --danger:#b91c1c;
+    --shadow:0 1px 2px rgba(16,32,46,.04), 0 8px 24px rgba(16,32,46,.06);
+    --radius:14px; --radius-sm:10px;
+    font-synthesis:none;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;}
+  body{
+    font-family:'Vazirmatn',system-ui,sans-serif;
+    background:var(--bg); color:var(--ink);
+    -webkit-font-smoothing:antialiased; font-size:15px; line-height:1.7;
+  }
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;}
+  input,textarea,select{font-family:inherit;font-size:inherit;color:inherit;}
+  ::selection{background:var(--brand-tint);}
+  code,pre{font-family:'JetBrains Mono',ui-monospace,monospace;}
+
+  /* ---------- shell ---------- */
+  .app{display:grid;grid-template-columns:300px 1fr;height:100vh;}
+  .sidebar{background:var(--surface);border-inline-end:1px solid var(--border);display:flex;flex-direction:column;min-height:0;}
+  .main{display:flex;flex-direction:column;min-height:0;background:var(--surface-2);}
+
+  /* ---------- brand / sidebar head ---------- */
+  .brand{display:flex;align-items:center;gap:11px;padding:18px 18px 14px;}
+  .brand .mark{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--brand),var(--brand-strong));
+    display:grid;place-items:center;color:#fff;flex:none;box-shadow:0 2px 6px rgba(15,118,110,.32);}
+  .brand .mark svg{width:19px;height:19px;}
+  .brand .name{font-weight:600;font-size:15.5px;line-height:1.25;}
+  .brand .sub{font-size:11.5px;color:var(--faint);font-weight:400;}
+
+  .new-chat{margin:2px 14px 12px;display:flex;align-items:center;justify-content:center;gap:8px;
+    padding:10px;border-radius:var(--radius-sm);background:var(--brand);color:#fff;font-weight:600;font-size:14px;
+    transition:background .15s, transform .05s;}
+  .new-chat:hover{background:var(--brand-strong);}
+  .new-chat:active{transform:translateY(1px);}
+
+  /* ---------- sidebar tabs ---------- */
+  .side-tabs{display:flex;gap:4px;padding:0 14px 8px;}
+  .side-tabs button{flex:1;padding:8px;border-radius:8px;font-size:13px;color:var(--muted);font-weight:500;}
+  .side-tabs button.active{background:var(--brand-soft);color:var(--brand-strong);}
+
+  .side-list{flex:1;overflow-y:auto;padding:4px 10px 16px;min-height:0;}
+  .side-list::-webkit-scrollbar{width:8px;}
+  .side-list::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:8px;}
+  .list-item{padding:10px 12px;border-radius:10px;margin-bottom:3px;font-size:13.5px;color:var(--ink);
+    cursor:pointer;transition:background .12s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .list-item:hover{background:var(--surface-2);}
+  .list-item.active{background:var(--brand-soft);color:var(--brand-strong);font-weight:500;}
+  .list-item .meta{display:block;font-size:11px;color:var(--faint);margin-top:2px;font-weight:400;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .list-empty{color:var(--faint);font-size:13px;text-align:center;padding:24px 8px;}
+
+  .side-foot{padding:12px 14px;border-top:1px solid var(--border);}
+  .ghost-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:7px;padding:9px;
+    border-radius:var(--radius-sm);border:1px solid var(--border-strong);color:var(--muted);font-weight:500;font-size:13.5px;
+    transition:border-color .15s,color .15s;}
+  .ghost-btn:hover{border-color:var(--brand);color:var(--brand-strong);}
+
+  /* ---------- top bar ---------- */
+  .topbar{display:flex;align-items:center;gap:14px;padding:13px 22px;background:var(--surface);
+    border-bottom:1px solid var(--border);}
+  .topbar h1{font-size:15px;font-weight:600;margin:0;}
+  .topbar .who{font-size:12px;color:var(--faint);font-weight:400;}
+  .view-tabs{margin-inline-start:auto;display:flex;gap:2px;background:var(--surface-2);padding:3px;border-radius:10px;}
+  .view-tabs button{padding:7px 16px;border-radius:8px;font-size:13.5px;color:var(--muted);font-weight:500;transition:.15s;}
+  .view-tabs button.active{background:var(--surface);color:var(--ink);box-shadow:var(--shadow);}
+
+  /* ---------- chat thread ---------- */
+  .thread{flex:1;overflow-y:auto;padding:26px 0 8px;min-height:0;}
+  .thread::-webkit-scrollbar{width:10px;}
+  .thread::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:8px;}
+  .thread-inner{max-width:780px;margin:0 auto;padding:0 24px;}
+
+  .empty-state{max-width:560px;margin:9vh auto 0;text-align:center;padding:0 24px;}
+  .empty-state .orb{width:60px;height:60px;border-radius:16px;margin:0 auto 18px;
+    background:linear-gradient(135deg,var(--brand),var(--brand-strong));display:grid;place-items:center;color:#fff;
+    box-shadow:0 8px 22px rgba(15,118,110,.3);}
+  .empty-state .orb svg{width:30px;height:30px;}
+  .empty-state h2{font-size:20px;margin:0 0 8px;font-weight:600;}
+  .empty-state p{color:var(--muted);margin:0 0 22px;font-size:14.5px;}
+  .starter{display:grid;gap:10px;grid-template-columns:1fr 1fr;}
+  .starter button{padding:13px 15px;border-radius:12px;border:1px solid var(--border);background:var(--surface);
+    text-align:start;font-size:13.5px;color:var(--ink);transition:.15s;line-height:1.5;}
+  .starter button:hover{border-color:var(--brand);background:var(--brand-soft);}
+
+  .msg{display:flex;gap:12px;margin-bottom:24px;animation:rise .28s ease both;}
+  @keyframes rise{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+  .avatar{width:32px;height:32px;border-radius:10px;flex:none;display:grid;place-items:center;margin-top:2px;}
+  .avatar svg{width:18px;height:18px;}
+  .msg.bot .avatar{background:linear-gradient(135deg,var(--brand),var(--brand-strong));color:#fff;
+    box-shadow:0 2px 7px rgba(15,118,110,.32);}
+  .msg.user .avatar{background:var(--brand-soft);color:var(--brand-strong);border:1px solid var(--brand-tint);}
+  .bubble{flex:1;min-width:0;}
+  .sender{font-size:11.5px;font-weight:500;color:var(--faint);margin:1px 3px 5px;}
+  .msg.bot .sender{color:var(--brand-strong);}
+  .bubble .body{padding:13px 16px;border-radius:14px;border-start-start-radius:5px;font-size:14.5px;}
+  .msg.user .bubble .body{background:var(--brand-soft);color:var(--ink);border:1px solid var(--brand-tint);}
+  .msg.bot  .bubble .body{background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow);}
+  .bubble .body p{margin:0 0 .6em;}
+  .bubble .body p:last-child{margin-bottom:0;}
+  .bubble .body ul,.bubble .body ol{margin:.4em 0;padding-inline-start:1.4em;}
+  .bubble .body h3{font-size:15px;margin:.3em 0;}
+  .bubble .body a{color:var(--brand-strong);text-decoration:underline;}
+  .bubble .body code{background:var(--surface-2);padding:1px 5px;border-radius:5px;font-size:.86em;}
+
+  /* video-link chip (rendered in place of @paramN in non-SQL answers) */
+  .vlink{display:inline-flex;align-items:center;gap:5px;padding:1px 9px;border-radius:8px;background:var(--brand-soft);
+    color:var(--brand-strong);border:1px solid var(--brand-tint);font-size:12.5px;margin:0 2px;cursor:pointer;
+    user-select:none;vertical-align:middle;transition:.15s;}
+  .vlink:hover{background:var(--brand-tint);}
+  .vlink.copied{background:var(--brand);border-color:var(--brand);color:#fff;}
+  .vlink svg{width:13px;height:13px;flex:none;}
+
+  .query-note{font-size:11.5px;color:var(--faint);margin-top:7px;padding-inline-start:3px;}
+
+  /* sql block */
+  .sqlcard{margin-top:2px;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#0f1722;}
+  .sqlcard .head{display:flex;align-items:center;gap:8px;padding:8px 13px;background:#16202e;color:#9fb3c8;font-size:12px;direction:ltr;}
+  .sqlcard pre{margin:0;padding:14px 16px;overflow-x:auto;direction:ltr;text-align:left;}
+  .sqlcard code{color:#e6edf3;font-size:13px;line-height:1.6;}
+  .copy-btn{margin-inline-start:auto;color:#9fb3c8;font-size:11.5px;border:1px solid #2b3a4d;border-radius:6px;padding:3px 9px;}
+  .copy-btn:hover{color:#fff;border-color:#3d5169;}
+  .exec-out{margin-top:8px;font-size:13px;color:var(--muted);background:var(--surface);border:1px solid var(--border);
+    border-radius:10px;padding:10px 13px;direction:ltr;text-align:left;}
+
+  /* ticket card */
+  .ticket{margin-top:4px;border:1px solid var(--border);border-radius:13px;padding:15px 17px;background:var(--surface);box-shadow:var(--shadow);}
+  .ticket .t-head{font-weight:600;margin-bottom:11px;display:flex;align-items:center;gap:7px;}
+  .ticket .row{display:flex;gap:8px;margin-bottom:7px;font-size:13.5px;}
+  .ticket .row .k{color:var(--faint);min-width:54px;}
+  .ticket .row .v{font-weight:500;}
+  .ticket .desc{white-space:pre-wrap;background:var(--surface-2);border:1px solid var(--border);border-radius:9px;
+    padding:11px 13px;margin-top:6px;font-size:13.5px;line-height:1.8;}
+
+  /* suggestion chips */
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+  .chips button{padding:8px 14px;border-radius:20px;border:1px solid var(--border-strong);background:var(--surface);
+    font-size:13px;color:var(--brand-strong);transition:.15s;}
+  .chips button:hover{background:var(--brand-soft);border-color:var(--brand);}
+
+  /* feedback */
+  .feedback{display:flex;align-items:center;gap:6px;margin-top:11px;}
+  .fb-btn{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;font-size:14px;color:var(--faint);
+    border:1px solid transparent;transition:.15s;}
+  .fb-btn:hover{background:var(--surface);border-color:var(--border);color:var(--muted);}
+  .fb-btn.done{color:var(--brand);background:var(--brand-soft);}
+  .fb-note{font-size:12px;color:var(--brand-strong);margin-inline-start:4px;}
+
+  /* typing */
+  .typing{display:flex;gap:4px;padding:14px 16px;}
+  .typing span{width:7px;height:7px;border-radius:50%;background:var(--faint);animation:blink 1.2s infinite;}
+  .typing span:nth-child(2){animation-delay:.2s;} .typing span:nth-child(3){animation-delay:.4s;}
+  @keyframes blink{0%,60%,100%{opacity:.25;}30%{opacity:1;}}
+
+  /* ---------- composer ---------- */
+  .composer-wrap{padding:12px 24px 18px;background:var(--surface-2);}
+  .composer{position:relative;max-width:780px;margin:0 auto;background:var(--surface);border:1px solid var(--border-strong);
+    border-radius:16px;box-shadow:var(--shadow);transition:border-color .15s;}
+  .composer:focus-within{border-color:var(--brand);}
+  .composer .top{display:flex;align-items:flex-end;gap:8px;padding:8px 10px;}
+  .composer textarea{flex:1;border:none;outline:none;resize:none;background:none;padding:8px 4px;max-height:170px;
+    font-size:14.5px;line-height:1.7;}
+  .send{width:38px;height:38px;border-radius:11px;background:var(--brand);color:#fff;display:grid;place-items:center;flex:none;
+    transition:background .15s,transform .05s;}
+  .send:hover{background:var(--brand-strong);} .send:active{transform:scale(.96);}
+  .send:disabled{background:var(--border-strong);cursor:not-allowed;}
+  .tool-btn{width:38px;height:38px;border-radius:11px;color:var(--muted);display:grid;place-items:center;flex:none;
+    border:1px solid transparent;transition:.15s;}
+  .tool-btn:hover,.tool-btn.active{background:var(--surface-2);color:var(--brand-strong);}
+  .tool-btn svg{width:20px;height:20px;}
+
+  /* settings popover */
+  .opts-pop{position:absolute;bottom:calc(100% + 8px);inset-inline-start:0;min-width:248px;background:var(--surface);
+    border:1px solid var(--border);border-radius:14px;box-shadow:0 14px 36px rgba(16,32,46,.16);padding:12px;display:none;z-index:20;}
+  .opts-pop.show{display:block;animation:rise .16s ease both;}
+  .opt-title{font-size:11.5px;color:var(--faint);font-weight:500;margin:2px 2px 7px;}
+  .opts-pop .seg{display:flex;background:var(--surface-2);border-radius:9px;padding:2px;}
+  .opts-pop .seg button{flex:1;padding:6px 10px;border-radius:7px;font-size:12.5px;color:var(--muted);font-weight:500;transition:.12s;}
+  .opts-pop .seg button.active{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(16,32,46,.08);}
+  .opt-divider{height:1px;background:var(--border);margin:11px 2px;}
+  .opt-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:7px 2px;font-size:13.5px;}
+  .opt-row span{color:var(--ink);}
+  .switch{position:relative;width:38px;height:22px;border-radius:11px;background:var(--border-strong);
+    transition:.18s;flex:none;cursor:pointer;direction:ltr;}
+  .switch::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;
+    transition:.18s;box-shadow:0 1px 2px rgba(0,0,0,.2);}
+  .switch.on{background:var(--brand);}
+  .switch.on::after{transform:translateX(16px);}
+
+  /* ---------- retrieval view ---------- */
+  .retr{max-width:760px;margin:0 auto;padding:30px 24px;width:100%;}
+  .retr h2{font-size:18px;margin:0 0 6px;}
+  .retr .hint{color:var(--muted);font-size:14px;margin:0 0 20px;}
+  .retr .ans{margin-top:18px;background:var(--surface);border:1px solid var(--border);border-radius:14px;
+    padding:18px 20px;box-shadow:var(--shadow);line-height:1.9;font-size:14.5px;}
+  .retr .label{font-size:12px;color:var(--faint);margin-bottom:6px;}
+  .retr-controls{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+  .retr-controls label{font-size:13px;color:var(--muted);}
+  .retr-controls input{width:84px;padding:8px 10px;border:1px solid var(--border-strong);border-radius:10px;
+    outline:none;background:var(--surface);text-align:center;transition:border-color .15s;}
+  .retr-controls input:focus{border-color:var(--brand);}
+  .retr-q{margin-top:6px;background:var(--brand-soft);border:1px solid var(--brand-tint);border-radius:12px;
+    padding:13px 16px;font-size:14.5px;color:var(--ink);}
+  .doc-list{margin-top:14px;display:flex;flex-direction:column;gap:12px;}
+  .doc-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;}
+  .doc-head{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--border);
+    background:var(--surface-2);font-size:12.5px;color:var(--muted);font-weight:500;}
+  .doc-num{display:grid;place-items:center;min-width:22px;height:22px;border-radius:7px;background:var(--brand);color:#fff;
+    font-size:12px;font-weight:600;padding:0 6px;}
+  .doc-mod{margin-inline-start:auto;display:inline-flex;align-items:center;gap:5px;background:var(--brand-soft);
+    color:var(--brand-strong);border:1px solid var(--brand-tint);border-radius:7px;padding:2px 9px;font-size:12px;font-weight:500;}
+  .doc-mod svg{width:12px;height:12px;}
+  .doc-body{padding:14px 18px;font-size:14.5px;line-height:1.9;}
+  .doc-body>:first-child{margin-top:0;} .doc-body>:last-child{margin-bottom:0;}
+  .doc-body h3{font-size:15.5px;font-weight:600;color:var(--brand-strong);margin:.6em 0 .35em;
+    padding-bottom:.25em;border-bottom:1px solid var(--border);}
+  .doc-body p{margin:0 0 .6em;} .doc-body ul,.doc-body ol{margin:.4em 0;padding-inline-start:1.4em;}
+  .doc-body code{background:var(--surface-2);padding:1px 5px;border-radius:5px;font-size:.86em;}
+
+  /* ---------- modal ---------- */
+  .scrim{position:fixed;inset:0;background:rgba(16,32,46,.45);backdrop-filter:blur(2px);display:none;
+    align-items:center;justify-content:center;z-index:50;padding:20px;}
+  .scrim.show{display:flex;}
+  .modal{background:var(--surface);border-radius:18px;width:100%;max-width:540px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 60px rgba(16,32,46,.3);}
+  .modal .m-head{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--border);}
+  .modal .m-head h3{margin:0;font-size:16px;font-weight:600;}
+  .modal .m-head .x{width:32px;height:32px;border-radius:8px;display:grid;place-items:center;color:var(--faint);font-size:18px;}
+  .modal .m-head .x:hover{background:var(--surface-2);color:var(--ink);}
+  .modal .m-body{padding:20px 22px;}
+  .field{margin-bottom:16px;}
+  .field label{display:block;font-size:13px;font-weight:500;margin-bottom:6px;}
+  .field .desc{font-size:11.5px;color:var(--faint);font-weight:400;margin-bottom:7px;}
+  .field input[type=text],.field select,.field input[type=number]{width:100%;padding:10px 12px;border:1px solid var(--border-strong);
+    border-radius:10px;outline:none;background:var(--surface);transition:border-color .15s;}
+  .field input:focus,.field select:focus{border-color:var(--brand);}
+  .drop{border:1.5px dashed var(--border-strong);border-radius:12px;padding:22px;text-align:center;color:var(--muted);
+    font-size:13.5px;transition:.15s;cursor:pointer;}
+  .drop:hover{border-color:var(--brand);background:var(--brand-soft);}
+  .filelist{margin-top:10px;display:flex;flex-direction:column;gap:6px;}
+  .filerow{display:flex;align-items:center;gap:8px;font-size:13px;background:var(--surface-2);padding:8px 11px;border-radius:9px;}
+  .filerow .rm{margin-inline-start:auto;color:var(--faint);font-size:15px;cursor:pointer;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .m-foot{display:flex;gap:10px;padding:16px 22px;border-top:1px solid var(--border);justify-content:flex-start;}
+  .btn-primary{padding:10px 22px;border-radius:11px;background:var(--brand);color:#fff;font-weight:600;font-size:14px;transition:.15s;}
+  .btn-primary:hover{background:var(--brand-strong);}
+  .btn-primary:disabled{background:var(--border-strong);cursor:not-allowed;}
+  .btn-text{padding:10px 16px;color:var(--muted);font-weight:500;}
+
+  /* toast */
+  .toast-host{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);z-index:80;display:flex;flex-direction:column;gap:8px;}
+  .toast{background:var(--ink);color:#fff;padding:11px 18px;border-radius:12px;font-size:13.5px;box-shadow:0 10px 30px rgba(0,0,0,.25);
+    animation:rise .25s ease both;}
+  .toast.err{background:var(--danger);}
+  .toast.ok{background:var(--brand-strong);}
+
+  .hidden{display:none!important;}
+
+  @media(max-width:860px){
+    .app{grid-template-columns:1fr;}
+    .sidebar{display:none;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- ===================== SIDEBAR ===================== -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="mark"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.4l1.75 5.35a3 3 0 0 0 1.9 1.9L21 11.4l-4.95 1.6a3 3 0 0 0-1.9 1.9L12 20.4l-2.15-5.5a3 3 0 0 0-1.9-1.9L3 11.4l5.95-1.75a3 3 0 0 0 1.9-1.9z"/></svg></div>
+      <div>
+        <div class="name">دستیار دیجیتال</div>
+        <div class="sub">آیند · همکاران سیستم</div>
+      </div>
+    </div>
+
+    <button class="new-chat" onclick="App.newSession()">
+      <span style="font-size:17px;line-height:0">＋</span> گفتگوی جدید
+    </button>
+
+    <div class="side-tabs">
+      <button id="tab-sessions" class="active" onclick="App.sideTab('sessions')">گفتگوها</button>
+      <button id="tab-databases" onclick="App.sideTab('databases')">پایگاه‌های دانش</button>
+    </div>
+
+    <div class="side-list" id="sessionList"></div>
+    <div class="side-list hidden" id="databaseList"></div>
+
+    <div class="side-foot">
+      <button class="ghost-btn" onclick="App.openCreate()">
+        <span style="font-size:15px;line-height:0">＋</span> ساخت دستیار جدید
+      </button>
+    </div>
+  </aside>
+
+  <!-- ===================== MAIN ===================== -->
+  <main class="main">
+    <header class="topbar">
+      <div>
+        <h1 id="hdrTitle">دستیار دیجیتال آیند</h1>
+        <div class="who" id="hdrWho">همکاران سیستم</div>
+      </div>
+      <div class="view-tabs">
+        <button id="view-chat" class="active" onclick="App.view('chat')">چت اصلی</button>
+        <button id="view-retr" onclick="App.view('retr')">ارزیابی بازیابی</button>
+      </div>
+    </header>
+
+    <!-- CHAT VIEW -->
+    <section id="chatView" style="display:flex;flex-direction:column;flex:1;min-height:0;">
+      <div class="thread" id="thread">
+        <div class="thread-inner" id="threadInner"></div>
+      </div>
+
+      <div class="composer-wrap">
+        <div class="composer">
+          <div class="opts-pop" id="optsPop">
+            <div class="opt-title">نوع پاسخ</div>
+            <div class="seg" id="answerType">
+              <button data-v="concise" class="active">خلاصه</button>
+              <button data-v="normal">عادی</button>
+              <button data-v="explanatory">توضیحی</button>
+            </div>
+            <div class="opt-divider"></div>
+            <div class="opt-row"><span>عامل SQL</span><div class="switch" id="sw-sql" onclick="App.toggle('sql_mode',this)"></div></div>
+            <div class="opt-row"><span>حافظهٔ کش</span><div class="switch on" id="sw-cache" onclick="App.toggle('use_cache',this)"></div></div>
+            <div class="opt-row"><span>حالت تیکت</span><div class="switch on" id="sw-ticket" onclick="App.toggle('ticket_mode',this)"></div></div>
+            <div class="opt-row"><span>لینک ویدیو</span><div class="switch on" id="sw-video" onclick="App.toggle('use_video_links',this)"></div></div>
+          </div>
+          <div class="top">
+            <button class="tool-btn" id="optsBtn" onclick="App.toggleOpts(event)" title="تنظیمات پاسخ">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/>
+                <circle cx="15" cy="7" r="2.4" fill="var(--surface)"/><circle cx="9" cy="12" r="2.4" fill="var(--surface)"/><circle cx="15" cy="17" r="2.4" fill="var(--surface)"/>
+              </svg>
+            </button>
+            <textarea id="input" rows="1" placeholder="پیام خود را بنویسید…"
+              oninput="App.autoGrow(this)" onkeydown="App.onKey(event)"></textarea>
+            <button class="send" id="sendBtn" onclick="App.send()" title="ارسال">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="transform:scaleX(-1)"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RETRIEVAL VIEW -->
+    <section id="retrView" class="hidden" style="flex:1;overflow-y:auto;">
+      <div class="retr">
+        <h2>پرسش و پاسخ مستقیم</h2>
+        <p class="hint">یک سوال مشخص بپرسید تا پاسخِ بازیابی‌شده از اسناد را ببینید.</p>
+        <div class="retr-controls">
+          <label for="retrTopK">تعداد اسناد بازیابی‌شده</label>
+          <input type="number" id="retrTopK" min="1" max="50" step="1" value="5" />
+        </div>
+        <div class="composer">
+          <div class="top">
+            <textarea id="retrInput" rows="1" placeholder="سوال خود را بنویسید…"
+              oninput="App.autoGrow(this)" onkeydown="App.onRetrKey(event)"></textarea>
+            <button class="send" onclick="App.askRetr()" title="جستجو">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </button>
+          </div>
+        </div>
+        <div id="retrOut"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- ===================== CREATE-DB MODAL ===================== -->
+<div class="scrim" id="scrim">
+  <div class="modal">
+    <div class="m-head">
+      <h3>ساخت دستیار جدید</h3>
+      <button class="x" onclick="App.closeCreate()">×</button>
+    </div>
+    <div class="m-body">
+      <div class="field">
+        <label>اسناد سازمان</label>
+        <div class="desc">فایل‌های Word (docx / doc) مربوط به شرکت یا سازمان خود را بارگذاری کنید.</div>
+        <div class="drop" id="drop" onclick="document.getElementById('fileInput').click()">
+          فایل‌ها را اینجا رها کنید یا برای انتخاب کلیک کنید
+        </div>
+        <input type="file" id="fileInput" accept=".docx,.doc" multiple class="hidden" onchange="App.onFiles(this.files)" />
+        <div class="filelist" id="fileList"></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label>نام دستیار</label><input type="text" id="f-assistant" placeholder="نام دستیار خود را وارد کنید" /></div>
+        <div class="field"><label>نام شرکت</label><input type="text" id="f-company" placeholder="نام شرکت خود را وارد کنید" /></div>
+      </div>
+      <div class="field">
+        <label>مجموعه‌ی مقصد</label>
+        <select id="f-target" onchange="App.onTargetChange()">
+          <option value="default">مجموعه‌ی پیش‌فرض (مشترک)</option>
+          <option value="new">مجموعه‌ی جدید و اختصاصی</option>
+        </select>
+        <div class="desc" id="f-target-desc" style="margin-top:7px"></div>
+      </div>
+      <div class="field" id="f-writemode-field">
+        <label>نحوه‌ی نوشتن در مجموعه‌ی پیش‌فرض</label>
+        <select id="f-writemode">
+          <option value="update_files">نگهداری بقیه اسناد (به‌روزرسانی فایل‌های آپلودشده)</option>
+          <option value="recreate">بازسازی کامل مجموعه (حذف همه و ساخت دوباره)</option>
+        </select>
+        <div class="desc" style="margin-top:7px">«نگهداری بقیه اسناد» تنها برش‌های مربوط به همین نام‌فایل‌ها را جایگزین می‌کند و سایر اسناد مجموعه دست‌نخورده می‌مانند.</div>
+      </div>
+      <!-- <div class="field">
+        <label>اندازهٔ دستهٔ پردازش</label>
+        <input type="number" id="f-batch" value="100" min="1" max="1000" step="10" />
+      </div> -->
+    </div>
+    <div class="m-foot">
+      <button class="btn-primary" id="createBtn" onclick="App.submitCreate()">ساخت دستیار</button>
+      <button class="btn-text" onclick="App.closeCreate()">انصراف</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-host" id="toasts"></div>
+
+<script>
+const App = (() => {
+  const S = {
+    sessionId:null, databaseId:null,
+    company:"همکاران سیستم", assistant:"دستیار دیجیتال آیند",
+    messages:[],            // {role, content, meta:{query,is_sql,is_ticket,message_id,choices,do_suggest,parameters,has_video_link}}
+    answerType:"concise",
+    sql_mode:false, use_cache:true, ticket_mode:true, use_video_links:true,
+    busy:false, files:[],
+  };
+
+  // Path prefix this page is served under (injected by app.py). Empty for
+  // local dev, "/eval-front-soroush" in the cluster. Every API call is
+  // prefixed with it so requests stay inside the Istio route.
+  const BASE = "__ROOT_PATH__";
+
+  // Name of the shared default Qdrant collection (injected by app.py). Shown in
+  // the create-assistant form so the user knows where "default collection" writes.
+  const DEFAULT_COLLECTION = "__DEFAULT_COLLECTION__";
+
+  // ---- inline icons ----
+  const ICON_BOT = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.4l1.75 5.35a3 3 0 0 0 1.9 1.9L21 11.4l-4.95 1.6a3 3 0 0 0-1.9 1.9L12 20.4l-2.15-5.5a3 3 0 0 0-1.9-1.9L3 11.4l5.95-1.75a3 3 0 0 0 1.9-1.9z"/></svg>';
+  const ICON_USER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="8.5" r="3.4"/><path d="M5.5 19.4c0-3.4 2.9-5.6 6.5-5.6s6.5 2.2 6.5 5.6"/></svg>';
+  const ICON_LINK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 13.5a4 4 0 0 0 5.7 0l3-3a4 4 0 1 0-5.7-5.7L11 6.3"/><path d="M14.5 10.5a4 4 0 0 0-5.7 0l-3 3a4 4 0 1 0 5.7 5.7L13 17.7"/></svg>';
+
+  // ---- tiny helpers ----
+  const $ = s => document.querySelector(s);
+  const el = (t,c,h)=>{const e=document.createElement(t); if(c)e.className=c; if(h!=null)e.innerHTML=h; return e;};
+  // Null-safe read of a form field's value (guards against a missing element,
+  // e.g. a stale cached page or a DOM-mutating browser extension).
+  const valOf = (sel, def="") => { const e = $(sel); return e ? e.value : def; };
+  const esc = s => (s??"").toString().replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const escAttr = s => (s??"").toString().replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  const faDigits = s => (s??"").toString().replace(/\d/g, d=>"۰۱۲۳۴۵۶۷۸۹"[d]);
+
+  // The history endpoint returns `parameters` as the raw DB column (a JSON
+  // string) and now also returns the has_video_link boolean column. is_ticket is
+  // still not stored, so the UI derives it from the parameters (title/description/
+  // system/form), mirroring the backend.
+  const TICKET_KEYS = ["title","description","system","form"];
+  const parseParams = p => {
+    if(!p) return {};
+    if(typeof p === "string"){ try{ return JSON.parse(p) || {}; }catch{ return {}; } }
+    return (typeof p === "object") ? p : {};
+  };
+  const isTicketParams = p => TICKET_KEYS.every(k => Object.prototype.hasOwnProperty.call(p, k));
+  // Copy text to the clipboard, with a fallback for non-secure contexts.
+  function copyText(text){
+    if(navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    return new Promise((res, rej)=>{
+      try{
+        const ta=document.createElement("textarea"); ta.value=text;
+        ta.style.position="fixed"; ta.style.opacity="0"; document.body.appendChild(ta);
+        ta.select(); document.execCommand("copy"); document.body.removeChild(ta); res();
+      }catch(e){ rej(e); }
+    });
+  }
+
+  async function api(path, opts){
+    const r = await fetch(BASE + path, opts);
+    let data; try{ data = await r.json(); }catch{ data = {}; }
+    if(!r.ok) throw new Error(data.error || data.detail || ("خطای سرور ("+r.status+")"));
+    return data;
+  }
+
+  function toast(msg, kind=""){
+    const t = el("div","toast "+kind, esc(msg));
+    $("#toasts").appendChild(t);
+    setTimeout(()=>{ t.style.opacity="0"; t.style.transition="opacity .3s"; setTimeout(()=>t.remove(),300); }, 3200);
+  }
+
+  // ---- minimal, safe markdown (escapes first, then formats) ----
+  function md(src){
+    let t = esc(src||"");
+    // fenced code
+    t = t.replace(/```([\s\S]*?)```/g, (_,c)=>`<pre style="direction:ltr;text-align:left;background:var(--surface-2);padding:10px;border-radius:8px;overflow:auto"><code>${c.trim()}</code></pre>`);
+    t = t.replace(/`([^`]+)`/g,'<code>$1</code>');
+    t = t.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+    t = t.replace(/(^|[^*])\*([^*]+)\*/g,'$1<em>$2</em>');
+    t = t.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');
+    t = t.replace(/(^|\s)(https?:\/\/[^\s<]+)/g,'$1<a href="$2" target="_blank" rel="noopener">$2</a>');
+    // headings: 1–6 hashes, space optional (so "#انبار" renders too)
+    t = t.replace(/^\s*#{1,6}[ \t]*(.+?)[ \t]*$/gm,'<h3>$1</h3>');
+    // lists: group consecutive bullets / numbers
+    const lines = t.split("\n"); const out=[]; let li=null;
+    for(const ln of lines){
+      const b = ln.match(/^\s*[-•]\s+(.*)$/);
+      const o = ln.match(/^\s*\d+[.\):]\s+(.*)$/);
+      if(b||o){ const tag=o?"ol":"ul"; if(li!==tag){ if(li)out.push(`</${li}>`); out.push(`<${tag}>`); li=tag;} out.push(`<li>${(b||o)[1]}</li>`); }
+      else { if(li){ out.push(`</${li}>`); li=null;} out.push(ln); }
+    }
+    if(li) out.push(`</${li}>`);
+    t = out.join("\n");
+    // paragraphs
+    t = t.split(/\n{2,}/).map(p=>/^\s*<(h3|ul|ol|pre)/.test(p)?p:`<p>${p.replace(/\n/g,"<br>")}</p>`).join("");
+    return t;
+  }
+
+  // Render an assistant text answer. When the turn carries a video link
+  // (has_video_link — a real column now), each @paramN token becomes a chip that
+  // COPIES the link to the clipboard on click; it never navigates. Never used
+  // for the SQL branch.
+  function renderRich(text, meta){
+    let html = md(text);
+    const params = parseParams(meta && meta.parameters);
+    if(meta && meta.has_video_link && Object.keys(params).length){
+      html = html.replace(/@([A-Za-z_]\w*)/g, (full, key)=>{
+        if(!Object.prototype.hasOwnProperty.call(params, key)) return full;
+        const val = String(params[key] ?? "");
+        const num = (key.match(/\d+/) || [null])[0];
+        const label = num ? ("ویدیو " + faDigits(num)) : "ویدیو";
+        return `<span class="vlink" role="button" tabindex="0" data-link="${escAttr(val)}" title="برای کپی لینک کلیک کنید">${ICON_LINK}<span class="vlabel">${label}</span></span>`;
+      });
+    }
+    return html;
+  }
+
+  // ================= rendering =================
+  function render(){
+    const wrap = $("#threadInner"); wrap.innerHTML="";
+    if(!S.messages.length){ renderEmpty(wrap); return; }
+    S.messages.forEach((m,i)=> wrap.appendChild(buildMsg(m,i)));
+    requestAnimationFrame(()=>{ $("#thread").scrollTop = $("#thread").scrollHeight; });
+  }
+
+  function renderEmpty(wrap){
+    const e = el("div","empty-state");
+    e.innerHTML = `
+      <div class="orb">${ICON_BOT}</div>
+      <h2>سلام، چطور می‌توانم کمکتان کنم؟</h2>
+      <p>سوال خود را بپرسید یا یکی از نمونه‌های زیر را انتخاب کنید.</p>
+      <div class="starter">
+        ${["گزارش فروش هفتهٔ گذشته را نشان بده","مراحل ثبت یک سند حسابداری چیست؟",
+           "چطور یک تیکت پشتیبانی ثبت کنم؟","لیست مشتریان فعال را بده"]
+          .map(q=>`<button onclick="App.quick('${q}')">${q}</button>`).join("")}
+      </div>`;
+    wrap.appendChild(e);
+  }
+
+  function buildMsg(m, i){
+    const isUser = m.role==="user";
+    const row = el("div","msg "+(isUser?"user":"bot"));
+    row.appendChild(el("div","avatar", isUser?ICON_USER:ICON_BOT));
+    const b = el("div","bubble");
+    b.appendChild(el("div","sender", isUser ? "شما" : (S.assistant || "دستیار")));
+    const last = i===S.messages.length-1;
+
+    if(isUser){
+      b.appendChild(el("div","body", md(m.content)));
+    } else if(m.typing){
+      const body = el("div","body");
+      body.appendChild(el("div","typing","<span></span><span></span><span></span>"));
+      b.appendChild(body);
+    } else if(m.meta?.is_sql){
+      b.appendChild(buildSql(m));               // SQL branch: no video-link chips
+    } else if(m.meta?.is_ticket){
+      b.appendChild(buildTicket(m));
+    } else {
+      b.appendChild(el("div","body", renderRich(extractText(m.content), m.meta)));
+    }
+
+    if(m.meta?.query && !m.typing && !isUser)
+      b.appendChild(el("div","query-note", "کوئری جست‌وجوشده: «"+esc(m.meta.query)+"»"));
+
+    // suggestions on the last bot turn
+    if(last && !isUser && m.meta?.do_suggest && (m.meta.choices||[]).length){
+      const c = el("div","chips");
+      m.meta.choices.forEach(ch=>{ const btn=el("button",null,esc(ch)); btn.onclick=()=>quick(ch); c.appendChild(btn); });
+      b.appendChild(c);
+    }
+    // feedback on the last bot turn (when not showing suggestions)
+    if(last && !isUser && !m.typing && !(m.meta?.do_suggest))
+      b.appendChild(buildFeedback(m));
+
+    row.appendChild(b);
+    return row;
+  }
+
+  function extractText(content){
+    if(content && typeof content==="object") return content.response ?? "";
+    return content ?? "";
+  }
+
+  function buildSql(m){
+    const c = m.content || {};
+    const sql = typeof c==="object" ? (c.response||"") : c;
+    const wrap = el("div");
+    const card = el("div","sqlcard");
+    const head = el("div","head","<span>SQL</span>");
+    const copy = el("button","copy-btn","کپی");
+    copy.onclick = ()=>{ navigator.clipboard.writeText(sql); copy.textContent="کپی شد"; setTimeout(()=>copy.textContent="کپی",1400); };
+    head.appendChild(copy);
+    card.appendChild(head);
+    card.appendChild(el("pre",null,`<code>${esc(sql)}</code>`));
+    wrap.appendChild(card);
+    if(m.meta?.exec) wrap.appendChild(el("div","exec-out", esc(m.meta.exec)));
+    return wrap;
+  }
+
+  function buildTicket(m){
+    const c = m.content||{}; const p = c.parameters||{};
+    const wrap = el("div");
+    if(c.response) wrap.appendChild(el("div","body", md(c.response)));
+    const t = el("div","ticket");
+    t.innerHTML = `
+      <div class="t-head">🎫 پیش‌نمایش تیکت</div>
+      <div class="row"><span class="k">عنوان:</span><span class="v">${esc(p.title)||"—"}</span></div>
+      <div class="row"><span class="k">سیستم:</span><span class="v">${esc(p.system)||"—"}</span></div>
+      <div class="row"><span class="k">فرم:</span><span class="v">${esc(p.form)||"—"}</span></div>
+      <div class="row"><span class="k">توضیحات:</span></div>
+      <div class="desc">${esc(p.description)||"—"}</div>`;
+    wrap.appendChild(t);
+    return wrap;
+  }
+
+  function buildFeedback(m){
+    const f = el("div","feedback");
+    if(m.meta?.fb){ f.appendChild(el("span","fb-note","نظر شما ثبت شد.")); return f; }
+    const mk = (icon,type,title,cls)=>{ const b=el("button","fb-btn"+(cls||""),icon); b.title=title;
+      b.onclick=()=>sendFeedback(m,type,b); return b; };
+    f.appendChild(mk("👍","thumb_up","به حل مشکل کمک کرد"));
+    f.appendChild(mk("👎","thumb_down","کمکی نکرد"));
+    f.appendChild(mk("⚑","flag","از قوانین پیروی نمی‌کند"));
+    return f;
+  }
+
+  async function sendFeedback(m, type, btn){
+    if(!m.meta?.message_id){ toast("شناسهٔ پیام موجود نیست.","err"); return; }
+    btn.classList.add("done");
+    try{
+      await api("/api/feedback",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({message_id:m.meta.message_id, feedback_type:type, session_id:S.sessionId})});
+      m.meta.fb = true; render();
+    }catch(e){ toast(e.message,"err"); btn.classList.remove("done"); }
+  }
+
+  // ================= chat flow =================
+  async function ensureSession(){
+    if(S.sessionId) return;
+    const d = await api("/api/session/create",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(S.databaseId?{database_id:S.databaseId}:{})});
+    S.sessionId = d.session_id;
+  }
+
+  async function send(){
+    const ta = $("#input"); const q = ta.value.trim();
+    if(!q || S.busy) return;
+    S.busy=true; $("#sendBtn").disabled=true;
+    ta.value=""; autoGrow(ta);
+
+    try{ await ensureSession(); }
+    catch(e){ toast(e.message,"err"); S.busy=false; $("#sendBtn").disabled=false; return; }
+
+    S.messages.push({role:"user", content:q});
+    const typing = {role:"bot", typing:true, meta:{}};
+    S.messages.push(typing); render();
+
+    try{
+      const d = await api("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          query:q, session_id:S.sessionId, database_id:S.databaseId,
+          response_type:S.answerType, sql_mode:S.sql_mode, use_cache:S.use_cache,
+          ticket_mode:S.ticket_mode, use_video_links:S.use_video_links,
+          does_evaluate:false, on_click:false,
+        })});
+      S.messages.pop(); // typing
+      S.messages.push({
+        role:"bot",
+        content: shapeResponse(d),
+        meta:{ query:d.query, is_sql:!!d.is_sql, is_ticket:!!d.is_ticket,
+               message_id:d.message_id, choices:d.choices||[], do_suggest:!!d.do_suggest,
+               parameters:d.parameters||{}, has_video_link:!!d.has_video_link }
+      });
+      render();
+    }catch(e){
+      S.messages.pop();
+      S.messages.push({role:"bot", content:"دریافت پاسخ با خطا مواجه شد: "+e.message, meta:{}});
+      render();
+    }finally{
+      S.busy=false; $("#sendBtn").disabled=false;
+    }
+  }
+
+  // backend returns response in slightly different shapes for sql/ticket/normal
+  function shapeResponse(d){
+    if(d.is_sql)   return {response: (typeof d.response==="object"? d.response.response : d.response),
+                          parameters:d.parameters||{}, response_template:d.response_template||""};
+    if(d.is_ticket)return {response: (typeof d.response==="object"? d.response.response : d.response),
+                          parameters:(typeof d.response==="object"? d.response.parameters : d.parameters)||{}};
+    if(typeof d.response==="object" && d.response!==null) return d.response.response ?? d.response;
+    return d.response;
+  }
+
+  // ================= history / sessions / databases =================
+  async function loadSessions(activeId){
+    const box = $("#sessionList");
+    try{
+      const d = await api("/api/sessions");
+      const list = (d.response||[]);
+      box.innerHTML="";
+      if(!list.length){ box.appendChild(el("div","list-empty","هنوز گفتگویی ندارید.")); return; }
+      list.forEach(item=>{
+        const title = item.paraphrased_query || "گفتگوی بدون عنوان";
+        const sub = [item.assistant_name,item.company_name].filter(Boolean).join(" · ");
+        const row = el("div","list-item"+(item.session_id===activeId?" active":""));
+        row.innerHTML = esc(title) + (sub?`<span class="meta">${esc(sub)}</span>`:"");
+        row.onclick = ()=> openSession(item);
+        box.appendChild(row);
+      });
+    }catch(e){ box.innerHTML=""; box.appendChild(el("div","list-empty","بارگذاری گفتگوها ناموفق بود.")); }
+  }
+
+  async function loadDatabases(){
+    const box = $("#databaseList");
+    try{
+      const d = await api("/api/databases");
+      const list = (d.response||[]);
+      box.innerHTML="";
+      if(!list.length){ box.appendChild(el("div","list-empty","هیچ پایگاه دانشی ساخته نشده است.")); return; }
+      list.forEach(item=>{
+        const row = el("div","list-item"+(item.database_id===S.databaseId?" active":""));
+        row.innerHTML = esc((item.company_name||"")+" — "+(item.assistant_name||""))
+                      + `<span class="meta">${esc(item.database_id)}</span>`;
+        row.onclick = ()=> selectDatabase(item);
+        box.appendChild(row);
+      });
+    }catch(e){ box.innerHTML=""; box.appendChild(el("div","list-empty","بارگذاری پایگاه‌ها ناموفق بود.")); }
+  }
+
+  async function openSession(item){
+    S.sessionId = item.session_id;
+    S.company = item.company_name || S.company;
+    S.assistant = item.assistant_name || S.assistant;
+    updateHeader();
+    try{
+      const d = await api("/api/history?session_id="+encodeURIComponent(item.session_id));
+      const h = d.history||[];
+      S.messages = [];
+      h.forEach(msg=>{
+        S.messages.push({role:"user", content:msg.query});
+        const isSql  = !!msg.is_sql;
+        const params = parseParams(msg.parameters);          // DB column is a JSON string
+        const isTicket = !isSql && isTicketParams(params);    // is_ticket isn't stored — derive it
+        let content = msg.response;
+        if(isSql)        content = {response: msg.response, parameters: params, response_template: msg.response_template||""};
+        else if(isTicket) content = {response: msg.response, parameters: params};
+        S.messages.push({role:"bot", content,
+          meta:{query:msg.paraphrased_query, is_sql:isSql, is_ticket:isTicket,
+                message_id:msg.message_id, choices:[], do_suggest:false,
+                parameters: params, has_video_link: !!msg.has_video_link}});
+      });
+      render(); loadSessions(item.session_id);
+    }catch(e){ toast(e.message,"err"); }
+  }
+
+  async function selectDatabase(item){
+    S.databaseId = item.database_id;
+    S.company = item.company_name || S.company;
+    S.assistant = item.assistant_name || S.assistant;
+    S.sessionId = null; S.messages=[];
+    updateHeader();
+    try{ await ensureSession(); }catch(e){ toast(e.message,"err"); }
+    render(); loadDatabases();
+    toast("پایگاه دانش انتخاب شد: "+(item.company_name||""),"ok");
+  }
+
+  async function newSession(){
+    S.sessionId=null; S.messages=[];
+    try{ await ensureSession(); }catch(e){ toast(e.message,"err"); }
+    render(); loadSessions(S.sessionId);
+  }
+
+  // ================= retrieval tab =================
+  // Split the joined FAQ string into individual chunks. The backend currently
+  // joins chunks with a line of "=" (e.g. "\n\n === \n\n"); we split on any run
+  // of 3+ "=" surrounded by whitespace, tolerant of the length varying.
+  function splitChunks(text){
+    return String(text || "")
+      .split(/\s*={3,}\s*/)
+      .map(s => s.trim())
+      .filter(Boolean);
+  }
+
+  async function askRetr(){
+    const ta = $("#retrInput"); const q = ta.value.trim();
+    if(!q) return;
+    try{ await ensureSession(); }catch(e){ toast(e.message,"err"); return; }
+    // how many documents to retrieve (1..50; non-numeric → 5)
+    let topK = parseInt($("#retrTopK").value, 10);
+    if(!Number.isFinite(topK)) topK = 5;
+    topK = Math.min(50, Math.max(1, topK));
+    $("#retrTopK").value = topK;
+    const out = $("#retrOut");
+    out.innerHTML = `<div class="ans"><div class="typing"><span></span><span></span><span></span></div></div>`;
+    try{
+      const d = await api(`/api/faq?query=${encodeURIComponent(q)}&session_id=${encodeURIComponent(S.sessionId)}&num_retrieve_context=${topK}`);
+      // Prefer a structured list if the backend provides one; otherwise split
+      // the joined string. Keep each chunk's module so it can be shown.
+      const docs = Array.isArray(d.documents)
+        ? d.documents.map(x => (typeof x === "string" ? {text:x, module:""} : {text:x.text||"", module:x.module||""}))
+        : splitChunks(d.response).map(t => ({text:t, module:""}));
+      const modIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7"/></svg>';
+      const cards = docs.map((c, i)=>`
+        <div class="doc-card">
+          <div class="doc-head">
+            <span class="doc-num">${faDigits(i+1)}</span>
+            <span>سند بازیابی‌شده</span>
+            ${c.module ? `<span class="doc-mod" title="ماژول">${modIcon}${esc(c.module)}</span>` : ""}
+          </div>
+          <div class="doc-body">${md(c.text)}</div>
+        </div>`).join("");
+      out.innerHTML = `
+        <div class="retr-q"><div class="label">سوال شما</div>${esc(q)}</div>
+        <div class="doc-list">${cards || '<div class="list-empty">سندی برای این پرسش یافت نشد.</div>'}</div>`;
+    }catch(e){ out.innerHTML = `<div class="ans" style="color:var(--danger)">خطا در دریافت پاسخ: ${esc(e.message)}</div>`; }
+  }
+
+  // ================= create database =================
+  function onFiles(files){
+    for(const f of files) if(!S.files.some(x=>x.name===f.name && x.size===f.size)) S.files.push(f);
+    renderFiles();
+  }
+  function renderFiles(){
+    const list = $("#fileList"); list.innerHTML="";
+    S.files.forEach((f,i)=>{
+      const r = el("div","filerow",`📄 ${esc(f.name)}`);
+      const rm = el("span","rm","×"); rm.onclick=()=>{ S.files.splice(i,1); renderFiles(); };
+      r.appendChild(rm); list.appendChild(r);
+    });
+  }
+  function onTargetChange(){
+    const tEl = $("#f-target"); if(!tEl) return;
+    const isDefault = tEl.value === "default";
+    const wmField = $("#f-writemode-field"); if(wmField) wmField.style.display = isDefault ? "" : "none";
+    const desc = $("#f-target-desc");
+    if(desc) desc.textContent = isDefault
+      ? `روی مجموعه‌ی پیش‌فرض («${DEFAULT_COLLECTION}») نوشته می‌شود؛ این مجموعه میان دستیارها مشترک است.`
+      : "یک مجموعه‌ی کاملاً جدید و اختصاصی ساخته می‌شود؛ در این حالت مجموعه همیشه از نو ساخته می‌شود.";
+  }
+  async function submitCreate(){
+    const company = valOf("#f-company").trim();
+    const assistant = valOf("#f-assistant").trim();
+    if(!S.files.length){ toast("حداقل یک فایل بارگذاری کنید.","err"); return; }
+    if(!company || !assistant){ toast("نام شرکت و نام دستیار را وارد کنید.","err"); return; }
+
+    const useDefault = valOf("#f-target","default") === "default";
+    // write_mode applies only to the default collection; a brand-new collection
+    // is always built from scratch (the backend forces this too).
+    const writeMode = useDefault ? valOf("#f-writemode","update_files") : "recreate";
+
+    const params = new URLSearchParams({
+      company_name: company,
+      assistant_name: assistant,
+      batch_size: valOf("#f-batch","100") || "100",
+      default_collection: useDefault ? "true" : "false",
+      write_mode: writeMode,
+      recreate: (writeMode === "recreate"),   // legacy flag, kept for back-compat
+    });
+    const fd = new FormData();
+    S.files.forEach(f=> fd.append("files", f, f.name));
+
+    const btn = $("#createBtn"); btn.disabled=true; btn.textContent="در حال ساخت پایگاه داده…";
+    try{
+      const d = await api("/api/database/create?"+params.toString(),{method:"POST",body:fd});
+      toast("دستیار با موفقیت ساخته شد.","ok");
+      if(writeMode==="update_files"){
+        toast(`${d.vectors_deleted||0} برش حذف و ${d.total_documents||0} برش جدید افزوده شد.`,"ok");
+      }
+      S.databaseId = d.database_id;
+      S.company = company; S.assistant = assistant;
+      S.sessionId=null; S.messages=[]; S.files=[]; renderFiles();
+      updateHeader(); closeCreate(); render();
+      await ensureSession(); loadDatabases();
+    }catch(e){ toast(e.message,"err"); }
+    finally{ btn.disabled=false; btn.textContent="ساخت دستیار"; }
+  }
+
+  // ================= ui glue =================
+  function updateHeader(){ $("#hdrTitle").textContent=S.assistant; $("#hdrWho").textContent=S.company; }
+  function sideTab(which){
+    const s=which==="sessions";
+    $("#tab-sessions").classList.toggle("active",s); $("#tab-databases").classList.toggle("active",!s);
+    $("#sessionList").classList.toggle("hidden",!s); $("#databaseList").classList.toggle("hidden",s);
+  }
+  function view(which){
+    const chat=which==="chat";
+    $("#view-chat").classList.toggle("active",chat); $("#view-retr").classList.toggle("active",!chat);
+    $("#chatView").classList.toggle("hidden",!chat); $("#retrView").classList.toggle("hidden",chat);
+  }
+  function toggle(key, node){ S[key]=!S[key]; node.classList.toggle("on",S[key]); }
+  function toggleOpts(e){ if(e) e.stopPropagation();
+    const open = $("#optsPop").classList.toggle("show"); $("#optsBtn").classList.toggle("active", open); }
+  function autoGrow(t){ t.style.height="auto"; t.style.height=Math.min(t.scrollHeight,170)+"px"; }
+  function onKey(e){ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); send(); } }
+  function onRetrKey(e){ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); askRetr(); } }
+  function quick(q){ $("#input").value=q; autoGrow($("#input")); send(); }
+  function openCreate(){ $("#scrim").classList.add("show"); onTargetChange(); }
+  function closeCreate(){ $("#scrim").classList.remove("show"); }
+
+  // answer-type segmented control
+  document.addEventListener("click", e=>{
+    const b = e.target.closest("#answerType button");
+    if(!b) return;
+    document.querySelectorAll("#answerType button").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active"); S.answerType=b.dataset.v;
+  });
+  // close the settings popover when clicking outside it
+  document.addEventListener("click", e=>{
+    const pop = $("#optsPop");
+    if(!pop || !pop.classList.contains("show")) return;
+    if(e.target.closest("#optsPop") || e.target.closest("#optsBtn")) return;
+    pop.classList.remove("show"); $("#optsBtn").classList.remove("active");
+  });
+  // close modal on scrim click
+  document.addEventListener("click", e=>{ if(e.target.id==="scrim") closeCreate(); });
+  // video-link chip: copy the link, never navigate
+  function copyChip(v){
+    const link = v.getAttribute("data-link") || "";
+    copyText(link).then(()=>{
+      const lbl = v.querySelector(".vlabel"); const prev = lbl ? lbl.textContent : "";
+      v.classList.add("copied"); if(lbl) lbl.textContent = "کپی شد";
+      setTimeout(()=>{ v.classList.remove("copied"); if(lbl) lbl.textContent = prev; }, 1200);
+    }).catch(()=> toast("کپی لینک ناموفق بود","err"));
+  }
+  document.addEventListener("click", e=>{ const v=e.target.closest(".vlink"); if(v) copyChip(v); });
+  document.addEventListener("keydown", e=>{
+    if(e.key!=="Enter" && e.key!==" ") return;
+    const v = e.target.closest && e.target.closest(".vlink");
+    if(v){ e.preventDefault(); copyChip(v); }
+  });
+  // drag & drop
+  const drop = ()=>$("#drop");
+  document.addEventListener("DOMContentLoaded", ()=>{
+    const d = drop();
+    ["dragover","dragenter"].forEach(ev=>d.addEventListener(ev,e=>{e.preventDefault();d.style.borderColor="var(--brand)";d.style.background="var(--brand-soft)";}));
+    ["dragleave","drop"].forEach(ev=>d.addEventListener(ev,e=>{e.preventDefault();d.style.borderColor="";d.style.background="";}));
+    d.addEventListener("drop",e=>onFiles(e.dataTransfer.files));
+  });
+
+  // boot
+  async function init(){
+    updateHeader(); render();
+    try{ await ensureSession(); }catch(e){ toast("اتصال به سرور برقرار نشد. سرور بک‌اند را بررسی کنید.","err"); }
+    loadSessions(S.sessionId); loadDatabases();
+  }
+  init();
+
+  return { send, newSession, sideTab, view, toggle, toggleOpts, autoGrow, onKey, onRetrKey, quick,
+           openCreate, closeCreate, onFiles, onTargetChange, submitCreate, askRetr };
+})();
+</script>
+</body>
+</html>

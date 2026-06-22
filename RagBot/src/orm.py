@@ -3,6 +3,7 @@ import asyncpg
 from typing import Optional, Tuple
 
 import os
+import json   # <-- NEW: needed to (de)serialize the per-session business object for JSONB
 from dotenv import load_dotenv
 
 load_dotenv()# Models for request and response
@@ -150,6 +151,29 @@ class Postgres:
             output = {"database_id": database_id[0]}
         return output
 
+    async def find_business_object(self, session_id):
+        """Return the per-session business object as a dict, or None if none was stored.
+
+        NEW capability. Mirrors `find_database_id`'s shape (single-row fetch via
+        `is_insert=True`). asyncpg's default codec returns a JSONB column as a JSON
+        *string*, so we parse it back into a dict here. A NULL column (no BO sent at
+        session creation) yields None, and the caller should fall back to the default
+        business object in that case.
+        """
+        sql_query_find_bo = "SELECT business_object FROM public.session WHERE session_id = $1"
+        result = await self._execute_query(
+            sql_query_find_bo,
+            insert_values=(session_id,),
+            is_insert=True,
+            fetch_results=True
+        )
+        if not result or result[0] is None:
+            return None
+        raw = result[0]
+        # Default asyncpg codec hands JSONB back as str; tolerate dict too in case a
+        # custom codec is ever registered on the connection.
+        return json.loads(raw) if isinstance(raw, str) else raw
+
     async def find_company_assistant_names(self, database_id):
         sql_query_find_dbid = "SELECT company_name, assistant_name FROM public.databases WHERE database_id = $1"
         results = await self._execute_query(
@@ -161,7 +185,7 @@ class Postgres:
         output = {"company_name": results[0], "assistant_name": results[1]}
         return output
 
-    async def create_session(self, database_id=None, tenant_name="", user_code=""):
+    async def create_session(self, database_id=None, tenant_name="", user_code="", business_object=None):
         sql_create_session_query = "INSERT INTO public.session"
         columns = []
         values_placeholder = []
@@ -185,6 +209,14 @@ class Postgres:
             columns.append("user_code")
             values_placeholder.append(f"${placeholder_counter}")
             query_params.append(user_code)
+            placeholder_counter += 1
+
+        if business_object is not None:                              # <-- NEW
+            # Store the BO sent in the session-creation request body. Serialize to a
+            # JSON string because asyncpg's default JSONB codec expects text, not a dict.
+            columns.append("business_object")
+            values_placeholder.append(f"${placeholder_counter}")
+            query_params.append(json.dumps(business_object, ensure_ascii=False))
             placeholder_counter += 1
         
         if columns:
@@ -214,7 +246,10 @@ class Postgres:
 
     async def get_history(self, session_id, page_index, page_size, with_paraphrase=False):
         sql_history_query = """
-            SELECT user_query, paraphrased_query, bot_response, message_id, is_sql, selected_module, elapsed_time, do_suggest, response_template, parameters FROM messages
+            SELECT user_query, paraphrased_query, bot_response, message_id, is_sql,
+                selected_module, elapsed_time, do_suggest, response_template,
+                parameters, has_video_link
+            FROM messages
             WHERE session_id = $1
             ORDER BY create_time DESC
             OFFSET $2
@@ -233,17 +268,21 @@ class Postgres:
         # Process the history results in the desired format
         if with_paraphrase:
             history = [
-                    {"query": h[0], "response": h[2], "paraphrased_query": h[1], "message_id": h[3], "is_sql": h[4], "selected_module": h[5], "elapsed_time": h[6], "do_suggest": h[7], "response_template": h[8],"parameters": h[9]}
+                {"query": h[0], "response": h[2], "paraphrased_query": h[1], "message_id": h[3],
+                "is_sql": h[4], "selected_module": h[5], "elapsed_time": h[6], "do_suggest": h[7],
+                "response_template": h[8], "parameters": h[9], "has_video_link": h[10]}
                 for h in reversed(selected_history)
             ]
         else:
             history = [
-                    {"query": h[0], "response": h[2], "message_id": h[3], "is_sql": h[4], "selected_module": h[5], "elapsed_time": h[6], "do_suggest": h[7], "response_template": h[8],"parameters": h[9]}
-                    for h in reversed(selected_history)
-            ]      
-               
-        return history
-   
+                {"query": h[0], "response": h[2], "message_id": h[3], "is_sql": h[4],
+                "selected_module": h[5], "elapsed_time": h[6], "do_suggest": h[7],
+                "response_template": h[8], "parameters": h[9], "has_video_link": h[10]}
+                for h in reversed(selected_history)
+            ]
+        
+        return history 
+        
     async def remove_previous_response(self, message_id):
         sql_remove_previous_response = """UPDATE messages SET bot_response = NULL WHERE message_id = $1;"""
         await self._execute_query(
@@ -276,56 +315,107 @@ class Postgres:
         offset=0,
         recent_limit=1000
     ):
-        sql_latest_unique_sessions_with_paraphrase = """
-            WITH recent_messages AS (
-                SELECT session_id, create_time
-                FROM messages
-                ORDER BY create_time DESC
-                LIMIT $3
-            ),
-            distinct_sessions AS (
-                SELECT DISTINCT ON (session_id)
-                    session_id,
-                    create_time
-                FROM recent_messages
-                ORDER BY session_id, create_time DESC
-            ),
-            valid_sessions AS (
-                SELECT ds.session_id
-                FROM distinct_sessions ds
-                WHERE (
-                    SELECT COUNT(*)
-                    FROM messages m
-                    WHERE m.session_id = ds.session_id
-                ) > 1
-                OR (
-                    SELECT COUNT(*)
-                    FROM messages m
-                    WHERE m.session_id = ds.session_id
-                    AND m.bot_response IS NOT NULL
-                ) > 0
-            )
+        # sql_latest_unique_sessions_with_paraphrase = """
+        #     WITH recent_messages AS (
+        #         SELECT session_id, create_time
+        #         FROM messages
+        #         ORDER BY create_time DESC
+        #         LIMIT $3
+        #     ),
+        #     distinct_sessions AS (
+        #         SELECT DISTINCT ON (session_id)
+        #             session_id,
+        #             create_time
+        #         FROM recent_messages
+        #         ORDER BY session_id, create_time DESC
+        #     ),
+        #     valid_sessions AS (
+        #         SELECT ds.session_id
+        #         FROM distinct_sessions ds
+        #         WHERE (
+        #             SELECT COUNT(*)
+        #             FROM messages m
+        #             WHERE m.session_id = ds.session_id
+        #         ) > 1
+        #         OR (
+        #             SELECT COUNT(*)
+        #             FROM messages m
+        #             WHERE m.session_id = ds.session_id
+        #             AND m.bot_response IS NOT NULL
+        #         ) > 0
+        #     )
+        #     SELECT
+        #         vs.session_id,
+        #         (
+        #             SELECT m.paraphrased_query
+        #             FROM messages m
+        #             WHERE m.session_id = vs.session_id
+        #             AND m.paraphrased_query IS NOT NULL
+        #             ORDER BY m.create_time ASC
+        #             LIMIT 1
+        #         ) AS first_paraphrased_query,
+        #         COALESCE(d.company_name, 'همکاران سیستم') AS company_name,
+        #         COALESCE(d.assistant_name, 'دستیار دیجیتال') AS assistant_name,
+        #         ds.create_time
+        #     FROM valid_sessions vs
+        #     JOIN distinct_sessions ds ON vs.session_id = ds.session_id
+        #     LEFT JOIN public.session s ON vs.session_id = s.session_id
+        #     LEFT JOIN public.databases d ON s.database_id = d.database_id
+        #     ORDER BY ds.create_time DESC
+        #     OFFSET $1
+        #     LIMIT $2;
+        # """
+
+        sql_latest_unique_sessions_with_paraphrase = """WITH recent_messages AS (
+            SELECT session_id, create_time
+            FROM messages
+            ORDER BY create_time DESC
+            LIMIT $3
+        ),
+        distinct_sessions AS (
+            SELECT session_id, MAX(create_time) AS create_time
+            FROM recent_messages
+            GROUP BY session_id
+        ),
+        session_stats AS (
             SELECT
-                vs.session_id,
-                (
-                    SELECT m.paraphrased_query
-                    FROM messages m
-                    WHERE m.session_id = vs.session_id
-                    AND m.paraphrased_query IS NOT NULL
-                    ORDER BY m.create_time ASC
-                    LIMIT 1
-                ) AS first_paraphrased_query,
-                COALESCE(d.company_name, 'همکاران سیستم') AS company_name,
-                COALESCE(d.assistant_name, 'دستیار دیجیتال') AS assistant_name,
-                ds.create_time
-            FROM valid_sessions vs
-            JOIN distinct_sessions ds ON vs.session_id = ds.session_id
-            LEFT JOIN public.session s ON vs.session_id = s.session_id
-            LEFT JOIN public.databases d ON s.database_id = d.database_id
-            ORDER BY ds.create_time DESC
+                m.session_id,
+                COUNT(*)                 AS msg_count,
+                COUNT(m.bot_response)    AS bot_response_count   -- counts non-NULL only
+            FROM messages m
+            JOIN distinct_sessions ds ON ds.session_id = m.session_id
+            GROUP BY m.session_id
+        ),
+        valid_sessions AS (
+            SELECT ds.session_id, ds.create_time
+            FROM distinct_sessions ds
+            JOIN session_stats ss ON ss.session_id = ds.session_id
+            WHERE ss.msg_count > 1 OR ss.bot_response_count > 0
+        ),
+        page AS (                          -- paginate first, then enrich
+            SELECT session_id, create_time
+            FROM valid_sessions
+            ORDER BY create_time DESC
             OFFSET $1
-            LIMIT $2;
-        """
+            LIMIT  $2
+        )
+        SELECT
+            p.session_id,
+            (
+                SELECT m.paraphrased_query
+                FROM messages m
+                WHERE m.session_id = p.session_id
+                AND m.paraphrased_query IS NOT NULL
+                ORDER BY m.create_time ASC
+                LIMIT 1
+            ) AS first_paraphrased_query,
+            COALESCE(d.company_name,   'همکاران سیستم') AS company_name,
+            COALESCE(d.assistant_name, 'دستیار دیجیتال') AS assistant_name,
+            p.create_time
+        FROM page p
+        LEFT JOIN public.session   s ON p.session_id = s.session_id
+        LEFT JOIN public.databases d ON s.database_id = d.database_id
+        ORDER BY p.create_time DESC;"""
 
         results = await self._execute_query(
             sql_latest_unique_sessions_with_paraphrase,
@@ -345,7 +435,9 @@ class Postgres:
         ]
     
     async def insert_chat_row(
-        self, session_id, user_query, paraphrased_query=None, bot_response=None, response_type="concise", elapsed_time=None, selected_module=None, response_template=None, parameters="{}"
+        self, session_id, user_query, paraphrased_query=None, bot_response=None,
+        response_type="concise", elapsed_time=None, selected_module=None,
+        response_template=None, parameters="{}", has_video_link=None,   # <-- NEW
     ):
         # Start with required columns and their values
         columns = ["session_id", "user_query"]
@@ -373,6 +465,9 @@ class Postgres:
         if parameters is not None:
             columns.append("parameters")
             values.append(parameters)
+        if has_video_link is not None:           # <-- NEW
+            columns.append("has_video_link")
+            values.append(has_video_link)
         
         # Construct the SQL query dynamically
         sql_insert_query = f"INSERT INTO messages ({', '.join(columns)}) VALUES ({', '.join([f'${i}' for i in range(1, len(values) + 1)])}) RETURNING message_id;"
@@ -394,19 +489,21 @@ class Postgres:
         do_suggest=False,
         selected_module=None,
         response_template=None,
-        parameters="{}"
+        parameters="{}",
+        has_video_link=False,          # <-- NEW
         ):
        
         values = (
             paraphrased_query,
             bot_response,
             elapsed_time,
-            selected_module,  # Pass None directly; the driver converts it to NULL
+            selected_module,
             session_id,
             is_sql,
             do_suggest,
             parameters,
-            response_template
+            response_template,
+            has_video_link,      # $10  <-- NEW
         )
         sql_update_query = """
             UPDATE messages
@@ -417,7 +514,8 @@ class Postgres:
                 is_sql = $6,
                 do_suggest = $7,
                 parameters = $8,
-                response_template = $9
+                response_template = $9,
+                has_video_link = $10
             WHERE message_id = (
                 SELECT message_id
                 FROM messages
@@ -430,9 +528,8 @@ class Postgres:
         # The _execute_query probably returns a list of records, e.g., [(123,)]
         message_id = await self._execute_query(
             sql_update_query, is_insert=True, insert_values=values, fetch_results=True
-        )            
+        )
         return str(message_id[0])
-
 
     async def update_on_click_chat_row(
         self,

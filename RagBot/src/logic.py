@@ -634,6 +634,7 @@ async def process_sql_response(
     selected_module: str,
     context: str = "",
     model_name: str = "",
+    business_object: dict | None = None, 
 ) -> tuple[bool, str, dict | None, str | None]:
     """
     Process SQL response and return (is_sql, response, parameters, response_template).
@@ -646,6 +647,7 @@ async def process_sql_response(
         paraphrased_utterance,
         selected_module,
         context=context,
+        business_object=business_object,                 # <-- NEW
     )
     
     response_dict = json.loads(response_dict_str)
@@ -943,15 +945,7 @@ def _format_single_document(doc: dict, index: int = 1) -> str:
 
     # --- QA branch ----------------------------------------------------------
     if not sql_query:
-        video_links = doc.get("video_links") or metadata.get("video_links") or []
-        text = doc.get("text", "")
-        if not video_links:
-            video_links = _VIDEO_LINK_RE.findall(text)
-        text = _VIDEO_LINK_RE.sub('', text).strip()
-        if video_links:
-            text = f"{text}\n[ویدیوی مرتبط: {', '.join(dict.fromkeys(video_links))}]"
-        return text
-
+        return _render_inline_videos(doc.get("text", ""))
     # --- SQL-example branch -------------------------------------------------
     question = doc.get("text", "")
 
@@ -1139,13 +1133,15 @@ async def sql_responder_(
     detected_module: str = "",
     context: str = "",
     model_name: str = "",
-    reasoning_effort="high"
+    reasoning_effort="high",
+    business_object: dict | None = None,                 # <-- NEW
 ):
     if not model_name:
         model_name = config["api_default"]["sql_responder_model_name"]
 
     schema_fmt = config.get("schema", {}).get("format", "create_table")
-    schema = get_schema_for_module(ALL_BOS_RAW, detected_module, fmt=schema_fmt)
+    raw_bo = business_object or ALL_BOS_RAW              # <-- NEW: per-session BO, else default
+    schema = get_schema_for_module(raw_bo, detected_module, fmt=schema_fmt)
 
     bo_prompt = format_sql_prompt(query, schema=schema, examples=context)
     raw_json_response = await get_chat_response(
@@ -1161,7 +1157,8 @@ async def parameters_responder(
     sql_query,
     detected_module: str,
     model_name: str = "",
-    reasoning_effort="high"
+    reasoning_effort="high",
+    business_object: dict | None = None,                 # <-- NEW
     ):
 
     if not model_name: 
@@ -1169,7 +1166,8 @@ async def parameters_responder(
     sql_proposed_tables = extract_tables_simple(sql_query)
     # schema = get_schema_for_module(detected_module)
     schema_fmt = config.get("schema", {}).get("format", "yaml_grouped")
-    schema = get_schema_for_module(ALL_BOS_RAW, detected_module, fmt=schema_fmt)
+    raw_bo = business_object or ALL_BOS_RAW              # <-- NEW
+    schema = get_schema_for_module(raw_bo, detected_module, fmt=schema_fmt)
     yaml_schema = yaml.safe_load(schema)
     selections = {table: ['parameters'] for table in sql_proposed_tables}
     bo_parameters_schema = subselect_yaml(yaml_schema, selections, "yaml")
@@ -1317,35 +1315,41 @@ def _post_process_rag_response(response: str, company_name: str) -> str:
     return response
 
 
-def _format_documents_with_modules(context_with_metadata: List[dict], tag: str = "Chunk") -> str:
-    """Format retrieved chunks with their source module tagged for ticket generation."""
-    lines = []
-    for i, doc in enumerate(context_with_metadata, 1):
-        module = doc.get("module", "unknown")
-        text = doc.get("text", "")
-        lines.append(f"[{tag} {i} | Module: {module}]\n{text}")
-    return "\n\n".join(lines)
-
+def _render_inline_videos(text: str) -> str:
+    """
+    Replace each raw `videolink-xxx` token with a readable marker, IN PLACE.
+    Position is preserved, so every video stays next to the content it belongs to.
+    """
+    return _VIDEO_LINK_RE.sub(
+        lambda m: f"[ویدیوی مرتبط: {m.group(0)}]",
+        text,
+    ).strip()
 
 def _format_qa_documents_with_modules(context_with_metadata: List[dict]) -> str:
     lines = []
     for i, doc in enumerate(context_with_metadata, 1):
         meta = doc.get("metadata") or {}
         module = doc.get("module") or meta.get("module", "unknown")
-        text = doc.get("text", "")
-
-        video_links = doc.get("video_links") or meta.get("video_links") or []
-        # Fallback: recover links that survived inline in the chunk text
-        if not video_links:
-            video_links = _VIDEO_LINK_RE.findall(text)
-
-        # Strip raw tokens from the visible text, then present the
-        # structured tag the prompt is instructed to cite from.
-        text = _VIDEO_LINK_RE.sub('', text).strip()
-        if video_links:
-            text = f"{text}\n[ویدیوی مرتبط: {', '.join(dict.fromkeys(video_links))}]"
-
+        text = _render_inline_videos(doc.get("text", ""))
         lines.append(f"[Chunk {i} | Module: {module}]\n{text}")
+    return "\n\n".join(lines)
+
+def _format_documents_with_modules(context_with_metadata: List[dict], tag: str = "Chunk") -> str:
+    """
+    Format retrieved chunks for ticket generation, tagged with their source module.
+
+    Mirrors `_format_qa_documents_with_modules` (the query-responder path):
+    resolve the module from the top-level field with a fallback to metadata,
+    and render inline video markers in place. The only difference is the
+    configurable `tag`, so the same shape labels both the PRIMARY ("Chunk")
+    and FORM ("FormChunk") context streams.
+    """
+    lines = []
+    for i, doc in enumerate(context_with_metadata, 1):
+        meta = doc.get("metadata") or {}
+        module = doc.get("module") or meta.get("module", "unknown")
+        text = _render_inline_videos(doc.get("text", ""))
+        lines.append(f"[{tag} {i} | Module: {module}]\n{text}")
     return "\n\n".join(lines)
 
 @observe()
@@ -1379,21 +1383,26 @@ async def ticket_responder_(
     form_ctx = form_ctx or []
 
     # ---- Module bookkeeping -------------------------------------------------
-    primary_module_counter = Counter(
-        d.get("module") or (d.get("metadata") or {}).get("module", "unknown")
-        for d in primary_ctx
-    )
-    # Dedupe but keep retrieval order (most relevant module first)
+   # ---- Module bookkeeping -------------------------------------------------
+    def _module_of(doc: dict) -> str:
+        return doc.get("module") or (doc.get("metadata") or {}).get("module", "unknown")
+
+    primary_module_counter = Counter(_module_of(d) for d in primary_ctx)
+    form_module_counter    = Counter(_module_of(d) for d in form_ctx)
+    combined_counter       = primary_module_counter + form_module_counter
+
+    # Available Modules spans BOTH retrieval streams; drop the "unknown" sentinel.
     seen, available_modules = set(), []
-    for m in primary_module_counter:
-        if m and m not in seen:
+    for m in list(primary_module_counter) + list(form_module_counter):
+        if m and m != "unknown" and m not in seen:
             seen.add(m)
             available_modules.append(m)
 
-    # Persian module name -> ticketing system code.
-    # Point these at wherever your config actually stores the mapping.
-    module_to_system = config.get("modules", {}).get("module_to_system", {})
-    default_system = config.get("modules", {}).get("default_system", "unknown")
+    # The module -> system mapping lives under config["ticket"], NOT config["modules"].
+    # Reading the wrong section is what made every lookup miss and collapse to "unknown".
+    ticket_cfg       = config.get("ticket", {})
+    module_to_system = ticket_cfg.get("module_to_system", {})
+    default_system   = ticket_cfg.get("default_system", "GENERAL")
 
     # ---- Format retrieved context with module tags --------------------------
     primary_context_str = _format_documents_with_modules(primary_ctx, tag="Chunk")
@@ -1440,21 +1449,23 @@ async def ticket_responder_(
 
     # Validate `system` — fall back to most frequent PRIMARY module (intent-driven).
     # The LLM is prompted in Persian module names; we translate to the English code here.
-    most_frequent_primary_module = (
-        primary_module_counter.most_common(1)[0][0]
-        if primary_module_counter
-        else (available_modules[0] if available_modules else "unknown")
+    most_frequent_module = next(
+        (m for m, _ in combined_counter.most_common() if m and m != "unknown"),
+        "",
     )
-    raw_module = ticket.get("system", "")
+    raw_module = ticket.get("module", "")
     if raw_module not in available_modules:
-        raw_module = most_frequent_primary_module
+        raw_module = most_frequent_module or (available_modules[0] if available_modules else "")
 
-    system_code = module_to_system.get(raw_module, default_system)
+    # `system` is ALWAYS the English code from config["ticket"]["module_to_system"].
+    # Unmapped modules fall back to default_system (also English) — never the Persian
+    # module name, never "unknown".
+    system_value = module_to_system.get(raw_module, default_system)
 
     return {
         "title": ticket.get("title", "") or "درخواست کاربر",
         "description": ticket.get("description", "") or paraphrased_utterance,
-        "system": system_code,
+        "system": system_value,
         "form": ticket.get("form", "") or "نامشخص",
     }
 
@@ -1509,15 +1520,18 @@ async def query_responder(
     confidence      = "ACCURATE"  # safe default if parsing fails
 
     if is_concise:
+        d = None
         try:
-            d = json.loads(cleaned)
-            if isinstance(d, dict):
-                response_text = d.get("response", cleaned)
-                video_params  = d.get("parameters") or {}     # absent for non-video prompt
-                conf_raw      = (d.get("confidence") or "ACCURATE").upper()
-                confidence    = "DOUBTFUL" if conf_raw == "DOUBTFUL" else "ACCURATE"
+            d = json.loads(cleaned, strict=False)
         except (json.JSONDecodeError, TypeError) as e:
-            print(f"[query_responder] JSON parse failed, using raw text: {e}")
+            print(f"[query_responder] JSON parse failed: {e}")
+        if isinstance(d, dict):
+            response_text = (d.get("response") or "").strip() or RESPONSE_TEMPLATE_FOR_NO_ANSWER
+            video_params  = d.get("parameters") or {}
+            conf_raw      = (d.get("confidence") or "ACCURATE").upper()
+            confidence    = "DOUBTFUL" if conf_raw == "DOUBTFUL" else "ACCURATE"
+        else:
+            response_text, video_params, confidence = RESPONSE_TEMPLATE_FOR_NO_ANSWER, {}, "ACCURATE"
 
     return response_text, video_params, confidence
 
@@ -1536,6 +1550,7 @@ async def chat_responder_(
     use_video_link: bool = True,
     on_click: bool = False,
     retrieval_query: str = "",          # <-- NEW
+    business_object: dict | None = None,                 # <-- NEW
     ) -> Union[tuple[str, str, str, str], tuple[str, str, str, bool, List[str]]]:
 
     """
@@ -1600,7 +1615,7 @@ async def chat_responder_(
         # Merge ticket fields into the generic parameters envelope so future
         # parameters (video links, etc.) can coexist in the same dict.
         parameters = {**parameters, **ticket_fields}
-        ticket_response_message = "درخواست شما برای ثبت تیکت دریافت شد."
+        ticket_response_message = "درخواست شما برای ثبت تیکت دریافت شد و پیش نمایش تیکت به شرح زیر است. در صورت تمایل، میتوانید با فشردن دکمه ثبت، تیکت خود را ثبت نمایید."
         result_temp = (
             False,                       # is_sql
             paraphrased_utterance,
@@ -1635,9 +1650,9 @@ async def chat_responder_(
     if sql_mode:
         if route_response == "sql":
             num_retrieve_context = config["retriever"]["sql_retrieved_rank2_documents"]
-            detected_database_index = config["database"]["sql_collection_name"]
+            database_index = config["database"]["sql_collection_name"]
         else:
-            detected_database_index = database_index
+            database_index = database_index
             
     if detected_module:
         do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context, use_sql_modules=use_sql_modules, clarification_threshold=clarification_threshold, template_key=template_key, target_model_name=target_model_name, input_module=detected_module)
@@ -1646,7 +1661,6 @@ async def chat_responder_(
     if do_clarify:
         result_temp = is_sql, paraphrased_utterance, MODULE_CLARIFICATION_RESPONSE_TEMPLATE, "", do_clarify, modules, parameters, sql_response_template, has_video_link, is_ticket
         return result_temp
-
             
     if route_response == "sql" and sql_mode:
         selected_module = modules[0] 
@@ -1660,6 +1674,7 @@ async def chat_responder_(
                 paraphrased_utterance,
                 selected_module,
                 context,
+                business_object=business_object,                 # <-- NEW
             )
             if not is_sql: 
                 parameters = {}
@@ -1688,7 +1703,6 @@ async def chat_responder_(
         response, video_parameters, confidence = (
             RESPONSE_TEMPLATE_FOR_NO_ANSWER, {}, "ACCURATE"
         )
-
     # Existing post-processing for hard out-of-scope strings.
     if "محدوده دانش من " in response:
         response, video_parameters = template_for_not_answer, {}
