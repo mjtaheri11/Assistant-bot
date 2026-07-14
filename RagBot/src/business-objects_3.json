@@ -1,4765 +1,701 @@
 {
-    "enums": {
-      "sales_salesorder_salesorderstate": {
-        "title": "SalesOrder: State",
-        "persianTitle": "وضعیت سفارش",
-        "isMultiselect": true,
-        "values": [
-          {
-            "value": "1",
-            "title": "SalesOrder: Submitted",
-            "persianTitle": "ثبت‌شده"
-          },
-          {
-            "value": "2",
-            "title": "SalesOrder: Approved",
-            "persianTitle": "تاییدشده"
-          },
-          {
-            "value": "3",
-            "title": "SalesOrder: Closed",
-            "persianTitle": "خاتمه‌یافته"
-          }
-        ]
-      }
+  "enums": {
+    "logistics_allparts_state": {
+      "title": "NEW_ALL_PART_WITH_DETAIL: state",
+      "values": [
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: Registered",
+          "value": 1,
+          "persianTitle": "ثبت شده"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: Approved",
+          "value": 2,
+          "persianTitle": "تایید شده"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: Cancelled",
+          "value": 3,
+          "persianTitle": "باطل شده"
+        }
+      ],
+      "persianTitle": "وضعیت",
+      "isMultiselect": true
     },
-    "parameterCounts": {
-      "Date": "26",
-      "Int64Array_Dataview": "32",
-      "Int64_Dataview": "4",
-      "Int64_Enum": "1"
+    "logistics_allparts_parttype": {
+      "title": "NEW_ALL_PART_WITH_DETAIL: partType",
+      "values": [
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: RawMaterial",
+          "value": 1,
+          "persianTitle": "ماده اولیه"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: SemiFinished",
+          "value": 2,
+          "persianTitle": "نیمه ساخته"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: Product",
+          "value": 3,
+          "persianTitle": "محصول"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: PartFixedAsset",
+          "value": 4,
+          "persianTitle": "دارایی ثابت"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: OtherPartType",
+          "value": 5,
+          "persianTitle": "سایر"
+        }
+      ],
+      "persianTitle": "نوع کالا",
+      "isMultiselect": true
     },
-    "boCount": 34,
-    "boNames": [
-      {
-        "name": "logistics_parts",
-        "title": "Parts",
-        "persianTitle": "کالا",
-        "columns": [
-          {
-            "name": "id",
-            "title": "ID",
-            "persianTitle": "شناسه",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "code",
-            "title": "PART: Code",
-            "persianTitle": "کد کالا",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "title",
-            "title": "PART: Title",
-            "persianTitle": "عنوان کالا",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "major_unit_title",
-            "title": "Major Unit Title",
-            "persianTitle": "واحد سنجش اصلی",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "secondary_unit_title",
-            "title": "Secondary Unit Title",
-            "persianTitle": "واحد سنجش دوم",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "part_account_category_title",
-            "title": "Part Account Category Title",
-            "persianTitle": "طبقه حساب کالا",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "part_type",
-            "title": "Part Type",
-            "persianTitle": "نوع کالا",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "part_usage",
-            "title": "Part Usage",
-            "persianTitle": "نوع کارکرد کالا",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "company_title",
-            "title": "Company Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "String"
-          }
-        ],
-        "parameters": [
-          {
-            "name": "logistics_parts_p1",
-            "title": "Company Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "Int64Array_Dataview",
-            "isDataview": true,
-            "ref": "company_title",
-            "tag": "company"
-          }
-        ],
-        "relations": [
-          {
-            "boid": "logistics_partaltunit",
-            "name": "altunit",
-            "title": "Part Alt Unit",
-            "persianTitle": "واحد فرعی کالا",
-            "foreignKey": {
-              "local": {
-                "name": "id",
-                "title": "ID"
-              },
-              "Referenced": {
-                "name": "part_id",
-                "title": "Part ID"
-              }
-            },
-            "dataview": ""
-          },
-          {
-            "boid": "logistics_partstoragetype",
-            "name": "storagetype",
-            "title": "PART: Storage Type",
-            "persianTitle": "نوع انبار کالا",
-            "foreignKey": {
-              "local": {
-                "name": "id",
-                "title": "ID"
-              },
-              "Referenced": {
-                "name": "part_id",
-                "title": "Storage Type ID"
-              }
-            },
-            "dataview": ""
-          }
-        ]
-      },
-      {
-        "name": "logistics_storagetype",
-        "title": "Storage Type",
-        "persianTitle": "نوع انبار",
-        "columns": [
-          {
-            "name": "code",
-            "title": "STORAGE-TYPE: Code",
-            "persianTitle": "کد نوع انبار",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "title",
-            "title": "STORAGE-TYPE: Title",
-            "persianTitle": "عنوان نوع انبار",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "company_title",
-            "title": "Company Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "String"
-          }
-        ],
-        "parameters": [
-          {
-            "name": "logistics_storagetype_p1",
-            "title": "Company Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "Int64Array_Dataview",
-            "isDataview": true,
-            "ref": "company_title",
-            "tag": "company"
-          }
-        ],
-        "relations": []
-      },
-      {
-        "name": "sales_office",
-        "title": "office",
-        "persianTitle": "دفتر فروش",
-        "columns": [
-          {
-            "name": "title",
-            "title": "Office: Title",
-            "persianTitle": "عنوان دفتر فروش",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "code",
-            "title": "Office: Code",
-            "persianTitle": "کد دفتر فروش",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "cmp_title",
-            "title": "Company: Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "String"
-          }
-        ],
-        "parameters": [],
-        "relations": []
-      },
-      {
-        "name": "sales_plparameters",
-        "title": "plparameters",
-        "persianTitle": "پارامتر های لیست قیمت",
-        "columns": [
-          {
-            "name": "cmp_title",
-            "title": "Company: Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "String"
-          }
-        ],
-        "parameters": [],
-        "relations": [
-          {
-            "boid": "sales_office",
-            "name": "office",
-            "title": "Office",
-            "persianTitle": "دفتر فروش",
-            "foreignKey": {
-              "local": {
-                "name": "sales_office_id",
-                "title": "OFFICE ID"
-              },
-              "Referenced": {
-                "name": "id",
-                "title": "Office ID"
-              }
-            },
-            "dataview": ""
-          },
-          {
-            "boid": "sales_customergroup",
-            "name": "customergroup",
-            "title": "CustomerGroup",
-            "persianTitle": "گروه مشتری",
-            "foreignKey": {
-              "local": {
-                "name": "customer_group_id",
-                "title": "Customer Group ID"
-              },
-              "Referenced": {
-                "name": "customer_group_id",
-                "title": "Group ID"
-              }
-            },
-            "dataview": ""
-          },
-          {
-            "boid": "sales_settlementmethod",
-            "name": "settlementmethod",
-            "title": "SettlementMethod",
-            "persianTitle": "روش تسویه",
-            "foreignKey": {
-              "local": {
-                "name": "settlement_method_id",
-                "title": "Settlement Method ID"
-              },
-              "Referenced": {
-                "name": "id",
-                "title": "Settlement Method ID"
-              }
-            },
-            "dataview": ""
-          },
-          {
-            "boid": "sales_organization",
-            "name": "organization",
-            "title": "Organization",
-            "persianTitle": "سازمان فروش",
-            "foreignKey": {
-              "local": {
-                "name": "sales_organization_id",
-                "title": "Organization ID"
-              },
-              "Referenced": {
-                "name": "id",
-                "title": "Organization ID"
-              }
-            },
-            "dataview": ""
-          },
-          {
-            "boid": "sales_division",
-            "name": "division",
-            "title": "Division",
-            "persianTitle": "بخش فروش",
-            "foreignKey": {
-              "local": {
-                "name": "sales_division_id",
-                "title": "Division ID"
-              },
-              "Referenced": {
-                "name": "id",
-                "title": "Division ID"
-              }
-            },
-            "dataview": ""
-          },
-          {
-            "boid": "sales_salesarea",
-            "name": "salesarea",
-            "title": "SalesArea",
-            "persianTitle": "حوزه فروش",
-            "foreignKey": {
-              "local": {
-                "name": "sales_area_id",
-                "title": "Sales Area ID"
-              },
-              "Referenced": {
-                "name": "id",
-                "title": "Sales Area ID"
-              }
-            },
-            "dataview": ""
-          },
-          {
-            "boid": "sales_channel",
-            "name": "channel",
-            "title": "Channel",
-            "persianTitle": "کانال فروش",
-            "foreignKey": {
-              "local": {
-                "name": "sales_channel_id",
-                "title": "Sales Channel ID"
-              },
-              "Referenced": {
-                "name": "id",
-                "title": "Sales Channel ID"
-              }
-            },
-            "dataview": ""
-          }
-        ]
-      },
-      {
-        "name": "logistics_plants",
-        "title": "Plants",
-        "persianTitle": "مرکز نگهداری",
-        "columns": [
-          {
-            "name": "id",
-            "title": "ID",
-            "persianTitle": "شناسه",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "code",
-            "title": "PLANT: Code",
-            "persianTitle": "کد مرکز نگهداری",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "title",
-            "title": "PLANT: Title",
-            "persianTitle": "عنوان مرکز نگهداری",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "branch_title",
-            "title": "Branch Title",
-            "persianTitle": "عنوان شعبه",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "state",
-            "title": "PLANT: State",
-            "persianTitle": "وضعیت مرکز نگهداری",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "geo_title",
-            "title": "GeographicalRegion: Title",
-            "persianTitle": "منطقه جغرافیایی",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "company_title",
-            "title": "Company Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "String"
-          }
-        ],
-        "parameters": [
-          {
-            "name": "logistics_plants_p1",
-            "title": "Company Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "Int64Array_Dataview",
-            "isDataview": true,
-            "ref": "company_title",
-            "tag": "company"
-          }
-        ],
-        "relations": []
-      },
-      {
-        "name": "sales_invoiceitem",
-        "title": "Invoice Item",
-        "persianTitle": "قلم فاکتور",
-        "columns": [
-          {
-            "name": "unit_title",
-            "title": "Invoice Item: unit title",
-            "persianTitle": "واحد سنجش",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "amount",
-            "title": "Invoice Item: Amount",
-            "persianTitle": "مقدار",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "cmp_title",
-            "title": "Company: Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "fee",
-            "title": "Invoice Item: Fee",
-            "persianTitle": "فی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "description_c",
-            "title": "Invoice Item: Description",
-            "persianTitle": "توضیحات",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "store_title",
-            "title": "Invoice Item: Store Title",
-            "persianTitle": "انبار",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "total_price",
-            "title": "Invoice Item: Total Price",
-            "persianTitle": "مبلغ ناخالص",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "net_price",
-            "title": "Invoice Item: Net Price",
-            "persianTitle": "مبلغ خالص",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "deduction_price",
-            "title": "Invoice Item: Deduction Price",
-            "persianTitle": "جمع عامل کاهنده",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "surcharges",
-            "title": "Invoice Item: Surcharge",
-            "persianTitle": "جمع عوامل افزاینده",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "tax_total",
-            "title": "Invoice Item: Tax Total",
-            "persianTitle": "مالیات بر ارزش افزوده",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "functional_total_price",
-            "title": "Invoice Item: Functional Total Price",
-            "persianTitle": "مبلغ ناخالص به ارز عملیاتی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "functional_net_price",
-            "title": "Invoice Item: Functional Net Price",
-            "persianTitle": "مبلغ خالص به ارز عملیاتی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "functional_deduction_price",
-            "title": "Invoice Item: Functional Deduction Price",
-            "persianTitle": "جمع عامل کاهنده به ارز عملیاتی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "functional_surcharges",
-            "title": "Invoice Item: Functional Surcharge",
-            "persianTitle": "جمع عوامل افزاینده به ارز عملیاتی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "functional_tax_total",
-            "title": "Invoice Item: Functional Tax Total",
-            "persianTitle": "جمع مالیات به ارز عملیاتی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "first_reporting_total_price",
-            "title": "Invoice Item: First Reporting Total Price",
-            "persianTitle": "جمع مبلغ ناخالص به ارز گزارشگری اول",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "first_reporting_net_price",
-            "title": "Invoice Item: First Reporting Net Price",
-            "persianTitle": "مبلغ خالص به ارز گزارشگری اول",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "first_reporting_deduction_price",
-            "title": "Invoice Item: First Reporting Deduction Price",
-            "persianTitle": "جمع عامل کاهنده به ارز گزارشگری اول",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "first_reporting_surcharges",
-            "title": "Invoice Item: First Reporting Surcharge",
-            "persianTitle": "جمع عوامل افزاینده به ارز گزارشگری اول",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "first_reporting_tax_total",
-            "title": "Invoice Item: First Reporting Tax Total",
-            "persianTitle": "جمع مالیات به ارز گزارشگری اول",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "second_reporting_total_price",
-            "title": "Invoice Item: Second Reporting Total Price",
-            "persianTitle": "جمع مبلغ ناخالص به ارز گزارشگری دوم",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "second_reporting_net_price",
-            "title": "Invoice Item: Second Reporting Net Price",
-            "persianTitle": "مبلغ خالص به ارز گزارشگری دوم",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "second_reporting_deduction_price",
-            "title": "Invoice Item: Second Reporting Deduction Price",
-            "persianTitle": "جمع عامل کاهنده به ارز گزارشگری دوم",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "second_reporting_surcharges",
-            "title": "Invoice Item: Second Reporting Surcharge",
-            "persianTitle": "جمع عوامل افزاینده به ارز گزارشگری دوم",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "second_reporting_tax_total",
-            "title": "Invoice Item: Second Reporting Tax Total",
-            "persianTitle": "جمع مالیات به ارز گزارشگری دوم",
-            "enumId": "",
-            "type": "Decimal"
-          }
-        ],
-        "parameters": [
-          {
-            "name": "sales_invoiceitem_p3",
-            "title": "Company Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "Int64Array_Dataview",
-            "isDataview": true,
-            "ref": "cmp_title",
-            "tag": "company"
-          }
-        ],
-        "relations": [
-          {
-            "boid": "sales_product",
-            "name": "invoiceproducts",
-            "title": "Invoice product Relation",
-            "persianTitle": "کالا/خدمت",
-            "foreignKey": {
-              "local": {
-                "name": "gnr_product_id",
-                "title": "product id"
-              },
-              "Referenced": {
-                "name": "id",
-                "title": "product id"
-              }
-            },
-            "dataview": ""
-          },
-          {
-            "boid": "sales_productgroup",
-            "name": "invoiceproductgroup",
-            "title": "Invoice product group Relation",
-            "persianTitle": "گروه کالا/خدمت",
-            "foreignKey": {
-              "local": {
-                "name": "gnr_product_id",
-                "title": "product id"
-              },
-              "Referenced": {
-                "name": "product_id",
-                "title": "product id"
-              }
-            },
-            "dataview": ""
-          },
-          {
-            "boid": "logistics_invvoucheritem",
-            "name": "invinvvchr",
-            "title": "Invoice Inventory Voucher Relation",
-            "persianTitle": "قلم سند انبار",
-            "foreignKey": {
-              "local": {
-                "name": "id",
-                "title": "invoice item id"
-              },
-              "Referenced": {
-                "name": "sales_invoice_item_id",
-                "title": "sales invoice item id"
-              }
-            },
-            "dataview": ""
-          },
-          {
-            "boid": "sales_invoice",
-            "name": "invitemrel",
-            "title": "Invoice Item Relation Backward",
-            "persianTitle": "فاکتور",
-            "foreignKey": {
-              "local": {
-                "name": "invoice_id",
-                "title": "invoice item invoice id"
-              },
-              "Referenced": {
-                "name": "id",
-                "title": "invoice id"
-              }
-            },
-            "dataview": ""
-          },
-          {
-            "boid": "sales_salesorderitem",
-            "name": "invoiceitembaseorderitem",
-            "title": "Invoice Item Base Order Item Relation",
-            "persianTitle": "قلم سفارش مبنا",
-            "foreignKey": {
-              "local": {
-                "name": "base_order_item_id",
-                "title": "invoice item base order item id"
-              },
-              "Referenced": {
-                "name": "id",
-                "title": "invoice item invoice id"
-              }
-            },
-            "dataview": ""
-          }
-        ]
-      },
-      {
-        "name": "sales_salesorderitemdelivery",
-        "title": "SalesOrder Item Delivery: Title",
-        "persianTitle": "قلم حمل سفارش",
-        "columns": [
-          {
-            "name": "cmp_title",
-            "title": "Company: Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "amount",
-            "title": "SalesOrder Item Delivery: Amount",
-            "persianTitle": "مقدار",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "date_c",
-            "title": "SalesOrder Item Delivery: Date",
-            "persianTitle": "تاریخ تحویل",
-            "enumId": "",
-            "type": "Date"
-          },
-          {
-            "name": "delivery_address",
-            "title": "SalesOrder Item Delivery: Delivery Address",
-            "persianTitle": "نشانی تحویل",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "description_c",
-            "title": "SalesOrder: Description",
-            "persianTitle": "توضیحات",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "undelivered_inventory_amount",
-            "title": "SalesOrder Item Delivery: Undelivered Inventory Amount",
-            "persianTitle": "مانده تحویل نشده",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "receiver_full_name",
-            "title": "SalesOrder: Receiver Full Name",
-            "persianTitle": "نام و نام خانوادگی تحویل گیرنده",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "receiver_code",
-            "title": "SalesOrder: Receiver Code",
-            "persianTitle": "کد تحویل گیرنده",
-            "enumId": "",
-            "type": "String"
-          }
-        ],
-        "parameters": [
-          {
-            "name": "sales_salesorderitemdelivery_p1",
-            "title": "Company Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "Int64Array_Dataview",
-            "isDataview": true,
-            "ref": "",
-            "tag": ""
-          }
-        ],
-        "relations": [
-          {
-            "boid": "sales_salesorderitem",
-            "name": "orderdeliveryitemsalesorderitem",
-            "title": "SalesOrder Item Delivery: Sales Order Item Relation",
-            "persianTitle": "قلم سفارش",
-            "foreignKey": {
-              "local": {
-                "name": "sales_order_item_id",
-                "title": "sales order item delivery id"
-              },
-              "Referenced": {
-                "name": "id",
-                "title": "sales order item id"
-              }
-            },
-            "dataview": ""
-          },
-          {
-            "boid": "logistics_invvoucheritem",
-            "name": "ordinvvchr",
-            "title": "SalesOrder Delivery Item Inventory Voucher Relation",
-            "persianTitle": "قلم سند تحویل فروش",
-            "foreignKey": {
-              "local": {
-                "name": "id",
-                "title": "sales order item id"
-              },
-              "Referenced": {
-                "name": "sales_order_delivery_item_id",
-                "title": "sales order item id"
-              }
-            },
-            "dataview": ""
-          }
-        ]
-      },
-      {
-        "name": "logistics_invvoucher",
-        "title": "Inventory Voucher Title",
-        "persianTitle": "سند انبار",
-        "columns": [
-          {
-            "name": "id",
-            "title": "ID",
-            "persianTitle": "شناسه",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "number",
-            "title": "VOUCHER: Number",
-            "persianTitle": "شماره سند",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "date",
-            "title": "VOUCHER: Date",
-            "persianTitle": "تاریخ سند",
-            "enumId": "",
-            "type": "Date"
-          },
-          {
-            "name": "description",
-            "title": "VOUCHER: Description",
-            "persianTitle": "شرح سربرگ",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "sl_title",
-            "title": "VOUCHER: SL Title",
-            "persianTitle": "معین",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "state",
-            "title": "VOUCHER: State",
-            "persianTitle": "وضعیت",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "fy_title",
-            "title": "VOUCHER: Fiscal Year Title",
-            "persianTitle": "دوره مالی",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "extra_field1",
-            "title": "VOUCHER: Extra Field 1",
-            "persianTitle": "فیلد اضافه 1",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "extra_field2",
-            "title": "VOUCHER: Extra Field 2",
-            "persianTitle": "فیلد اضافه 2",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "extra_field3",
-            "title": "VOUCHER: Extra Field 3",
-            "persianTitle": "فیلد اضافه 3",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "extra_field4",
-            "title": "VOUCHER: Extra Field 4",
-            "persianTitle": "فیلد اضافه 4",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "extra_field5",
-            "title": "VOUCHER: Extra Field 5",
-            "persianTitle": "فیلد اضافه 5",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "supplier_title",
-            "title": "VOUCHER: Supplier Title",
-            "persianTitle": "تامین کننده",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "contractor_title",
-            "title": "VOUCHER: Contractor Title",
-            "persianTitle": "پیمانکار",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "cost_center_title",
-            "title": "VOUCHER: Cost Center Title",
-            "persianTitle": "مرکز هزینه",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "project_title",
-            "title": "VOUCHER: Project Title",
-            "persianTitle": "پروژه",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "customer_title",
-            "title": "VOUCHER: Customer Title",
-            "persianTitle": "مشتری",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "carrier_title",
-            "title": "VOUCHER: Carrier Title",
-            "persianTitle": "موسسه حمل",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "consignment_party_title",
-            "title": "VOUCHER: Consignment Party Title",
-            "persianTitle": "طرف حساب امانی",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "employee_title",
-            "title": "VOUCHER: Employee Title",
-            "persianTitle": "کارمند",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "sales_person_title",
-            "title": "VOUCHER: Sales Person Title",
-            "persianTitle": "کارمند فروش",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "employer_title",
-            "title": "VOUCHER: Employer Title",
-            "persianTitle": " کارفرما",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "other_dl1_title",
-            "title": "VOUCHER: Other dl1 Title",
-            "persianTitle": "تفصیل سایر 1",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "other_dl2_title",
-            "title": "VOUCHER: Other dl2 Title",
-            "persianTitle": "تفصیل سایر 2",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "other_dl3_title",
-            "title": "VOUCHER: Other dl3 Title",
-            "persianTitle": "تفصیل سایر 3",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "other_dl4_title",
-            "title": "VOUCHER: Other dl4 Title",
-            "persianTitle": "تفصیل سایر 4",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "other_dl5_title",
-            "title": "VOUCHER: Other dl5 Title",
-            "persianTitle": "تفصیل سایر 5",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "other_dl6_title",
-            "title": "VOUCHER: Other dl6 Title",
-            "persianTitle": "تفصیل سایر 6",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "other_dl7_title",
-            "title": "VOUCHER: Other dl7 Title",
-            "persianTitle": "تفصیل سایر 7",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "other_dl8_title",
-            "title": "VOUCHER: Other dl8 Title",
-            "persianTitle": "تفصیل سایر 8",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "other_dl9_title",
-            "title": "VOUCHER: Other dl9 Title",
-            "persianTitle": "تفصیل سایر 9",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "other_dl10_title",
-            "title": "VOUCHER: Other dl10 Title",
-            "persianTitle": "تفصیل سایر 10",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "purchase_order_no",
-            "title": "VOUCHER: Purchase Order No",
-            "persianTitle": "شماره سفارش خرید",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "purchase_invoice_no",
-            "title": "VOUCHER: Purchase Invoice No",
-            "persianTitle": "شماره فاکتور خرید",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "deliver_to",
-            "title": "VOUCHER: DeliverTo",
-            "persianTitle": "تحویل گیرنده",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "cottage_no",
-            "title": "VOUCHER: CottageNo",
-            "persianTitle": "شماره کوتاژ",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "customs_green_sheet",
-            "title": "VOUCHER: Customs Green Sheet",
-            "persianTitle": "شماره برگ سبز",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "asn_no",
-            "title": "VOUCHER: ASN NO",
-            "persianTitle": "ASN NO",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "sales_order_no",
-            "title": "VOUCHER: Sales Order NO",
-            "persianTitle": "شماره سفارش فروش",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "sales_invoice_no",
-            "title": "VOUCHER: Sales Invoice NO",
-            "persianTitle": "شماره فاکتور خرید",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "sale_organization",
-            "title": "VOUCHER: Sales Organization",
-            "persianTitle": "مرکز فروش",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "shopping_store",
-            "title": "VOUCHER: Shopping Store",
-            "persianTitle": "فروشگاه",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "delivery_person",
-            "title": "VOUCHER: Delivery Person",
-            "persianTitle": "تحویل دهنده",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "weighbridge_no",
-            "title": "VOUCHER: Weighbridge NO",
-            "persianTitle": "شماره برگه باسکول",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "production_order_no",
-            "title": "VOUCHER: Production Order NO",
-            "persianTitle": "شماره دستور تولید",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "production_plan_no",
-            "title": "VOUCHER: Production Plan NO",
-            "persianTitle": "شماره سفارش تولید",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "production_operation_no",
-            "title": "VOUCHER: Production Operation NO",
-            "persianTitle": "شماره عملیات تولید",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "production_shift",
-            "title": "VOUCHER: Production Shift",
-            "persianTitle": "شیفت تولید",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "production_date",
-            "title": "VOUCHER: Production Date",
-            "persianTitle": "تاریخ تولید",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "qc_inspection_no",
-            "title": "VOUCHER: QC Inspection NO",
-            "persianTitle": "شماره بازرسی کیفیت",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "qc_check_list_no",
-            "title": "VOUCHER: QC Check List NO",
-            "persianTitle": "شماره چک لیست",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "qc_lab_no",
-            "title": "VOUCHER: QC Lab NO",
-            "persianTitle": "شماره آزمایشگاه",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "conditional_approval",
-            "title": "VOUCHER: Conditional Approval",
-            "persianTitle": "تایید ارفاقی",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "inspection_result",
-            "title": "VOUCHER: Inspection Approval",
-            "persianTitle": "نتیجه بازرسی",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "coa_no",
-            "title": "VOUCHER: COA NO",
-            "persianTitle": "شماره COA",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "transporter_name",
-            "title": "VOUCHER: Transporter Name",
-            "persianTitle": "نام راننده",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "vehicle_no",
-            "title": "VOUCHER: Vehicle NO",
-            "persianTitle": "نام خودرو",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "license_plate_no",
-            "title": "VOUCHER: License Plate NO",
-            "persianTitle": "شماره پلاک",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "waybill_no",
-            "title": "VOUCHER: Waybill NO",
-            "persianTitle": "شماره بارنامه",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "waybill_date",
-            "title": "VOUCHER: Waybill Date",
-            "persianTitle": "تاریخ بارنامه",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "transporter_phone_no",
-            "title": "VOUCHER: Transporter Phone NO",
-            "persianTitle": "تلفن راننده",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "company_title",
-            "title": "Company Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "voucher_specification_id",
-            "title": "Voucher Specification ID",
-            "persianTitle": "شناسه الگوی سند انبار",
-            "enumId": "",
-            "type": "String"
-          }
-        ],
-        "parameters": [
-          {
-            "name": "logistics_invvoucher_p1",
-            "title": "VOUCHER: From Date",
-            "persianTitle": "از تاریخ سند انبار",
-            "enumId": "",
-            "type": "Date",
-            "isDataview": false,
-            "ref": "date",
-            "tag": ""
-          },
-          {
-            "name": "logistics_invvoucher_p2",
-            "title": "VOUCHER: To Date",
-            "persianTitle": "تا تاریخ سند انبار",
-            "enumId": "",
-            "type": "Date",
-            "isDataview": false,
-            "ref": "date",
-            "tag": ""
-          },
-          {
-            "name": "logistics_invvoucher_p3",
-            "title": "Company Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "Int64Array_Dataview",
-            "isDataview": true,
-            "ref": "company_title",
-            "tag": "company"
-          }
-        ],
-        "relations": [
-          {
-            "boid": "logistics_voucherspecification",
-            "name": "ivs",
-            "title": "Inventory Voucher Specification",
-            "persianTitle": "الگوی سند انبار",
-            "foreignKey": {
-              "local": {
-                "name": "voucher_specification_id",
-                "title": "ID"
-              },
-              "Referenced": {
-                "name": "id",
-                "title": "Voucher Specification ID"
-              }
-            },
-            "dataview": ""
-          },
-          {
-            "boid": "logistics_store",
-            "name": "store",
-            "title": "Voucher: Store",
-            "persianTitle": "انبار",
-            "foreignKey": {
-              "local": {
-                "name": "store_id",
-                "title": "ID"
-              },
-              "Referenced": {
-                "name": "id",
-                "title": "Store ID"
-              }
-            },
-            "dataview": ""
-          },
-          {
-            "boid": "logistics_store",
-            "name": "counterstore",
-            "title": "Voucher: Counter Store",
-            "persianTitle": "انبار مقابل",
-            "foreignKey": {
-              "local": {
-                "name": "counter_part_store_id",
-                "title": "ID"
-              },
-              "Referenced": {
-                "name": "id",
-                "title": "Counterpart Store ID"
-              }
-            },
-            "dataview": ""
-          }
-        ]
-      },
-      {
-        "name": "sales_organization",
-        "title": "organization",
-        "persianTitle": "سازمان فروش",
-        "columns": [
-          {
-            "name": "title",
-            "title": "Organization: Title",
-            "persianTitle": "عنوان سازمان فروش",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "code",
-            "title": "Organization: Code",
-            "persianTitle": "کد سازمان فروش",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "cmp_title",
-            "title": "Company: Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "String"
-          }
-        ],
-        "parameters": [],
-        "relations": []
-      },
-      {
-        "name": "logistics_partstoragetype",
-        "title": "Part Storage Type",
-        "persianTitle": "نوع انبار کالا",
-        "columns": [],
-        "parameters": [],
-        "relations": [
-          {
-            "boid": "logistics_storagetype",
-            "name": "storagetype",
-            "title": "PART-STORAGE-TYPE: Storage Type",
-            "persianTitle": "نوع انبار",
-            "foreignKey": {
-              "local": {
-                "name": "storage_type_id",
-                "title": "ID"
-              },
-              "Referenced": {
-                "name": "id",
-                "title": "Storage Type ID"
-              }
-            },
-            "dataview": ""
-          }
-        ]
-      },
-      {
-        "name": "logistics_invitempricefactor",
-        "title": "Inventory Voucher Item Price Factor",
-        "persianTitle": "جزییات مبلغی ",
-        "columns": [
-          {
-            "name": "td_in_functional_currency",
-            "title": "ITEM-PRICE-FACTOR: Tax and duties",
-            "persianTitle": "مالیات و عوارض",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "discount_in_functional_currency",
-            "title": "ITEM-PRICE-FACTOR: Discount",
-            "persianTitle": "تخفیف",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "tf_in_functional_currency",
-            "title": "ITEM-PRICE-FACTOR: Transferfee",
-            "persianTitle": "کرایه حمل",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "transfer_fee_title",
-            "title": "ITEM-PRICE-FACTOR: Transfer fee title",
-            "persianTitle": "ارز کرایه حمل",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "fee",
-            "title": "ITEM-PRICE-FACTOR: Fee",
-            "persianTitle": "فی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "major_fee",
-            "title": "ITEM-PRICE-FACTOR: Major fee",
-            "persianTitle": "فی به واحد اصلی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "price",
-            "title": "ITEM-PRICE-FACTOR: Price",
-            "persianTitle": "مبلغ",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "price_in_reporting_currency1",
-            "title": "ITEM-PRICE-FACTOR: Price in reporting1",
-            "persianTitle": "مبلغ به ارز گزارشگری1",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "price_in_reporting_currency2",
-            "title": "ITEM-PRICE-FACTOR: Price in reporting2",
-            "persianTitle": "مبلغ به ارز گزارشگری2",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "reporting1_currency",
-            "title": "PRICINGDETAILS: Reporting1 currency",
-            "persianTitle": "ارز گزارشگری 1",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "reporting2_currency",
-            "title": "PRICINGDETAILS: Reporting2 currency",
-            "persianTitle": "ارز گزارشگری 2",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "voucher_number",
-            "title": "ITEM-PRICE-FACTOR: Voucher number",
-            "persianTitle": "شماره سند حسابداری",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "inv_voucher_number",
-            "title": "ITEM-PRICE-FACTOR: Inv voucher number",
-            "persianTitle": "شماره سند انبار",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "date_c",
-            "title": "ITEM-PRICE-FACTOR: Voucher date",
-            "persianTitle": "تاریخ سند",
-            "enumId": "",
-            "type": "Date"
-          },
-          {
-            "name": "company_title",
-            "title": "Company Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "String"
-          }
-        ],
-        "parameters": [
-          {
-            "name": "logistics_invitempricefactor_p1",
-            "title": "PRICINGDETAILS: FROM Date",
-            "persianTitle": "از تاریخ قیمت سند انبار",
-            "enumId": "",
-            "type": "Date",
-            "isDataview": false,
-            "ref": "date_c",
-            "tag": ""
-          },
-          {
-            "name": "logistics_invitempricefactor_p2",
-            "title": "PRICINGDETAILS: To Date",
-            "persianTitle": "تا تاریخ قیمت سند انبار",
-            "enumId": "",
-            "type": "Date",
-            "isDataview": false,
-            "ref": "date_c",
-            "tag": ""
-          },
-          {
-            "name": "logistics_invitempricefactor_p3",
-            "title": "Company Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "Int64Array_Dataview",
-            "isDataview": true,
-            "ref": "company_title",
-            "tag": "company"
-          }
-        ],
-        "relations": []
-      },
-      {
-        "name": "sales_channel",
-        "title": "channel",
-        "persianTitle": "کانال فروش",
-        "columns": [
-          {
-            "name": "title",
-            "title": "Channel: Title",
-            "persianTitle": "عنوان کانال فروش",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "cmp_title",
-            "title": "Company: Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "code",
-            "title": "Channel: Code",
-            "persianTitle": "کد کانال فروش",
-            "enumId": "",
-            "type": "String"
-          }
-        ],
-        "parameters": [],
-        "relations": []
-      },
-      {
-        "name": "sales_rinvoiceitem",
-        "title": "Return Invoice Item",
-        "persianTitle": "قلم فاکتور برگشتی",
-        "columns": [
-          {
-            "name": "cmp_title",
-            "title": "Company: Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "base_type_invoice",
-            "title": "ReturnInvoice: Base Type",
-            "persianTitle": "نوع مبنا",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "base_invoice_number",
-            "title": "ReturnInvoice: Base Invoice Number",
-            "persianTitle": "شماره سند مبنا",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "unit_title",
-            "title": "Return Invoice Item: unit title",
-            "persianTitle": "واحد سنجش",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "amount",
-            "title": "Return Invoice Item: Amount",
-            "persianTitle": "مقدار",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "fee",
-            "title": "Return Invoice Item: Fee",
-            "persianTitle": "فی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "description_c",
-            "title": "Return Invoice Item: Description",
-            "persianTitle": "توضیحات",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "store_title",
-            "title": "Return Invoice Item: Store Title",
-            "persianTitle": "انبار",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "total_price",
-            "title": "Return Invoice Item: Total Price",
-            "persianTitle": "مبلغ ناخالص",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "net_price",
-            "title": "Return Invoice Item: Net Price",
-            "persianTitle": "مبلغ خالص",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "deduction_price",
-            "title": "Return Invoice Item: Deduction Price",
-            "persianTitle": "جمع عامل کاهنده",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "surcharges",
-            "title": "Return Invoice Item: Surcharge",
-            "persianTitle": "جمع عوامل افزاینده",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "tax_total",
-            "title": "Return Invoice Item: Tax Total",
-            "persianTitle": "مالیات بر ارزش افزوده",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "functional_total_price",
-            "title": "Return Invoice Item: Functional Total Price",
-            "persianTitle": "مبلغ ناخالص به ارز عملیاتی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "functional_net_price",
-            "title": "Return Invoice Item: Functional Net Price",
-            "persianTitle": "مبلغ خالص به ارز عملیاتی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "functional_deduction_price",
-            "title": "Return Invoice Item: Functional Deduction Price",
-            "persianTitle": "جمع عامل کاهنده به ارز عملیاتی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "functional_surcharges",
-            "title": "Return Invoice Item: Functional Surcharge",
-            "persianTitle": "جمع عوامل افزاینده به ارز عملیاتی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "functional_tax_total",
-            "title": "Return Invoice Item: Functional Tax Total",
-            "persianTitle": "جمع مالیات به ارز عملیاتی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "first_reporting_total_price",
-            "title": "Return Invoice Item: First Reporting Total Price",
-            "persianTitle": "جمع مبلغ ناخالص به ارز گزارشگری اول",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "first_reporting_net_price",
-            "title": "Return Invoice Item: First Reporting Net Price",
-            "persianTitle": "مبلغ خالص به ارز گزارشگری اول",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "first_reporting_deduction_price",
-            "title": "Return Invoice Item: First Reporting Deduction Price",
-            "persianTitle": "جمع عامل کاهنده به ارز گزارشگری اول",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "first_reporting_surcharges",
-            "title": "Return Invoice Item: First Reporting Surcharge",
-            "persianTitle": "جمع عوامل افزاینده به ارز گزارشگری اول",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "first_reporting_tax_total",
-            "title": "Return Invoice Item: First Reporting Tax Total",
-            "persianTitle": "جمع مالیات به ارز گزارشگری اول",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "second_reporting_total_price",
-            "title": "Return Invoice Item: Second Reporting Total Price",
-            "persianTitle": "جمع مبلغ ناخالص به ارز گزارشگری دوم",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "second_reporting_net_price",
-            "title": "Return Invoice Item: Second Reporting Net Price",
-            "persianTitle": "مبلغ خالص به ارز گزارشگری دوم",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "second_reporting_deduction_price",
-            "title": "Return Invoice Item: Second Reporting Deduction Price",
-            "persianTitle": "جمع عامل کاهنده به ارز گزارشگری دوم",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "second_reporting_surcharges",
-            "title": "Return Invoice Item: Second Reporting Surcharge",
-            "persianTitle": "جمع عوامل افزاینده به ارز گزارشگری دوم",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "second_reporting_tax_total",
-            "title": "Return Invoice Item: Second Reporting Tax Total",
-            "persianTitle": "جمع مالیات به ارز گزارشگری دوم",
-            "enumId": "",
-            "type": "Decimal"
-          }
-        ],
-        "parameters": [
-          {
-            "name": "sales_rinvoiceitem_p3",
-            "title": "Company Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "Int64Array_Dataview",
-            "isDataview": true,
-            "ref": "cmp_title",
-            "tag": "company"
-          }
-        ],
-        "relations": [
-          {
-            "boid": "sales_product",
-            "name": "prdrinv",
-            "title": "Return Invoice product Relation",
-            "persianTitle": "کالا/خدمت",
-            "foreignKey": {
-              "local": {
-                "name": "gnr_product_id",
-                "title": "product id"
-              },
-              "Referenced": {
-                "name": "id",
-                "title": "product id"
-              }
-            },
-            "dataview": ""
-          },
-          {
-            "boid": "sales_productgroup",
-            "name": "pgrouprinv",
-            "title": "Return Invoice product group Relation",
-            "persianTitle": "گروه کالا/خدمت",
-            "foreignKey": {
-              "local": {
-                "name": "gnr_product_id",
-                "title": "product id"
-              },
-              "Referenced": {
-                "name": "product_id",
-                "title": "product id"
-              }
-            },
-            "dataview": ""
-          },
-          {
-            "boid": "logistics_invvoucheritem",
-            "name": "rinvinvvchr",
-            "title": "Return Invoice Inventory Voucher Relation",
-            "persianTitle": "قلم سند انبار",
-            "foreignKey": {
-              "local": {
-                "name": "voucher_item_id",
-                "title": "return invoice item id"
-              },
-              "Referenced": {
-                "name": "id",
-                "title": "sales invoice item id"
-              }
-            },
-            "dataview": ""
-          },
-          {
-            "boid": "sales_invoiceitem",
-            "name": "rinvitembase",
-            "title": "Return Invoice Item Invoice Item Relation",
-            "persianTitle": "قلم فاکتور مبنا",
-            "foreignKey": {
-              "local": {
-                "name": "base_item_id",
-                "title": "base item id"
-              },
-              "Referenced": {
-                "name": "id",
-                "title": "invoice item id"
-              }
-            },
-            "dataview": ""
-          },
-          {
-            "boid": "sales_returninvoice",
-            "name": "rinvitemrel",
-            "title": "Return Invoice Item Relation",
-            "persianTitle": "فاکتور برگشتی",
-            "foreignKey": {
-              "local": {
-                "name": "return_invoice_id",
-                "title": "return invoice item invoice id"
-              },
-              "Referenced": {
-                "name": "id",
-                "title": "return invoice id"
-              }
-            },
-            "dataview": ""
-          }
-        ]
-      },
-      {
-        "name": "logistics_invvoucheritem",
-        "title": "Inventory Voucher Items",
-        "persianTitle": "قلم سند انبار",
-        "columns": [
-          {
-            "name": "quantity",
-            "title": "VOUCHER: Quantity",
-            "persianTitle": "مقدار",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "major_quantity",
-            "title": "VOUCHER: Major Quantity",
-            "persianTitle": "مقدار به واحد اصلی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "second_unit_quantity",
-            "title": "VOUCHER: Second Unit Quantity",
-            "persianTitle": "مقدار به واحد دوم",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "remained_major_quantity",
-            "title": "VOUCHER: Remained Major Quantity",
-            "persianTitle": "مانده استفاده نشده به واحد اصلی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "remained_second_unit_quantity",
-            "title": "VOUCHER: Remained Second Unit Quantity",
-            "persianTitle": "مانده استفاده نشده به واحد دوم",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "row_number",
-            "title": "VOUCHER: Row Number",
-            "persianTitle": "شماره ردیف",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "sl_title",
-            "title": "VOUCHER: SL Title",
-            "persianTitle": "معین",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "extra_field1",
-            "title": "VOUCHER: Extra Field 1",
-            "persianTitle": "فیلد اضافه 1",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "extra_field2",
-            "title": "VOUCHER: Extra Field 2",
-            "persianTitle": "فیلد اضافه 2",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "extra_field3",
-            "title": "VOUCHER: Extra Field 3",
-            "persianTitle": "فیلد اضافه 3",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "extra_field4",
-            "title": "VOUCHER: Extra Field 4",
-            "persianTitle": "فیلد اضافه 4",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "extra_field5",
-            "title": "VOUCHER: Extra Field 5",
-            "persianTitle": "فیلد اضافه 5",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "supplier_title",
-            "title": "VOUCHER: Supplier Title",
-            "persianTitle": "تامین کننده",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "contractor_title",
-            "title": "VOUCHER: Contractor Title",
-            "persianTitle": "پیمانکار",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "cost_center_title",
-            "title": "VOUCHER: Cost Center Title",
-            "persianTitle": "مرکز هزینه",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "project_title",
-            "title": "VOUCHER: Project Title",
-            "persianTitle": "پروژه",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "customer_title",
-            "title": "VOUCHER: Customer Title",
-            "persianTitle": "مشتری",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "carrier_title",
-            "title": "VOUCHER: Carrier Title",
-            "persianTitle": "موسسه حمل",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "consignment_party_title",
-            "title": "VOUCHER: Consignment Party Title",
-            "persianTitle": "طرف حساب امانی",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "employee_title",
-            "title": "VOUCHER: Employee Title",
-            "persianTitle": "کارمند",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "sales_person_title",
-            "title": "VOUCHER: Sales Person Title",
-            "persianTitle": "کارمند فروش",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "employer_title",
-            "title": "VOUCHER: Employer Title",
-            "persianTitle": " کارفرما",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "other_dl1_title",
-            "title": "VOUCHER: Other dl1 Title",
-            "persianTitle": "تفصیل سایر 1",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "other_dl2_title",
-            "title": "VOUCHER: Other dl2 Title",
-            "persianTitle": "تفصیل سایر 2",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "other_dl3_title",
-            "title": "VOUCHER: Other dl3 Title",
-            "persianTitle": "تفصیل سایر 3",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "other_dl4_title",
-            "title": "VOUCHER: Other dl4 Title",
-            "persianTitle": "تفصیل سایر 4",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "other_dl5_title",
-            "title": "VOUCHER: Other dl5 Title",
-            "persianTitle": "تفصیل سایر 5",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "other_dl6_title",
-            "title": "VOUCHER: Other dl6 Title",
-            "persianTitle": "تفصیل سایر 6",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "other_dl7_title",
-            "title": "VOUCHER: Other dl7 Title",
-            "persianTitle": "تفصیل سایر 7",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "other_dl8_title",
-            "title": "VOUCHER: Other dl8 Title",
-            "persianTitle": "تفصیل سایر 8",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "other_dl9_title",
-            "title": "VOUCHER: Other dl9 Title",
-            "persianTitle": "تفصیل سایر 9",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "other_dl10_title",
-            "title": "VOUCHER: Other dl10 Title",
-            "persianTitle": "تفصیل سایر 10",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "purchase_order_no",
-            "title": "VOUCHER: Purchase Order No",
-            "persianTitle": "شماره سفارش خرید",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "purchase_invoice_no",
-            "title": "VOUCHER: Purchase Invoice No",
-            "persianTitle": "شماره فاکتور خرید",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "deliver_to",
-            "title": "VOUCHER: DeliverTo",
-            "persianTitle": "تحویل گیرنده",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "cottage_no",
-            "title": "VOUCHER: CottageNo",
-            "persianTitle": "شماره کوتاژ",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "customs_green_sheet",
-            "title": "VOUCHER: Customs Green Sheet",
-            "persianTitle": "شماره برگ سبز",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "asn_no",
-            "title": "VOUCHER: ASN NO",
-            "persianTitle": "ASN NO",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "sales_order_no",
-            "title": "VOUCHER: Sales Order NO",
-            "persianTitle": "شماره سفارش فروش",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "sales_invoice_no",
-            "title": "VOUCHER: Sales Invoice NO",
-            "persianTitle": "شماره فاکتور خرید",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "sale_organization",
-            "title": "VOUCHER: Sales Organization",
-            "persianTitle": "مرکز فروش",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "shopping_store",
-            "title": "VOUCHER: Shopping Store",
-            "persianTitle": "فروشگاه",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "delivery_person",
-            "title": "VOUCHER: Delivery Person",
-            "persianTitle": "تحویل دهنده",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "weighbridge_no",
-            "title": "VOUCHER: Weighbridge NO",
-            "persianTitle": "شماره برگه باسکول",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "production_order_no",
-            "title": "VOUCHER: Production Order NO",
-            "persianTitle": "شماره دستور تولید",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "production_plan_no",
-            "title": "VOUCHER: Production Plan NO",
-            "persianTitle": "شماره سفارش تولید",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "production_operation_no",
-            "title": "VOUCHER: Production Operation NO",
-            "persianTitle": "شماره عملیات تولید",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "production_shift",
-            "title": "VOUCHER: Production Shift",
-            "persianTitle": "شیفت تولید",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "production_date",
-            "title": "VOUCHER: Production Date",
-            "persianTitle": "تاریخ تولید",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "qc_inspection_no",
-            "title": "VOUCHER: QC Inspection NO",
-            "persianTitle": "شماره بازرسی کیفیت",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "qc_check_list_no",
-            "title": "VOUCHER: QC Check List NO",
-            "persianTitle": "شماره چک لیست",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "qc_lab_no",
-            "title": "VOUCHER: QC Lab NO",
-            "persianTitle": "شماره آزمایشگاه",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "conditional_approval",
-            "title": "VOUCHER: Conditional Approval",
-            "persianTitle": "تایید ارفاقی",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "inspection_result",
-            "title": "VOUCHER: Inspection Approval",
-            "persianTitle": "نتیجه بازرسی",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "coa_no",
-            "title": "VOUCHER: COA NO",
-            "persianTitle": "شماره COA",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "transporter_name",
-            "title": "VOUCHER: Transporter Name",
-            "persianTitle": "نام راننده",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "vehicle_no",
-            "title": "VOUCHER: Vehicle NO",
-            "persianTitle": "نام خودرو",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "license_plate_no",
-            "title": "VOUCHER: License Plate NO",
-            "persianTitle": "شماره پلاک",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "waybill_no",
-            "title": "VOUCHER: Waybill NO",
-            "persianTitle": "شماره بارنامه",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "waybill_date",
-            "title": "VOUCHER: Waybill Date",
-            "persianTitle": "تاریخ بارنامه",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "transporter_phone_no",
-            "title": "VOUCHER: Transporter Phone NO",
-            "persianTitle": "تلفن راننده",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "company_title",
-            "title": "Company Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "inventory_voucher_id",
-            "title": "VOUCHER: Inventory Voucher ID",
-            "persianTitle": "شناسه سند انبار",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "part_id",
-            "title": "VOUCHER: Part ID",
-            "persianTitle": "شناسه کالا",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "unit_id",
-            "title": "VOUCHER: Unit ID",
-            "persianTitle": "شناسه واحد سنجش",
-            "enumId": "",
-            "type": "String"
-          }
-        ],
-        "parameters": [
-          {
-            "name": "logistics_invvoucheritem_p1",
-            "title": "Company Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "Int64Array_Dataview",
-            "isDataview": true,
-            "ref": "company_title",
-            "tag": "company"
-          }
-        ],
-        "relations": [
-          {
-            "boid": "logistics_invvoucher",
-            "name": "iv",
-            "title": "VOUCHER: title",
-            "persianTitle": "سند انبار",
-            "foreignKey": {
-              "local": {
-                "name": "inventory_voucher_id",
-                "title": "ID"
-              },
-              "Referenced": {
-                "name": "id",
-                "title": "Inventory Voucher ID"
-              }
-            },
-            "dataview": ""
-          },
-          {
-            "boid": "logistics_parts",
-            "name": "part",
-            "title": "VOUCHER-ITEM: Part",
-            "persianTitle": "کالا",
-            "foreignKey": {
-              "local": {
-                "name": "part_id",
-                "title": "ID"
-              },
-              "Referenced": {
-                "name": "id",
-                "title": "Part ID"
-              }
-            },
-            "dataview": ""
-          },
-          {
-            "boid": "logistics_units",
-            "name": "unit",
-            "title": "VOUCHER-ITEM: Unit",
-            "persianTitle": "واحد سنجش",
-            "foreignKey": {
-              "local": {
-                "name": "unit_id",
-                "title": "ID"
-              },
-              "Referenced": {
-                "name": "id",
-                "title": "Unit ID"
-              }
-            },
-            "dataview": ""
-          }
-        ]
-      },
-      {
-        "name": "sales_product",
-        "title": "EXPLORER: Product",
-        "persianTitle": "کالا/خدمت",
-        "columns": [
-          {
-            "name": "code",
-            "title": "Product: code",
-            "persianTitle": "کد کالا/خدمت",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "major_unit_title",
-            "title": "Product: major unit title",
-            "persianTitle": "واحد سنجش اصلی",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "secondary_unit_title",
-            "title": "Product: secondary unit title",
-            "persianTitle": "واحد سنجش دوم",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "cmp_title",
-            "title": "Company: Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "title",
-            "title": "Product: title",
-            "persianTitle": "عنوان کالا/خدمت",
-            "enumId": "",
-            "type": "String"
-          }
-        ],
-        "parameters": [],
-        "relations": []
-      },
-      {
-        "name": "sales_returninvoice",
-        "title": "Return Invoice",
-        "persianTitle": "فاکتور برگشتی",
-        "columns": [
-          {
-            "name": "afy_title",
-            "title": "Return Invoice: fiscal year",
-            "persianTitle": "سال مالی",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "cmp_title",
-            "title": "Company: Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "number_c",
-            "title": "Return Invoice: Number",
-            "persianTitle": "شماره فاکتور برگشتی",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "invoice_state",
-            "title": "Return Invoice: State",
-            "persianTitle": "وضعیت فاکتور برگشتی",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "date_c",
-            "title": "Return Invoice: Date",
-            "persianTitle": "تاریخ فاکتور برگشتی",
-            "enumId": "",
-            "type": "Date"
-          },
-          {
-            "name": "description_c",
-            "title": "Return Invoice: Description",
-            "persianTitle": "توضیحات",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "cu_code",
-            "title": "Return Invoice: Customer Code",
-            "persianTitle": "کد مشتری",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "cu_full_name",
-            "title": "Return Invoice: Customer Full Name",
-            "persianTitle": "نام و نام خانوادگی مشتری",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "sa_title",
-            "title": "Return Invoice: Sales Area Title",
-            "persianTitle": "حوزه فروش",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "so_title",
-            "title": "Return Invoice: Sales Office Title",
-            "persianTitle": "دفتر فروش",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "cur_title",
-            "title": "Return Invoice: Currency Title",
-            "persianTitle": "ارز",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "recipient_code",
-            "title": "Return Invoice: Recipient Code",
-            "persianTitle": "کد دریافت‌کننده",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "recipient_full_name",
-            "title": "Return Invoice: Recipient Full Name",
-            "persianTitle": "نام و نام خانوادگی دریافت‌کننده",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "employee_full_name",
-            "title": "Return Invoice: Employee Full Name",
-            "persianTitle": "نام و نام خانوادگی کارمند فروش",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "functional_currency_rate",
-            "title": "Return Invoice: Functional Currency Rate",
-            "persianTitle": "نرخ ارز عملیاتی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "first_reporting_currency_rate",
-            "title": "Return Invoice: First Reporting Currency Rate",
-            "persianTitle": "نرخ ارز گزارشگری اول",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "second_reporting_currency_rate",
-            "title": "Return Invoice: Second Reporting Currency Rate",
-            "persianTitle": "نرخ ارز گزارشگری دوم",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "total_price",
-            "title": "Return Invoice: Total Price",
-            "persianTitle": "مبلغ ناخالص",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "net_price",
-            "title": "Return Invoice: Net Price",
-            "persianTitle": "مبلغ خالص",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "deductions",
-            "title": "Return Invoice: Deductions",
-            "persianTitle": "جمع عامل کاهنده",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "surcharges",
-            "title": "Return Invoice: Surcharges",
-            "persianTitle": "جمع عوامل افزاینده",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "tax_total",
-            "title": "Return Invoice: Taxes",
-            "persianTitle": "جمع مالیات",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "total_price",
-            "title": "Return Invoice: Total Price",
-            "persianTitle": "مبلغ ناخالص",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "net_price",
-            "title": "Return Invoice: Net Price",
-            "persianTitle": "مبلغ خالص",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "deductions",
-            "title": "Return Invoice: Deductions",
-            "persianTitle": "جمع عامل کاهنده",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "surcharges",
-            "title": "Return Invoice: Surcharges",
-            "persianTitle": "جمع عوامل افزاینده",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "functional_total_price",
-            "title": "Return Invoice: Functional Total Price",
-            "persianTitle": "مبلغ ناخالص به ارز عملیاتی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "functional_net_price",
-            "title": "Return Invoice: Functional Net Price",
-            "persianTitle": "مبلغ خالص به ارز عملیاتی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "functional_deductions",
-            "title": "Return Invoice: Functional Deductions",
-            "persianTitle": "جمع عامل کاهنده به ارز عملیاتی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "functional_surcharges",
-            "title": "Return Invoice: Functional Surcharges",
-            "persianTitle": "جمع عوامل افزاینده به ارز عملیاتی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "functional_tax_total",
-            "title": "Return Invoice: Functional Taxes",
-            "persianTitle": "جمع مالیات به ارز عملیاتی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "first_reporting_total_price",
-            "title": "Return Invoice: First Reporting Total Price",
-            "persianTitle": "جمع مبلغ ناخالص به ارز گزارشگری اول",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "first_reporting_net_price",
-            "title": "Return Invoice: First Reporting Net Price",
-            "persianTitle": "مبلغ خالص به ارز گزارشگری اول",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "first_reporting_deductions",
-            "title": "Return Invoice: First Reporting Deductions",
-            "persianTitle": "جمع عامل کاهنده به ارز گزارشگری اول",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "first_reporting_surcharges",
-            "title": "Return Invoice: First Reporting Surcharges",
-            "persianTitle": "جمع عوامل افزاینده به ارز گزارشگری اول",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "first_reporting_tax_total",
-            "title": "Return Invoice: First Reporting Taxes",
-            "persianTitle": "جمع مالیات به ارز گزارشگری اول",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "second_reporting_total_price",
-            "title": "Return Invoice: Second Reporting Total Price",
-            "persianTitle": "جمع مبلغ ناخالص به ارز گزارشگری دوم",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "second_reporting_net_price",
-            "title": "Return Invoice: Second Reporting Net Price",
-            "persianTitle": "مبلغ خالص به ارز گزارشگری دوم",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "second_reporting_deductions",
-            "title": "Return Invoice: Second Reporting Deductions",
-            "persianTitle": "جمع عامل کاهنده به ارز گزارشگری دوم",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "second_reporting_surcharges",
-            "title": "Return Invoice: Second Reporting Surcharges",
-            "persianTitle": "جمع عوامل افزاینده به ارز گزارشگری دوم",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "second_reporting_tax_total",
-            "title": "Return Invoice: Second Reporting Taxes",
-            "persianTitle": "جمع مالیات به ارز گزارشگری دوم",
-            "enumId": "",
-            "type": "Decimal"
-          }
-        ],
-        "parameters": [],
-        "relations": [
-          {
-            "boid": "sales_operationcustomergroup",
-            "name": "rinvcgroups",
-            "title": "Return Invoice Customer Group Relation",
-            "persianTitle": "گروه مشتری",
-            "foreignKey": {
-              "local": {
-                "name": "customer_id",
-                "title": "customer id"
-              },
-              "Referenced": {
-                "name": "customer_id",
-                "title": "customer id"
-              }
-            },
-            "dataview": ""
-          }
-        ]
-      },
-      {
-        "name": "logistics_units",
-        "title": "Units",
-        "persianTitle": "واحد سنجش",
-        "columns": [
-          {
-            "name": "title",
-            "title": "UNIT: Title",
-            "persianTitle": "عنوان واحد سنجش",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "dimension",
-            "title": "Dimension",
-            "persianTitle": "بعد",
-            "enumId": "",
-            "type": "Int64"
-          }
-        ],
-        "parameters": [],
-        "relations": []
-      },
-      {
-        "name": "logistics_partaccountcategory",
-        "title": "PartAccountCategory",
-        "persianTitle": "طبقه حساب کالا",
-        "columns": [
-          {
-            "name": "code",
-            "title": "PART-ACCOUNT: Code",
-            "persianTitle": "کد طبقه حساب کالا",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "title",
-            "title": "PART-ACCOUNT: Title",
-            "persianTitle": "عنوان طبقه حساب کالا",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "pricing_method",
-            "title": "Pricing Method",
-            "persianTitle": "روش قیمت گذاری",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "company_title",
-            "title": "Company Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "String"
-          }
-        ],
-        "parameters": [
-          {
-            "name": "logistics_partaccountcategory_p1",
-            "title": "Company Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "Int64Array_Dataview",
-            "isDataview": true,
-            "ref": "company_title",
-            "tag": "company"
-          }
-        ],
-        "relations": []
-      },
-      {
-        "name": "sales_customergroup",
-        "title": "customergroup",
-        "persianTitle": "گروه بندی مشتری",
-        "columns": [
-          {
-            "name": "title",
-            "title": "Customer Group: Title",
-            "persianTitle": "عنوان گروه مشتری",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "code",
-            "title": "Customer Group: Code",
-            "persianTitle": "کد گروه مشتری",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "grouping_title",
-            "title": "Customer Grouping: Title",
-            "persianTitle": "عنوان گروه بندی مشتری",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "cmp_title",
-            "title": "Company: Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "String"
-          }
-        ],
-        "parameters": [],
-        "relations": []
-      },
-      {
-        "name": "logistics_store",
-        "title": "Stores",
-        "persianTitle": "انبار",
-        "columns": [
-          {
-            "name": "code",
-            "title": "STORE: Code",
-            "persianTitle": "کد انبار",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "title",
-            "title": "STORE: Title",
-            "persianTitle": "عنوان انبار",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "storage_type_title",
-            "title": "Storage Type Title",
-            "persianTitle": "عنوان نوع انبار",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "state",
-            "title": "STORE: State",
-            "persianTitle": "وضعیت انبار",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "company_title",
-            "title": "Company Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "plant_id",
-            "title": "STORE: Plant ID",
-            "persianTitle": "شناسه مرکز نگهداری",
-            "enumId": "",
-            "type": "String"
-          }
-        ],
-        "parameters": [
-          {
-            "name": "logistics_store_p1",
-            "title": "Company Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "Int64Array_Dataview",
-            "isDataview": true,
-            "ref": "company_title",
-            "tag": "company"
-          }
-        ],
-        "relations": [
-          {
-            "boid": "logistics_plants",
-            "name": "plants",
-            "title": "Store Plant",
-            "persianTitle": "مرکز نگهداری",
-            "foreignKey": {
-              "local": {
-                "name": "plant_id",
-                "title": "ID"
-              },
-              "Referenced": {
-                "name": "id",
-                "title": "Plant ID"
-              }
-            },
-            "dataview": ""
-          }
-        ]
-      },
-      {
-        "name": "sales_settlementmethod",
-        "title": "settlementmethod",
-        "persianTitle": "روش تسویه",
-        "columns": [
-          {
-            "name": "title",
-            "title": "Settlement Method: Title",
-            "persianTitle": "عنوان روش تسویه",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "cmp_title",
-            "title": "Company: Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "String"
-          }
-        ],
-        "parameters": [],
-        "relations": []
-      },
-      {
-        "name": "logistics_invitemprice",
-        "title": "Inventory Voucher Item Price",
-        "persianTitle": "قلم قیمت",
-        "columns": [
-          {
-            "name": "fee",
-            "title": "ITEM-PRICE: Fee",
-            "persianTitle": "فی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "price",
-            "title": "ITEM-PRICE: Price",
-            "persianTitle": "مبلغ",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "major_fee",
-            "title": "ITEM-PRICE: Major Fee",
-            "persianTitle": "فی به واحد اصلی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "major_price",
-            "title": "ITEM-PRICE: Major Price",
-            "persianTitle": "مبلغ به واحد اصلی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "date",
-            "title": "ITEM-PRICE: Date",
-            "persianTitle": "تاریخ",
-            "enumId": "",
-            "type": "Date"
-          },
-          {
-            "name": "price_type",
-            "title": "ITEM-PRICE: Price Type",
-            "persianTitle": "نوع قیمت",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "currency_title",
-            "title": "ITEM-PRICE: Currency Title",
-            "persianTitle": "عنوان ارز",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "acc_voucher_number",
-            "title": "ITEM-PRICE: Acc Voucher Number",
-            "persianTitle": "شماره سند حسابداری",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "company_title",
-            "title": "Company Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "String"
-          }
-        ],
-        "parameters": [
-          {
-            "name": "logistics_invitemprice_p1",
-            "title": "ITEM-PRICE: PricingArea",
-            "persianTitle": "حوزه قیمت‌گذاری",
-            "enumId": "",
-            "type": "Int64_Dataview",
-            "isDataview": true,
-            "ref": "",
-            "tag": ""
-          },
-          {
-            "name": "logistics_invitemprice_p2",
-            "title": "Company Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "Int64Array_Dataview",
-            "isDataview": true,
-            "ref": "company_title",
-            "tag": "company"
-          }
-        ],
-        "relations": [
-          {
-            "boid": "logistics_invvoucheritem",
-            "name": "ivi",
-            "title": "ITEM-PRICE: Voucher Item",
-            "persianTitle": "قلم سند انبار",
-            "foreignKey": {
-              "local": {
-                "name": "inventory_voucher_item_id",
-                "title": "ID"
-              },
-              "Referenced": {
-                "name": "id",
-                "title": "Voucher Item ID"
-              }
-            },
-            "dataview": ""
-          }
-        ]
-      },
-      {
-        "name": "logistics_invstockpricing",
-        "title": "PRICINGDETAILS: invstockpricing",
-        "persianTitle": "گردش مبلغی",
-        "columns": [
-          {
-            "name": "fee",
-            "title": "PRICINGDETAILS: Fee",
-            "persianTitle": "فی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "price",
-            "title": "PRICINGDETAILS: Price",
-            "persianTitle": "مبلغ",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "price_in_functional_currency",
-            "title": "PRICINGDETAILS: Price in functional currency",
-            "persianTitle": "مبلغ  به ارز عملیاتی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "total_fee",
-            "title": "PRICINGDETAILS: Fee total",
-            "persianTitle": "فی نهایی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "total_price",
-            "title": "PRICINGDETAILS: Price total",
-            "persianTitle": "مبلغ نهایی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "major_fee",
-            "title": "PRICINGDETAILS: Major fee",
-            "persianTitle": "فی به واحد اصلی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "company_title",
-            "title": "PRICINGDETAILS: Company Title",
-            "persianTitle": "عنوان شرکت",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "branch_title",
-            "title": "PRICINGDETAILS: Branch Title",
-            "persianTitle": "عنوان شعبه",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "plant_code",
-            "title": "PRICINGDETAILS: Plant code",
-            "persianTitle": "کد مرکز نگهداری",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "plant_title",
-            "title": "PRICINGDETAILS: Plant title",
-            "persianTitle": "عنوان مرکز نگهداری",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "store_code",
-            "title": "PRICINGDETAILS: Store code",
-            "persianTitle": "کد انبار",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "store_title",
-            "title": "PRICINGDETAILS: Store title",
-            "persianTitle": "عنوان انبار",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "storage_type",
-            "title": "PRICINGDETAILS: Store type",
-            "persianTitle": "نوع انبار",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "pricing_area_title",
-            "title": "PRICINGDETAILS: Pricing area title",
-            "persianTitle": "عنوان حوزه قیمت گذاری",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "part_code",
-            "title": "PRICINGDETAILS: Part code",
-            "persianTitle": "کد کالا",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "part_title",
-            "title": "PRICINGDETAILS: Part title",
-            "persianTitle": "عنوان کالا",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "part_type",
-            "title": "PRICINGDETAILS: Part type",
-            "persianTitle": "نوع کالا",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "part_usage",
-            "title": "PRICINGDETAILS: Part usage type",
-            "persianTitle": "نوع کارکرد کالا",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "part_account_category",
-            "title": "PRICINGDETAILS: Part account category",
-            "persianTitle": "طبقه حساب کالا",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "major_unit",
-            "title": "PRICINGDETAILS: Major unit",
-            "persianTitle": "واحد اصلی",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "second_unit",
-            "title": "PRICINGDETAILS: Second unit",
-            "persianTitle": "واحد دوم",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "inv_voucher_unit",
-            "title": "PRICINGDETAILS: Voucher unit",
-            "persianTitle": "واحد ثبت سند",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "inventory_voucher_specification_title",
-            "title": "PRICINGDETAILS: Voucher specification title",
-            "persianTitle": "عنوان الگوی سند",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "inventory_voucher_type",
-            "title": "PRICINGDETAILS: Voucher type",
-            "persianTitle": "نوع سند",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "type_of_effect",
-            "title": "PRICINGDETAILS: Effect type",
-            "persianTitle": "نوع تاثیر بر موجودی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "counter_part_title",
-            "title": "PRICINGDETAILS: Counter part",
-            "persianTitle": "طرف مقابل",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "inv_voucher_state",
-            "title": "PRICINGDETAILS: Inv voucher state",
-            "persianTitle": "وضعیت سند انبار",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "major_unit_quantity",
-            "title": "PRICINGDETAILS: Major unit quantity",
-            "persianTitle": "مقدار واحد اصلی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "quantity",
-            "title": "PRICINGDETAILS: Voucher quantity",
-            "persianTitle": "مقدار ثبت سند",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "second_unit_quantity",
-            "title": "PRICINGDETAILS: Second unit quantity",
-            "persianTitle": "مقدار واحد دوم",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "currency",
-            "title": "PRICINGDETAILS: Currency",
-            "persianTitle": "ارز",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "functional_currency",
-            "title": "PRICINGDETAILS: Functional currency",
-            "persianTitle": "ارز عملیاتی",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "itemprice_vouchering_state",
-            "title": "PRICINGDETAILS: Acc voucher state",
-            "persianTitle": "وضعیت سند حسابداری",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "item_pricing_state",
-            "title": "PRICINGDETAILS: Voucher pricing state",
-            "persianTitle": "وضعیت قیمت گذاری",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "price_type",
-            "title": "PRICINGDETAILS: Price type",
-            "persianTitle": "نوع قیمت",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "acc_voucher_number",
-            "title": "PRICINGDETAILS: Acc voucher number",
-            "persianTitle": "شماره سند حسابداری",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "company_title",
-            "title": "Company Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "String"
-          }
-        ],
-        "parameters": [
-          {
-            "name": "logistics_invstockpricing_p1",
-            "title": "PRICINGDETAILS: FROM Date",
-            "persianTitle": "از تاریخ قیمت سند انبار",
-            "enumId": "",
-            "type": "Date",
-            "isDataview": false,
-            "ref": "",
-            "tag": ""
-          },
-          {
-            "name": "logistics_invstockpricing_p2",
-            "title": "PRICINGDETAILS: To Date",
-            "persianTitle": "تا تاریخ قیمت سند انبار",
-            "enumId": "",
-            "type": "Date",
-            "isDataview": false,
-            "ref": "",
-            "tag": ""
-          },
-          {
-            "name": "logistics_invstockpricing_p3",
-            "title": "Company Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "Int64Array_Dataview",
-            "isDataview": true,
-            "ref": "company_title",
-            "tag": "company"
-          }
-        ],
-        "relations": [
-          {
-            "boid": "logistics_invitemprice",
-            "name": "ivip",
-            "title": "Inventory Voucher Item Price",
-            "persianTitle": "قلم قیمت",
-            "foreignKey": {
-              "local": {
-                "name": "inventory_voucher_item_price_id",
-                "title": "ID"
-              },
-              "Referenced": {
-                "name": "id",
-                "title": "Voucher Item Price ID"
-              }
-            },
-            "dataview": ""
-          },
-          {
-            "boid": "logistics_invitempricefactor",
-            "name": "ivip2",
-            "title": "Inventory Voucher Item Price Factor",
-            "persianTitle": "جزییات مبلغی ",
-            "foreignKey": {
-              "local": {
-                "name": "inventory_voucher_item_price_id",
-                "title": "ID"
-              },
-              "Referenced": {
-                "name": "inventory_voucher_item_price_id",
-                "title": "Voucher Item Price ID"
-              }
-            },
-            "dataview": ""
-          }
-        ]
-      },
-      {
-        "name": "sales_salesorder",
-        "title": "SalesOrder",
-        "persianTitle": "سفارش",
-        "columns": [
-          {
-            "name": "cmp_title",
-            "title": "Company: Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "afy_title",
-            "title": "SalesOrder: fiscal year",
-            "persianTitle": "سال مالی",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "number_c",
-            "title": "SalesOrder: Number",
-            "persianTitle": "شماره سفارش",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "date_c",
-            "title": "SalesOrder: Date",
-            "persianTitle": "تاریخ سفارش",
-            "enumId": "",
-            "type": "Date"
-          },
-          {
-            "name": "description_c",
-            "title": "SalesOrder: Description",
-            "persianTitle": "توضیحات",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "cu_code",
-            "title": "SalesOrder: Customer Code",
-            "persianTitle": "کد مشتری",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "customer_full_name",
-            "title": "SalesOrder: Customer Full Name",
-            "persianTitle": "نام و نام خانوادگی مشتری",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "sales_area_title",
-            "title": "SalesOrder: Sales Area Title",
-            "persianTitle": "حوزه فروش",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "sales_office_title",
-            "title": "SalesOrder: Sales Office Title",
-            "persianTitle": "دفتر فروش",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "settlement_method_title",
-            "title": "SalesOrder: Settlement Method Title",
-            "persianTitle": "روش تسویه",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "payer_full_name",
-            "title": "SalesOrder: Payer Full Name",
-            "persianTitle": "نام و نام خانوادگی پرداخت کننده",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "sales_order_state",
-            "title": "SalesOrder: State",
-            "persianTitle": "وضعیت سفارش",
-            "enumId": "sales_salesorder_salesorderstate",
-            "type": "Int32"
-          },
-          {
-            "name": "payer_code",
-            "title": "SalesOrder: Payer Code",
-            "persianTitle": "کد پرداخت کننده",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "currency_title",
-            "title": "SalesOrder: Currency Title",
-            "persianTitle": "ارز",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "bill_recipient_full_name",
-            "title": "SalesOrder: Bill Recipient Full Name",
-            "persianTitle": "نام و نام خانوادگی دریافت‌کننده‌ صورت‌حساب",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "bill_recipient_code",
-            "title": "SalesOrder: Bill Recipient Code",
-            "persianTitle": "کد دریافت‌کننده صورت‌حساب",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "employee_full_name",
-            "title": "SalesOrder: Employee Full Name",
-            "persianTitle": "نام و نام خانوادگی کارمند فروش",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "functional_currency_rate",
-            "title": "SalesOrder: Functional Currency Rate",
-            "persianTitle": "نرخ ارز عملیاتی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "first_reporting_currency_rate",
-            "title": "SalesOrder: First Reporting Currency Rate",
-            "persianTitle": "نرخ ارز گزارشگری اول",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "second_reporting_currency_rate",
-            "title": "SalesOrder: Second Reporting Currency Rate",
-            "persianTitle": "نرخ ارز گزارشگری دوم",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "total_price",
-            "title": "SalesOrder: Total Price",
-            "persianTitle": "مبلغ ناخالص",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "rounded_effect",
-            "title": "SalesOrder: Rounded Effect",
-            "persianTitle": "مبلغ گردشده",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "net_price",
-            "title": "SalesOrder: Net Price",
-            "persianTitle": "مبلغ خالص",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "deductions",
-            "title": "SalesOrder: Deductions",
-            "persianTitle": "جمع عامل کاهنده",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "surcharges",
-            "title": "SalesOrder: Surcharges",
-            "persianTitle": "جمع عوامل افزاینده",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "tax_total",
-            "title": "SalesOrder: Taxes",
-            "persianTitle": "جمع مالیات",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "functional_total_price",
-            "title": "SalesOrder: Functional Total Price",
-            "persianTitle": "مبلغ ناخالص به ارز عملیاتی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "functional_net_price",
-            "title": "SalesOrder: Functional Net Price",
-            "persianTitle": "مبلغ خالص به ارز عملیاتی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "functional_deductions",
-            "title": "SalesOrder: Functional Deductions",
-            "persianTitle": "جمع عامل کاهنده به ارز عملیاتی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "functional_surcharges",
-            "title": "SalesOrder: Functional Surcharges",
-            "persianTitle": "جمع عوامل افزاینده به ارز عملیاتی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "functional_tax_total",
-            "title": "SalesOrder: Functional Taxes",
-            "persianTitle": "جمع مالیات به ارز عملیاتی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "first_reporting_total_price",
-            "title": "SalesOrder: First Reporting Total Price",
-            "persianTitle": "جمع مبلغ ناخالص به ارز گزارشگری اول",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "first_reporting_net_price",
-            "title": "SalesOrder: First Reporting Net Price",
-            "persianTitle": "مبلغ خالص به ارز گزارشگری اول",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "first_reporting_deductions",
-            "title": "SalesOrder: First Reporting Deductions",
-            "persianTitle": "جمع عامل کاهنده به ارز گزارشگری اول",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "first_reporting_surcharges",
-            "title": "SalesOrder: First Reporting Surcharges",
-            "persianTitle": "جمع عوامل افزاینده به ارز گزارشگری اول",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "first_reporting_tax_total",
-            "title": "SalesOrder: First Reporting Taxes",
-            "persianTitle": "جمع مالیات به ارز گزارشگری اول",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "second_reporting_total_price",
-            "title": "SalesOrder: Second Reporting Total Price",
-            "persianTitle": "جمع مبلغ ناخالص به ارز گزارشگری دوم",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "second_reporting_net_price",
-            "title": "SalesOrder: Second Reporting Net Price",
-            "persianTitle": "مبلغ خالص به ارز گزارشگری دوم",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "second_reporting_deductions",
-            "title": "SalesOrder: Second Reporting Deductions",
-            "persianTitle": "جمع عامل کاهنده به ارز گزارشگری دوم",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "second_reporting_surcharges",
-            "title": "SalesOrder: Second Reporting Surcharges",
-            "persianTitle": "جمع عوامل افزاینده به ارز گزارشگری دوم",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "second_reporting_tax_total",
-            "title": "SalesOrder: Second Reporting Taxes",
-            "persianTitle": "جمع مالیات به ارز گزارشگری دوم",
-            "enumId": "",
-            "type": "Decimal"
-          }
-        ],
-        "parameters": [],
-        "relations": [
-          {
-            "boid": "sales_operationcustomergroup",
-            "name": "salesordercustomergroups",
-            "title": "SalesOrder Customer Group Relation",
-            "persianTitle": "گروه مشتری",
-            "foreignKey": {
-              "local": {
-                "name": "customer_id",
-                "title": "customer id"
-              },
-              "Referenced": {
-                "name": "customer_id",
-                "title": "customer id"
-              }
-            },
-            "dataview": ""
-          }
-        ]
-      },
-      {
-        "name": "sales_salesorderitem",
-        "title": "SalesOrder Item",
-        "persianTitle": "قلم سفارش",
-        "columns": [
-          {
-            "name": "unit_title",
-            "title": "SalesOrder Item: unit title",
-            "persianTitle": "واحد سنجش",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "amount",
-            "title": "SalesOrder Item: Amount",
-            "persianTitle": "مقدار",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "cmp_title",
-            "title": "Company: Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "fee",
-            "title": "SalesOrder Item: Fee",
-            "persianTitle": "فی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "description_c",
-            "title": "SalesOrder Item: Description",
-            "persianTitle": "توضیحات",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "store_title",
-            "title": "SalesOrder Item: Store Title",
-            "persianTitle": "انبار",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "total_price",
-            "title": "SalesOrder Item: Total Price",
-            "persianTitle": "مبلغ ناخالص",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "net_price",
-            "title": "SalesOrder Item: Net Price",
-            "persianTitle": "مبلغ خالص",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "deduction_price",
-            "title": "SalesOrder Item: Deduction Price",
-            "persianTitle": "جمع عامل کاهنده",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "surcharges",
-            "title": "SalesOrder Item: Surcharge",
-            "persianTitle": "جمع عوامل افزاینده",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "tax_total",
-            "title": "SalesOrder Item: Tax Total",
-            "persianTitle": "مالیات بر ارزش افزوده",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "functional_total_price",
-            "title": "SalesOrder Item: Functional Total Price",
-            "persianTitle": "مبلغ ناخالص به ارز عملیاتی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "functional_net_price",
-            "title": "SalesOrder Item: Functional Net Price",
-            "persianTitle": "مبلغ خالص به ارز عملیاتی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "functional_deduction_price",
-            "title": "SalesOrder Item: Functional Deduction Price",
-            "persianTitle": "جمع عامل کاهنده به ارز عملیاتی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "functional_surcharges",
-            "title": "SalesOrder Item: Functional Surcharge",
-            "persianTitle": "جمع عوامل افزاینده به ارز عملیاتی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "functional_tax_total",
-            "title": "SalesOrder Item: Functional Tax Total",
-            "persianTitle": "جمع مالیات به ارز عملیاتی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "first_reporting_total_price",
-            "title": "SalesOrder Item: First Reporting Total Price",
-            "persianTitle": "جمع مبلغ ناخالص به ارز گزارشگری اول",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "first_reporting_net_price",
-            "title": "SalesOrder Item: First Reporting Net Price",
-            "persianTitle": "مبلغ خالص به ارز گزارشگری اول",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "first_reporting_deduction_price",
-            "title": "SalesOrder Item: First Reporting Deduction Price",
-            "persianTitle": "جمع عامل کاهنده به ارز گزارشگری اول",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "first_reporting_surcharges",
-            "title": "SalesOrder Item: First Reporting Surcharge",
-            "persianTitle": "جمع عوامل افزاینده به ارز گزارشگری اول",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "first_reporting_tax_total",
-            "title": "SalesOrder Item: First Reporting Tax Total",
-            "persianTitle": "جمع مالیات به ارز گزارشگری اول",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "second_reporting_total_price",
-            "title": "SalesOrder Item: Second Reporting Total Price",
-            "persianTitle": "جمع مبلغ ناخالص به ارز گزارشگری دوم",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "second_reporting_net_price",
-            "title": "SalesOrder Item: Second Reporting Net Price",
-            "persianTitle": "مبلغ خالص به ارز گزارشگری دوم",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "second_reporting_deduction_price",
-            "title": "SalesOrder Item: Second Reporting Deduction Price",
-            "persianTitle": "جمع عامل کاهنده به ارز گزارشگری دوم",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "second_reporting_surcharges",
-            "title": "SalesOrder Item: Second Reporting Surcharge",
-            "persianTitle": "جمع عوامل افزاینده به ارز گزارشگری دوم",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "second_reporting_tax_total",
-            "title": "SalesOrder Item: Second Reporting Tax Total",
-            "persianTitle": "جمع مالیات به ارز گزارشگری دوم",
-            "enumId": "",
-            "type": "Decimal"
-          }
-        ],
-        "parameters": [
-          {
-            "name": "sales_salesorderitem_p1",
-            "title": "Company Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "Int64Array_Dataview",
-            "isDataview": true,
-            "ref": "",
-            "tag": ""
-          }
-        ],
-        "relations": [
-          {
-            "boid": "sales_product",
-            "name": "salesorderproducts",
-            "title": "SalesOrder Item: Product Relation",
-            "persianTitle": "کالا/خدمت",
-            "foreignKey": {
-              "local": {
-                "name": "gnr_product_id",
-                "title": "product id"
-              },
-              "Referenced": {
-                "name": "id",
-                "title": "product id"
-              }
-            },
-            "dataview": ""
-          },
-          {
-            "boid": "sales_productgroup",
-            "name": "salesorderproductgroup",
-            "title": "SalesOrder Item: Product Group Relation",
-            "persianTitle": "گروه کالا/خدمت",
-            "foreignKey": {
-              "local": {
-                "name": "gnr_product_id",
-                "title": "product id"
-              },
-              "Referenced": {
-                "name": "product_id",
-                "title": "product id"
-              }
-            },
-            "dataview": ""
-          },
-          {
-            "boid": "sales_salesorder",
-            "name": "orderitemrel",
-            "title": "SalesOrder Item Relation Backward",
-            "persianTitle": "سفارش",
-            "foreignKey": {
-              "local": {
-                "name": "sales_order_id",
-                "title": "sales order item sales order id"
-              },
-              "Referenced": {
-                "name": "id",
-                "title": "sales order id"
-              }
-            },
-            "dataview": ""
-          }
-        ]
-      },
-      {
-        "name": "sales_pricelistitem",
-        "title": "Price List Item",
-        "persianTitle": "قلم لیست قیمت",
-        "columns": [
-          {
-            "name": "plip_fee",
-            "title": "PRICELIST PERIOD: plip_fee",
-            "persianTitle": "فی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "plip_validity_start_date",
-            "title": "PRICELIST PERIOD: validity start date",
-            "persianTitle": "تاریخ شروع اعتبار بازه",
-            "enumId": "",
-            "type": "Date"
-          },
-          {
-            "name": "plip_validity_end_date",
-            "title": "PRICELIST PERIOD: validity end date",
-            "persianTitle": "تاریخ پایان اعتبار بازه",
-            "enumId": "",
-            "type": "Date"
-          },
-          {
-            "name": "pli_is_price_changeable",
-            "title": "PRICELIST: pli_is_price_changeable",
-            "persianTitle": "امکان تغییر در اسناد",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "pli_max_decrease_fee_percent",
-            "title": "PRICELIST: pli_max_decrease_fee_percent",
-            "persianTitle": "حداکثر درصد کاهش",
-            "enumId": "",
-            "type": "Int64"
-          },
-          {
-            "name": "pli_max_increase_fee_percent",
-            "title": "PRICELIST: pli_max_increase_fee_percent",
-            "persianTitle": "حداکثر درصد افزایش",
-            "enumId": "",
-            "type": "Int64"
-          },
-          {
-            "name": "product_title",
-            "title": "PRICELIST: Product Title",
-            "persianTitle": "عنوان کالا/خدمت",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "unit_title",
-            "title": "PRICELIST: Unit Title",
-            "persianTitle": "عنوان واحد سنجش",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "cmp_title",
-            "title": "Company: Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "String"
-          }
-        ],
-        "parameters": [
-          {
-            "name": "sales_pricelistitem_p3",
-            "title": "Company Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "Int64Array_Dataview",
-            "isDataview": true,
-            "ref": "cmp_title",
-            "tag": "company"
-          },
-          {
-            "name": "sales_pricelistitem_p4",
-            "title": "Currency Title",
-            "persianTitle": "ارز",
-            "enumId": "",
-            "type": "Int64Array_Dataview",
-            "isDataview": true,
-            "ref": "",
-            "tag": ""
-          }
-        ],
-        "relations": [
-          {
-            "boid": "sales_pricelistheader",
-            "name": "pricelists",
-            "title": "Price List Header",
-            "persianTitle": "لیست قیمت",
-            "foreignKey": {
-              "local": {
-                "name": "pl_id",
-                "title": "PriceListID"
-              },
-              "Referenced": {
-                "name": "id",
-                "title": "PriceList ID"
-              }
-            },
-            "dataview": ""
-          },
-          {
-            "boid": "sales_plparameters",
-            "name": "parameterrel",
-            "title": "Price List parameters",
-            "persianTitle": "پارامتر های لیست قیمت",
-            "foreignKey": {
-              "local": {
-                "name": "pl_id",
-                "title": "PriceListID"
-              },
-              "Referenced": {
-                "name": "pl_id",
-                "title": "PriceList ID"
-              }
-            },
-            "dataview": ""
-          }
-        ]
-      },
-      {
-        "name": "sales_division",
-        "title": "division",
-        "persianTitle": "بخش فروش",
-        "columns": [
-          {
-            "name": "title",
-            "title": "Division: Title",
-            "persianTitle": "عنوان بخش فروش",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "code",
-            "title": "Division: Code",
-            "persianTitle": "کد بخش فروش",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "cmp_title",
-            "title": "Company: Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "String"
-          }
-        ],
-        "parameters": [],
-        "relations": []
-      },
-      {
-        "name": "sales_productgroup",
-        "title": "Product Group",
-        "persianTitle": "گروه بندی کالا/خدمت",
-        "columns": [
-          {
-            "name": "code",
-            "title": "Product Group: Code",
-            "persianTitle": "کد گروه کالا/خدمت",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "group_title",
-            "title": "Product Group: Title",
-            "persianTitle": "عنوان گروه کالا/خدمت",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "grouping_title",
-            "title": "Product Grouping: Title",
-            "persianTitle": "عنوان گروهبندی کالا/خدمت",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "cmp_title",
-            "title": "Company: Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "String"
-          }
-        ],
-        "parameters": [],
-        "relations": []
-      },
-      {
-        "name": "logistics_voucherspecification",
-        "title": "Inventory Voucher Specification",
-        "persianTitle": "الگوی سند انبار",
-        "columns": [
-          {
-            "name": "id",
-            "title": "ID",
-            "persianTitle": "شناسه",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "code",
-            "title": "SPECIFICATION: Code",
-            "persianTitle": "کد الگو",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "title",
-            "title": "SPECIFICATION: Title",
-            "persianTitle": "عنوان الگو",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "voucher_type",
-            "title": "Voucher Type",
-            "persianTitle": "نوع سند",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "direction",
-            "title": "Direction",
-            "persianTitle": "جهت سند",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "purchase_type",
-            "title": "Purchase Type",
-            "persianTitle": "نوع خرید",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "type_of_effect",
-            "title": "Type Of Effect",
-            "persianTitle": "نوع تاثیر بر موجودی",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "counter_part_type",
-            "title": "Counter Part Type",
-            "persianTitle": "نوع طرف مقابل",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "company_title",
-            "title": "Company Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "String"
-          }
-        ],
-        "parameters": [
-          {
-            "name": "logistics_voucherspecification_p1",
-            "title": "Company Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "Int64Array_Dataview",
-            "isDataview": true,
-            "ref": "company_title",
-            "tag": "company"
-          }
-        ],
-        "relations": []
-      },
-      {
-        "name": "logistics_partaltunit",
-        "title": "Part Alt Unit",
-        "persianTitle": "واحد فرعی کالا",
-        "columns": [
-          {
-            "name": "title",
-            "title": "PART-ALT-UNIT: Title",
-            "persianTitle": "عنوان واحد فرعی کالا",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "coeff",
-            "title": "PART-ALT-UNIT: Coeff",
-            "persianTitle": "ضریب",
-            "enumId": "",
-            "type": "Float64"
-          },
-          {
-            "name": "major_unit_title",
-            "title": "PART-ALT-UNIT: MajorUnit",
-            "persianTitle": "واحد سنجش اصلی",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "part_id",
-            "title": "PART-ALT-UNIT: Part ID",
-            "persianTitle": "شناسه کالا",
-            "enumId": "",
-            "type": "String"
-          }
-        ],
-        "parameters": [],
-        "relations": []
-      },
-      {
-        "name": "sales_salesarea",
-        "title": "salesarea",
-        "persianTitle": "حوزه فروش",
-        "columns": [
-          {
-            "name": "title",
-            "title": "SalesArea: Title",
-            "persianTitle": "عنوان حوزه فروش",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "code",
-            "title": "SalesArea: Code",
-            "persianTitle": "کد حوزه فروش",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "cmp_title",
-            "title": "Company: Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "String"
-          }
-        ],
-        "parameters": [],
-        "relations": []
-      },
-      {
-        "name": "sales_invoice",
-        "title": "Invoice",
-        "persianTitle": "فاکتور",
-        "columns": [
-          {
-            "name": "cmp_title",
-            "title": "Company: Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "afy_title",
-            "title": "Invoice: fiscal year",
-            "persianTitle": "سال مالی",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "number_c",
-            "title": "Invoice: Number",
-            "persianTitle": "شماره فاکتور",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "date_c",
-            "title": "Invoice: Date",
-            "persianTitle": "تاریخ فاکتور",
-            "enumId": "",
-            "type": "Date"
-          },
-          {
-            "name": "description_c",
-            "title": "Invoice: Description",
-            "persianTitle": "توضیحات",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "cu_code",
-            "title": "Invoice: Customer Code",
-            "persianTitle": "کد مشتری",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "cu_full_name",
-            "title": "Invoice: Customer Full Name",
-            "persianTitle": "نام و نام خانوادگی مشتری",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "sa_title",
-            "title": "Invoice: Sales Area Title",
-            "persianTitle": "حوزه فروش",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "so_title",
-            "title": "Invoice: Sales Office Title",
-            "persianTitle": "دفتر فروش",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "sm_title",
-            "title": "Invoice: Settlement Method Title",
-            "persianTitle": "روش تسویه",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "pay_full_name",
-            "title": "Invoice: Payer Full Name",
-            "persianTitle": "نام و نام خانوادگی پرداخت کننده",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "invoice_state",
-            "title": "Invoice: State",
-            "persianTitle": "وضعیت فاکتور",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "payer_code",
-            "title": "Invoice: Payer Code",
-            "persianTitle": "کد پرداخت کننده",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "rec_full_name",
-            "title": "Invoice: Receiver Full Name",
-            "persianTitle": "نام و نام خانوادگی تحویل گیرنده",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "receiver_code",
-            "title": "Invoice: Receiver Code",
-            "persianTitle": "کد تحویل گیرنده",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "bill_recipient_full_name",
-            "title": "Invoice: Bill Recipient Full Name",
-            "persianTitle": "نام و نام خانوادگی دریافت‌کننده‌ صورت‌حساب",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "bill_recipient_code",
-            "title": "Invoice: Bill Recipient Code",
-            "persianTitle": "کد دریافت‌کننده صورت‌حساب",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "employee_full_name",
-            "title": "Invoice: Employee Full Name",
-            "persianTitle": "نام و نام خانوادگی کارمند فروش",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "cur_title",
-            "title": "Invoice: Currency Title",
-            "persianTitle": "ارز",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "functional_currency_rate",
-            "title": "Invoice: Functional Currency Rate",
-            "persianTitle": "نرخ ارز عملیاتی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "first_reporting_currency_rate",
-            "title": "Invoice: First Reporting Currency Rate",
-            "persianTitle": "نرخ ارز گزارشگری اول",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "second_reporting_currency_rate",
-            "title": "Invoice: Second Reporting Currency Rate",
-            "persianTitle": "نرخ ارز گزارشگری دوم",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "total_price",
-            "title": "Invoice: Total Price",
-            "persianTitle": "مبلغ ناخالص",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "rounded_effect",
-            "title": "Invoice: Rounded Effect",
-            "persianTitle": "مبلغ گردشده",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "net_price",
-            "title": "Invoice: Net Price",
-            "persianTitle": "مبلغ خالص",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "deductions",
-            "title": "Invoice: Deductions",
-            "persianTitle": "جمع عامل کاهنده",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "surcharges",
-            "title": "Invoice: Surcharges",
-            "persianTitle": "جمع عوامل افزاینده",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "tax_total",
-            "title": "Invoice: Taxes",
-            "persianTitle": "جمع مالیات",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "functional_total_price",
-            "title": "Invoice: Functional Total Price",
-            "persianTitle": "مبلغ ناخالص به ارز عملیاتی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "functional_net_price",
-            "title": "Invoice: Functional Net Price",
-            "persianTitle": "مبلغ خالص به ارز عملیاتی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "functional_deductions",
-            "title": "Invoice: Functional Deductions",
-            "persianTitle": "جمع عامل کاهنده به ارز عملیاتی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "functional_surcharges",
-            "title": "Invoice: Functional Surcharges",
-            "persianTitle": "جمع عوامل افزاینده به ارز عملیاتی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "functional_tax_total",
-            "title": "Invoice: Functional Taxes",
-            "persianTitle": "جمع مالیات به ارز عملیاتی",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "first_reporting_total_price",
-            "title": "Invoice: First Reporting Total Price",
-            "persianTitle": "جمع مبلغ ناخالص به ارز گزارشگری اول",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "first_reporting_net_price",
-            "title": "Invoice: First Reporting Net Price",
-            "persianTitle": "مبلغ خالص به ارز گزارشگری اول",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "first_reporting_deductions",
-            "title": "Invoice: First Reporting Deductions",
-            "persianTitle": "جمع عامل کاهنده به ارز گزارشگری اول",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "first_reporting_surcharges",
-            "title": "Invoice: First Reporting Surcharges",
-            "persianTitle": "جمع عوامل افزاینده به ارز گزارشگری اول",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "first_reporting_tax_total",
-            "title": "Invoice: First Reporting Taxes",
-            "persianTitle": "جمع مالیات به ارز گزارشگری اول",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "second_reporting_total_price",
-            "title": "Invoice: Second Reporting Total Price",
-            "persianTitle": "جمع مبلغ ناخالص به ارز گزارشگری دوم",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "second_reporting_net_price",
-            "title": "Invoice: Second Reporting Net Price",
-            "persianTitle": "مبلغ خالص به ارز گزارشگری دوم",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "second_reporting_deductions",
-            "title": "Invoice: Second Reporting Deductions",
-            "persianTitle": "جمع عامل کاهنده به ارز گزارشگری دوم",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "second_reporting_surcharges",
-            "title": "Invoice: Second Reporting Surcharges",
-            "persianTitle": "جمع عوامل افزاینده به ارز گزارشگری دوم",
-            "enumId": "",
-            "type": "Decimal"
-          },
-          {
-            "name": "second_reporting_tax_total",
-            "title": "Invoice: Second Reporting Taxes",
-            "persianTitle": "جمع مالیات به ارز گزارشگری دوم",
-            "enumId": "",
-            "type": "Decimal"
-          }
-        ],
-        "parameters": [],
-        "relations": [
-          {
-            "boid": "sales_operationcustomergroup",
-            "name": "invoicecustomergroups",
-            "title": "Invoice Customer Group Relation",
-            "persianTitle": "گروه مشتری",
-            "foreignKey": {
-              "local": {
-                "name": "customer_id",
-                "title": "customer id"
-              },
-              "Referenced": {
-                "name": "customer_id",
-                "title": "customer id"
-              }
-            },
-            "dataview": ""
-          }
-        ]
-      },
-      {
-        "name": "sales_operationcustomergroup",
-        "title": "Customer Group",
-        "persianTitle": "اعضای گروه بندی مشتری",
-        "columns": [
-          {
-            "name": "group_title",
-            "title": "Customer Group: group Title",
-            "persianTitle": "عنوان گروه مشتری",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "code",
-            "title": "Customer Group: Code",
-            "persianTitle": "کد گروه مشتری",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "title",
-            "title": "Customer Group: grouping Title",
-            "persianTitle": "عنوان گروه بندی مشتری",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "cmp_title",
-            "title": "Company: Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "String"
-          }
-        ],
-        "parameters": [],
-        "relations": []
-      },
-      {
-        "name": "sales_pricelistheader",
-        "title": "Price List Header",
-        "persianTitle": "لیست قیمت",
-        "columns": [
-          {
-            "name": "title",
-            "title": "PRICELIST Header: Title",
-            "persianTitle": "عنوان لیست قیمت",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "currency_title",
-            "title": "PRICELIST Header: Currency Title",
-            "persianTitle": "عنوان ارز",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "pl_validity_start_date",
-            "title": "PRICELIST Header: validity start date",
-            "persianTitle": "تاریخ شروع اعتبار",
-            "enumId": "",
-            "type": "Date"
-          },
-          {
-            "name": "pl_validity_end_date",
-            "title": "PRICELIST Header: validity end date",
-            "persianTitle": "تاریخ پایان اعتبار",
-            "enumId": "",
-            "type": "Date"
-          },
-          {
-            "name": "state",
-            "title": "PRICELIST Header: state",
-            "persianTitle": "وضعیت",
-            "enumId": "",
-            "type": "String"
-          },
-          {
-            "name": "cmp_title",
-            "title": "Company: Title",
-            "persianTitle": "شرکت",
-            "enumId": "",
-            "type": "String"
-          }
-        ],
-        "parameters": [],
-        "relations": []
-      }
-    ]
-  }
-  
+    "logistics_allparts_direction": {
+      "title": "NEW_ALL_PART_WITH_DETAIL: direction",
+      "values": [
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: Inbound",
+          "value": 1,
+          "persianTitle": "ورودی"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: Outbound",
+          "value": -1,
+          "persianTitle": "خروجی"
+        }
+      ],
+      "persianTitle": "جهت سند",
+      "isMultiselect": true
+    },
+    "logistics_allparts_partusage": {
+      "title": "NEW_ALL_PART_WITH_DETAIL: partUsage",
+      "values": [
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: Purchasable",
+          "value": 1,
+          "persianTitle": "خریدنی"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: Salable",
+          "value": 2,
+          "persianTitle": "قابل فروش"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: PurchasableSalable",
+          "value": 3,
+          "persianTitle": "خریدنی، قابل فروش"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: Make",
+          "value": 4,
+          "persianTitle": "ساختنی"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: PurchasableMake",
+          "value": 5,
+          "persianTitle": "خریدنی، ساختنی"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: MakeSalable",
+          "value": 6,
+          "persianTitle": "ساختنی، قابل فروش"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: PurchasableMakeSalable",
+          "value": 7,
+          "persianTitle": "خریدنی، ساختنی، قابل فروش"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: NonInventory",
+          "value": 8,
+          "persianTitle": "غیرموجودی"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: PurchasableNonInventory",
+          "value": 9,
+          "persianTitle": "خریدنی، غیرموجودی"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: SalableNonInventory",
+          "value": 10,
+          "persianTitle": "قابل فروش، غیرموجودی"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: PurchasableSalableNonInventory",
+          "value": 11,
+          "persianTitle": "خریدنی، قابل فروش، غیرموجودی"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: MakeNonInventory",
+          "value": 12,
+          "persianTitle": "ساختنی، غیرموجودی"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: PurchasableMakeNonInventory",
+          "value": 13,
+          "persianTitle": "خریدنی، ساختنی، غیرموجودی"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: SalableMakeNonInventory",
+          "value": 14,
+          "persianTitle": "قابل فروش، ساختنی، غیرموجودی"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: PurchasableSalableMakeNonInventory",
+          "value": 15,
+          "persianTitle": "خریدنی، قابل فروش، ساختنی، غیرموجودی"
+        }
+      ],
+      "persianTitle": "نوع کارکرد کالا",
+      "isMultiselect": true
+    },
+    "logistics_allparts_effecttype": {
+      "title": "NEW_ALL_PART_WITH_DETAIL: effectType",
+      "values": [
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: Permanent",
+          "value": 1,
+          "persianTitle": "دائم"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: Temporary",
+          "value": 2,
+          "persianTitle": "موقت"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: Discard",
+          "value": 3,
+          "persianTitle": "ضایعات"
+        }
+      ],
+      "persianTitle": "نوع تاثیر بر موجودی",
+      "isMultiselect": true
+    },
+    "logistics_allparts_pricingmethod": {
+      "title": "NEW_ALL_PART_WITH_DETAIL: pricingMethod",
+      "values": [
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: Average",
+          "value": 1,
+          "persianTitle": "میانگین"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: SpecificIdentification",
+          "value": 2,
+          "persianTitle": "شناسایی ویژه"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: Unknown",
+          "value": 3,
+          "persianTitle": "نامشخص"
+        }
+      ],
+      "persianTitle": "روش قیمت گذاری کالا",
+      "isMultiselect": true
+    },
+    "logistics_allparts_counterparttype": {
+      "title": "NEW_ALL_PART_WITH_DETAIL: counterPartType",
+      "values": [
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: Supplier",
+          "value": 1,
+          "persianTitle": "تامین کننده"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: Customer",
+          "value": 2,
+          "persianTitle": "مشتری"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: CostCenter",
+          "value": 3,
+          "persianTitle": "مرکز هزینه"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: Project",
+          "value": 4,
+          "persianTitle": "پروژه"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: ConsignmentParty",
+          "value": 5,
+          "persianTitle": "طرف حساب امانی"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: Person",
+          "value": 6,
+          "persianTitle": "شخص حقیقی / حقوقی"
+        }
+      ],
+      "persianTitle": "نقش طرف مقابل سند",
+      "isMultiselect": true
+    },
+    "logistics_allparts_inventoryvouchertype": {
+      "title": "NEW_ALL_PART_WITH_DETAIL: inventoryVoucherType",
+      "values": [
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: Purchase",
+          "value": 1,
+          "persianTitle": "خرید"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: Production",
+          "value": 2,
+          "persianTitle": "تولید"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: Consumption",
+          "value": 3,
+          "persianTitle": "مصرف"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: Scrap",
+          "value": 4,
+          "persianTitle": "ضایعات"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: IntraStockTransfer",
+          "value": 5,
+          "persianTitle": "انتقال بین انبار"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: Sale",
+          "value": 6,
+          "persianTitle": "فروش"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: ManualStockTaking",
+          "value": 7,
+          "persianTitle": "انبارگردانی"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: Consignment",
+          "value": 8,
+          "persianTitle": "امانی"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: PartTransfer",
+          "value": 9,
+          "persianTitle": "تبدیل کالا"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: Other",
+          "value": 10,
+          "persianTitle": "سایر"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: LastStockBalance",
+          "value": 11,
+          "persianTitle": "پایان دوره"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: FirstStockBalance",
+          "value": 12,
+          "persianTitle": "ابتدای دوره"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: FixedAsset",
+          "value": 13,
+          "persianTitle": "تحویل دارایی ثابت"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: YearEnd",
+          "value": 14,
+          "persianTitle": "پایان سال"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: YearStart",
+          "value": 15,
+          "persianTitle": "ابتدای سال"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: Lodgment",
+          "value": 16,
+          "persianTitle": "استقرار"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: AssembleDisassemble",
+          "value": 17,
+          "persianTitle": "ترکیب و تفکیک"
+        },
+        {
+          "title": "NEW_ALL_PART_WITH_DETAIL: SystematicStockTaking",
+          "value": 18,
+          "persianTitle": "انبارگردانی سیستمی"
+        }
+      ],
+      "persianTitle": "نوع سند انبار",
+      "isMultiselect": true
+    },
+    "treasury_banksbalanceai_treasurybankaccounttype01": {
+      "title": "banksBalanceAI: BankAccountType 01",
+      "values": [
+        {
+          "title": "treasurybankaccounttype01: ShortTermDeposit",
+          "value": 1,
+          "persianTitle": "سپرده کوتاه‌مدت"
+        },
+        {
+          "title": "treasurybankaccounttype01: LongTermDeposit",
+          "value": 2,
+          "persianTitle": "سپرده بلندمدت"
+        },
+        {
+          "title": "treasurybankaccounttype01: SavingsAccount",
+          "value": 3,
+          "persianTitle": "قرض‌الحسنه پس‌انداز"
+        },
+        {
+          "title": "treasurybankaccounttype01: CurrentAccount",
+          "value": 4,
+          "persianTitle": "قرض‌الحسنه جاری"
+        }
+      ],
+      "persianTitle": "نوع حساب بانکی"
+    }
+  },
+  "boCount": 2,
+  "boNames": [
+    {
+      "name": "treasury_banksbalanceai",
+      "title": "banksBalance AI",
+      "columns": [
+        {
+          "name": "company_title",
+          "type": "String",
+          "title": "banksBalanceAI: company_title",
+          "persianTitle": "شرکت",
+          "promptHelper": ""
+        },
+        {
+          "name": "branch_title",
+          "type": "String",
+          "title": "banksBalanceAI: branch_title",
+          "persianTitle": "شعبه",
+          "promptHelper": ""
+        },
+        {
+          "name": "bank_title",
+          "type": "String",
+          "title": "banksBalanceAI: bank_title",
+          "persianTitle": "بانک",
+          "promptHelper": ""
+        },
+        {
+          "name": "bank_branch_title",
+          "type": "String",
+          "title": "banksBalanceAI: bank_branch_title",
+          "persianTitle": "شعبه بانک",
+          "promptHelper": ""
+        },
+        {
+          "name": "bank_account_type",
+          "type": "String",
+          "title": "banksBalanceAI: bank_account_type",
+          "enumId": "treasury_banksbalanceai_treasurybankaccounttype01",
+          "persianTitle": "نوع حساب",
+          "promptHelper": "Bank account deposit type (enum): ShortTermDeposit, LongTermDeposit, SavingsAccount, CurrentAccount"
+        },
+        {
+          "name": "bank_account_number",
+          "type": "String",
+          "title": "banksBalanceAI: bank_account_number",
+          "persianTitle": "شماره حساب",
+          "promptHelper": ""
+        },
+        {
+          "name": "bank_account_sheba_number",
+          "type": "String",
+          "title": "banksBalanceAI: bank_account_sheba_number",
+          "persianTitle": "شماره شبا",
+          "promptHelper": ""
+        },
+        {
+          "name": "bank_account_currency_title",
+          "type": "String",
+          "title": "banksBalanceAI: bank_account_currency_title",
+          "persianTitle": "ارز حساب",
+          "promptHelper": ""
+        },
+        {
+          "name": "dl_code",
+          "type": "String",
+          "title": "banksBalanceAI: dl_code",
+          "persianTitle": "کد تفصیل",
+          "promptHelper": "Dimension/Ledger (DL) code of the linked accounting bank account"
+        },
+        {
+          "name": "remaining_amount",
+          "type": "Decimal",
+          "title": "banksBalanceAI: remaining_amount",
+          "persianTitle": "موجودی",
+          "promptHelper": "Current book balance: opening amount plus all finalized transactions, minus bank fees"
+        },
+        {
+          "name": "credit_saved_amount",
+          "type": "Decimal",
+          "title": "banksBalanceAI: credit_saved_amount",
+          "persianTitle": "اعتبار (ذخیره) حساب",
+          "promptHelper": "Granted credit facility limit minus the reserved/blocked (saved) amount"
+        },
+        {
+          "name": "available_amount",
+          "type": "Decimal",
+          "title": "banksBalanceAI: available_amount",
+          "persianTitle": "موجودی قابل برداشت",
+          "promptHelper": "Available-to-spend balance: remaining_amount plus unused credit limit minus reserved amounts"
+        }
+      ],
+      "persianTitle": "موجودی بانک ها"
+    },
+    {
+      "name": "logistics_allparts",
+      "title": "New all parts with detail",
+      "columns": [
+        {
+          "name": "company_name",
+          "type": "String",
+          "title": "NEW_ALL_PART_WITH_DETAIL: COMPANY_NAME",
+          "persianTitle": "عنوان شرکت",
+          "promptHelper": ""
+        },
+        {
+          "name": "fiscal_year_title",
+          "type": "String",
+          "title": "NEW_ALL_PART_WITH_DETAIL: FISCAL_YEAR_TITLE",
+          "persianTitle": "عنوان سال مالی",
+          "promptHelper": ""
+        },
+        {
+          "name": "branch_title",
+          "type": "String",
+          "title": "NEW_ALL_PART_WITH_DETAIL: BRANCH_TITLE",
+          "persianTitle": "عنوان شعبه",
+          "promptHelper": ""
+        },
+        {
+          "name": "plant_code",
+          "type": "String",
+          "title": "NEW_ALL_PART_WITH_DETAIL: PLANT_CODE",
+          "persianTitle": "کد مرکز نگهداری",
+          "promptHelper": ""
+        },
+        {
+          "name": "plant_name",
+          "type": "String",
+          "title": "NEW_ALL_PART_WITH_DETAIL: PLANT_NAME",
+          "persianTitle": "عنوان مرکز نگهداری",
+          "promptHelper": ""
+        },
+        {
+          "name": "store_code",
+          "type": "String",
+          "title": "NEW_ALL_PART_WITH_DETAIL: STORE_CODE",
+          "persianTitle": "کد انبار",
+          "promptHelper": ""
+        },
+        {
+          "name": "store_name",
+          "type": "String",
+          "title": "NEW_ALL_PART_WITH_DETAIL: STORE_NAME",
+          "persianTitle": "عنوان انبار",
+          "promptHelper": ""
+        },
+        {
+          "name": "storage_type_title",
+          "type": "String",
+          "title": "NEW_ALL_PART_WITH_DETAIL: STORAGE_TYPE_TITLE",
+          "persianTitle": "نوع انبار",
+          "promptHelper": ""
+        },
+        {
+          "name": "product_code",
+          "type": "String",
+          "title": "NEW_ALL_PART_WITH_DETAIL: PRODUCT_CODE",
+          "persianTitle": "کد کالا",
+          "promptHelper": ""
+        },
+        {
+          "name": "product_title",
+          "type": "String",
+          "title": "NEW_ALL_PART_WITH_DETAIL: PRODUCT_TITLE",
+          "persianTitle": "عنوان کالا",
+          "promptHelper": ""
+        },
+        {
+          "name": "part_account_category_title",
+          "type": "String",
+          "title": "NEW_ALL_PART_WITH_DETAIL: PART_ACCOUNT_CATEGORY_TITLE",
+          "persianTitle": "عنوان طبقه حساب کالا",
+          "promptHelper": ""
+        },
+        {
+          "name": "pricing_method",
+          "type": "String",
+          "title": "NEW_ALL_PART_WITH_DETAIL: PRICING_METHOD",
+          "persianTitle": "روش قیمت گذاری کالا",
+          "promptHelper": ""
+        },
+        {
+          "name": "part_type",
+          "type": "String",
+          "title": "NEW_ALL_PART_WITH_DETAIL: PART_TYPE",
+          "persianTitle": "نوع کالا",
+          "promptHelper": ""
+        },
+        {
+          "name": "part_usage",
+          "type": "String",
+          "title": "NEW_ALL_PART_WITH_DETAIL: PART_USAGE",
+          "persianTitle": "نوع کارکرد کالا",
+          "promptHelper": ""
+        },
+        {
+          "name": "counter_part_type",
+          "type": "String",
+          "title": "NEW_ALL_PART_WITH_DETAIL: COUNTER_PART_TYPE",
+          "persianTitle": "نقش طرف مقابل سند",
+          "promptHelper": ""
+        },
+        {
+          "name": "voucher_title",
+          "type": "String",
+          "title": "NEW_ALL_PART_WITH_DETAIL: VOUCHER_TITLE",
+          "persianTitle": "عنوان سند",
+          "promptHelper": ""
+        },
+        {
+          "name": "voucher_type",
+          "type": "String",
+          "title": "NEW_ALL_PART_WITH_DETAIL: VOUCHER_TYPE",
+          "persianTitle": "نوع سند",
+          "promptHelper": ""
+        },
+        {
+          "name": "direction",
+          "type": "String",
+          "title": "NEW_ALL_PART_WITH_DETAIL: DIRECTION",
+          "persianTitle": "جهت سند",
+          "promptHelper": ""
+        },
+        {
+          "name": "type_of_effect",
+          "type": "String",
+          "title": "NEW_ALL_PART_WITH_DETAIL: TYPE_OF_EFFECT",
+          "persianTitle": "نوع تاثیر بر موجودی",
+          "promptHelper": ""
+        },
+        {
+          "name": "voucher_date",
+          "type": "Date",
+          "title": "NEW_ALL_PART_WITH_DETAIL: VOUCHER_DATE",
+          "persianTitle": "تاریخ سند",
+          "promptHelper": ""
+        },
+        {
+          "name": "voucher_unit",
+          "type": "String",
+          "title": "NEW_ALL_PART_WITH_DETAIL: VOUCHER_UNIT",
+          "persianTitle": "واحد سنجش سند",
+          "promptHelper": ""
+        },
+        {
+          "name": "part_major_unit_title",
+          "type": "String",
+          "title": "NEW_ALL_PART_WITH_DETAIL: part_major_unit_title",
+          "persianTitle": "واحد سنجش اصلی کالا",
+          "promptHelper": ""
+        },
+        {
+          "name": "second_unit_title",
+          "type": "String",
+          "title": "NEW_ALL_PART_WITH_DETAIL: second_unit_title",
+          "persianTitle": "عنوان واحد دوم",
+          "promptHelper": ""
+        },
+        {
+          "name": "permanent_voucher_quantity",
+          "type": "Int64",
+          "title": "NEW_ALL_PART_WITH_DETAIL: permanent_voucher_quantity",
+          "persianTitle": "مقدار دائم سند",
+          "promptHelper": ""
+        },
+        {
+          "name": "temporary_voucher_quantity",
+          "type": "Int64",
+          "title": "NEW_ALL_PART_WITH_DETAIL: temporary_voucher_quantity",
+          "persianTitle": "مقدار موقت سند",
+          "promptHelper": ""
+        },
+        {
+          "name": "discard_voucher_quantity",
+          "type": "Int64",
+          "title": "NEW_ALL_PART_WITH_DETAIL: discard_voucher_quantity",
+          "persianTitle": "مقدار ضایعات سند",
+          "promptHelper": ""
+        },
+        {
+          "name": "permanent_quantity",
+          "type": "Int64",
+          "title": "NEW_ALL_PART_WITH_DETAIL: permanent_quantity",
+          "persianTitle": "مقدار به واحد اصلی دائم",
+          "promptHelper": ""
+        },
+        {
+          "name": "temporary_quantity",
+          "type": "Int64",
+          "title": "NEW_ALL_PART_WITH_DETAIL: temporary_quantity",
+          "persianTitle": "مقدار به واحد اصلی موقت",
+          "promptHelper": ""
+        },
+        {
+          "name": "discard_quantity",
+          "type": "Int64",
+          "title": "NEW_ALL_PART_WITH_DETAIL: discard_quantity",
+          "persianTitle": "مقدار به واحد اصلی ضایعات",
+          "promptHelper": ""
+        },
+        {
+          "name": "permanent_second_quantity",
+          "type": "Int64",
+          "title": "NEW_ALL_PART_WITH_DETAIL: permanent_second_quantity",
+          "persianTitle": "مقدار به واحد دوم دائم",
+          "promptHelper": ""
+        },
+        {
+          "name": "temporary_second_quantity",
+          "type": "Int64",
+          "title": "NEW_ALL_PART_WITH_DETAIL: temporary_second_quantity",
+          "persianTitle": "مقدار به واحد دوم موقت",
+          "promptHelper": ""
+        },
+        {
+          "name": "discard_second_quantity",
+          "type": "Int64",
+          "title": "NEW_ALL_PART_WITH_DETAIL: discard_second_quantity",
+          "persianTitle": "مقدار به واحد دوم ضایعات",
+          "promptHelper": ""
+        },
+        {
+          "name": "state",
+          "type": "String",
+          "title": "NEW_ALL_PART_WITH_DETAIL: state",
+          "persianTitle": "وضعیت",
+          "promptHelper": ""
+        },
+        {
+          "name": "is_return",
+          "type": "Bool",
+          "title": "NEW_ALL_PART_WITH_DETAIL: is_return",
+          "persianTitle": "برگشتی",
+          "promptHelper": ""
+        }
+      ],
+      "persianTitle": "اطلاعات اقلام کالا با جزییات کامل"
+    }
+  ]
+}

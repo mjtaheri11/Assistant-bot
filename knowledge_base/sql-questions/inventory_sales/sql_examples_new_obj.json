@@ -3,670 +3,600 @@
     "id": 1,
     "complexity": "simple",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "تعداد کل اقلام ثبت‌شده چقدر است؟",
+    "table": "logistics_aistore",
+    "question": "تعداد کل انبارها چقدر است؟",
     "sql": {
-      "SQL": "SELECT COUNT(lap.product_code) AS lap_product_code_count FROM logistics_allparts AS lap",
+      "SQL": "SELECT COUNT(las.code) AS las_code_count FROM logistics_aistore AS las",
       "parameters": {},
-      "response_template": "تعداد کل ردیف‌های اقلام کالا:"
+      "response_template": "تعداد کل انبارهای ثبت‌شده:"
     }
   },
   {
     "id": 2,
     "complexity": "simple",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "کد و عنوان کالاها را نشان بده.",
+    "table": "logistics_aistore",
+    "question": "کد و عنوان همه انبارها را نشان بده.",
     "sql": {
-      "SQL": "SELECT DISTINCT lap.product_code, lap.product_title FROM logistics_allparts AS lap",
+      "SQL": "SELECT las.code, las.title FROM logistics_aistore AS las",
       "parameters": {},
-      "response_template": "کد و عنوان کالاها (مقادیر یکتا):"
+      "response_template": "کد و عنوان تمام انبارها:"
     }
   },
   {
     "id": 3,
     "complexity": "simple",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "مجموع مقدار دائم به واحد اصلی چقدر است؟",
+    "table": "logistics_aistore",
+    "question": "عناوین یکتای انبارها را فهرست کن.",
     "sql": {
-      "SQL": "SELECT SUM(lap.permanent_quantity) AS lap_permanent_quantity_sum FROM logistics_allparts AS lap",
+      "SQL": "SELECT DISTINCT las.title FROM logistics_aistore AS las",
       "parameters": {},
-      "response_template": "مجموع مقدار دائم به واحد اصلی همه اقلام:"
+      "response_template": "عناوین یکتای انبارها:"
     }
   },
   {
     "id": 4,
     "complexity": "simple",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "کد و عنوان انبارها را نشان بده.",
+    "table": "logistics_aistore",
+    "question": "چه نوع انبارهایی وجود دارد؟",
     "sql": {
-      "SQL": "SELECT DISTINCT lap.store_code, lap.store_name FROM logistics_allparts AS lap",
+      "SQL": "SELECT DISTINCT las.storage_type_title FROM logistics_aistore AS las",
       "parameters": {},
-      "response_template": "کد و عنوان انبارها (مقادیر یکتا):"
+      "response_template": "انواع یکتای انبار موجود:"
     }
   },
   {
     "id": 5,
     "complexity": "simple",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "شعبه‌های موجود کدامند؟",
+    "table": "logistics_aistore",
+    "question": "نام شرکت‌های دارای انبار را نشان بده.",
     "sql": {
-      "SQL": "SELECT DISTINCT lap.branch_title FROM logistics_allparts AS lap",
+      "SQL": "SELECT DISTINCT las.company_title FROM logistics_aistore AS las",
       "parameters": {},
-      "response_template": "عنوان شعبه‌ها (مقادیر یکتا):"
+      "response_template": "نام یکتای شرکت‌هایی که انبار دارند:"
     }
   },
   {
     "id": 6,
     "complexity": "simple",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "اقلام انباری که عنوانش شامل «مرکزی» است را نشان بده.",
+    "table": "logistics_aistore",
+    "question": "کد، عنوان و وضعیت انبارها را نمایش بده.",
     "sql": {
-      "SQL": "SELECT lap.store_name, lap.product_title, lap.permanent_quantity FROM logistics_allparts AS lap WHERE lap.store_name ILIKE $1",
-      "parameters": {
-        "1": "%مرکزی%"
-      },
-      "response_template": "عنوان انبار، عنوان کالا و مقدار دائم به واحد اصلی برای انبارهایی که عنوان آن‌ها شامل «مرکزی» است:"
+      "SQL": "SELECT las.code, las.title, las.state FROM logistics_aistore AS las",
+      "parameters": {},
+      "response_template": "کد، عنوان و وضعیت تمام انبارها:"
     }
   },
   {
     "id": 7,
     "complexity": "simple",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "کالاهایی که عنوانشان شامل «کابل» است را نشان بده.",
+    "table": "logistics_aistore",
+    "question": "انبارهایی که در عنوانشان «مرکزی» دارند را نشان بده.",
     "sql": {
-      "SQL": "SELECT lap.product_code, lap.product_title FROM logistics_allparts AS lap WHERE lap.product_title ILIKE $1",
-      "parameters": {
-        "1": "%کابل%"
-      },
-      "response_template": "کد و عنوان کالاهایی که عنوان آن‌ها شامل «کابل» است:"
+      "SQL": "SELECT las.code, las.title FROM logistics_aistore AS las WHERE (las.title ILIKE $1)",
+      "parameters": {"1": "%مرکزی%"},
+      "response_template": "کد و عنوان انبارهایی که عنوان آن‌ها شامل «مرکزی» است:"
     }
   },
   {
     "id": 8,
     "complexity": "simple",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "اقلامی که نوع کالای آن‌ها «محصول» است را نشان بده.",
+    "table": "logistics_aistore",
+    "question": "اطلاعات انباری با کد ۱۰۰ را بده.",
     "sql": {
-      "SQL": "SELECT lap.product_title, lap.part_type FROM logistics_allparts AS lap WHERE lap.part_type ILIKE $1",
-      "parameters": {
-        "1": "%محصول%"
-      },
-      "response_template": "عنوان کالا و نوع کالا برای اقلامی که نوع کالای آن‌ها شامل «محصول» است:"
+      "SQL": "SELECT las.code, las.title, las.state FROM logistics_aistore AS las WHERE (las.code ILIKE $1)",
+      "parameters": {"1": "%100%"},
+      "response_template": "کد، عنوان و وضعیت انباری که کد آن شامل «۱۰۰» است:"
     }
   },
   {
     "id": 9,
     "complexity": "simple",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "اقلام برگشتی را نشان بده.",
+    "table": "logistics_aistore",
+    "question": "انبارهای فعال را نشان بده.",
     "sql": {
-      "SQL": "SELECT lap.product_title, lap.voucher_title, lap.permanent_quantity FROM logistics_allparts AS lap WHERE lap.is_return = $1",
-      "parameters": {
-        "1": true
-      },
-      "response_template": "عنوان کالا، عنوان سند و مقدار دائم به واحد اصلی برای اقلام برگشتی:"
+      "SQL": "SELECT las.code, las.title FROM logistics_aistore AS las WHERE (las.state ILIKE $1)",
+      "parameters": {"1": "فعال%"},
+      "response_template": "کد و عنوان انبارهایی که وضعیت آن‌ها «فعال» است:"
     }
   },
   {
     "id": 10,
     "complexity": "simple",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "اقلام مربوط به اسناد خرید را نشان بده.",
+    "table": "logistics_aistore",
+    "question": "انبارهای غیرفعال کدام‌اند؟",
     "sql": {
-      "SQL": "SELECT lap.voucher_title, lap.voucher_type, lap.permanent_quantity FROM logistics_allparts AS lap WHERE lap.voucher_type ILIKE $1",
-      "parameters": {
-        "1": "%خرید%"
-      },
-      "response_template": "عنوان سند، نوع سند و مقدار دائم به واحد اصلی برای اسنادی که نوع آن‌ها شامل «خرید» است:"
+      "SQL": "SELECT las.code, las.title FROM logistics_aistore AS las WHERE (las.state ILIKE $1)",
+      "parameters": {"1": "%غیر فعال%"},
+      "response_template": "کد و عنوان انبارهایی که وضعیت آن‌ها «غیر فعال» است:"
     }
   },
   {
     "id": 11,
-    "complexity": "medium",
+    "complexity": "simple",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "مجموع مقدار دائم را به تفکیک انبار نشان بده.",
+    "table": "logistics_aistore",
+    "question": "انبارهای از نوع «سردخانه» را فهرست کن.",
     "sql": {
-      "SQL": "SELECT lap.store_name, SUM(lap.permanent_quantity) AS lap_permanent_quantity_sum FROM logistics_allparts AS lap GROUP BY lap.store_name",
-      "parameters": {},
-      "response_template": "مجموع مقدار دائم به واحد اصلی به تفکیک عنوان انبار:"
+      "SQL": "SELECT las.code, las.title FROM logistics_aistore AS las WHERE (las.storage_type_title ILIKE $1)",
+      "parameters": {"1": "%سردخانه%"},
+      "response_template": "کد و عنوان انبارهایی که نوع آن‌ها شامل «سردخانه» است:"
     }
   },
   {
     "id": 12,
-    "complexity": "medium",
+    "complexity": "simple",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "مجموع مقدار دائم را به تفکیک کالا نشان بده.",
+    "table": "logistics_aistore",
+    "question": "انبارهای شرکت «پگاه» را نشان بده.",
     "sql": {
-      "SQL": "SELECT lap.product_title, SUM(lap.permanent_quantity) AS lap_permanent_quantity_sum FROM logistics_allparts AS lap GROUP BY lap.product_title",
-      "parameters": {},
-      "response_template": "مجموع مقدار دائم به واحد اصلی به تفکیک عنوان کالا:"
+      "SQL": "SELECT las.code, las.title FROM logistics_aistore AS las WHERE (las.company_title ILIKE $1)",
+      "parameters": {"1": "%پگاه%"},
+      "response_template": "کد و عنوان انبارهای متعلق به شرکتی که نام آن شامل «پگاه» است:"
     }
   },
   {
     "id": 13,
-    "complexity": "medium",
+    "complexity": "simple",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "تعداد اقلام را به تفکیک نوع کالا نشان بده.",
+    "table": "logistics_aistore",
+    "question": "انبارها را به ترتیب عنوان نمایش بده.",
     "sql": {
-      "SQL": "SELECT lap.part_type, COUNT(lap.product_code) AS lap_product_code_count FROM logistics_allparts AS lap GROUP BY lap.part_type",
+      "SQL": "SELECT las.code, las.title FROM logistics_aistore AS las ORDER BY las.title ASC",
       "parameters": {},
-      "response_template": "تعداد ردیف‌های اقلام به تفکیک نوع کالا:"
+      "response_template": "کد و عنوان تمام انبارها، مرتب‌شده بر اساس عنوان به صورت صعودی:"
     }
   },
   {
     "id": 14,
-    "complexity": "medium",
+    "complexity": "simple",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "مجموع مقدار دائم را به تفکیک نوع سند نشان بده.",
+    "table": "logistics_aistore",
+    "question": "فهرست انبارها مرتب بر اساس کد.",
     "sql": {
-      "SQL": "SELECT lap.voucher_type, SUM(lap.permanent_quantity) AS lap_permanent_quantity_sum FROM logistics_allparts AS lap GROUP BY lap.voucher_type",
+      "SQL": "SELECT las.code, las.title FROM logistics_aistore AS las ORDER BY las.code ASC",
       "parameters": {},
-      "response_template": "مجموع مقدار دائم به واحد اصلی به تفکیک نوع سند:"
+      "response_template": "کد و عنوان تمام انبارها، مرتب‌شده بر اساس کد به صورت صعودی:"
     }
   },
   {
     "id": 15,
-    "complexity": "medium",
+    "complexity": "simple",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "اقلام ثبت‌شده در تاریخ ۱۴۰۵/۰۲/۲۰ را نشان بده.",
+    "table": "logistics_aistore",
+    "question": "۱۰ انبار اول را نشان بده.",
     "sql": {
-      "SQL": "SELECT lap.product_title, lap.voucher_title, lap.voucher_date, lap.permanent_quantity FROM logistics_allparts AS lap WHERE lap.voucher_date = $1",
-      "parameters": {
-        "1": "2026.05.10"
-      },
-      "response_template": "عنوان کالا، عنوان سند، تاریخ سند و مقدار دائم به واحد اصلی برای اسناد تاریخ ۱۴۰۵/۰۲/۲۰:"
+      "SQL": "SELECT las.code, las.title FROM logistics_aistore AS las ORDER BY las.code ASC LIMIT 10",
+      "parameters": {},
+      "response_template": "کد و عنوان ۱۰ انبار اول، مرتب‌شده بر اساس کد به صورت صعودی:"
     }
   },
   {
     "id": 16,
     "complexity": "medium",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "اقلام ثبت‌شده از ابتدای سال تا امروز را نشان بده.",
+    "table": "logistics_aistore",
+    "question": "تعداد انبارها به تفکیک وضعیت چقدر است؟",
     "sql": {
-      "SQL": "SELECT lap.product_title, lap.voucher_date, lap.permanent_quantity FROM logistics_allparts AS lap WHERE lap.voucher_date BETWEEN $1 AND $2",
-      "parameters": {
-        "1": "2026.03.21",
-        "2": "2026.06.21"
-      },
-      "response_template": "عنوان کالا، تاریخ سند و مقدار دائم به واحد اصلی برای اسناد از ۱۴۰۵/۰۱/۰۱ تا ۱۴۰۵/۰۳/۳۱:"
+      "SQL": "SELECT las.state, COUNT(las.code) AS las_code_count FROM logistics_aistore AS las GROUP BY las.state",
+      "parameters": {},
+      "response_template": "تعداد انبارها به تفکیک وضعیت:"
     }
   },
   {
     "id": 17,
     "complexity": "medium",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "مجموع مقدار دائم را به تفکیک شعبه نشان بده.",
+    "table": "logistics_aistore",
+    "question": "تعداد انبارها به تفکیک نوع انبار.",
     "sql": {
-      "SQL": "SELECT lap.branch_title, SUM(lap.permanent_quantity) AS lap_permanent_quantity_sum FROM logistics_allparts AS lap GROUP BY lap.branch_title",
+      "SQL": "SELECT las.storage_type_title, COUNT(las.code) AS las_code_count FROM logistics_aistore AS las GROUP BY las.storage_type_title",
       "parameters": {},
-      "response_template": "مجموع مقدار دائم به واحد اصلی به تفکیک عنوان شعبه:"
+      "response_template": "تعداد انبارها به تفکیک نوع انبار:"
     }
   },
   {
     "id": 18,
     "complexity": "medium",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "اقلام با جهت سند ورودی را نشان بده.",
+    "table": "logistics_aistore",
+    "question": "هر شرکت چند انبار دارد؟",
     "sql": {
-      "SQL": "SELECT lap.product_title, lap.direction, lap.permanent_quantity FROM logistics_allparts AS lap WHERE lap.direction ILIKE $1",
-      "parameters": {
-        "1": "%ورودی%"
-      },
-      "response_template": "عنوان کالا، جهت سند و مقدار دائم به واحد اصلی برای اقلامی که جهت سند آن‌ها شامل «ورودی» است:"
+      "SQL": "SELECT las.company_title, COUNT(las.code) AS las_code_count FROM logistics_aistore AS las GROUP BY las.company_title",
+      "parameters": {},
+      "response_template": "تعداد انبارها به تفکیک شرکت:"
     }
   },
   {
     "id": 19,
     "complexity": "medium",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "اقلامی که وضعیت آن‌ها «تایید شده» است را نشان بده.",
+    "table": "logistics_aistore",
+    "question": "چند نوع انبار متفاوت وجود دارد؟",
     "sql": {
-      "SQL": "SELECT lap.product_title, lap.state FROM logistics_allparts AS lap WHERE lap.state ILIKE $1",
-      "parameters": {
-        "1": "%تایید%"
-      },
-      "response_template": "عنوان کالا و وضعیت برای اقلامی که وضعیت آن‌ها شامل «تایید» است:"
+      "SQL": "SELECT COUNT(DISTINCT las.storage_type_title) AS las_storage_type_title_count FROM logistics_aistore AS las",
+      "parameters": {},
+      "response_template": "تعداد انواع یکتای انبار:"
     }
   },
   {
     "id": 20,
     "complexity": "medium",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "۱۰ کالا با بیشترین مقدار دائم کدامند؟",
+    "table": "logistics_aistore",
+    "question": "چند شرکت دارای انبار هستند؟",
     "sql": {
-      "SQL": "SELECT lap.product_title, SUM(lap.permanent_quantity) AS lap_permanent_quantity_sum FROM logistics_allparts AS lap GROUP BY lap.product_title ORDER BY lap_permanent_quantity_sum DESC LIMIT $1",
-      "parameters": {
-        "1": "10"
-      },
-      "response_template": "مجموع مقدار دائم به واحد اصلی به تفکیک عنوان کالا، مرتب‌شده از بیشترین به کمترین، ۱۰ مورد اول:"
+      "SQL": "SELECT COUNT(DISTINCT las.company_title) AS las_company_title_count FROM logistics_aistore AS las",
+      "parameters": {},
+      "response_template": "تعداد شرکت‌های یکتای دارای انبار:"
     }
   },
   {
     "id": 21,
     "complexity": "medium",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "اقلام انبارهایی که نوع انبار آن‌ها «مواد اولیه» است را نشان بده.",
+    "table": "logistics_aistore",
+    "question": "انبارهای فعال شرکت «پگاه» را نشان بده.",
     "sql": {
-      "SQL": "SELECT lap.store_name, lap.storage_type_title, lap.permanent_quantity FROM logistics_allparts AS lap WHERE lap.storage_type_title ILIKE $1",
-      "parameters": {
-        "1": "%مواد اولیه%"
-      },
-      "response_template": "عنوان انبار، نوع انبار و مقدار دائم به واحد اصلی برای انبارهایی که نوع آن‌ها شامل «مواد اولیه» است:"
+      "SQL": "SELECT las.code, las.title FROM logistics_aistore AS las WHERE (las.company_title ILIKE $1) AND (las.state ILIKE $2)",
+      "parameters": {"1": "%پگاه%", "2": "فعال%"},
+      "response_template": "کد و عنوان انبارهای فعال متعلق به شرکتی که نام آن شامل «پگاه» است:"
     }
   },
   {
     "id": 22,
     "complexity": "medium",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "مجموع مقدار موقت را به تفکیک انبار نشان بده.",
+    "table": "logistics_aistore",
+    "question": "انبارهای فعالی که عنوانشان شامل «مرکزی» است را بده.",
     "sql": {
-      "SQL": "SELECT lap.store_name, SUM(lap.temporary_quantity) AS lap_temporary_quantity_sum FROM logistics_allparts AS lap GROUP BY lap.store_name",
-      "parameters": {},
-      "response_template": "مجموع مقدار موقت به واحد اصلی به تفکیک عنوان انبار:"
+      "SQL": "SELECT las.code, las.title FROM logistics_aistore AS las WHERE (las.title ILIKE $1) AND (las.state ILIKE $2)",
+      "parameters": {"1": "%مرکزی%", "2": "فعال%"},
+      "response_template": "کد و عنوان انبارهای فعال که عنوان آن‌ها شامل «مرکزی» است:"
     }
   },
   {
     "id": 23,
     "complexity": "medium",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "مجموع مقدار ضایعات را به تفکیک کالا نشان بده.",
+    "table": "logistics_aistore",
+    "question": "چند انبار فعال داریم؟",
     "sql": {
-      "SQL": "SELECT lap.product_title, SUM(lap.discard_quantity) AS lap_discard_quantity_sum FROM logistics_allparts AS lap GROUP BY lap.product_title",
-      "parameters": {},
-      "response_template": "مجموع مقدار ضایعات به واحد اصلی به تفکیک عنوان کالا:"
+      "SQL": "SELECT COUNT(las.code) AS las_code_count FROM logistics_aistore AS las WHERE (las.state ILIKE $1)",
+      "parameters": {"1": "فعال%"},
+      "response_template": "تعداد انبارهایی که وضعیت آن‌ها «فعال» است:"
     }
   },
   {
     "id": 24,
     "complexity": "medium",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "تعداد اسناد را به تفکیک نوع سند نشان بده.",
+    "table": "logistics_aistore",
+    "question": "تعداد انبارهای غیرفعال چقدر است؟",
     "sql": {
-      "SQL": "SELECT lap.voucher_type, COUNT(lap.voucher_title) AS lap_voucher_title_count FROM logistics_allparts AS lap GROUP BY lap.voucher_type",
-      "parameters": {},
-      "response_template": "تعداد ردیف‌های اسناد به تفکیک نوع سند:"
+      "SQL": "SELECT COUNT(las.code) AS las_code_count FROM logistics_aistore AS las WHERE (las.state ILIKE $1)",
+      "parameters": {"1": "%غیر فعال%"},
+      "response_template": "تعداد انبارهایی که وضعیت آن‌ها «غیر فعال» است:"
     }
   },
   {
     "id": 25,
     "complexity": "medium",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "اقلامی که مقدار دائم آن‌ها بیشتر از ۱۰۰۰ است را نشان بده.",
+    "table": "logistics_aistore",
+    "question": "انبارها را بر اساس شرکت و سپس عنوان مرتب کن.",
     "sql": {
-      "SQL": "SELECT lap.product_title, lap.permanent_quantity FROM logistics_allparts AS lap WHERE lap.permanent_quantity > $1",
-      "parameters": {
-        "1": "1000"
-      },
-      "response_template": "عنوان کالا و مقدار دائم به واحد اصلی برای اقلامی که مقدار دائم آن‌ها بیشتر از ۱۰۰۰ است:"
+      "SQL": "SELECT las.company_title, las.code, las.title FROM logistics_aistore AS las ORDER BY las.company_title ASC, las.title ASC",
+      "parameters": {},
+      "response_template": "شرکت، کد و عنوان انبارها، مرتب‌شده بر اساس شرکت و سپس عنوان به صورت صعودی:"
     }
   },
   {
     "id": 26,
     "complexity": "medium",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "اقلام مراکز نگهداری‌ای که عنوانشان شامل «تهران» است را نشان بده.",
+    "table": "logistics_aistore",
+    "question": "انواع انبار را به ترتیب الفبا نشان بده.",
     "sql": {
-      "SQL": "SELECT lap.plant_name, lap.product_title, lap.permanent_quantity FROM logistics_allparts AS lap WHERE lap.plant_name ILIKE $1",
-      "parameters": {
-        "1": "%تهران%"
-      },
-      "response_template": "عنوان مرکز نگهداری، عنوان کالا و مقدار دائم به واحد اصلی برای مراکزی که عنوان آن‌ها شامل «تهران» است:"
+      "SQL": "SELECT DISTINCT las.storage_type_title FROM logistics_aistore AS las ORDER BY las.storage_type_title ASC",
+      "parameters": {},
+      "response_template": "انواع یکتای انبار، مرتب‌شده بر اساس نوع انبار به صورت صعودی:"
     }
   },
   {
     "id": 27,
     "complexity": "medium",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "اقلامی که نوع کارکرد آن‌ها «قابل فروش» است را نشان بده.",
+    "table": "logistics_aistore",
+    "question": "تعداد انبارها به تفکیک وضعیت، از بیشترین به کمترین.",
     "sql": {
-      "SQL": "SELECT lap.product_title, lap.part_usage FROM logistics_allparts AS lap WHERE lap.part_usage ILIKE $1",
-      "parameters": {
-        "1": "%قابل فروش%"
-      },
-      "response_template": "عنوان کالا و نوع کارکرد کالا برای اقلامی که نوع کارکرد آن‌ها شامل «قابل فروش» است:"
+      "SQL": "SELECT las.state, COUNT(las.code) AS las_code_count FROM logistics_aistore AS las GROUP BY las.state ORDER BY las_code_count DESC",
+      "parameters": {},
+      "response_template": "تعداد انبارها به تفکیک وضعیت، مرتب‌شده از بیشترین به کمترین:"
     }
   },
   {
     "id": 28,
     "complexity": "medium",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "اقلامی که روش قیمت‌گذاری آن‌ها «میانگین» است را نشان بده.",
+    "table": "logistics_aistore",
+    "question": "کدام شرکت بیشترین تعداد انبار را دارد؟",
     "sql": {
-      "SQL": "SELECT lap.product_title, lap.pricing_method FROM logistics_allparts AS lap WHERE lap.pricing_method ILIKE $1",
-      "parameters": {
-        "1": "%میانگین%"
-      },
-      "response_template": "عنوان کالا و روش قیمت‌گذاری برای اقلامی که روش قیمت‌گذاری آن‌ها شامل «میانگین» است:"
+      "SQL": "SELECT las.company_title, COUNT(las.code) AS las_code_count FROM logistics_aistore AS las GROUP BY las.company_title ORDER BY las_code_count DESC LIMIT 1",
+      "parameters": {},
+      "response_template": "شرکت با بیشترین تعداد انبار به همراه تعداد آن (۱ مورد اول):"
     }
   },
   {
     "id": 29,
     "complexity": "medium",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "تعداد اقلام را به تفکیک شعبه نشان بده.",
+    "table": "logistics_aistore",
+    "question": "انبارهای فعال از نوع «سردخانه» را نشان بده.",
     "sql": {
-      "SQL": "SELECT lap.branch_title, COUNT(lap.product_code) AS lap_product_code_count FROM logistics_allparts AS lap GROUP BY lap.branch_title",
-      "parameters": {},
-      "response_template": "تعداد ردیف‌های اقلام به تفکیک عنوان شعبه:"
+      "SQL": "SELECT las.code, las.title FROM logistics_aistore AS las WHERE (las.storage_type_title ILIKE $1) AND (las.state ILIKE $2)",
+      "parameters": {"1": "%سردخانه%", "2": "فعال%"},
+      "response_template": "کد و عنوان انبارهای فعال که نوع آن‌ها شامل «سردخانه» است:"
     }
   },
   {
     "id": 30,
     "complexity": "medium",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "اقلام سال مالی‌ای که عنوانش شامل «۱۴۰۴» است را نشان بده.",
+    "table": "logistics_aistore",
+    "question": "هر شرکت چند انبار فعال دارد؟",
     "sql": {
-      "SQL": "SELECT lap.product_title, lap.fiscal_year_title, lap.permanent_quantity FROM logistics_allparts AS lap WHERE lap.fiscal_year_title ILIKE $1",
-      "parameters": {
-        "1": "%1404%"
-      },
-      "response_template": "عنوان کالا، عنوان سال مالی و مقدار دائم به واحد اصلی برای سال مالی‌ای که عنوان آن شامل «1404» است:"
+      "SQL": "SELECT las.company_title, COUNT(las.code) AS las_code_count FROM logistics_aistore AS las WHERE (las.state ILIKE $1) GROUP BY las.company_title",
+      "parameters": {"1": "فعال%"},
+      "response_template": "تعداد انبارهای فعال به تفکیک شرکت:"
     }
   },
   {
     "id": 31,
-    "complexity": "complex",
+    "complexity": "medium",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "مجموع مقدار دائم را به تفکیک انبار و کالا نشان بده.",
+    "table": "logistics_aistore",
+    "question": "انبارهای شرکت «پگاه» از نوع «سردخانه» را فهرست کن.",
     "sql": {
-      "SQL": "SELECT lap.store_name, lap.product_title, SUM(lap.permanent_quantity) AS lap_permanent_quantity_sum FROM logistics_allparts AS lap GROUP BY lap.store_name, lap.product_title",
-      "parameters": {},
-      "response_template": "مجموع مقدار دائم به واحد اصلی به تفکیک عنوان انبار و عنوان کالا:"
+      "SQL": "SELECT las.code, las.title FROM logistics_aistore AS las WHERE (las.company_title ILIKE $1) AND (las.storage_type_title ILIKE $2)",
+      "parameters": {"1": "%پگاه%", "2": "%سردخانه%"},
+      "response_template": "کد و عنوان انبارهای شرکتی که نام آن شامل «پگاه» است و نوع آن‌ها شامل «سردخانه» است:"
     }
   },
   {
     "id": 32,
-    "complexity": "complex",
+    "complexity": "medium",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "مجموع مقدار خریداری‌شده هر کالا را از بیشترین به کمترین نشان بده.",
+    "table": "logistics_aistore",
+    "question": "ترکیب‌های یکتای شرکت و وضعیت انبارها را نشان بده.",
     "sql": {
-      "SQL": "SELECT lap.product_title, SUM(lap.permanent_quantity) AS lap_permanent_quantity_sum FROM logistics_allparts AS lap WHERE lap.voucher_type ILIKE $1 GROUP BY lap.product_title ORDER BY lap_permanent_quantity_sum DESC",
-      "parameters": {
-        "1": "%خرید%"
-      },
-      "response_template": "مجموع مقدار دائم به واحد اصلی به تفکیک عنوان کالا، برای اسنادی که نوع آن‌ها شامل «خرید» است، مرتب‌شده از بیشترین به کمترین:"
+      "SQL": "SELECT DISTINCT las.company_title, las.state FROM logistics_aistore AS las",
+      "parameters": {},
+      "response_template": "ترکیب‌های یکتای شرکت و وضعیت انبارها:"
     }
   },
   {
     "id": 33,
-    "complexity": "complex",
+    "complexity": "medium",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "اقلام انبار «مرکزی» که از ابتدای سال تا امروز ثبت شده‌اند را نشان بده.",
+    "table": "logistics_aistore",
+    "question": "چه وضعیت‌هایی برای انبارها ثبت شده است؟",
     "sql": {
-      "SQL": "SELECT lap.product_title, lap.voucher_date, lap.permanent_quantity FROM logistics_allparts AS lap WHERE lap.store_name ILIKE $1 AND lap.voucher_date BETWEEN $2 AND $3",
-      "parameters": {
-        "1": "%مرکزی%",
-        "2": "2026.03.21",
-        "3": "2026.06.21"
-      },
-      "response_template": "عنوان کالا، تاریخ سند و مقدار دائم به واحد اصلی برای انبارهایی که عنوان آن‌ها شامل «مرکزی» است و تاریخ سند آن‌ها از ۱۴۰۵/۰۱/۰۱ تا ۱۴۰۵/۰۳/۳۱ است:"
+      "SQL": "SELECT DISTINCT las.state FROM logistics_aistore AS las",
+      "parameters": {},
+      "response_template": "وضعیت‌های یکتای ثبت‌شده برای انبارها:"
     }
   },
   {
     "id": 34,
-    "complexity": "complex",
+    "complexity": "medium",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "انواع سندی که مجموع مقدار دائم آن‌ها بیشتر از ۱۰۰۰۰ است کدامند؟",
+    "table": "logistics_aistore",
+    "question": "انبارهایی که کدشان با «A» شروع می‌شود را بده.",
     "sql": {
-      "SQL": "SELECT lap.voucher_type, SUM(lap.permanent_quantity) AS lap_permanent_quantity_sum FROM logistics_allparts AS lap GROUP BY lap.voucher_type HAVING SUM(lap.permanent_quantity) > $1",
-      "parameters": {
-        "1": "10000"
-      },
-      "response_template": "مجموع مقدار دائم به واحد اصلی به تفکیک نوع سند، تنها برای انواع سندی که مجموع مقدار آن‌ها بیشتر از ۱۰۰۰۰ است:"
+      "SQL": "SELECT las.code, las.title FROM logistics_aistore AS las WHERE (las.code ILIKE $1)",
+      "parameters": {"1": "A%"},
+      "response_template": "کد و عنوان انبارهایی که کد آن‌ها با «A» شروع می‌شود:"
     }
   },
   {
     "id": 35,
-    "complexity": "complex",
+    "complexity": "medium",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "مجموع مقدار برگشتی هر کالا چقدر است؟",
+    "table": "logistics_aistore",
+    "question": "شرکت‌هایی که بیش از ۵ انبار دارند را نشان بده.",
     "sql": {
-      "SQL": "SELECT lap.product_title, SUM(lap.permanent_quantity) AS lap_permanent_quantity_sum FROM logistics_allparts AS lap WHERE lap.is_return = $1 GROUP BY lap.product_title",
-      "parameters": {
-        "1": true
-      },
-      "response_template": "مجموع مقدار دائم به واحد اصلی به تفکیک عنوان کالا، تنها برای اقلام برگشتی:"
+      "SQL": "SELECT las.company_title, COUNT(las.code) AS las_code_count FROM logistics_aistore AS las GROUP BY las.company_title HAVING COUNT(las.code) > $1",
+      "parameters": {"1": "5"},
+      "response_template": "شرکت‌ها به همراه تعداد انبار، تنها برای شرکت‌هایی که بیش از ۵ انبار دارند:"
     }
   },
   {
     "id": 36,
-    "complexity": "complex",
+    "complexity": "difficult",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "مجموع مقدار دائم، موقت و ضایعات هر کالا را نشان بده.",
+    "table": "logistics_aistore",
+    "question": "شرکت‌هایی که حداقل ۳ انبار دارند را از بیشترین به کمترین مرتب کن.",
     "sql": {
-      "SQL": "SELECT lap.product_title, SUM(lap.permanent_quantity) AS lap_permanent_quantity_sum, SUM(lap.temporary_quantity) AS lap_temporary_quantity_sum, SUM(lap.discard_quantity) AS lap_discard_quantity_sum FROM logistics_allparts AS lap GROUP BY lap.product_title",
-      "parameters": {},
-      "response_template": "مجموع مقدار دائم، مقدار موقت و مقدار ضایعات به واحد اصلی به تفکیک عنوان کالا:"
+      "SQL": "SELECT las.company_title, COUNT(las.code) AS las_code_count FROM logistics_aistore AS las GROUP BY las.company_title HAVING COUNT(las.code) >= $1 ORDER BY las_code_count DESC",
+      "parameters": {"1": "3"},
+      "response_template": "شرکت‌ها به همراه تعداد انبار، تنها برای شرکت‌هایی که حداقل ۳ انبار دارند، مرتب‌شده از بیشترین به کمترین:"
     }
   },
   {
     "id": 37,
-    "complexity": "complex",
+    "complexity": "difficult",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "۵ انبار با بیشترین مقدار ضایعات کدامند؟",
+    "table": "logistics_aistore",
+    "question": "کدام شرکت‌ها بیش از ۲ انبار فعال دارند؟",
     "sql": {
-      "SQL": "SELECT lap.store_name, SUM(lap.discard_quantity) AS lap_discard_quantity_sum FROM logistics_allparts AS lap GROUP BY lap.store_name ORDER BY lap_discard_quantity_sum DESC LIMIT $1",
-      "parameters": {
-        "1": "5"
-      },
-      "response_template": "مجموع مقدار ضایعات به واحد اصلی به تفکیک عنوان انبار، مرتب‌شده از بیشترین به کمترین، ۵ مورد اول:"
+      "SQL": "SELECT las.company_title, COUNT(las.code) AS las_code_count FROM logistics_aistore AS las WHERE (las.state ILIKE $1) GROUP BY las.company_title HAVING COUNT(las.code) > $2 ORDER BY las_code_count DESC",
+      "parameters": {"1": "فعال%", "2": "2"},
+      "response_template": "شرکت‌ها به همراه تعداد انبار فعال، تنها برای شرکت‌هایی که بیش از ۲ انبار فعال دارند، مرتب‌شده از بیشترین به کمترین:"
     }
   },
   {
     "id": 38,
-    "complexity": "complex",
+    "complexity": "difficult",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "مجموع مقدار خروجی هر کالا چقدر است؟",
+    "table": "logistics_aistore",
+    "question": "۵ نوع انبار پرتکرار را نشان بده.",
     "sql": {
-      "SQL": "SELECT lap.product_title, SUM(lap.permanent_quantity) AS lap_permanent_quantity_sum FROM logistics_allparts AS lap WHERE lap.direction ILIKE $1 GROUP BY lap.product_title",
-      "parameters": {
-        "1": "%خروجی%"
-      },
-      "response_template": "مجموع مقدار دائم به واحد اصلی به تفکیک عنوان کالا، تنها برای اسنادی که جهت آن‌ها شامل «خروجی» است:"
+      "SQL": "SELECT las.storage_type_title, COUNT(las.code) AS las_code_count FROM logistics_aistore AS las GROUP BY las.storage_type_title ORDER BY las_code_count DESC LIMIT 5",
+      "parameters": {},
+      "response_template": "۵ نوع انبار با بیشترین تعداد انبار، مرتب‌شده از بیشترین به کمترین:"
     }
   },
   {
     "id": 39,
-    "complexity": "complex",
+    "complexity": "difficult",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "محصولات تاییدشده را بر اساس مقدار دائم از زیاد به کم نشان بده.",
+    "table": "logistics_aistore",
+    "question": "انبارهای شرکتی که بیشترین تعداد انبار را دارد نشان بده.",
     "sql": {
-      "SQL": "SELECT lap.product_title, lap.permanent_quantity FROM logistics_allparts AS lap WHERE lap.part_type ILIKE $1 AND lap.state ILIKE $2 ORDER BY lap.permanent_quantity DESC",
-      "parameters": {
-        "1": "%محصول%",
-        "2": "%تایید%"
-      },
-      "response_template": "عنوان کالا و مقدار دائم به واحد اصلی برای اقلامی که نوع کالای آن‌ها شامل «محصول» و وضعیت آن‌ها شامل «تایید» است، مرتب‌شده از بیشترین به کمترین:"
+      "SQL": "SELECT las.code, las.title, las.company_title FROM logistics_aistore AS las WHERE las.company_title = (SELECT las2.company_title FROM logistics_aistore AS las2 GROUP BY las2.company_title ORDER BY COUNT(las2.code) DESC LIMIT 1)",
+      "parameters": {},
+      "response_template": "کد، عنوان و شرکتِ انبارهای متعلق به شرکتی که بیشترین تعداد انبار را دارد:"
     }
   },
   {
     "id": 40,
-    "complexity": "complex",
+    "complexity": "difficult",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "مجموع مقدار فروش‌رفته هر انبار را از ابتدای سال تا امروز و از بیشترین به کمترین نشان بده.",
+    "table": "logistics_aistore",
+    "question": "هر شرکت چند نوع انبار متفاوت دارد؟",
     "sql": {
-      "SQL": "SELECT lap.store_name, SUM(lap.permanent_quantity) AS lap_permanent_quantity_sum FROM logistics_allparts AS lap WHERE lap.voucher_type ILIKE $1 AND lap.voucher_date BETWEEN $2 AND $3 GROUP BY lap.store_name ORDER BY lap_permanent_quantity_sum DESC",
-      "parameters": {
-        "1": "%فروش%",
-        "2": "2026.03.21",
-        "3": "2026.06.21"
-      },
-      "response_template": "مجموع مقدار دائم به واحد اصلی به تفکیک عنوان انبار، برای اسناد فروش با تاریخ از ۱۴۰۵/۰۱/۰۱ تا ۱۴۰۵/۰۳/۳۱، مرتب‌شده از بیشترین به کمترین:"
+      "SQL": "SELECT las.company_title, COUNT(DISTINCT las.storage_type_title) AS las_storage_type_title_count FROM logistics_aistore AS las GROUP BY las.company_title ORDER BY las_storage_type_title_count DESC",
+      "parameters": {},
+      "response_template": "تعداد انواع یکتای انبار به تفکیک شرکت، مرتب‌شده از بیشترین به کمترین:"
     }
   },
   {
     "id": 41,
-    "complexity": "medium",
+    "complexity": "difficult",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "اقلام ثبت‌شده در روز گذشته را نشان بده.",
+    "table": "logistics_aistore",
+    "question": "توزیع وضعیت انبارهای شرکت «پگاه» را نشان بده.",
     "sql": {
-      "SQL": "SELECT lap.product_title, lap.voucher_title, lap.permanent_quantity FROM logistics_allparts AS lap WHERE lap.voucher_date = $1",
-      "parameters": {
-        "1": "2026.06.20"
-      },
-      "response_template": "عنوان کالا، عنوان سند و مقدار دائم به واحد اصلی برای اسناد تاریخ ۱۴۰۵/۰۳/۳۰ (دیروز):"
+      "SQL": "SELECT las.state, COUNT(las.code) AS las_code_count FROM logistics_aistore AS las WHERE (las.company_title ILIKE $1) GROUP BY las.state ORDER BY las_code_count DESC",
+      "parameters": {"1": "%پگاه%"},
+      "response_template": "تعداد انبارها به تفکیک وضعیت برای شرکتی که نام آن شامل «پگاه» است، مرتب‌شده از بیشترین به کمترین:"
     }
   },
   {
     "id": 42,
-    "complexity": "medium",
+    "complexity": "difficult",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "اقلام یک ماه گذشته را نشان بده.",
+    "table": "logistics_aistore",
+    "question": "انبارهای فعالی که نوعشان شامل «خشک» است را به ترتیب عنوان نشان بده.",
     "sql": {
-      "SQL": "SELECT lap.product_title, lap.permanent_quantity FROM logistics_allparts AS lap WHERE lap.voucher_date BETWEEN $1 AND $2",
-      "parameters": {
-        "1": "2026.05.21",
-        "2": "2026.06.21"
-      },
-      "response_template": "عنوان کالا و مقدار دائم به واحد اصلی برای اسناد از ۱۴۰۵/۰۲/۳۱ تا ۱۴۰۵/۰۳/۳۱ (یک ماه گذشته):"
+      "SQL": "SELECT las.code, las.title, las.storage_type_title FROM logistics_aistore AS las WHERE (las.state ILIKE $1) AND (las.storage_type_title ILIKE $2) ORDER BY las.title ASC",
+      "parameters": {"1": "فعال%", "2": "%خشک%"},
+      "response_template": "کد، عنوان و نوع انبارهای فعال که نوع آن‌ها شامل «خشک» است، مرتب‌شده بر اساس عنوان به صورت صعودی:"
     }
   },
   {
     "id": 43,
-    "complexity": "simple",
+    "complexity": "difficult",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "بیشترین مقدار دائم ثبت‌شده چقدر است؟",
+    "table": "logistics_aistore",
+    "question": "تعداد انبارها به تفکیک شرکت و وضعیت را نشان بده.",
     "sql": {
-      "SQL": "SELECT MAX(lap.permanent_quantity) AS lap_permanent_quantity_max FROM logistics_allparts AS lap",
+      "SQL": "SELECT las.company_title, las.state, COUNT(las.code) AS las_code_count FROM logistics_aistore AS las GROUP BY las.company_title, las.state ORDER BY las.company_title ASC, las_code_count DESC",
       "parameters": {},
-      "response_template": "بیشترین مقدار دائم به واحد اصلی بین همه ردیف‌ها:"
+      "response_template": "تعداد انبارها به تفکیک شرکت و وضعیت، مرتب‌شده بر اساس شرکت به صورت صعودی و سپس تعداد به صورت نزولی:"
     }
   },
   {
     "id": 44,
-    "complexity": "simple",
+    "complexity": "difficult",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "کمترین مقدار دائم ثبت‌شده چقدر است؟",
+    "table": "logistics_aistore",
+    "question": "شرکت‌هایی که فقط یک انبار دارند را نشان بده.",
     "sql": {
-      "SQL": "SELECT MIN(lap.permanent_quantity) AS lap_permanent_quantity_min FROM logistics_allparts AS lap",
-      "parameters": {},
-      "response_template": "کمترین مقدار دائم به واحد اصلی بین همه ردیف‌ها:"
+      "SQL": "SELECT las.company_title, COUNT(las.code) AS las_code_count FROM logistics_aistore AS las GROUP BY las.company_title HAVING COUNT(las.code) = $1",
+      "parameters": {"1": "1"},
+      "response_template": "شرکت‌هایی که دقیقاً یک انبار دارند، به همراه تعداد انبار:"
     }
   },
   {
     "id": 45,
-    "complexity": "medium",
+    "complexity": "difficult",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "میانگین مقدار دائم را به تفکیک نوع کالا نشان بده.",
+    "table": "logistics_aistore",
+    "question": "برای هر شرکت تعداد کل انبار و تعداد انبار فعال را نشان بده.",
     "sql": {
-      "SQL": "SELECT lap.part_type, AVG(lap.permanent_quantity) AS lap_permanent_quantity_avg FROM logistics_allparts AS lap GROUP BY lap.part_type",
-      "parameters": {},
-      "response_template": "میانگین مقدار دائم به واحد اصلی به تفکیک نوع کالا:"
+      "SQL": "SELECT las.company_title, COUNT(las.code) AS las_code_count, COUNT(las.code) FILTER (WHERE las.state ILIKE $1) AS las_active_code_count FROM logistics_aistore AS las GROUP BY las.company_title ORDER BY las_code_count DESC",
+      "parameters": {"1": "فعال%"},
+      "response_template": "تعداد کل انبار و تعداد انبار فعال به تفکیک شرکت، مرتب‌شده بر اساس تعداد کل به صورت نزولی:"
     }
   },
   {
     "id": 46,
-    "complexity": "medium",
+    "complexity": "difficult",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "چند قلم برگشتی ثبت شده است؟",
+    "table": "logistics_aistore",
+    "question": "شرکت‌هایی که تعداد انبارشان بیشتر از میانگین است را نشان بده.",
     "sql": {
-      "SQL": "SELECT COUNT(lap.product_code) AS lap_product_code_count FROM logistics_allparts AS lap WHERE lap.is_return = $1",
-      "parameters": {
-        "1": true
-      },
-      "response_template": "تعداد ردیف‌های اقلام برگشتی:"
+      "SQL": "SELECT las.company_title, COUNT(las.code) AS las_code_count FROM logistics_aistore AS las GROUP BY las.company_title HAVING COUNT(las.code) > (SELECT AVG(company_counts.cnt) FROM (SELECT COUNT(las2.code) AS cnt FROM logistics_aistore AS las2 GROUP BY las2.company_title) AS company_counts) ORDER BY las_code_count DESC",
+      "parameters": {},
+      "response_template": "شرکت‌هایی که تعداد انبار آن‌ها بیشتر از میانگین تعداد انبار شرکت‌هاست، به همراه تعداد انبار، مرتب‌شده از بیشترین به کمترین:"
     }
   },
   {
     "id": 47,
-    "complexity": "complex",
+    "complexity": "difficult",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "مجموع مقدار به واحد دوم را به تفکیک کالا و واحد دوم نشان بده.",
+    "table": "logistics_aistore",
+    "question": "تمام انبارهای شرکت‌هایی که حداقل یک انبار غیرفعال دارند را نشان بده.",
     "sql": {
-      "SQL": "SELECT lap.product_title, lap.second_unit_title, SUM(lap.permanent_second_quantity) AS lap_permanent_second_quantity_sum FROM logistics_allparts AS lap GROUP BY lap.product_title, lap.second_unit_title",
-      "parameters": {},
-      "response_template": "مجموع مقدار دائم به واحد دوم به تفکیک عنوان کالا و عنوان واحد دوم:"
+      "SQL": "SELECT las.code, las.title, las.state, las.company_title FROM logistics_aistore AS las WHERE las.company_title IN (SELECT las2.company_title FROM logistics_aistore AS las2 WHERE (las2.state ILIKE $1))",
+      "parameters": {"1": "%غیر فعال%"},
+      "response_template": "کد، عنوان، وضعیت و شرکتِ همه انبارهای متعلق به شرکت‌هایی که حداقل یک انبار «غیر فعال» دارند:"
     }
   },
   {
     "id": 48,
-    "complexity": "medium",
+    "complexity": "difficult",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "اقلامی که نقش طرف مقابل سند آن‌ها «تامین کننده» است را نشان بده.",
+    "table": "logistics_aistore",
+    "question": "شرکت‌هایی که هیچ انبار فعالی ندارند را نشان بده.",
     "sql": {
-      "SQL": "SELECT lap.product_title, lap.counter_part_type, lap.permanent_quantity FROM logistics_allparts AS lap WHERE lap.counter_part_type ILIKE $1",
-      "parameters": {
-        "1": "%تامین کننده%"
-      },
-      "response_template": "عنوان کالا، نقش طرف مقابل سند و مقدار دائم به واحد اصلی برای اقلامی که نقش طرف مقابل آن‌ها شامل «تامین کننده» است:"
+      "SQL": "SELECT DISTINCT las.company_title FROM logistics_aistore AS las WHERE las.company_title NOT IN (SELECT las2.company_title FROM logistics_aistore AS las2 WHERE (las2.state ILIKE $1))",
+      "parameters": {"1": "فعال%"},
+      "response_template": "نام یکتای شرکت‌هایی که هیچ انبار فعالی ندارند:"
     }
   },
   {
     "id": 49,
-    "complexity": "complex",
+    "complexity": "difficult",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "مجموع مقدار با تاثیر دائم بر موجودی را به تفکیک انبار نشان بده.",
+    "table": "logistics_aistore",
+    "question": "نوع انبارهایی که بیش از ۱۰ انبار فعال دارند، از بیشترین به کمترین.",
     "sql": {
-      "SQL": "SELECT lap.store_name, SUM(lap.permanent_quantity) AS lap_permanent_quantity_sum FROM logistics_allparts AS lap WHERE lap.type_of_effect ILIKE $1 GROUP BY lap.store_name",
-      "parameters": {
-        "1": "%دائم%"
-      },
-      "response_template": "مجموع مقدار دائم به واحد اصلی به تفکیک عنوان انبار، برای اقلامی که نوع تاثیر بر موجودی آن‌ها شامل «دائم» است:"
+      "SQL": "SELECT las.storage_type_title, COUNT(las.code) AS las_code_count FROM logistics_aistore AS las WHERE (las.state ILIKE $1) GROUP BY las.storage_type_title HAVING COUNT(las.code) > $2 ORDER BY las_code_count DESC",
+      "parameters": {"1": "فعال%", "2": "10"},
+      "response_template": "انواع انبار به همراه تعداد انبار فعال، تنها برای انواعی که بیش از ۱۰ انبار فعال دارند، مرتب‌شده از بیشترین به کمترین:"
     }
   },
   {
     "id": 50,
-    "complexity": "complex",
+    "complexity": "difficult",
     "module": "انبار",
-    "table": "logistics_allparts",
-    "question": "۱۰ کالای پرگردش غیربرگشتی در سال مالی گذشته کدامند؟",
+    "table": "logistics_aistore",
+    "question": "انبارها را مرتب بر اساس کد نشان بده و ۱۰ مورد دوم (مورد ۱۱ تا ۲۰) را بده.",
     "sql": {
-      "SQL": "SELECT lap.product_title, SUM(lap.permanent_quantity) AS lap_permanent_quantity_sum FROM logistics_allparts AS lap WHERE lap.is_return = $1 AND lap.voucher_date BETWEEN $2 AND $3 GROUP BY lap.product_title ORDER BY lap_permanent_quantity_sum DESC LIMIT $4",
-      "parameters": {
-        "1": false,
-        "2": "2025.03.21",
-        "3": "2026.03.20",
-        "4": "10"
-      },
-      "response_template": "مجموع مقدار دائم به واحد اصلی به تفکیک عنوان کالا، برای اقلام غیربرگشتی با تاریخ سند از ۱۴۰۴/۰۱/۰۱ تا ۱۴۰۴/۱۲/۲۹، مرتب‌شده از بیشترین به کمترین، ۱۰ مورد اول:"
+      "SQL": "SELECT las.code, las.title FROM logistics_aistore AS las ORDER BY las.code ASC LIMIT 10 OFFSET 10",
+      "parameters": {},
+      "response_template": "کد و عنوان انبارها مرتب‌شده بر اساس کد به صورت صعودی، ۱۰ مورد پس از ۱۰ مورد اول (موارد ۱۱ تا ۲۰):"
     }
   }
 ]

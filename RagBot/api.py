@@ -147,7 +147,7 @@ class CreateSessionRequest(BaseModel):
     tenant_name: Optional[str] = ""
     user_code: Optional[str] = ""
     database_id: Optional[str] = ""
-    business_object: Optional[dict] = None
+    objects: Optional[dict] = None
 
 class SQLRequest(BaseModel):
     # Support both legacy (table_schemas) and new (session-based) approaches
@@ -769,7 +769,7 @@ async def create_session(create_session_request: Optional[CreateSessionRequest] 
             tenant_name = create_session_request.tenant_name
             user_code = create_session_request.user_code
             database_id = create_session_request.database_id
-            business_object = create_session_request.business_object
+            business_object = create_session_request.objects
 
         # Collapse "use the default collection" inputs to NULL; reject bad UUIDs early.
         database_id = _normalize_session_database_id(database_id)

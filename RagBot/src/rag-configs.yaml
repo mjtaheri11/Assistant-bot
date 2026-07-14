@@ -78,10 +78,8 @@ modules:
 
   sql_proposable_modules:
     - انبار
-    - خزانه داری
     - دفتر کل
     - فروش
-    - مدیریت ارتباط با مشتری
 
   available_sql_modules:
     - انبار
@@ -204,7 +202,7 @@ retriever:
   retrieved_documents: 40
   # retrieved_rank2_documents: 10
   retrieved_rank2_documents: 11
-  sql_retrieved_rank2_documents: 25
+  sql_retrieved_rank2_documents: 12
   retriever_threshold: 0.0
   alpha_threshold: 0.5
   # use_reranker: true

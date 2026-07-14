@@ -1650,10 +1650,9 @@ async def chat_responder_(
     if sql_mode:
         if route_response == "sql":
             num_retrieve_context = config["retriever"]["sql_retrieved_rank2_documents"]
-            database_index = config["database"]["sql_collection_name"]
+            database_index = database_index # config["database"]["sql_collection_name"]
         else:
             database_index = database_index
-            
     if detected_module:
         do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context, use_sql_modules=use_sql_modules, clarification_threshold=clarification_threshold, template_key=template_key, target_model_name=target_model_name, input_module=detected_module)
     else:
@@ -1666,6 +1665,7 @@ async def chat_responder_(
         selected_module = modules[0] 
         if selected_module in config["modules"]["available_sql_modules"]:
             do_clarify, modules_2 , context = await prepare_final_context(paraphrased_utterance, database_index=config["database"]["sql_collection_name"], query_embedding=query_embedding, input_module=selected_module, num_retrieve_context=num_retrieve_context)
+            context = ""
             if len(modules_2) == 0:
                 modules_2 = modules 
             assert do_clarify == False, "The problem related to the prepare final context module. Do clarify should be False"

@@ -74,7 +74,7 @@ You MUST always respond in the following JSON format and nothing else:
  
 - `confidence`: `"ACCURATE"` when retrieved context unambiguously answers the question; `"DOUBTFUL"` when chunks from ≥2 distinct modules describe the same surface concept with materially different procedures and you cannot reliably pick one. See the strict rules in the Confidence Assessment section below.
 - `response`: the Farsi answer text. All answer-policy rules below apply to this field, including the Video Link Handling section.
-- `parameters`: maps `@paramN` placeholders inside `response` to actual video link identifiers, per the Video Link Handling section. Empty `{{}}` when no video placeholders are used.
+- `parameters`: maps `@paramN` placeholders inside `response` to actual video link identifiers, per the Video Link Handling section. Empty `{{}}` when no video placeholders are used. Every value in this object MUST be a distinct video link identifier — no identifier may appear as a value more than once (see Video Link Handling rules 13–14).
  
 ### Confidence Assessment
 Each chunk in <context> is prefixed `[Chunk N | Module: <persian module name>]`. Use these tags only to set `confidence`; never mention chunks or module tags in `response`.
@@ -124,6 +124,11 @@ The context may contain video references in the format `[ویدیوی مرتبط
 10. Only include video links that are directly relevant to the answer. Do not include all video links from the context.
 11. If a paragraph has no associated video link, simply continue to the next paragraph without inserting a placeholder.
 12. **CRITICAL — no contradiction:** If you surface ANY video (i.e. any `@paramN` placeholder appears and `parameters` is non-empty), you MUST NOT also state anywhere in the `response` that a related video is unavailable. The "no video available" sentence from section 4 is forbidden in any answer that already shows a video. See the HARD RULE in section 4.
+13. **CRITICAL — no duplicate video links (deduplicate before emitting):** Each distinct `videolink-XXXX` identifier may be surfaced AT MOST ONCE in the entire `response`. The values of the `parameters` object MUST be pairwise unique — the SAME identifier must NEVER be mapped to two different `@paramN` placeholders (e.g. `{{"param1": "videolink-gl005", "param2": "videolink-gl005"}}` is forbidden), and the same identifier must NEVER be repeated across paragraphs. This holds even if:
+    - the same `[ویدیوی مرتبط: videolink-XXXX]` reference appears multiple times across the retrieved chunks (collapse all repeats into a single occurrence);
+    - the same video is genuinely relevant to more than one paragraph (attach it to ONLY the single most relevant paragraph and omit it from the others);
+    - a chunk lists several links and one of them repeats (keep only the first occurrence of each distinct identifier).
+14. **De-duplication procedure (run before assigning placeholders):** First, collect the set of UNIQUE video link identifiers that are directly relevant to the answer (discard exact duplicates, regardless of how many times or in how many chunks they appear). Then assign each unique identifier to exactly one paragraph. The number of `@paramN` placeholders in `response` MUST equal the number of entries in `parameters`, which MUST equal the number of DISTINCT video links used. If after de-duplication only one unique link remains, the answer contains exactly one `@paramN` placeholder — never repeat it to match multiple paragraphs.
  
 ### Output Examples
  
@@ -180,12 +185,27 @@ Context chunks contain: `[ویدیوی مرتبط: videolink-gl101, videolink-gl
 {{"confidence": "ACCURATE", "response": "برای ویرایش اطلاعات حساب معین، وارد ماژول دفتر کل شوید و از مسیر ساختار حساب‌ها، حساب معین مورد نظر را انتخاب کنید و در زبانه اطلاعات معین موارد قابل ویرایش را تغییر دهید.\\n\\n@param1\\n\\nتوجه داشته باشید برخی موارد مانند کد معین پس از استفاده قابل ویرایش نیستند و غیرفعال‌سازی ویژگی ارزی و مقداری پس از استفاده ممکن نیست.\\n\\n@param2", "parameters": {{"param1": "videolink-gl101", "param2": "videolink-gl102"}}}}
 ```
 
+**Example 11 — ACCURATE, the SAME video link is relevant to several paragraphs — surface it only ONCE (de-duplicated):**
+Context chunks contain `[ویدیوی مرتبط: videolink-gl005]` repeated across two chunks, and `videolink-gl005` relates to both the registration and the approval steps. It is attached to a single paragraph only and never repeated.
+```json
+{{"confidence": "ACCURATE", "response": "برای ثبت سند حسابداری، وارد ماژول دفتر کل شوید و گزینه ثبت سند جدید را انتخاب کرده و اطلاعات تاریخ، شرح و مبالغ بدهکار و بستانکار را وارد نمایید.\\n\\n@param1\\n\\nپس از تکمیل اطلاعات، سند را ذخیره کرده و برای تایید نهایی به مسئول مربوطه ارسال کنید.", "parameters": {{"param1": "videolink-gl005"}}}}
+```
+
 **⚠️ ANTI-PATTERN — NEVER do this (stacked video links without separate paragraphs):**
 ```json
 ❌ WRONG: {{"confidence": "ACCURATE", "response": "توضیحات کامل در یک پاراگراف.\\n@param1\\n@param2", "parameters": {{"param1": "videolink-gl007", "param2": "videolink-gl008"}}}}
 ```
 ```json
 ✅ CORRECT: {{"confidence": "ACCURATE", "response": "توضیحات بخش اول.\\n\\n@param1\\n\\nتوضیحات بخش دوم.\\n\\n@param2", "parameters": {{"param1": "videolink-gl007", "param2": "videolink-gl008"}}}}
+```
+ 
+**⚠️ ANTI-PATTERN — NEVER repeat the SAME video link across multiple placeholders / paragraphs:**
+Each distinct `videolink-XXXX` may be surfaced at most once. Mapping the same identifier to two placeholders (or attaching it to two paragraphs) is forbidden. De-duplicate first, then attach each unique link to exactly one paragraph (see rules 13–14).
+```json
+❌ WRONG: {{"confidence": "ACCURATE", "response": "متن بخش اول.\\n\\n@param1\\n\\nمتن بخش دوم.\\n\\n@param2", "parameters": {{"param1": "videolink-gl005", "param2": "videolink-gl005"}}}}
+```
+```json
+✅ CORRECT: {{"confidence": "ACCURATE", "response": "متن بخش اول.\\n\\n@param1\\n\\nمتن بخش دوم.", "parameters": {{"param1": "videolink-gl005"}}}}
 ```
  
 **⚠️ ANTI-PATTERN — NEVER suppress a video that IS available:**
@@ -216,7 +236,8 @@ Before responding, analyze:
 9. Am I using double newlines (\\n\\n) for all separations?
 10. Does the user ask for a video / a specific element that is unavailable, while the underlying topic IS answerable from the context AND no relevant `[ویدیوی مرتبط: ...]` reference exists in the chunks? If yes, this is a Partial-Answer Soft Fallback case (section 4), not an out-of-scope case. If a relevant video link IS present, do NOT use the soft fallback — use normal Video Link Handling instead. CRITICAL: if any `@paramN` placeholder will appear in `response` (i.e. `parameters` is non-empty), you MUST NOT append the "no video available" sentence — surfacing a video and denying a video are mutually exclusive (see HARD RULE in section 4).
 11. If the specific question is NOT answerable from the context but related/adjacent topics (same module, workflow, entity, screen, or general subject area) ARE present, this is a Related-Topic Guidance Fallback case (section 5) — name 1–3 of those topics and invite the user to ask about them, instead of returning the bare out-of-scope string. If the question is completely off-topic OR nothing relevant is in the context, use the bare out-of-scope string per section 2.
-12. Are there any potential ambiguities to clarify?
+12. DE-DUPLICATION CHECK: Have I collapsed the relevant video references to a SET of distinct identifiers? Is every value in `parameters` unique (no `videolink-XXXX` mapped to two placeholders, no link repeated across paragraphs)? Does the count of `@paramN` placeholders exactly equal the number of distinct video links used? If the same video is relevant to several paragraphs, have I attached it to only ONE paragraph? (See Video Link Handling rules 13–14.)
+13. Are there any potential ambiguities to clarify?
 </thinking>
  
 ## Company-Specific Guidelines
@@ -248,7 +269,7 @@ When context contains relevant information:
 2. Use extractive answering - produce output using only relevant text from documents
 3. Synthesize a complete yet focused response organized into **multiple distinct paragraphs** (one per video link if applicable). Include all steps and conditions the user needs; remove only padding and repetition.
 4. Verify accuracy against context
-5. Place relevant video link placeholders (`@paramN`) on their own line after the corresponding paragraph, separated by **double newlines** (`\\n\\n`)
+5. Before assigning placeholders, de-duplicate the relevant video links into a set of DISTINCT identifiers (rules 13–14). Then place each unique video link placeholder (`@paramN`) on its own line after the corresponding paragraph, separated by **double newlines** (`\\n\\n`). Never surface the same identifier more than once, and never map the same identifier to two placeholders.
 6. Determine `confidence` per the Confidence Assessment rules above — when the relevant chunks span multiple modules, start from a DOUBTFUL default and only promote to ACCURATE when a strict ACCURATE condition is positively satisfied.
 7. If the user explicitly asked for a video / specific element that is NOT present in the relevant context chunks but the underlying topic IS answerable, apply the Partial-Answer Soft Fallback (section 4) instead of the bare out-of-scope string. If a relevant video link IS present, never apply the fallback — show the video per normal handling, and do NOT add any "no video available" sentence (HARD RULE, section 4).
 8. If the specific question itself cannot be answered from the context but related/adjacent topics ARE present, apply the Related-Topic Guidance Fallback (section 5) instead of the bare out-of-scope string. If nothing relevant is in the context, return the bare out-of-scope string per section 2.
@@ -269,7 +290,8 @@ Before finalizing response:
 - ✓ If DOUBTFUL, did you either provide a safe side-by-side answer ending with a request to specify the module, or use the exact standard message?
 - ✓ If the user asked for a video / specific element that is unavailable but the topic IS answerable from context AND no relevant `[ویدیوی مرتبط: ...]` reference exists in the chunks, did you use the Partial-Answer Soft Fallback (section 4) instead of the bare out-of-scope string?
 - ✓ If the specific question is NOT answerable from the context but related/adjacent topics ARE present in the context, did you apply the Related-Topic Guidance Fallback (section 5) — naming 1–3 genuinely related topics and inviting the user to ask about them — instead of returning the bare out-of-scope string? And did you avoid fabricating any answer to the original question or naming topics not actually present in the context?
-- ✓ If a relevant `[ویدیوی مرتبط: ...]` reference IS present, did you use the normal Video Link Handling (paragraphs + `@paramN` placeholders) and NOT the soft fallback?
+- ✓ If a relevant `  ` reference IS present, did you use the normal Video Link Handling (paragraphs + `@paramN` placeholders) and NOT the soft fallback?
+- ✓ NO DUPLICATE VIDEOS: Are all values in `parameters` pairwise unique? Did you confirm no `videolink-XXXX` identifier is mapped to more than one `@paramN` placeholder and no video is surfaced in more than one paragraph? Does the number of `@paramN` placeholders equal the number of distinct video links used? (Rules 13–14.)
 - ✓ MUTUAL EXCLUSIVITY: If your `response` contains any `@paramN` placeholder (i.e. `parameters` is non-empty), did you make sure it does NOT also contain the "no video available" sentence ("اما متأسفانه ویدیوی مرتبط با این موضوع در دسترس نیست.") or any equivalent wording? Showing a video and denying a video must NEVER co-occur.
 - ✓ Are all `@paramN` placeholders separated by double newlines and preceded by their own paragraph?
 - ✓ Is the output a valid single JSON object with `confidence`, `response`, and `parameters` keys — nothing outside the braces?
@@ -296,7 +318,7 @@ This section governs ONLY how the final answer is emitted. It does not alter any
 - Emit nothing before the opening `{{`: no preamble, no greeting, no markdown code fences, no `<thinking>` tags, no reasoning narration, no blank lines.
 - Emit nothing after the closing `}}`: no explanation, no notes, no trailing whitespace, no second JSON object. STOP generating immediately after the closing `}}`.
 - Reasoning/thinking models: perform ALL analysis (including the checklist above) silently in your private reasoning phase; that reasoning MUST NOT appear in the final answer. The moment you begin the final answer, output only the JSON object and terminate right after its closing brace.
-- The object MUST be strictly parseable: exactly the keys `confidence`, `response`, and `parameters`; double-quoted keys and string values; inner line breaks written as the literal escape `\\n\\n` exactly as specified in the Video Link Handling section; no trailing commas; no unescaped quotes inside strings.
+- The object MUST be strictly parseable: exactly the keys `confidence`, `response`, and `parameters`; double-quoted keys and string values; inner line breaks written as the literal escape `\\n\\n` exactly as specified in the Video Link Handling section; no trailing commas; no unescaped quotes inside strings; and the values of `parameters` MUST be pairwise-unique video link identifiers (no duplicates).
 - Do not wrap the object in quotes, arrays, or any envelope, and do not emit more than one object.
 
 Farsi only. Output the single JSON object now."""
@@ -1251,7 +1273,7 @@ Return ONLY this JSON structure with no surrounding text or markdown:
   - Mention ordering if present (e.g., "مرتب‌شده بر اساس مبلغ به صورت نزولی")
   - Include limits if present (e.g., "۱۰ مورد اول")
   
-  Examples:
+  Examples: (Please consider that these are sudo examples, and valid table and column names should be written based on the provided business objects)
   - Query: SELECT si.code, si.date, si.net_price FROM sales_invoice si WHERE si.date = $1
     Parameters: {{"1": "2025.04.04"}}
     → response_template: "کد، تاریخ و مبلغ خالص فاکتورهای فروش برای تاریخ ۱۴۰۴/۰۱/۱۵:"
@@ -1524,16 +1546,17 @@ Do NOT return null for:
 
 {schema}
 
-# Examples
-
-{examples}
-
 # Query
 
 {query}
 
 **IMPORTANT: is_return is a boolean filed. Do not fill it with a string value.**
 """
+
+# # Examples
+
+# {examples} Add These part between schema and query in the previous prompt.
+
 
 SQL_CONVERTER_MODIFIED_WITH_PARAMETERS_TEMPLATE = """
 You are a PostgreSQL SELECT query generator. Convert natural language queries into parameterized SQL.
