@@ -23,6 +23,7 @@ import httpx
 import dns.asyncresolver
 
 _GOOGLE_DNS = ["8.8.8.8", "1.1.1.1"]
+ABRAMAD_DEFAULT_BASE = os.getenv("ABRAMAD_DEFAULT_BASE", "https://api.ml.abramad.com/v1")
 
 
 class GoogleDNSTransport(httpx.AsyncHTTPTransport):
@@ -55,6 +56,11 @@ class GoogleDNSTransport(httpx.AsyncHTTPTransport):
         request.extensions["sni_hostname"] = original_host
 
         return await super().handle_async_request(request)
+
+async def _strip_authorization_header(request: httpx.Request) -> None:
+    """Abramad authenticates via `x-api-key`, not `Authorization`. The OpenAI
+    SDK always adds `Authorization: Bearer …`, so we drop it to mirror the curl."""
+    request.headers.pop("Authorization", None)
 
 def _count_tokens(text: str) -> int:
     return len(_FALLBACK_ENCODING.encode(text or ""))
@@ -279,6 +285,9 @@ class LLMClientManager:
         env_key = merged.get("base_url_env")
         if env_key and os.getenv(env_key):
             return os.getenv(env_key)
+        # 2.5 abramad: single shared endpoint, overridable via ABRAMAD_API_BASE
+        if merged.get("provider") == "abramad":
+            return os.getenv("ABRAMAD_API_BASE", ABRAMAD_DEFAULT_BASE)
         # 3. construct from the shared cluster template + per-model host
         host = merged.get("cluster_host")
         if host:
@@ -293,6 +302,9 @@ class LLMClientManager:
         key_env = merged.get("api_key_env")
         if key_env and os.getenv(key_env):
             return os.getenv(key_env)
+        # abramad: default to the customer key unless a model overrides api_key_env
+        if merged.get("provider") == "abramad":
+            return os.getenv("ABRAMAD_DEV_API_KEY", merged.get("api_key", "EMPTY"))
         return merged.get("api_key", "EMPTY")
     
     @staticmethod
@@ -337,6 +349,29 @@ class LLMClientManager:
             )
 
     def _client_for_model(self, cfg: ModelConfig) -> AsyncOpenAI:
+        # Abramad: OpenRouter-compatible proxy. Auth via `x-api-key` header
+        # (not Authorization: Bearer) and two keys (customer / dev). One cached
+        # client per (base_url, key).
+        if cfg.provider == "abramad":
+            api_key = cfg.api_key or os.getenv("ABRAMAD_CUSTOMER_API_KEY") or "EMPTY"
+            base_url = cfg.base_url or ABRAMAD_DEFAULT_BASE
+            cache_key = f"abramad::{base_url}::{api_key}"
+            client = self._clients.get(cache_key)
+            if client is None:
+                http_client = httpx.AsyncClient(
+                    event_hooks={"request": [_strip_authorization_header]},
+                    timeout=cfg.timeout if cfg.timeout is not None else 30,
+                )
+                client = AsyncOpenAI(
+                    base_url=base_url,
+                    api_key="EMPTY",  # Authorization is stripped; auth is x-api-key
+                    default_headers={"x-api-key": api_key},
+                    http_client=http_client,
+                    max_retries=cfg.max_retries,
+                )
+                self._clients[cache_key] = client
+            return client
+
         # Pre-built single-endpoint providers (gpt / openrouter / hooshyar).
         if cfg.provider != "vllm":
             try:

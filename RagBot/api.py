@@ -1016,6 +1016,7 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                             json.dumps(parameters),
                             has_video_link,            # <-- NEW
                         )
+                        choices = [modules_str]
 
         agent = "sql_responder" if is_sql else "chat_responder"
         REQUEST_LATENCY.labels(endpoint="/v1/chat").observe(time.time() - start_time)
