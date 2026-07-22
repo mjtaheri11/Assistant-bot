@@ -6,7 +6,9 @@ import os
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, Optional
+import contextvars
+
 
 import yaml
 from openai import AsyncOpenAI
@@ -24,6 +26,13 @@ import dns.asyncresolver
 
 _GOOGLE_DNS = ["8.8.8.8", "1.1.1.1"]
 ABRAMAD_DEFAULT_BASE = os.getenv("ABRAMAD_DEFAULT_BASE", "https://api.ml.abramad.com/v1")
+ABRAMAD_KEY_ENVS = {
+    "dev": "ABRAMAD_DEV_API_KEY",
+    "customer": "ABRAMAD_CUSTOMER_API_KEY",
+}
+_llm_usage_var: contextvars.ContextVar[Optional[dict]] = contextvars.ContextVar(
+    "_llm_usage_var", default=None
+)
 
 
 class GoogleDNSTransport(httpx.AsyncHTTPTransport):
@@ -57,10 +66,35 @@ class GoogleDNSTransport(httpx.AsyncHTTPTransport):
 
         return await super().handle_async_request(request)
 
-async def _strip_authorization_header(request: httpx.Request) -> None:
-    """Abramad authenticates via `x-api-key`, not `Authorization`. The OpenAI
-    SDK always adds `Authorization: Bearer …`, so we drop it to mirror the curl."""
-    request.headers.pop("Authorization", None)
+def reset_llm_usage() -> None:
+    """Begin fresh model-usage tracking for the current request/task."""
+    _llm_usage_var.set({"models_used": [], "fallback_used": False})
+
+
+def _record_model_use(model_name: str, *, is_fallback: bool = False) -> None:
+    """Record that `model_name` produced a result for the current request.
+
+    No-op when reset_llm_usage() was never called in this context, so calling
+    complete() outside a tracked request never crashes.
+    """
+    usage = _llm_usage_var.get()
+    if usage is None:
+        return
+    if model_name not in usage["models_used"]:
+        usage["models_used"].append(model_name)
+    if is_fallback:
+        usage["fallback_used"] = True
+
+
+def get_llm_usage() -> dict:
+    """Return {'models_used': [...], 'fallback_used': bool} for this request."""
+    usage = _llm_usage_var.get()
+    if usage is None:
+        return {"models_used": [], "fallback_used": False}
+    return {
+        "models_used": list(usage["models_used"]),
+        "fallback_used": bool(usage["fallback_used"]),
+    }
 
 def _count_tokens(text: str) -> int:
     return len(_FALLBACK_ENCODING.encode(text or ""))
@@ -103,6 +137,7 @@ class ModelConfig:
     max_retries: int = 0
     # --- NEW: how to render the prompt for api_type == "completions" ---
     prompt_format: str = "generic"   # "generic" | "qwen3"
+    abramad_key: str = "dev"
 
     def get_params(
         self,
@@ -287,7 +322,11 @@ class LLMClientManager:
             return os.getenv(env_key)
         # 2.5 abramad: single shared endpoint, overridable via ABRAMAD_API_BASE
         if merged.get("provider") == "abramad":
-            return os.getenv("ABRAMAD_API_BASE", ABRAMAD_DEFAULT_BASE)
+            return (
+                os.getenv("ABRAMAD_API_BASE")
+                or os.getenv("ABRAMAD_DEFAULT_BASE")
+                or ABRAMAD_DEFAULT_BASE
+            )
         # 3. construct from the shared cluster template + per-model host
         host = merged.get("cluster_host")
         if host:
@@ -299,12 +338,30 @@ class LLMClientManager:
 
     @staticmethod
     def _resolve_api_key(merged: dict) -> str:
+        # 1. Explicit per-model env override always wins.
         key_env = merged.get("api_key_env")
         if key_env and os.getenv(key_env):
             return os.getenv(key_env)
-        # abramad: default to the customer key unless a model overrides api_key_env
+
+        # 2. Abramad: pick the credential named in config ("dev" | "customer").
         if merged.get("provider") == "abramad":
-            return os.getenv("ABRAMAD_DEV_API_KEY", merged.get("api_key", "EMPTY"))
+            key_type = merged.get("abramad_key", "dev")
+            env_var = ABRAMAD_KEY_ENVS.get(key_type)
+            if env_var is None:
+                raise ValueError(
+                    f"Invalid abramad_key '{key_type}' "
+                    f"(expected one of {sorted(ABRAMAD_KEY_ENVS)})."
+                )
+            key = os.getenv(env_var)
+            if key:
+                return key
+            logger.warning(
+                "Abramad key env '%s' (abramad_key=%s) is not set; "
+                "falling back to model api_key.", env_var, key_type,
+            )
+            return merged.get("api_key", "EMPTY")
+
+        # 3. Everyone else: literal api_key from config.
         return merged.get("api_key", "EMPTY")
     
     @staticmethod
@@ -346,32 +403,35 @@ class LLMClientManager:
                 timeout=merged.get("timeout"),
                 max_retries=merged.get("max_retries", 0),
                 prompt_format=merged.get("prompt_format", "generic"),
+                abramad_key=merged.get("abramad_key", "dev"),   # NEW
             )
 
     def _client_for_model(self, cfg: ModelConfig) -> AsyncOpenAI:
-        # Abramad: OpenRouter-compatible proxy. Auth via `x-api-key` header
-        # (not Authorization: Bearer) and two keys (customer / dev). One cached
-        # client per (base_url, key).
+        # Abramad: OpenRouter-compatible proxy using STANDARD bearer auth
+        # (api_key -> Authorization: Bearer). Same as the `openrouter` provider,
+        # but with a per-model base_url/key, so we cache one client per (url, key).
         if cfg.provider == "abramad":
-            api_key = cfg.api_key or os.getenv("ABRAMAD_CUSTOMER_API_KEY") or "EMPTY"
             base_url = cfg.base_url or ABRAMAD_DEFAULT_BASE
-            cache_key = f"abramad::{base_url}::{api_key}"
+            cache_key = f"abramad::{base_url}::{cfg.api_key}"
             client = self._clients.get(cache_key)
             if client is None:
-                http_client = httpx.AsyncClient(
-                    event_hooks={"request": [_strip_authorization_header]},
-                    timeout=cfg.timeout if cfg.timeout is not None else 30,
-                )
                 client = AsyncOpenAI(
                     base_url=base_url,
-                    api_key="EMPTY",  # Authorization is stripped; auth is x-api-key
-                    default_headers={"x-api-key": api_key},
-                    http_client=http_client,
+                    api_key=cfg.api_key or "EMPTY",
+                    timeout=cfg.timeout if cfg.timeout is not None else 30,
                     max_retries=cfg.max_retries,
                 )
                 self._clients[cache_key] = client
             return client
 
+        # Pre-built single-endpoint providers (gpt / openrouter / hooshyar).
+        if cfg.provider != "vllm":
+            try:
+                return self._clients[cfg.provider]
+            except KeyError:
+                raise ValueError(
+                    f"No client for provider '{cfg.provider}' (model '{cfg.name}')."
+                )
         # Pre-built single-endpoint providers (gpt / openrouter / hooshyar).
         if cfg.provider != "vllm":
             try:
@@ -458,10 +518,11 @@ class LLMClientManager:
         )
 
         try:
-            return await self._execute_call(client, model_config, messages, params)
+            response = await self._execute_call(client, model_config, messages, params)
+            _record_model_use(model_name, is_fallback=False)   # <-- ADD
+            return response                                    # <-- was: return await ...
         except Exception as exc:
             if model_name == FALLBACK_MODEL:
-                # Already on the fallback model — nothing left to try
                 logger.error(
                     "Fallback model '%s' itself failed: %s", FALLBACK_MODEL, exc
                 )
@@ -492,14 +553,17 @@ class LLMClientManager:
             )
 
             try:
-                return await self._execute_call(
+                response = await self._execute_call(
                     fallback_client, fallback_config, fallback_messages, fallback_params
                 )
+                _record_model_use(FALLBACK_MODEL, is_fallback=True)   # <-- ADD
+                return response                                       # <-- was: return await ...
             except Exception as fallback_exc:
                 logger.error(
                     "Fallback model '%s' also failed: %s", FALLBACK_MODEL, fallback_exc
                 )
-                raise                
+                raise
+                            
     @staticmethod
     def _model_input_budget(cfg: ModelConfig) -> int:
         """context_window - max_output_tokens - safety_buffer (== logic.get_max_input_tokens)."""

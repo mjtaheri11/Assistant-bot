@@ -1573,6 +1573,16 @@ Return ONLY this JSON structure with no surrounding text or markdown:
 - SQL: Valid SELECT statement or null if query cannot be processed
 - parameters: Dictionary with string keys ("1", "2", "3"...) mapping to literal values
 
+# CRITICAL PRE-CHECK: Empty Schema (Overrides All Other Rules)
+
+Before applying any other instruction, check the `{schema}` section below.
+
+If the schema is empty (contains no business objects, no tables, and no attributes), you MUST NOT generate any SQL under any circumstances. Return exactly:
+
+{{"SQL": null, "parameters": {{}}, "response_template": ""}}
+
+An empty schema means there are no real tables or columns to query, so no valid SELECT statement can ever exist. This rule overrides the "Query Generation Priority" section and every other instruction — do not attempt to interpret the user's request, do not infer tables, and do not generate placeholder or literal-only queries.
+
 # Critical Constraints
 
 1. SELECT ONLY: Return null for INSERT, UPDATE, DELETE, CREATE, ALTER, DROP, GRANT, REVOKE, or multi-statement queries
@@ -1819,6 +1829,7 @@ Return {{"SQL": null, "parameters": {{}}}} ONLY for these specific cases:
 - Requests that cannot be answered by querying actual columns from the schema's business objects
 - Queries that would only return literal values, parameters, or calculated expressions without selecting real table data
 - Informational requests (e.g., "what is today's date?", "what time is it?") that don't require selecting data from schema tables
+- The schema section is empty (no tables or columns are available to query)
 
 Do NOT return null for:
 - Ambiguous queries that can have a reasonable interpretation AND require real schema data

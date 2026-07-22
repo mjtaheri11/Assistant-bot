@@ -8,6 +8,13 @@ from dotenv import load_dotenv
 
 load_dotenv()# Models for request and response
 
+def _loads_jsonb_or_none(raw):
+    """asyncpg hands JSONB back as a str by default; parse to dict.
+    NULL column (older rows / requests without tracking) -> None."""
+    if raw is None:
+        return None
+    return json.loads(raw) if isinstance(raw, str) else raw
+
 class Postgres:
     _instance = None
 
@@ -248,7 +255,7 @@ class Postgres:
         sql_history_query = """
             SELECT user_query, paraphrased_query, bot_response, message_id, is_sql,
                 selected_module, elapsed_time, do_suggest, response_template,
-                parameters, has_video_link
+                parameters, has_video_link, fallback_used, models_used
             FROM messages
             WHERE session_id = $1
             ORDER BY create_time DESC
@@ -270,19 +277,23 @@ class Postgres:
             history = [
                 {"query": h[0], "response": h[2], "paraphrased_query": h[1], "message_id": h[3],
                 "is_sql": h[4], "selected_module": h[5], "elapsed_time": h[6], "do_suggest": h[7],
-                "response_template": h[8], "parameters": h[9], "has_video_link": h[10]}
+                "response_template": h[8], "parameters": h[9], "has_video_link": h[10],
+                "fallback_used": h[11],                              # <-- NEW (plain bool / None)
+                "models_used": _loads_jsonb_or_none(h[12])}          # <-- NEW (parsed list / None)
                 for h in reversed(selected_history)
             ]
         else:
             history = [
                 {"query": h[0], "response": h[2], "message_id": h[3], "is_sql": h[4],
                 "selected_module": h[5], "elapsed_time": h[6], "do_suggest": h[7],
-                "response_template": h[8], "parameters": h[9], "has_video_link": h[10]}
+                "response_template": h[8], "parameters": h[9], "has_video_link": h[10],
+                "fallback_used": h[11],                              # <-- NEW
+                "models_used": _loads_jsonb_or_none(h[12])}          # <-- NEW
                 for h in reversed(selected_history)
             ]
-        
-        return history 
-        
+
+        return history
+                
     async def remove_previous_response(self, message_id):
         sql_remove_previous_response = """UPDATE messages SET bot_response = NULL WHERE message_id = $1;"""
         await self._execute_query(
@@ -438,6 +449,7 @@ class Postgres:
         self, session_id, user_query, paraphrased_query=None, bot_response=None,
         response_type="concise", elapsed_time=None, selected_module=None,
         response_template=None, parameters="{}", has_video_link=None,   # <-- NEW
+        fallback_used=None, models_used=None,                # <-- NEW (two)
     ):
         # Start with required columns and their values
         columns = ["session_id", "user_query"]
@@ -468,6 +480,13 @@ class Postgres:
         if has_video_link is not None:           # <-- NEW
             columns.append("has_video_link")
             values.append(has_video_link)
+        if fallback_used is not None:                        # <-- NEW: plain bool
+            columns.append("fallback_used")
+            values.append(fallback_used)
+        if models_used is not None:                          # <-- NEW: list -> JSON text
+            columns.append("models_used")
+            values.append(json.dumps(models_used, ensure_ascii=False))
+
         
         # Construct the SQL query dynamically
         sql_insert_query = f"INSERT INTO messages ({', '.join(columns)}) VALUES ({', '.join([f'${i}' for i in range(1, len(values) + 1)])}) RETURNING message_id;"
@@ -491,8 +510,15 @@ class Postgres:
         response_template=None,
         parameters="{}",
         has_video_link=False,          # <-- NEW
+        fallback_used=None,            # <-- NEW
+        models_used=None,              # <-- NEW
         ):
        
+        # bool passes through as-is; list -> JSON text for the JSONB codec.
+        models_used_json = (
+            json.dumps(models_used, ensure_ascii=False) if models_used is not None else None
+        )
+
         values = (
             paraphrased_query,
             bot_response,
@@ -504,6 +530,8 @@ class Postgres:
             parameters,
             response_template,
             has_video_link,      # $10  <-- NEW
+            fallback_used,       # $11  <-- NEW
+            models_used_json,    # $12  <-- NEW
         )
         sql_update_query = """
             UPDATE messages
@@ -515,7 +543,9 @@ class Postgres:
                 do_suggest = $7,
                 parameters = $8,
                 response_template = $9,
-                has_video_link = $10
+                has_video_link = $10,
+                fallback_used = $11,
+                models_used = $12
             WHERE message_id = (
                 SELECT message_id
                 FROM messages

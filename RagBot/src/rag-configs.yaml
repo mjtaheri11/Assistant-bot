@@ -84,7 +84,7 @@ modules:
   available_sql_modules:
     - انبار
     - دفتر کل
-    - مدیریت ارتباط با مشتری
+    # - مدیریت ارتباط با مشتری
     - خزانه داری
     - فروش
 
@@ -258,14 +258,14 @@ api_default:
 api_default:
   temperature: .7
   max_tokens: 16000
-  module_route_model_name: deepseek-v4-pro
-  query_responder_model_name: deepseek-v4-flash
-  answer_validator_model_name: deepseek-v4-flash
-  utterance_paraphraser_model_name: deepseek-v4-flash
-  parameter_responder_model_name: deepseek-v4-flash
-  sql_responder_model_name: deepseek-v4-pro
-  chitchat_responder_model_name: deepseek-v4-flash
-  ticket_responder_model_name: deepseek-v4-flash
+  module_route_model_name: gemini-3.5-flash-abramad
+  query_responder_model_name: minimax-m2.7-abramad
+  answer_validator_model_name: minimax-m2.7-abramad
+  utterance_paraphraser_model_name: minimax-m2.7-abramad
+  parameter_responder_model_name: minimax-m2.7-abramad
+  sql_responder_model_name: gemini-3.5-flash-abramad
+  chitchat_responder_model_name: minimax-m2.7-abramad
+  ticket_responder_model_name: minimax-m2.7-abramad
 
 api_models:
   deepseek-v4-pro:
@@ -531,34 +531,36 @@ api_models:
 # ── Abramad (OpenRouter-compatible proxy, auth via x-api-key) ──
   deepseek-v4-pro-abramad:
     provider: abramad
-    model_id: "deepseek/deepseek-v4-pro:nitro"
-    api_key_env: ABRAMAD_CUSTOMER_API_KEY      # or ABRAMAD_DEV_API_KEY
+    model_id: "openrouter/deepseek-v4-pro:nitro"
+    abramad_key: customer        # <- or "dev"; omit for the default ("dev")
     context_window: 45000
     max_output_tokens: 8000
+    max_tokens: 5000 
     api_type: "chat"
     supports_reasoning: true
     reasoning_param_style: "openrouter"
     default_reasoning_effort: "low"
-    temperature: 0.7
-    timeout: 25
+    temperature: 1
+    timeout: 45
 
   deepseek-v4-flash-abramad:
     provider: abramad
-    model_id: "deepseek/deepseek-v4-flash:nitro"
-    api_key_env: ABRAMAD_CUSTOMER_API_KEY
+    model_id: "openrouter/deepseek-v4-flash:nitro"
+    abramad_key: customer        # <- or "dev"; omit for the default ("dev")
     context_window: 45000
+    max_tokens: 5000 
     max_output_tokens: 5000
     api_type: "chat"
     supports_reasoning: true
     reasoning_param_style: "openrouter"
     default_reasoning_effort: "low"
     temperature: 0.7
-    timeout: 25
+    timeout: 45
 
   gemini-3.5-flash-abramad:
     provider: abramad
-    model_id: "google/gemini-3.5-flash:nitro"
-    api_key_env: ABRAMAD_CUSTOMER_API_KEY
+    model_id: "openrouter/gemini-3.5-flash-nitro"
+    abramad_key: customer        # <- or "dev"; omit for the default ("dev")
     context_window: 45000
     max_output_tokens: 5000
     api_type: "chat"
@@ -566,12 +568,12 @@ api_models:
     reasoning_param_style: "openrouter"
     default_reasoning_effort: "high"
     temperature: 0.7
-    timeout: 15
+    timeout: 45
 
   minimax-m2.7-abramad:
     provider: abramad
-    model_id: "minimax/minimax-m2.7:nitro"
-    api_key_env: ABRAMAD_CUSTOMER_API_KEY
+    model_id: "openrouter/minimax-m2.7:nitro"
+    abramad_key: customer        # <- or "dev"; omit for the default ("dev")
     context_window: 45000
     max_output_tokens: 5000
     api_type: "chat"
@@ -579,12 +581,12 @@ api_models:
     reasoning_param_style: "openrouter"
     default_reasoning_effort: "high"
     temperature: 0.7
-    timeout: 15
+    timeout: 45
 
   glm-4.7-abramad:
     provider: abramad
-    model_id: "glm-4.7:nitro"                  # ⚠ see note below
-    api_key_env: ABRAMAD_CUSTOMER_API_KEY
+    model_id: "openrouter/glm-4.7:nitro"
+    abramad_key: customer        # <- or "dev"; omit for the default ("dev")
     context_window: 40000
     max_output_tokens: 5000
     api_type: "chat"
@@ -592,4 +594,4 @@ api_models:
     reasoning_param_style: "openrouter"
     default_reasoning_effort: "high"
     temperature: 0.7
-    timeout: 15
+    timeout: 45

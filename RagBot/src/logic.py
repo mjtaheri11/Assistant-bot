@@ -41,7 +41,7 @@ from .utils import json_cleaning, json_cleaning_1, calculate_date_context, forma
 # from .business_objects import LOGISTICS_SALES_MODIFIED, FINANCIAL_BO_MODIFIED, CRM_BO, LOGISTICS_MODIFIED #, TREASURY_BO
 # from .business_objects import PARTIAL_LOGISTICS, PARTIAL_LOGISTICS_DDL, PARTIAL_LOGISTICS_SCHEMA_STYLE
 from .bo_loader import ALL_BOS_RAW
-from .bo_selector import get_schema_for_module
+from .bo_selector import get_schema_for_module, validate_bo, BusinessObjectFormatError
 # ========================
 
 from .semantic_router import SemanticRouterPipeline
@@ -116,6 +116,18 @@ _PROMPT_TEMPLATE_REGISTRY: dict[str, str] = {
     "router":           SEMANTIC_ROUTER,
 }
 
+def get_agent_model_map() -> dict[str, str]:
+    """Return the configured agent→model mapping in the config's own shape.
+
+    Every '*_model_name' entry under config['api_default'], e.g.
+    {"query_responder_model_name": "minimax-m2.7-abramad", ...}.
+    """
+    api_default = config.get("api_default", {})
+    return {
+        key: value
+        for key, value in api_default.items()
+        if key.endswith("_model_name") and isinstance(value, str)
+    }
 
 def warmup_prompt_template_sizes() -> None:
     """
@@ -847,10 +859,11 @@ async def prepare_final_context(
     clarification_threshold: float = .7,
     target_model_name: str = "",
     template_key: str = "sql",
+    allowed_modules: Optional[List[str]] = None,   # <-- NEW
 ):
     context_with_metadata, query_embedding = await retrieve_context_with_metadata(
         query, database_index=database_index,
-        input_modules=[input_module] if input_module else None,
+        input_modules=[input_module] if input_module else allowed_modules,  # <-- CHANGED
         num_retrieve_context=num_retrieve_context,
     )
     if not context_with_metadata:
@@ -899,7 +912,8 @@ async def prepare_final_context(
         return False, detected_modules, documents
 
     # -------------------- SQL path (unchanged) --------------------
-    proposable_modules = set(config["modules"]["sql_proposable_modules"])
+    proposable_modules = set(allowed_modules) if allowed_modules \
+        else set(config["modules"]["sql_proposable_modules"])
     module_frequencies = Counter(r["module"] for r in context_with_metadata)
     print(module_frequencies)
 
@@ -1142,7 +1156,6 @@ async def sql_responder_(
     schema_fmt = config.get("schema", {}).get("format", "create_table")
     raw_bo = business_object or ALL_BOS_RAW              # <-- NEW: per-session BO, else default
     schema = get_schema_for_module(raw_bo, detected_module, fmt=schema_fmt)
-
     bo_prompt = format_sql_prompt(query, schema=schema, examples=context)
     raw_json_response = await get_chat_response(
         bo_prompt, model_name, reasoning_effort=reasoning_effort, output_format="json", extra_body={"chat_template_kwargs": {"enable_thinking": True}}
@@ -1646,6 +1659,10 @@ async def chat_responder_(
             "explanatory": "qa_explanatory",
         }
         template_key = qa_template_key_map.get(response_type, "qa_normal")
+    
+    sql_allowed_modules = (
+        config["modules"]["available_sql_modules"] if use_sql_modules else None
+    )
 
     if sql_mode:
         if route_response == "sql":
@@ -1654,9 +1671,9 @@ async def chat_responder_(
         else:
             database_index = database_index
     if detected_module:
-        do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context, use_sql_modules=use_sql_modules, clarification_threshold=clarification_threshold, template_key=template_key, target_model_name=target_model_name, input_module=detected_module)
+        do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context, use_sql_modules=use_sql_modules, clarification_threshold=clarification_threshold, template_key=template_key, target_model_name=target_model_name, input_module=detected_module, allowed_modules=sql_allowed_modules)
     else:
-        do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context, use_sql_modules=use_sql_modules, clarification_threshold=clarification_threshold, template_key=template_key, target_model_name=target_model_name)
+        do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context, use_sql_modules=use_sql_modules, clarification_threshold=clarification_threshold, template_key=template_key, target_model_name=target_model_name, allowed_modules=sql_allowed_modules)
     if do_clarify:
         result_temp = is_sql, paraphrased_utterance, MODULE_CLARIFICATION_RESPONSE_TEMPLATE, "", do_clarify, modules, parameters, sql_response_template, has_video_link, is_ticket
         return result_temp

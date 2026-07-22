@@ -24,8 +24,14 @@ from pathlib import Path
 import aiofiles
 
 from src.shear_parser import convert_word_to_markdown, SoleChunker, preprocess_markdown_file
-from src.llm_clients import llm_manager
+from src.llm_clients import llm_manager, reset_llm_usage, get_llm_usage
+
 from src.utils import has_video_link_
+from src.bo_selector import (
+    get_schema_for_module,
+    validate_bo,
+    BusinessObjectFormatError,
+)
 # Langfuse configuration
 load_dotenv()
 
@@ -60,6 +66,7 @@ from src.logic import (
     retrieve_context_with_metadata,
     embed_query,
     warmup_prompt_template_sizes,
+    get_agent_model_map,          # <-- ADD
 )
 from src.logs import non_generative_agent_logger, simple_logger
 from src.utils import substitute_sql_parameters, integrate_params
@@ -75,6 +82,11 @@ async def lifespan(app: FastAPI):
 
 
 RESPONSE_TEMPLATE_FOR_NO_ANSWER = "متاسفانه، پاسخی به سوال شما یافت نشد."
+FALLBACK_WARNING_MESSAGE = (
+    "⚠️ توجه: مدل اصلی ذکر شده در بالا در پاسخ‌گویی با خطا مواجه شد و این پاسخ توسط مدلِ "
+    "جایگزینِ محلی (ابرامد) تولید شده است؛ بنابراین ممکن است نتیجه دقیق یا "
+    "مناسب نباشد."
+)
 from fastapi import Request
 
 app = FastAPI(
@@ -142,6 +154,10 @@ class ChatResponse(BaseModel):
     response_template: str = ""
     elapsed_time: float = 0.0
     has_video_link: bool = False
+    models: Dict[str, str] = {}        # agent -> configured model (from config)
+    models_used: List[str] = []        # models that actually served this request
+    fallback_used: bool = False
+    fallback_warning: str = ""
 
 class CreateSessionRequest(BaseModel):
     tenant_name: Optional[str] = ""
@@ -774,6 +790,13 @@ async def create_session(create_session_request: Optional[CreateSessionRequest] 
         # Collapse "use the default collection" inputs to NULL; reject bad UUIDs early.
         database_id = _normalize_session_database_id(database_id)
 
+        # Reject malformed business objects up front. None means "use the default BO",
+        # so it is intentionally skipped.
+        if business_object is not None:
+            try:
+                validate_bo(business_object)
+            except BusinessObjectFormatError as e:
+                raise HTTPException(status_code=422, detail=str(e))
         session_id = await postgres.create_session(
             tenant_name=tenant_name,
             user_code=user_code,
@@ -844,8 +867,12 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
     modules = []          # <-- ADD
     do_clarify = False    # <-- ADD
     is_first_message = False
+    fallback_used = False       # <-- ADD
+    models_used = []            # <-- ADD
+    fallback_warning = ""       # <-- ADD
 
     try:
+        reset_llm_usage()       # <-- ADD: clean slate for this request
         postgres = Postgres()
         session_id = get_session_id(request, chat_request)
         user_code, tenant_name = await get_user_code_tenant_name(session_id, postgres)
@@ -862,6 +889,8 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
             parameters = json.loads(final_records.get("parameters", "{}"))
             response_template = final_records.get("response_template", "")
             has_video_link = final_records.get("has_video_link", False)
+            fallback_used  = bool(final_records.get("fallback_used") or False)   # NULL -> False
+            models_used    = list(final_records.get("models_used") or [])
             is_ticket = all(k in (parameters or {}) for k in ("title", "description", "system", "form"))
         else:
             session_validation = await postgres.exist_session(session_id)
@@ -946,6 +975,11 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                     assert do_clarify == False, "on_click should not return do_clarify=True"
                     assert len(modules) <= 1, "on_click should not return modules"
 
+                    usage = get_llm_usage()                    # <-- ADD
+                    fallback_used = usage["fallback_used"]      # <-- ADD
+                    models_used   = usage["models_used"]        # <-- ADD
+
+
                     elapsed_time = time.time() - start_time
                     message_id = await postgres.update_last_chat_row(
                         session_id,
@@ -957,7 +991,9 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         "",
                         response_template,
                         json.dumps(parameters),
-                        has_video_link
+                        has_video_link,
+                        fallback_used=fallback_used,            # <-- ADD (kwargs, since these
+                        models_used=models_used,                # <-- ADD  are after has_video_link)
                     )
 
                 else:
@@ -981,6 +1017,10 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                         ticket_mode=chat_request.ticket_mode,
                         business_object=business_object_raw,
                     )
+
+                    usage = get_llm_usage()                    # <-- ADD
+                    fallback_used = usage["fallback_used"]      # <-- ADD
+                    models_used   = usage["models_used"]        # <-- ADD
                     if do_clarify:
                         do_suggest = True
                         elapsed_time = time.time() - start_time
@@ -997,6 +1037,8 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                             response_template=response_template,
                             parameters=json.dumps(parameters),
                             has_video_link=has_video_link,     # <-- NEW
+                            fallback_used=fallback_used,        # <-- ADD
+                            models_used=models_used,            # <-- ADD
                         )
                         agent = "module_clarification"
                         message = "modules proposed"
@@ -1015,9 +1057,13 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
                             response_template,
                             json.dumps(parameters),
                             has_video_link,            # <-- NEW
+                            fallback_used=fallback_used,        # <-- ADD
+                            models_used=models_used,            # <-- ADD
                         )
                         choices = [modules_str]
 
+        models_map = get_agent_model_map()
+        fallback_warning = FALLBACK_WARNING_MESSAGE if fallback_used else ""
         agent = "sql_responder" if is_sql else "chat_responder"
         REQUEST_LATENCY.labels(endpoint="/v1/chat").observe(time.time() - start_time)
         non_generative_agent_logger(
@@ -1072,6 +1118,10 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
             response_template=response_template,
             elapsed_time=elapsed_time,
             has_video_link=has_video_link,
+            models=models_map,                  # <-- ADD  (agent -> configured model)
+            models_used=models_used,            # <-- ADD  (models that actually ran)
+            fallback_used=fallback_used,        # <-- ADD
+            fallback_warning=fallback_warning,  # <-- ADD
         )
 
     except HTTPException as e:

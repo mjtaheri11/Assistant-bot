@@ -3,7 +3,8 @@ from __future__ import annotations
 from collections import defaultdict, deque
 from typing import Any
 
-from .bo_formatter import format_bo, _normalize_relation
+from .bo_formatter import format_bo, _normalize_relation, validate_bo, BusinessObjectFormatError
+
 from .config import config
 
 

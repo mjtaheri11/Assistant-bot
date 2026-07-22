@@ -16,6 +16,87 @@ _YAML_GROUP = {
     "Bool": "bool_type", "Date": "date_type", "DateTime": "datetime_type",
 }
 
+class BusinessObjectFormatError(ValueError):
+    """Raised when a supplied business object doesn't match the expected shape."""
+
+
+_KNOWN_COLUMN_TYPES = set(_SQL_TYPE.keys())  # String, Int64, ..., Date, DateTime
+
+
+def validate_bo(raw_bo: Any, *, strict_types: bool = False) -> None:
+    """Validate that `raw_bo` matches the structure every formatter here consumes.
+
+    Contract (derived from `_iter_bos` and the `_to_*` formatters):
+      - top level is a dict
+      - `boNames` is a non-empty list of dicts
+      - every BO has a non-empty string `name`
+      - every BO's `columns` (if present) is a list of dicts, each with a
+        non-empty string `name`
+      - `enums` (if present) is a dict
+      - each column `type` is a known type   [only when strict_types=True]
+
+    Collects ALL problems and raises BusinessObjectFormatError once.
+    None is NOT accepted here: callers use None as the "use the default BO"
+    sentinel and should skip validation for it.
+    """
+    if not isinstance(raw_bo, dict):
+        raise BusinessObjectFormatError(
+            f"business object must be a JSON object, got {type(raw_bo).__name__}"
+        )
+
+    errors: list[str] = []
+
+    enums = raw_bo.get("enums", {})
+    if not isinstance(enums, dict):
+        errors.append(f"'enums' must be an object, got {type(enums).__name__}")
+
+    bo_names = raw_bo.get("boNames")
+    if bo_names is None:
+        errors.append("missing required key 'boNames'")
+    elif not isinstance(bo_names, list):
+        errors.append(f"'boNames' must be a list, got {type(bo_names).__name__}")
+    elif not bo_names:
+        errors.append("'boNames' must contain at least one business object")
+    else:
+        for i, bo in enumerate(bo_names):
+            if not isinstance(bo, dict):
+                errors.append(f"boNames[{i}] must be an object, got {type(bo).__name__}")
+                continue
+
+            name = bo.get("name")
+            if isinstance(name, str) and name.strip():
+                label = f"boNames[{i}] ('{name}')"
+            else:
+                label = f"boNames[{i}]"
+                errors.append(f"{label} is missing a non-empty string 'name'")
+
+            columns = bo.get("columns", [])
+            if not isinstance(columns, list):
+                errors.append(f"{label}.columns must be a list, got {type(columns).__name__}")
+            else:
+                for j, col in enumerate(columns):
+                    if not isinstance(col, dict):
+                        errors.append(f"{label}.columns[{j}] must be an object, got {type(col).__name__}")
+                        continue
+                    cname = col.get("name")
+                    if not (isinstance(cname, str) and cname.strip()):
+                        errors.append(f"{label}.columns[{j}] is missing a non-empty string 'name'")
+                    if strict_types:
+                        ctype = col.get("type", "String")
+                        if ctype not in _KNOWN_COLUMN_TYPES:
+                            errors.append(
+                                f"{label}.columns[{j}] has unknown type '{ctype}'; "
+                                f"expected one of {sorted(_KNOWN_COLUMN_TYPES)}"
+                            )
+
+            relations = bo.get("relations", [])
+            if not isinstance(relations, list):
+                errors.append(f"{label}.relations must be a list, got {type(relations).__name__}")
+
+    if errors:
+        raise BusinessObjectFormatError(
+            "invalid business object format: " + "; ".join(errors)
+        )
 
 # ── Relation normalization ───────────────────────────────────────
 
@@ -383,7 +464,7 @@ SUPPORTED_FORMATS = list(_FORMATTERS.keys())
 
 
 def format_bo(raw_bo: dict, fmt: str = "create_table") -> str:
-    """Convert a raw BO JSON dict to a prompt-ready schema string."""
+    validate_bo(raw_bo)  # raises BusinessObjectFormatError on malformed input
     if fmt not in _FORMATTERS:
         raise ValueError(f"Unknown format '{fmt}'. Choose from: {SUPPORTED_FORMATS}")
     return _FORMATTERS[fmt](raw_bo)
