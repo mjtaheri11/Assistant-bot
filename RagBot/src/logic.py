@@ -41,7 +41,7 @@ from .utils import json_cleaning, json_cleaning_1, calculate_date_context, forma
 # from .business_objects import LOGISTICS_SALES_MODIFIED, FINANCIAL_BO_MODIFIED, CRM_BO, LOGISTICS_MODIFIED #, TREASURY_BO
 # from .business_objects import PARTIAL_LOGISTICS, PARTIAL_LOGISTICS_DDL, PARTIAL_LOGISTICS_SCHEMA_STYLE
 from .bo_loader import ALL_BOS_RAW
-from .bo_selector import get_schema_for_module, validate_bo, BusinessObjectFormatError
+from .bo_selector import get_schema_for_module, validate_bo, BusinessObjectFormatError, get_sql_modules_for_bo
 # ========================
 
 from .semantic_router import SemanticRouterPipeline
@@ -918,6 +918,16 @@ async def prepare_final_context(
         return False, detected_modules, documents
 
     # -------------------- SQL path (unchanged) --------------------
+    
+    # One module available => nothing to disambiguate. Retrieval was already
+    # filtered to it, so go straight to the single-module handler.
+    if allowed_modules is not None and len(allowed_modules) == 1:
+        return _handle_single_module_case(
+            context_with_metadata, allowed_modules[0],
+            index_name=database_index,
+            target_model_name=target_model_name,
+            template_key=template_key,
+        )
     proposable_modules = set(allowed_modules) if allowed_modules \
         else set(config["modules"]["sql_proposable_modules"])
     module_frequencies = Counter(r["module"] for r in context_with_metadata)
@@ -1628,16 +1638,28 @@ async def chat_responder_(
             return result_temp
 
     query_embedding = await embed_query(paraphrased_utterance)
-    if sql_mode or ticket_mode:
+
+    # Modules this session's BO can actually answer SQL for. Falls back to the
+    # bundled default BO when the session didn't supply one, so the same rule
+    # applies either way.
+    sql_allowed_modules = get_sql_modules_for_bo(business_object or ALL_BOS_RAW)
+
+    # No SQL-capable module in the BO => don't even offer the SQL route.
+    sql_mode_effective = sql_mode and bool(sql_allowed_modules)
+    if sql_mode and not sql_mode_effective:
+        logging.info("SQL route disabled: BO covers no SQL-capable module")
+
+    if sql_mode_effective or ticket_mode:
         route_response = await get_route_for_utterance(
             paraphrased_utterance,
             query_embedding,
-            sql_mode=sql_mode,
+            sql_mode=sql_mode_effective,
             ticket_mode=ticket_mode,
         )
     else:
         route_response = "qa"
-    use_sql_modules = True if route_response == "sql" else False
+    use_sql_modules = route_response == "sql"
+
     if route_response == "chitchat":
         response = RESPONSE_TEMPLATE_FOR_NO_ANSWER
         context = ""
@@ -1692,9 +1714,7 @@ async def chat_responder_(
         }
         template_key = qa_template_key_map.get(response_type, "qa_normal")
     
-    sql_allowed_modules = (
-        config["modules"]["available_sql_modules"] if use_sql_modules else None
-    )
+    allowed_modules_arg = sql_allowed_modules if use_sql_modules else None
 
     if sql_mode:
         if route_response == "sql":
@@ -1703,21 +1723,19 @@ async def chat_responder_(
         else:
             database_index = database_index
     if detected_module:
-        do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context, use_sql_modules=use_sql_modules, clarification_threshold=clarification_threshold, template_key=template_key, target_model_name=target_model_name, input_module=detected_module, allowed_modules=sql_allowed_modules)
+        do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context, use_sql_modules=use_sql_modules, clarification_threshold=clarification_threshold, template_key=template_key, target_model_name=target_model_name, input_module=detected_module, allowed_modules=allowed_modules_arg)
     else:
-        do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context, use_sql_modules=use_sql_modules, clarification_threshold=clarification_threshold, template_key=template_key, target_model_name=target_model_name, allowed_modules=sql_allowed_modules)
+        do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context, use_sql_modules=use_sql_modules, clarification_threshold=clarification_threshold, template_key=template_key, target_model_name=target_model_name, allowed_modules=allowed_modules_arg)
     if do_clarify:
         result_temp = is_sql, paraphrased_utterance, MODULE_CLARIFICATION_RESPONSE_TEMPLATE, "", do_clarify, modules, parameters, sql_response_template, has_video_link, is_ticket
         return result_temp
             
-    if route_response == "sql" and sql_mode:
+    if route_response == "sql" and sql_mode_effective:
         if not modules:
-            # Retrieval resolved no module. Fall through to the QA path rather
-            # than IndexError-ing on modules[0].
             logging.info("sql route chosen but no module resolved; falling back to QA")
         else:
             selected_module = modules[0]
-            if selected_module in config["modules"]["available_sql_modules"]:
+            if selected_module in sql_allowed_modules:      # <-- was config[...]
                 do_clarify, modules_2, context = await prepare_final_context(
                     paraphrased_utterance,
                     database_index=config["database"]["sql_collection_name"],

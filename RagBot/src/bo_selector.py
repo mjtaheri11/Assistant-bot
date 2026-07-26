@@ -8,6 +8,63 @@ from .bo_formatter import format_bo, _normalize_relation, validate_bo, BusinessO
 from .config import config
 
 
+from typing import Iterable, Optional
+import logging
+
+
+def get_contexts_in_bo(raw: dict) -> set[str]:
+    """Distinct context prefixes actually present in a business-object doc.
+
+    Only *seed* contexts count — an FK-reachable table from another context
+    (see select_bos_for_context) does not make that module answerable.
+    """
+    return {
+        get_context(bo["name"])
+        for bo in (raw or {}).get("boNames", [])
+        if bo.get("name")
+    }
+
+
+def get_modules_in_bo(
+    raw: dict,
+    restrict_to: Optional[Iterable[str]] = None,
+) -> list[str]:
+    """Persian module names this business object can actually serve.
+
+    Reverse-maps config['schema']['module_to_context'] against the contexts
+    found in `raw`. Aliases that share a context ("دفتر کل" / "دفترکل") collapse
+    to a single entry so a one-context BO never looks like two modules.
+    """
+    module_to_context = config.get("schema", {}).get("module_to_context", {})
+    present = get_contexts_in_bo(raw)
+    allowed = set(restrict_to) if restrict_to is not None else None
+
+    by_context: dict[str, str] = {}
+    for module, context in module_to_context.items():
+        if context not in present:
+            continue
+        if allowed is not None and module not in allowed:
+            continue
+        by_context.setdefault(context, module)   # first alias wins
+
+    return list(by_context.values())
+
+
+def get_sql_modules_for_bo(raw: dict) -> list[str]:
+    """Intersection of `available_sql_modules` with what the BO covers.
+
+    An empty result means this BO supports no SQL-capable module; callers
+    should disable the SQL route entirely rather than fall back to config.
+    """
+    configured = list(config.get("modules", {}).get("available_sql_modules", []))
+    modules = get_modules_in_bo(raw, restrict_to=configured)
+    if not modules:
+        logging.info(
+            "BO contexts %s map to no SQL module (configured: %s)",
+            sorted(get_contexts_in_bo(raw)), configured,
+        )
+    return modules
+
 def get_context(bo_name: str) -> str:
     """Extract context from BO name: 'logistics_allparts' → 'logistics'."""
     return bo_name.split("_")[0] if "_" in bo_name else bo_name
