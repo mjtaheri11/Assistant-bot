@@ -90,7 +90,10 @@ template_for_doubtful_answer = "سوال شما را به خوبی متوجه ن
 MODULE_CLARIFICATION_RESPONSE_TEMPLATE = "لطفا مشخص نمایید سوال شما از کدام یک از ماژول های سیستم است."
 RESPONSE_TEMPLATE_FOR_NO_ANSWER = "متاسفانه، پاسخی به سوال شما یافت نشد."
 FORM_RETRIEVAL_QUERY_PREFIX = "فرم مرتبط با سوال: "
-
+template_for_module_not_in_bo = (
+    "امکان پاسخ‌گویی به این سوال برای ماژول «{module}» وجود ندارد، زیرا اطلاعات این "
+    "ماژول در دسترس شما قرار ندارد. لطفاً سوال خود را در مورد ماژول دیگری مطرح کنید."
+)
 # ---------------------------------------------------------------------------
 # Prompt-size budgeting
 # ---------------------------------------------------------------------------
@@ -661,33 +664,32 @@ async def process_sql_response(
         context=context,
         business_object=business_object,                 # <-- NEW
     )
-    
-    response_dict = json.loads(response_dict_str)
-    
-    if response_dict["SQL"] is None:
+    try:
+        response_dict = json.loads(response_dict_str)
+    except (json.JSONDecodeError, TypeError) as e:
+        raise LLMResponseFormatError(
+            f"sql_responder returned non-JSON: {str(response_dict_str)[:200]!r}",
+            context={"module": selected_module},
+        ) from e
+
+    if not isinstance(response_dict, dict):
+        raise LLMResponseFormatError(
+            f"sql_responder returned {type(response_dict).__name__}, expected object",
+            context={"module": selected_module},
+        )
+
+    if response_dict.get("SQL") is None:
         return False, RESPONSE_TEMPLATE_FOR_NO_ANSWER, None, None
-    
+
     response_dict["SQL"] = convert_sql_parameters(response_dict["SQL"])
     response = response_dict["SQL"]
-    
-    if response_dict["parameters"]:
-        response_dict["parameters"] = add_param_keys(response_dict["parameters"])
-    
-    sql_with_params = integrate_params(response, response_dict["parameters"])    
-    # bo_parameters_with_template = await parameters_responder(
-    #     paraphrased_utterance,
-    #     sql_with_params,
-    #     selected_module,
-    # )
-    # bo_parameters_with_template_dict = json.loads(bo_parameters_with_template)
-    # parameters_dict = finalize_parameters(response_dict, bo_parameters_with_template_dict)
-    return (
-        True,
-        response,
-        response_dict["parameters"],
-        response_dict["response_template"]
-    )
 
+    params = response_dict.get("parameters") or {}
+    if params:
+        params = add_param_keys(params)
+
+    sql_with_params = integrate_params(response, params)
+    return True, response, params, response_dict.get("response_template", "")
 
 @observe()
 async def utterance_paraphraser(
@@ -765,13 +767,17 @@ async def get_chat_response(
 
     try:
         response = await llm_manager.complete(model_name, messages, **complete_kwargs)
-        # Forward the requested format so extraction matches intent.
-        return llm_manager.extract_text(
-            response, model_name, output_format=output_format
-        )
-    except Exception as e:
-        print(f"Error generating response: {e}")
+        return llm_manager.extract_text(response, model_name, output_format=output_format)
+    except AppError:
         raise
+    except asyncio.TimeoutError as e:
+        raise LLMTimeoutError(
+            f"model {model_name} timed out", context={"model": model_name},
+        ) from e
+    except Exception as e:
+        raise LLMUnavailableError(
+            f"model {model_name} failed: {e}", context={"model": model_name},
+        ) from e
 
 async def embed_query(query):
     from src.retriever import ModelManager
@@ -1154,8 +1160,34 @@ async def sql_responder_(
         model_name = config["api_default"]["sql_responder_model_name"]
 
     schema_fmt = config.get("schema", {}).get("format", "create_table")
-    raw_bo = business_object or ALL_BOS_RAW              # <-- NEW: per-session BO, else default
-    schema = get_schema_for_module(raw_bo, detected_module, fmt=schema_fmt)
+    raw_bo = business_object or ALL_BOS_RAW
+    bo_source = "session" if business_object else "default"
+
+    # format_bo() reports "malformed document" and "no tables for this module"
+    # as the same BusinessObjectFormatError. Validate the *whole* BO first:
+    # if that passes, a later failure can only be a filtering miss.
+    try:
+        validate_bo(raw_bo)
+    except BusinessObjectFormatError as e:
+        raise InvalidBusinessObjectError(
+            str(e), context={"source": bo_source},
+        ) from e
+
+    try:
+        schema = get_schema_for_module(raw_bo, detected_module, fmt=schema_fmt)
+    except BusinessObjectFormatError as e:
+        raise ModuleNotCoveredError(
+            f"business object contains no tables for module {detected_module!r}: {e}",
+            user_message=f"اطلاعات ماژول «{detected_module}» در شیء تجاری شما موجود نیست.",
+            context={"module": detected_module, "source": bo_source},
+        ) from e
+
+    if not (schema or "").strip():
+        raise ModuleNotCoveredError(
+            f"empty schema for module {detected_module!r}",
+            user_message=f"اطلاعات ماژول «{detected_module}» در شیء تجاری شما موجود نیست.",
+            context={"module": detected_module, "source": bo_source},
+        )
     bo_prompt = format_sql_prompt(query, schema=schema, examples=context)
     raw_json_response = await get_chat_response(
         bo_prompt, model_name, reasoning_effort=reasoning_effort, output_format="json", extra_body={"chat_template_kwargs": {"enable_thinking": True}}
@@ -1679,25 +1711,47 @@ async def chat_responder_(
         return result_temp
             
     if route_response == "sql" and sql_mode:
-        selected_module = modules[0] 
-        if selected_module in config["modules"]["available_sql_modules"]:
-            do_clarify, modules_2 , context = await prepare_final_context(paraphrased_utterance, database_index=config["database"]["sql_collection_name"], query_embedding=query_embedding, input_module=selected_module, num_retrieve_context=num_retrieve_context)
-            context = ""
-            if len(modules_2) == 0:
-                modules_2 = modules 
-            assert do_clarify == False, "The problem related to the prepare final context module. Do clarify should be False"
-            assert len(modules_2) == 1, "The problem related to the prepare final context module. length of modules should be one"
-            is_sql, response, parameters, sql_response_template = await process_sql_response(
-                paraphrased_utterance,
-                selected_module,
-                context,
-                business_object=business_object,                 # <-- NEW
-            )
-            if not is_sql: 
-                parameters = {}
-                sql_response_template = ""  
-            result_temp = is_sql, paraphrased_utterance, response, context, False, [selected_module], parameters, sql_response_template, has_video_link, is_ticket
-            return result_temp
+        if not modules:
+            # Retrieval resolved no module. Fall through to the QA path rather
+            # than IndexError-ing on modules[0].
+            logging.info("sql route chosen but no module resolved; falling back to QA")
+        else:
+            selected_module = modules[0]
+            if selected_module in config["modules"]["available_sql_modules"]:
+                do_clarify, modules_2, context = await prepare_final_context(
+                    paraphrased_utterance,
+                    database_index=config["database"]["sql_collection_name"],
+                    query_embedding=query_embedding,
+                    input_module=selected_module,
+                    num_retrieve_context=num_retrieve_context,
+                )
+                context = ""
+                if not modules_2:
+                    modules_2 = modules
+
+                try:
+                    is_sql, response, parameters, sql_response_template = \
+                        await process_sql_response(
+                            paraphrased_utterance, selected_module, context,
+                            business_object=business_object,
+                        )
+                except ModuleNotCoveredError as e:
+                    # A chat turn should answer, not 422. Tell the user plainly.
+                    logging.warning(
+                        "BO does not cover module '%s' (%s); returning guidance",
+                        selected_module, e.detail,
+                    )
+                    return (
+                        False, paraphrased_utterance,
+                        template_for_module_not_in_bo.format(module=selected_module),
+                        "", False, [selected_module], {}, "", False, is_ticket,
+                    )
+
+                if not is_sql:
+                    parameters, sql_response_template = {}, ""
+                return (is_sql, paraphrased_utterance, response, context, False,
+                        [selected_module], parameters, sql_response_template,
+                        has_video_link, is_ticket)
 
     if not context:
         response = template_for_not_answer

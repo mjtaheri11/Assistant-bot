@@ -6,6 +6,7 @@ import os
 import shutil
 import time
 import traceback
+import uuid
 from typing import List, Any, Optional, Dict
 
 from fastapi import FastAPI, HTTPException, Request, Query, File, UploadFile, Depends
@@ -99,6 +100,68 @@ app = FastAPI(
     redoc_url=None,
 )
 
+from src.exceptions import (
+    AppError, SessionNotFoundError, MissingSessionIdError, EmptyQueryError,
+    QueryTooLongError, InvalidDatabaseIdError, InvalidBusinessObjectError,
+    ModuleNotCoveredError, DatabaseNotFoundError, UnsupportedFileTypeError,
+    NoDocumentsExtractedError, VectorStoreError, DocumentProcessingError,
+)
+
+
+@app.middleware("http")
+async def attach_trace_id(request: Request, call_next):
+    trace_id = request.headers.get("X-Request-ID") or uuid.uuid4().hex[:12]
+    request.state.trace_id = trace_id
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = trace_id
+    return response
+
+
+def _trace_id(request: Request) -> str:
+    return getattr(request.state, "trace_id", "")
+
+
+@app.exception_handler(AppError)
+async def app_error_handler(request: Request, exc: AppError):
+    trace_id = _trace_id(request)
+    if exc.http_status >= 500:
+        logger.error(
+            "[%s] %s | %s | context=%s", trace_id, exc.code, exc.detail, exc.context,
+            exc_info=exc,
+        )
+    else:
+        # 4xx is the caller's problem, not an incident — no stack trace.
+        logger.warning(
+            "[%s] %s | %s | context=%s", trace_id, exc.code, exc.detail, exc.context
+        )
+    return JSONResponse(
+        status_code=exc.http_status,
+        content={
+            "detail": exc.user_message,          # keeps existing clients working
+            "error": exc.to_payload(trace_id),   # richer, machine-readable
+        },
+    )
+
+
+@app.exception_handler(Exception)
+async def unhandled_error_handler(request: Request, exc: Exception):
+    trace_id = _trace_id(request)
+    logger.exception(
+        "[%s] unhandled %s on %s %s",
+        trace_id, type(exc).__name__, request.method, request.url.path,
+    )
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": UNHANDLED_ERROR_MESSAGE,
+            "error": {
+                "code": "internal_error",
+                "message": UNHANDLED_ERROR_MESSAGE,
+                "trace_id": trace_id,
+                "retryable": False,
+            },
+        },
+    )
 app.mount(
     "/swagger-static",
     StaticFiles(directory=os.getenv("FASTAPI_LOCAL_FILES_PATH")),
@@ -387,6 +450,26 @@ async def process_nl2sql_json_files(
                 continue
     
     return all_documents
+
+def _log_chat_failure(session_id, tenant_name, user_code, chat_request,
+                      start_time, do_suggest, choices, parameters,
+                      response_template, has_video_link, reason: str):
+    elapsed_time = time.time() - start_time
+    REQUEST_LATENCY.labels(endpoint=CHAT_ENDPOINT).observe(elapsed_time)
+    non_generative_agent_logger(
+        session_id=session_id,
+        tenant_name=tenant_name,
+        user_code=user_code,
+        agent="chat_responder",
+        message=reason,
+        input_dict={"user_utterance": chat_request.query, "paraphrased_query": ""},
+        output_dict={
+            "response": "", "do_suggest": do_suggest, "choices": choices,
+            "parameters": parameters, "response_template": response_template,
+            "has_video_link": has_video_link,
+        },
+        elapsed_time=elapsed_time,
+    )
 
 
 # ============================================================================
@@ -1155,34 +1238,24 @@ async def chat_responder(chat_request: ChatRequest, request: Request):
             fallback_warning=fallback_warning,  # <-- ADD
         )
 
-    except HTTPException as e:
-        raise e
-    except Exception as e:
-        traceback.print_exc()
-        elapsed_time = time.time() - start_time
-        REQUEST_LATENCY.labels(endpoint=CHAT_ENDPOINT).observe(elapsed_time)
-        
-        non_generative_agent_logger(
-            session_id=session_id,
-            tenant_name=tenant_name,
-            user_code=user_code,
-            agent="chat_responder",
-            message="exception happened",
-            input_dict={
-                "user_utterance": chat_request.query,
-                "paraphrased_query": "",
-            },
-            output_dict={
-                "response": "",
-                "do_suggest": do_suggest,
-                "choices": choices,
-                "parameters": parameters,
-                "response_template": response_template, 
-                "has_video_link": has_video_link
-            },
-            elapsed_time=elapsed_time,
+    except HTTPException:
+        raise
+    except AppError as e:
+        _log_chat_failure(
+            session_id, tenant_name, user_code, chat_request,
+            start_time, do_suggest, choices, parameters,
+            response_template, has_video_link,
+            reason=f"{e.code}: {e.detail}",
         )
-        raise HTTPException(status_code=500, detail="Unhandled error, Please report")
+        raise                      # <-- the global handler owns the response
+    except Exception as e:
+        _log_chat_failure(
+            session_id, tenant_name, user_code, chat_request,
+            start_time, do_suggest, choices, parameters,
+            response_template, has_video_link,
+            reason=f"unhandled {type(e).__name__}: {e}",
+        )
+        raise                      # <-- no more blanket 500 conversion
         
 @app.post(
     "/v1/ticket",
