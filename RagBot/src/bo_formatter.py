@@ -464,7 +464,6 @@ SUPPORTED_FORMATS = list(_FORMATTERS.keys())
 
 
 def format_bo(raw_bo: dict, fmt: str = "create_table") -> str:
-    validate_bo(raw_bo)  # raises BusinessObjectFormatError on malformed input
     if fmt not in _FORMATTERS:
         raise ValueError(f"Unknown format '{fmt}'. Choose from: {SUPPORTED_FORMATS}")
     return _FORMATTERS[fmt](raw_bo)

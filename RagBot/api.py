@@ -87,6 +87,8 @@ FALLBACK_WARNING_MESSAGE = (
     "جایگزینِ محلی (ابرامد) تولید شده است؛ بنابراین ممکن است نتیجه دقیق یا "
     "مناسب نباشد."
 )
+SESSION_CREATE_TIMEOUT_SECONDS = float(os.getenv("SESSION_CREATE_TIMEOUT_SECONDS", "10"))
+SESSION_CREATE_TIMEOUT_MESSAGE = "Session creation timed out, please retry"
 from fastapi import Request
 
 app = FastAPI(
@@ -102,7 +104,6 @@ app.mount(
     StaticFiles(directory=os.getenv("FASTAPI_LOCAL_FILES_PATH")),
     name="swagger-static",
 )
-
 @app.get("/docs", include_in_schema=False)
 async def custom_swagger_ui():
     root = app.root_path
@@ -769,6 +770,12 @@ async def get_history(
         200: {},
         422: {"description": "Invalid database_id (not a UUID)"},
         500: {"description": "Unhandled error that should be reported"},
+        504: {
+            "description": "Session creation timed out",
+            "content": {
+                "application/json": {"example": {"detail": SESSION_CREATE_TIMEOUT_MESSAGE}}
+            },
+        },
     },
 )
 @observe()
@@ -797,12 +804,36 @@ async def create_session(create_session_request: Optional[CreateSessionRequest] 
                 validate_bo(business_object)
             except BusinessObjectFormatError as e:
                 raise HTTPException(status_code=422, detail=str(e))
-        session_id = await postgres.create_session(
-            tenant_name=tenant_name,
-            user_code=user_code,
-            database_id=database_id,
-            business_object=business_object,
-        )
+        try:
+            session_id = await asyncio.wait_for(
+                postgres.create_session(
+                    tenant_name=tenant_name,
+                    user_code=user_code,
+                    database_id=database_id,
+                    business_object=business_object,
+                ),
+                timeout=SESSION_CREATE_TIMEOUT_SECONDS,
+            )
+        except asyncio.TimeoutError:
+            elapsed_time = time.time() - start_time
+            non_generative_agent_logger(
+                session_id="",
+                tenant_name=tenant_name,
+                user_code=user_code,
+                agent="session_creator",
+                message=(
+                    f"session creation timed out after "
+                    f"{SESSION_CREATE_TIMEOUT_SECONDS}s"
+                ),
+                input_dict={
+                    "tenant_name": tenant_name,
+                    "user_code": user_code,
+                    "database_id": database_id,
+                },
+                output_dict={"response": ""},
+                elapsed_time=elapsed_time,
+            )
+            raise HTTPException(status_code=504, detail=SESSION_CREATE_TIMEOUT_MESSAGE)
         elapsed_time = time.time() - start_time
         non_generative_agent_logger(
             session_id=session_id.get("session_id"),
@@ -826,7 +857,7 @@ async def create_session(create_session_request: Optional[CreateSessionRequest] 
         return session_id
     except HTTPException:
         raise
-    except ConnectionError:
+    except Exception:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=UNHANDLED_ERROR_MESSAGE)
 

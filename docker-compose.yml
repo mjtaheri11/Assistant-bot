@@ -1,0 +1,67 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    environment:
+      POSTGRES_USER: chatbot
+      POSTGRES_PASSWORD: change-me-strong-password
+      POSTGRES_DB: chatbot
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - chatbox-network
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  qdrant:
+    image: qdrant/qdrant:v1.16.3
+    container_name: qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    environment:
+      QDRANT__SERVICE__API_KEY: change-me-strong-api-key
+    volumes:
+      - qdrant_data:/qdrant/storage
+      - qdrant_snapshots:/qdrant/snapshots
+    networks:
+      - chatbox-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c ':> /dev/tcp/127.0.0.1/6333' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8688:80"
+    networks:
+      - chatbox-network
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.admin
+      PGADMIN_DEFAULT_PASSWORD: change-me-strong-password
+    restart: unless-stopped
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
+volumes:
+  postgres_data:
+  pgadmin_data:
+  qdrant_data:
+  qdrant_snapshots:
+
+networks:
+  chatbox-network:
+    driver: bridge
