@@ -36,6 +36,11 @@ from .retriever import Retriever
 from .config import config
 from .cache import Cache
 from .utils import json_cleaning, json_cleaning_1, calculate_date_context, format_documents_as_sql_examples, convert_sql_parameters, integrate_params, add_param_keys, has_video_link_
+import asyncio
+from .exceptions import (
+    AppError, InvalidBusinessObjectError, ModuleNotCoveredError,
+    LLMResponseFormatError, LLMTimeoutError, LLMUnavailableError,
+)
 
 # ========================
 # from .business_objects import LOGISTICS_SALES_MODIFIED, FINANCIAL_BO_MODIFIED, CRM_BO, LOGISTICS_MODIFIED #, TREASURY_BO
@@ -921,8 +926,6 @@ async def prepare_final_context(
     
     # One module available => nothing to disambiguate. Retrieval was already
     # filtered to it, so go straight to the single-module handler.
-    import pdb
-    pdb.set_trace()
     if allowed_modules is not None and len(allowed_modules) == 1:
         return _handle_single_module_case(
             context_with_metadata, allowed_modules[0],
@@ -1174,6 +1177,12 @@ async def sql_responder_(
     schema_fmt = config.get("schema", {}).get("format", "create_table")
     raw_bo = business_object or ALL_BOS_RAW
     bo_source = "session" if business_object else "default"
+    if not raw_bo:
+        raise ModuleNotCoveredError(
+            "no business object available (session and default file both empty)",
+            user_message=template_for_not_answer,
+            context={"source": bo_source},
+        )
     # format_bo() reports "malformed document" and "no tables for this module"
     # as the same BusinessObjectFormatError. Validate the *whole* BO first:
     # if that passes, a later failure can only be a filtering miss.
@@ -1639,14 +1648,22 @@ async def chat_responder_(
             return result_temp
 
     query_embedding = await embed_query(paraphrased_utterance)
+    
 
     # Modules this session's BO can actually answer SQL for. Falls back to the
     # bundled default BO when the session didn't supply one, so the same rule
     # applies either way.
-    sql_allowed_modules = get_sql_modules_for_bo(business_object or ALL_BOS_RAW)
+    effective_bo = business_object or ALL_BOS_RAW
+    has_bo = bool(effective_bo)
 
-    # No SQL-capable module in the BO => don't even offer the SQL route.
-    sql_mode_effective = sql_mode and bool(sql_allowed_modules)
+    sql_allowed_modules = get_sql_modules_for_bo(effective_bo) if has_bo else []
+
+    # Two distinct reasons the SQL route can't be served, handled differently:
+    #   no BO at all            -> keep offering the route to the router, then
+    #                              refuse below, so data questions get the
+    #                              out-of-scope reply rather than a doc answer.
+    #   BO covers no SQL module -> genuinely disable; QA still applies.
+    sql_mode_effective = sql_mode and (bool(sql_allowed_modules) or not has_bo)
     if sql_mode and not sql_mode_effective:
         logging.info("SQL route disabled: BO covers no SQL-capable module")
 
@@ -1660,6 +1677,27 @@ async def chat_responder_(
     else:
         route_response = "qa"
     use_sql_modules = route_response == "sql"
+
+    # The router picked SQL, but there is no business object to build a query
+    # from — neither the session nor the bundled default file supplied one.
+    # QA/ticket/chitchat are unaffected; only data questions are out of scope.
+    if route_response == "sql" and not has_bo:
+        logging.warning(
+            "sql route chosen but no business object available "
+            "(session and default file both empty); refusing"
+        )
+        return (
+            False,                    # is_sql
+            paraphrased_utterance,
+            template_for_not_answer,
+            "",                       # context
+            False,                    # do_clarify
+            [],                       # modules
+            {},                       # parameters
+            "",                       # sql_response_template
+            False,                    # has_video_link
+            False,                    # is_ticket
+        )
 
     if route_response == "chitchat":
         response = RESPONSE_TEMPLATE_FOR_NO_ANSWER
@@ -1723,8 +1761,6 @@ async def chat_responder_(
             database_index = database_index # config["database"]["sql_collection_name"]
         else:
             database_index = database_index    
-    import pdb
-    pdb.set_trace()
     if detected_module:
         do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context, use_sql_modules=use_sql_modules, clarification_threshold=clarification_threshold, template_key=template_key, target_model_name=target_model_name, input_module=detected_module, allowed_modules=allowed_modules_arg)
     else:
