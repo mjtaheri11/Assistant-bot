@@ -921,6 +921,8 @@ async def prepare_final_context(
     
     # One module available => nothing to disambiguate. Retrieval was already
     # filtered to it, so go straight to the single-module handler.
+    import pdb
+    pdb.set_trace()
     if allowed_modules is not None and len(allowed_modules) == 1:
         return _handle_single_module_case(
             context_with_metadata, allowed_modules[0],
@@ -1172,7 +1174,6 @@ async def sql_responder_(
     schema_fmt = config.get("schema", {}).get("format", "create_table")
     raw_bo = business_object or ALL_BOS_RAW
     bo_source = "session" if business_object else "default"
-
     # format_bo() reports "malformed document" and "no tables for this module"
     # as the same BusinessObjectFormatError. Validate the *whole* BO first:
     # if that passes, a later failure can only be a filtering miss.
@@ -1721,7 +1722,9 @@ async def chat_responder_(
             num_retrieve_context = config["retriever"]["sql_retrieved_rank2_documents"]
             database_index = database_index # config["database"]["sql_collection_name"]
         else:
-            database_index = database_index
+            database_index = database_index    
+    import pdb
+    pdb.set_trace()
     if detected_module:
         do_clarify, modules, context = await prepare_final_context(paraphrased_utterance, database_index=database_index, query_embedding=query_embedding, num_retrieve_context=num_retrieve_context, use_sql_modules=use_sql_modules, clarification_threshold=clarification_threshold, template_key=template_key, target_model_name=target_model_name, input_module=detected_module, allowed_modules=allowed_modules_arg)
     else:

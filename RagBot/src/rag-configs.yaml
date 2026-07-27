@@ -43,6 +43,7 @@ schema:
     "دفترکل": "financial"
     "خزانه داری": "treasury"
     "مدیریت ارتباط با مشتری": "crm"
+    "جبران خدمات": "hcm"          # <-- add
 
 modules:
   names: 
@@ -87,6 +88,7 @@ modules:
     # - مدیریت ارتباط با مشتری
     - خزانه داری
     - فروش
+    - جبران خدمات
 
 postgres:
   history_length: 4

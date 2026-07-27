@@ -413,6 +413,19 @@ def _json_item_to_document(item: Dict[str, Any]) -> Document:
     return Document(page_content=question, metadata=metadata)
 
 
+def _normalize_business_object(objects: Optional[dict]) -> Optional[dict]:
+    """
+    An absent or empty business object means "use the bundled default BO".
+
+    Clients send `{}` and `null` interchangeably for "I have nothing to
+    supply", so both collapse to None here. Storing NULL rather than `{}`
+    keeps the read path unambiguous — see find_business_object().
+    """
+    if not objects:
+        return None
+    return objects
+
+
 async def process_nl2sql_json_files(
     files: List[UploadFile]
 ) -> List[Document]:
@@ -877,11 +890,15 @@ async def create_session(create_session_request: Optional[CreateSessionRequest] 
             database_id = create_session_request.database_id
             business_object = create_session_request.objects
 
+        # Reject malformed business objects up front. None means "use the default BO",
+        # so it is intentionally skipped.
+        business_object = create_session_request.objects
+
         # Collapse "use the default collection" inputs to NULL; reject bad UUIDs early.
         database_id = _normalize_session_database_id(database_id)
 
-        # Reject malformed business objects up front. None means "use the default BO",
-        # so it is intentionally skipped.
+        # Empty/absent BO means "use the bundled default" — skip validation entirely.
+        business_object = _normalize_business_object(business_object)
         if business_object is not None:
             try:
                 validate_bo(business_object)
